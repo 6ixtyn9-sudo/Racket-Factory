@@ -44,6 +44,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger("capture_oddsportal")
 
+# Script to remove navigator.webdriver flag
+STEALTH_JS = """
+Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+window.navigator.chrome = { runtime: {}, };
+Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5], });
+Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'], });
+"""
 
 def infer_year_from_url(url: str) -> int | None:
     match = re.search(r"-(20\d{2})/results/?", url)
@@ -62,32 +69,72 @@ def resolve_url(template: str, year: int) -> str:
     return template.replace("{year}", str(year))
 
 
-def fetch_rendered_html(url: str, *, timeout_ms: int = 60000) -> str:
+def fetch_rendered_html(url: str, *, timeout_ms: int = 60000, max_retries: int = 2) -> str:
+    """Render a URL with Playwright Chromium and return the HTML."""
     from playwright.sync_api import sync_playwright
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
-        )
-        page = browser.new_page(
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1440, "height": 1200},
-            locale="en-GB",
-            timezone_id="UTC",
-        )
-        # Block heavy resources to speed up rendering
-        page.route("**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot}", lambda r: r.abort())
-        try:
-            page.goto(url, wait_until="networkidle", timeout=timeout_ms)
-            time.sleep(2)
-        except Exception:
-            pass
-        html = page.content()
-        browser.close()
-    return html
+    
+    last_html = ""
+    for attempt in range(1, max_retries + 1):
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
+            )
+            context = browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+                ),
+                viewport={"width": 1440, "height": 1200},
+                locale="en-GB",
+                timezone_id="UTC",
+                java_script_enabled=True,
+            )
+            page = context.new_page()
+            
+            # Inject stealth scripts before navigating
+            page.add_init_script(script=STEALTH_JS)
+            
+            # Block heavy resources
+            page.route("**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot}", lambda r: r.abort())
+            
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                # Wait for network idle (gives time for CF challenge)
+                page.wait_for_timeout(3000)
+                
+                html = page.content()
+                
+                # Check for Cloudflare challenge
+                if len(html) < 2000 or "cloudflare" in html.lower() or "challenge" in html.lower():
+                    logger.warning(f"[Attempt {attempt}] Possible Cloudflare block (length={len(html)}). Waiting longer...")
+                    page.wait_for_timeout(8000)
+                    html = page.content()
+                
+                last_html = html
+                
+                # If we got meaningful content, break
+                if len(html) > 3000 and "cloudflare" not in html.lower():
+                    break
+                elif attempt < max_retries:
+                    logger.info(f"  Retrying page fetch...")
+                    
+            except Exception as exc:
+                logger.error(f"  Fetch error: {exc}")
+                last_html = ""
+            finally:
+                browser.close()
+            
+            # Small delay between retries
+            if attempt < max_retries and len(last_html) < 3000:
+                time.sleep(2)
+
+    return last_html
 
 
 # ---- Bulk helpers -----------------------------------------------------------
@@ -116,6 +163,14 @@ class Checkpoint:
             self.data.get(route_key, {}).get(str(year), 0), pages
         )
         self.path.write_text(json.dumps(self.data, indent=2))
+
+    def summary(self) -> str:
+        lines = ["Progress checkpoint:"]
+        for rk, pages in sorted(self.data.items()):
+            total_pages = max(pages.values()) if pages else 0
+            years = sorted(pages.keys())
+            lines.append(f"  {rk}: {total_pages} pages across years " + ", ".join(years))
+        return "\n".join(lines) if lines[1:] else "  No checkpoints yet."
 
 
 def _row_dedup_key(row: dict) -> str:
@@ -275,12 +330,10 @@ def capture_bulk(
                 logger.info("    [DRY RUN] Would fetch %s", p_url)
                 continue
 
-            try:
-                html = fetch_rendered_html(p_url)
-            except Exception as exc:
-                logger.error("  X Failed page %d: %s", pg, exc)
-                if delay > 0:
-                    time.sleep(delay)
+            html = fetch_rendered_html(p_url)
+            
+            if not html or len(html) < 2000:
+                logger.error(f"  X Page {pg} returned empty/blocked HTML. Skipping.")
                 continue
 
             page_rows.extend(
