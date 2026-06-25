@@ -12,7 +12,7 @@ Bulk mode (specific routes, specific years):
 
 Options:
     --pages N          Override page count per route
-    --delay SECONDS    Wait between page fetches (default: 5.0, use 0 to disable)
+    --delay SECONDS    Wait between page fetches (default: 2.0 for curl, 5.0 for Playwright)
     --dry-run          Print what would be captured without fetching
     --skip-exists      Skip routes whose CSVs already exist in data_dir
     --no-checkpoint    Ignore existing progress checkpoint (start fresh)
@@ -21,7 +21,6 @@ Options:
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 import json
@@ -35,7 +34,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from racketfactory.config import load_routes, ROUTES_PATH
-from racketfactory.oddsportal import parse_embedded_json, parse_rendered_html, read_export_csv, write_monthly_csv
+from racketfactory.oddsportal import (
+    parse_embedded_json,
+    parse_rendered_html,
+    read_export_csv,
+    write_monthly_csv,
+    fetch_tournament_pages,
+    fetch_rendered_html,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,13 +50,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("capture_oddsportal")
 
-# Script to remove navigator.webdriver flag
-STEALTH_JS = """
-Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-window.navigator.chrome = { runtime: {}, };
-Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5], });
-Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'], });
-"""
 
 def infer_year_from_url(url: str) -> int | None:
     match = re.search(r"-(20\d{2})/results/?", url)
@@ -69,72 +68,63 @@ def resolve_url(template: str, year: int) -> str:
     return template.replace("{year}", str(year))
 
 
-def fetch_rendered_html(url: str, *, timeout_ms: int = 60000, max_retries: int = 2) -> str:
-    """Render a URL with Playwright Chromium and return the HTML."""
-    from playwright.sync_api import sync_playwright
-    
-    last_html = ""
-    for attempt in range(1, max_retries + 1):
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                ],
-            )
-            context = browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-                ),
-                viewport={"width": 1440, "height": 1200},
-                locale="en-GB",
-                timezone_id="UTC",
-                java_script_enabled=True,
-            )
-            page = context.new_page()
-            
-            # Inject stealth scripts before navigating
-            page.add_init_script(script=STEALTH_JS)
-            
-            # Block heavy resources
-            page.route("**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot}", lambda r: r.abort())
-            
-            try:
-                page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-                # Wait for network idle (gives time for CF challenge)
-                page.wait_for_timeout(3000)
-                
-                html = page.content()
-                
-                # Check for Cloudflare challenge
-                if len(html) < 2000 or "cloudflare" in html.lower() or "challenge" in html.lower():
-                    logger.warning(f"[Attempt {attempt}] Possible Cloudflare block (length={len(html)}). Waiting longer...")
-                    page.wait_for_timeout(8000)
-                    html = page.content()
-                
-                last_html = html
-                
-                # If we got meaningful content, break
-                if len(html) > 3000 and "cloudflare" not in html.lower():
-                    break
-                elif attempt < max_retries:
-                    logger.info(f"  Retrying page fetch...")
-                    
-            except Exception as exc:
-                logger.error(f"  Fetch error: {exc}")
-                last_html = ""
-            finally:
-                browser.close()
-            
-            # Small delay between retries
-            if attempt < max_retries and len(last_html) < 3000:
-                time.sleep(2)
+def _try_curl_fetch(tournament_url: str, tour: str, tournament: str, default_year: int | None, pages: int, delay: float) -> list[dict]:
+    """Try curl_cffi approach first (bypasses Cloudflare)."""
+    return fetch_tournament_pages(
+        tournament_url,
+        tour=tour,
+        tournament=tournament,
+        default_year=default_year,
+        max_pages=pages,
+        sleep=delay,
+    )
 
-    return last_html
+
+def _try_playwright_fetch(tournament_url: str, tour: str, tournament: str, default_year: int | None, pages: int, delay: float, save_html_dir: Path | None) -> list[dict]:
+    """Fallback to Playwright if curl_cffi fails."""
+    rows = []
+    for pg in range(1, pages + 1):
+        p_url = page_url(tournament_url, pg)
+        logger.info("  -> Fetching page %d/%d via Playwright...", pg, pages)
+        try:
+            html = fetch_rendered_html(p_url)
+        except Exception as exc:
+            logger.error("  X Playwright failed page %d: %s", pg, exc)
+            if delay > 0:
+                time.sleep(delay)
+            continue
+        
+        if not html or len(html) < 2000:
+            logger.error("  X Playwright returned empty HTML for page %d.", pg)
+            if delay > 0:
+                time.sleep(delay)
+            continue
+        
+        page_rows = []
+        page_rows.extend(
+            parse_rendered_html(
+                html, tour=tour, tournament=tournament,
+                default_year=default_year, oddsportal_url=p_url,
+            )
+        )
+        page_rows.extend(
+            parse_embedded_json(
+                html, tour=tour, tournament=tournament,
+                oddsportal_url=p_url,
+            )
+        )
+        logger.info("    Parsed %d rows from page %d.", len(page_rows), pg)
+        rows.extend(page_rows)
+
+        if save_html_dir:
+            save_html_dir.mkdir(parents=True, exist_ok=True)
+            safe_tour = tournament_url.split("/")[-3].replace(" ", "_")
+            (save_html_dir / f"{safe_tour}_{default_year}_p{pg}.html").write_text(html)
+
+        if delay > 0 and pg < pages:
+            time.sleep(delay)
+    
+    return rows
 
 
 # ---- Bulk helpers -----------------------------------------------------------
@@ -169,7 +159,7 @@ class Checkpoint:
         for rk, pages in sorted(self.data.items()):
             total_pages = max(pages.values()) if pages else 0
             years = sorted(pages.keys())
-            lines.append(f"  {rk}: {total_pages} pages across years " + ", ".join(years))
+            lines.append(f"  {rk}: {total_pages} pages captured across years {', '.join(years)}")
         return "\n".join(lines) if lines[1:] else "  No checkpoints yet."
 
 
@@ -235,42 +225,43 @@ def capture_single(
     pages: int,
     data_dir: Path,
     save_html: str,
+    delay: float = 5.0,
+    save_html_dir: Path | None = None,
 ) -> int:
     """Original single-route/HTML/CSV capture. Returns row count."""
     rows: list[dict] = []
     if input_csv:
         rows.extend(read_export_csv(input_csv))
 
-    html_pages: list[tuple[str, str]] = []
+    if input_html:
+        html = Path(input_html).read_text(errors="replace")
+        rows.extend(parse_rendered_html(
+            html, default_year=default_year, tour=tour, tournament=tournament,
+        ))
+        rows.extend(parse_embedded_json(
+            html, tour=tour, tournament=tournament,
+        ))
+
     if url:
-        for page_no in range(1, pages + 1):
-            p_url = page_url(url, page_no)
-            logger.info("Fetching page %d/%d ...", page_no, pages)
-            html = fetch_rendered_html(p_url)
-            html_pages.append((html, p_url))
-            if save_html:
+        # Try curl_cffi first (bypasses Cloudflare)
+        curl_rows = _try_curl_fetch(url, tour, tournament, default_year, pages, delay)
+        if curl_rows:
+            logger.info("  [curl_cffi] Fetched %d rows", len(curl_rows))
+            rows.extend(curl_rows)
+        else:
+            logger.info("  [curl_cffi] Failed, falling back to Playwright...")
+            pw_rows = _try_playwright_fetch(url, tour, tournament, default_year, pages, delay, save_html_dir)
+            rows.extend(pw_rows)
+            
+            if save_html and pw_rows:
                 save_path = Path(save_html)
                 if pages > 1:
                     save_path = save_path.with_name(
-                        f"{save_path.stem}_p{page_no}{save_path.suffix or '.html'}"
+                        f"{save_path.stem}_p1{save_path.suffix or '.html'}"
                     )
                 save_path.parent.mkdir(parents=True, exist_ok=True)
+                html = fetch_rendered_html(url)
                 save_path.write_text(html)
-    if input_html:
-        html_pages.append((Path(input_html).read_text(errors="replace"), ""))
-
-    year = default_year or (infer_year_from_url(url) if url else None)
-    for html, source_url in html_pages:
-        rows.extend(parse_rendered_html(
-            html,
-            default_year=year,
-            tour=tour,
-            tournament=tournament,
-            oddsportal_url=source_url,
-        ))
-        rows.extend(parse_embedded_json(
-            html, tour=tour, tournament=tournament, oddsportal_url=source_url,
-        ))
 
     written = write_monthly_csv(rows, str(data_dir))
     print(f"normalized rows: {len(rows)}")
@@ -278,8 +269,8 @@ def capture_single(
         print(f"wrote {path}")
     if not rows:
         print(
-            "WARNING: no rows parsed — save the HTML and add a fixture-specific "
-            "parser/test before scaling capture",
+            "WARNING: no rows parsed — check if curl_cffi is installed, "
+            "or save the HTML and add a fixture-specific parser/test",
             file=sys.stderr,
         )
     return len(rows)
@@ -322,45 +313,38 @@ def capture_bulk(
             continue
 
         page_rows: list[dict] = []
-        for pg in range(1, n_pages + 1):
-            p_url = page_url(url, pg)
-            logger.info("  -> Fetching page %d/%d ...", pg, n_pages)
-
-            if dry_run:
+        
+        if dry_run:
+            logger.info("    [DRY RUN] Would fetch %s", url)
+            for pg in range(2, n_pages + 1):
+                p_url = page_url(url, pg)
                 logger.info("    [DRY RUN] Would fetch %s", p_url)
-                continue
+            continue
 
-            html = fetch_rendered_html(p_url)
-            
-            if not html or len(html) < 2000:
-                logger.error(f"  X Page {pg} returned empty/blocked HTML. Skipping.")
-                continue
-
-            page_rows.extend(
-                parse_rendered_html(
-                    html, tour=tour, tournament=tournament,
-                    default_year=year, oddsportal_url=p_url,
-                )
-            )
-            page_rows.extend(
-                parse_embedded_json(
-                    html, tour=tour, tournament=tournament,
-                    oddsportal_url=p_url,
-                )
-            )
-            logger.info("    Parsed %d rows from page %d.", len(page_rows), pg)
-
-            if save_html_dir:
-                save_html_dir.mkdir(parents=True, exist_ok=True)
-                safe_rk = rk.replace(" ", "_").replace("/", "_")
-                (save_html_dir / f"{safe_rk}_{year}_p{pg}.html").write_text(html)
-
-            if delay > 0 and pg < n_pages:
-                time.sleep(delay)
+        # Try curl_cffi first (bypasses Cloudflare)
+        curl_rows = fetch_tournament_pages(
+            url,
+            tour=tour,
+            tournament=tournament,
+            default_year=year,
+            max_pages=n_pages,
+            sleep=delay,
+        )
+        
+        if curl_rows:
+            logger.info("  [curl_cffi] Fetched %d rows", len(curl_rows))
+            page_rows.extend(curl_rows)
+        else:
+            # Fallback to Playwright
+            logger.info("  [curl_cffi] Failed/empty, falling back to Playwright...")
+            pw_rows = _try_playwright_fetch(url, tour, tournament, year, n_pages, delay, save_html_dir)
+            page_rows.extend(pw_rows)
+            if not pw_rows:
+                logger.warning("  X Both curl_cffi and Playwright returned 0 rows for %s year %d", rk, year)
 
         all_rows.extend(page_rows)
 
-        if checkpoint and not dry_run and page_rows:
+        if checkpoint and page_rows:
             checkpoint.mark_done(rk, year, n_pages)
             logger.info("  [tick] %s year %d done. %d rows.", rk, year, len(page_rows))
 
@@ -401,7 +385,7 @@ def main() -> int:
     ap.add_argument("--all", action="store_true", help="Capture all routes for all configured years")
     ap.add_argument("--route", nargs="+", default=[], help="Specific route key(s) to capture")
     ap.add_argument("--years", nargs="+", type=int, default=[], help="Year(s) to capture")
-    ap.add_argument("--delay", type=float, default=5.0, help="Seconds between page fetches (default 5.0)")
+    ap.add_argument("--delay", type=float, default=2.0, help="Seconds between page fetches (default 2.0)")
     ap.add_argument("--dry-run", action="store_true", help="Print plan without fetching")
     ap.add_argument("--skip-exists", action="store_true", help="Skip if CSVs already exist")
     ap.add_argument("--no-checkpoint", action="store_true", help="Ignore existing progress checkpoint")
@@ -453,6 +437,7 @@ def main() -> int:
     if not args.input_csv and not args.input_html and not args.url:
         ap.error("provide --input-csv, --input-html, --url, or a --route-key with a URL")
 
+    save_html_dir = Path(args.save_html) if args.save_html else None
     count = capture_single(
         input_csv=args.input_csv,
         input_html=args.input_html,
@@ -463,6 +448,8 @@ def main() -> int:
         pages=args.pages,
         data_dir=data_dir,
         save_html=args.save_html,
+        delay=args.delay,
+        save_html_dir=save_html_dir,
     )
     return 0
 

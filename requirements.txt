@@ -5,3 +5,7 @@ lxml
 pytest
 python-dotenv
 playwright
+curl_cffi
+tenacity
+curl_cffi
+tenacity
