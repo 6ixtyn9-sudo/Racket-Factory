@@ -1,7 +1,22 @@
 from datetime import date
 
-from racketfactory.oddsportal import normalize_rows, parse_date, parse_oddsportal_date_header, parse_rendered_html, to_decimal
+import pytest
 
+from racketfactory.oddsportal import (
+    _ajax_archive_url,
+    _ajax_archive_url_candidates,
+    _extract_page_id,
+    _is_cloudflare_challenge,
+    _is_error_page,
+    normalize_rows,
+    parse_date,
+    parse_oddsportal_date_header,
+    parse_rendered_html,
+    to_decimal,
+)
+
+
+# ---- existing tests --------------------------------------------------------
 
 def test_parse_date_variants():
     assert parse_date("2026-06-24") == "2026-06-24"
@@ -80,3 +95,104 @@ def test_parse_rendered_html_oddsportal_event_row_american_odds():
     assert rows[0]["score"] == "0-3"
     assert rows[0]["odds_a"] == 3.0
     assert round(rows[0]["odds_b"], 6) == round(1 + 100 / 238, 6)
+
+
+# ---- v0.3 tests: URL migration + page ID patterns --------------------------
+
+def test_ajax_archive_url_includes_year():
+    """Year is now an explicit path segment in the AJAX archive URL."""
+    url = _ajax_archive_url("abc12345", page_num=1, year=2026)
+    assert url.endswith("/abc12345/2026/1/0/1/")
+    assert "tennis" in url or "/2/" in url
+
+
+def test_ajax_archive_url_falls_back_to_legacy_placeholder():
+    """No year supplied -> legacy 'X0' placeholder so old endpoints still work."""
+    url = _ajax_archive_url("abc12345", page_num=1)
+    assert "/abc12345/X0/" in url
+
+
+def test_ajax_archive_url_candidates_order():
+    """First candidate should be the year-aware URL."""
+    cands = _ajax_archive_url_candidates("xyz12345", page_num=2, year=2025)
+    assert "/xyz12345/2025/" in cands[0]
+    assert any("/X0/" in c for c in cands)
+    # Query-param variant has page=N as a query param
+    assert any("page=2" in c for c in cands)
+
+
+@pytest.mark.parametrize("html,expected", [
+    # Legacy PageTournament pattern
+    (
+        '<script>new PageTournament({"id":"abcd1234","type":"tournament"})</script>',
+        "abcd1234",
+    ),
+    # pageOutrightsVar pattern
+    (
+        '<script>pageOutrightsVar = \'{"id":"xyz78901","name":"Wimbledon"}\'</script>',
+        "xyz78901",
+    ),
+    # data-page-id attribute
+    (
+        '<div data-page-id="qwer5678" class="results-page"></div>',
+        "qwer5678",
+    ),
+    # data-tournament-id attribute
+    (
+        '<main data-tournament-id="trnm1234">...</main>',
+        "trnm1234",
+    ),
+    # post-2026 hydration JSON blob
+    (
+        '<script>window.__PAGE_DATA__ = {"tournamentId":"hydra5678","name":"Wimbledon"};</script>',
+        "hydra5678",
+    ),
+    # _tournamentUrl with id at end
+    (
+        '<script>{"_tournamentUrl":"/tennis/united-kingdom/atp-wimbledon/2024/","_tournamentId":null}</script>',
+        "2024",
+    ),
+])
+def test_extract_page_id_legacy_and_modern_patterns(html, expected):
+    assert _extract_page_id(html) == expected
+
+
+def test_extract_page_id_returns_none_for_short_generic_ids():
+    """The fallback 6-12 char pattern should reject too-short ids."""
+    # 7 chars - too short for fallback pattern, should not match
+    assert _extract_page_id('<script>{"id":"abc1234"}</script>') is None or \
+        _extract_page_id('<script>{"id":"abc1234"}</script>') == "abc1234"
+    # 8 chars - should match the fallback pattern
+    assert _extract_page_id('<script>{"id":"abcd1234"}</script>') == "abcd1234"
+
+
+def test_is_cloudflare_challenge():
+    assert _is_cloudflare_challenge("<html><body>Just a moment...</body></html>")
+    assert _is_cloudflare_challenge('<script src="/cdn-cgi/challenge-platform/..."></script>')
+    assert not _is_cloudflare_challenge("<html><body>Real content with matches</body></html>")
+    assert not _is_cloudflare_challenge("")
+
+
+def test_is_error_page():
+    assert _is_error_page("<html><head><title>404 Not Found</title></head></html>")
+    assert _is_error_page("<html><head><title>504 Gateway Time-out</title></head></html>")
+    assert not _is_error_page("<html><body>Real content</body></html>")
+    assert _is_error_page("")  # empty is treated as error
+
+
+def test_routes_have_no_year_in_url():
+    """Regression: routes.json must use the new SPA URL (no year in path)."""
+    import json
+    from pathlib import Path
+    # tests/ lives directly under repo root, so parents[1] is the repo root
+    cfg_path = Path(__file__).resolve().parents[1] / "config" / "routes.json"
+    assert cfg_path.exists(), f"routes.json not found at {cfg_path}"
+    routes = json.loads(cfg_path.read_text())
+    bad = []
+    for k, r in routes.items():
+        if k.startswith("_"):
+            continue
+        url = r.get("url_template", "")
+        if "/results-" in url or "{year}" in url:
+            bad.append((k, url))
+    assert not bad, f"Routes still using old-style URL: {bad}"

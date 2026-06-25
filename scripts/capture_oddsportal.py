@@ -12,22 +12,36 @@ Bulk mode (specific routes, specific years):
 
 Options:
     --pages N          Override page count per route
-    --delay SECONDS    Wait between page fetches (default: 2.0 for curl, 5.0 for Playwright)
+    --delay SECONDS    Wait between page fetches (default: 2.0)
     --dry-run          Print what would be captured without fetching
     --skip-exists      Skip routes whose CSVs already exist in data_dir
     --no-checkpoint    Ignore existing progress checkpoint (start fresh)
     --save-html DIR    Save rendered HTML snapshots
+    --force-render     Skip curl_cffi, go straight to Playwright render
+    --env ODDSPORTAL_USE_PLAYWRIGHT=1 also forces Playwright path
+
+Fetcher strategy (v0.3+):
+    1. curl_cffi with current Chrome impersonation hits the tournament SPA
+       page (/results/, no year in URL) and pulls the page ID.
+    2. If page ID found, hit the AJAX archive endpoint with year as a path
+       segment to get all pages.
+    3. If curl_cffi can't clear Cloudflare, fall through to Playwright
+       which uses the browser's cf_clearance cookies to do AJAX calls in
+       page context (most reliable).
+    4. If AJAX is blocked entirely, render the page DOM and click through
+       pagination as a last resort.
 """
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
-from pathlib import Path
 import json
 import logging
+import os
 import re
 import sys
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -35,12 +49,16 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from racketfactory.config import load_routes, ROUTES_PATH
 from racketfactory.oddsportal import (
+    _fetch_ajax_via_playwright,
+    _is_cloudflare_challenge,
+    _is_error_page,
+    _resolve_page_id,
+    fetch_tournament_pages,
+    fetch_via_rendered_dom,
     parse_embedded_json,
     parse_rendered_html,
     read_export_csv,
     write_monthly_csv,
-    fetch_tournament_pages,
-    fetch_rendered_html,
 )
 
 logging.basicConfig(
@@ -53,10 +71,21 @@ logger = logging.getLogger("capture_oddsportal")
 
 def infer_year_from_url(url: str) -> int | None:
     match = re.search(r"-(20\d{2})/results/?", url)
+    if match:
+        return int(match.group(1))
+    # After 2026 SPA migration, year is no longer in URL — try a few
+    # alternative patterns in case the user passes a legacy URL.
+    match = re.search(r"/(20\d{2})/", url)
     return int(match.group(1)) if match else None
 
 
 def page_url(url: str, page_no: int) -> str:
+    """Build a paginated URL.
+
+    After the 2026 SPA migration, OddsPortal uses client-side pagination
+    (clicking Next), so this URL is mostly cosmetic / diagnostic now. We
+    keep it for backwards compatibility with the legacy /page/N/ fragment.
+    """
     if page_no <= 1:
         return url
     parts = urlsplit(url)
@@ -65,11 +94,30 @@ def page_url(url: str, page_no: int) -> str:
 
 
 def resolve_url(template: str, year: int) -> str:
+    """Substitute {year} into the URL template.
+
+    Note: after the 2026 SPA migration the URL no longer contains the year.
+    This helper still substitutes if the template includes {year} (legacy
+    routes), otherwise returns the template unchanged.
+    """
     return template.replace("{year}", str(year))
 
 
-def _try_curl_fetch(tournament_url: str, tour: str, tournament: str, default_year: int | None, pages: int, delay: float) -> list[dict]:
-    """Try curl_cffi approach first (bypasses Cloudflare)."""
+def _force_playwright() -> bool:
+    return os.getenv("ODDSPORTAL_USE_PLAYWRIGHT", "").strip().lower() in {"1", "true", "yes"}
+
+
+def _try_curl_fetch(
+    tournament_url: str,
+    tour: str,
+    tournament: str,
+    default_year: int | None,
+    pages: int,
+    delay: float,
+) -> list[dict]:
+    """Try the curl_cffi + AJAX approach first."""
+    if _force_playwright():
+        return []
     return fetch_tournament_pages(
         tournament_url,
         tour=tour,
@@ -80,51 +128,73 @@ def _try_curl_fetch(tournament_url: str, tour: str, tournament: str, default_yea
     )
 
 
-def _try_playwright_fetch(tournament_url: str, tour: str, tournament: str, default_year: int | None, pages: int, delay: float, save_html_dir: Path | None) -> list[dict]:
-    """Fallback to Playwright if curl_cffi fails."""
-    rows = []
-    for pg in range(1, pages + 1):
-        p_url = page_url(tournament_url, pg)
-        logger.info("  -> Fetching page %d/%d via Playwright...", pg, pages)
-        try:
-            html = fetch_rendered_html(p_url)
-        except Exception as exc:
-            logger.error("  X Playwright failed page %d: %s", pg, exc)
-            if delay > 0:
-                time.sleep(delay)
-            continue
-        
-        if not html or len(html) < 2000:
-            logger.error("  X Playwright returned empty HTML for page %d.", pg)
-            if delay > 0:
-                time.sleep(delay)
-            continue
-        
-        page_rows = []
-        page_rows.extend(
-            parse_rendered_html(
-                html, tour=tour, tournament=tournament,
-                default_year=default_year, oddsportal_url=p_url,
-            )
-        )
-        page_rows.extend(
-            parse_embedded_json(
-                html, tour=tour, tournament=tournament,
-                oddsportal_url=p_url,
-            )
-        )
-        logger.info("    Parsed %d rows from page %d.", len(page_rows), pg)
-        rows.extend(page_rows)
+def _try_playwright_fetch(
+    tournament_url: str,
+    tour: str,
+    tournament: str,
+    default_year: int | None,
+    pages: int,
+    delay: float,
+    save_html_dir: Path | None,
+    page_id: str | None = None,
+) -> list[dict]:
+    """Playwright fallback.
 
+    Strategy:
+      1. If we already have a page_id (from a successful curl_cffi resolver),
+         use _fetch_ajax_via_playwright to do AJAX calls in the browser
+         context (most reliable — uses browser's cf_clearance cookie).
+      2. Otherwise, resolve the page_id via Playwright, then do AJAX calls.
+      3. If AJAX still doesn't work, fall through to rendered-DOM pagination.
+    """
+    rows: list[dict] = []
+
+    if page_id is None:
+        # Load the page first; this both clears CF and gives us the page_id.
+        logger.info("  -> Playwright: opening %s to resolve page_id + clear CF", tournament_url)
+        from racketfactory.oddsportal import fetch_rendered_html
+        html = fetch_rendered_html(tournament_url)
         if save_html_dir:
             save_html_dir.mkdir(parents=True, exist_ok=True)
             safe_tour = tournament_url.split("/")[-3].replace(" ", "_")
-            (save_html_dir / f"{safe_tour}_{default_year}_p{pg}.html").write_text(html)
+            (save_html_dir / f"{safe_tour}_{default_year or 'any'}_p1.html").write_text(html)
+        if html and not _is_cloudflare_challenge(html) and not _is_error_page(html):
+            page_id = _resolve_page_id_from_rendered(html)
 
-        if delay > 0 and pg < pages:
-            time.sleep(delay)
-    
+    if page_id:
+        logger.info("  -> Playwright AJAX path with page_id=%s", page_id)
+        ajax_rows = _fetch_ajax_via_playwright(
+            page_id,
+            tour=tour,
+            tournament=tournament,
+            default_year=default_year,
+            oddsportal_url=tournament_url,
+            max_pages=pages,
+            sleep=delay,
+        )
+        if ajax_rows:
+            rows.extend(ajax_rows)
+            return rows
+
+    # Last-resort: click through the rendered DOM
+    logger.info("  -> Playwright render-DOM fallback (page_id=%s)", page_id or "<unresolved>")
+    render_rows = fetch_via_rendered_dom(
+        tournament_url,
+        tour=tour,
+        tournament=tournament,
+        default_year=default_year,
+        oddsportal_url=tournament_url,
+        max_pages=pages,
+        sleep=delay,
+    )
+    rows.extend(render_rows)
     return rows
+
+
+def _resolve_page_id_from_rendered(html: str) -> str | None:
+    """Same regex set as `_resolve_page_id` but works on rendered HTML too."""
+    from racketfactory.oddsportal import _extract_page_id
+    return _extract_page_id(html)
 
 
 # ---- Bulk helpers -----------------------------------------------------------
@@ -245,14 +315,22 @@ def capture_single(
     if url:
         # Try curl_cffi first (bypasses Cloudflare)
         curl_rows = _try_curl_fetch(url, tour, tournament, default_year, pages, delay)
+        page_id: str | None = None
         if curl_rows:
             logger.info("  [curl_cffi] Fetched %d rows", len(curl_rows))
             rows.extend(curl_rows)
         else:
-            logger.info("  [curl_cffi] Failed, falling back to Playwright...")
-            pw_rows = _try_playwright_fetch(url, tour, tournament, default_year, pages, delay, save_html_dir)
+            logger.info("  [curl_cffi] Failed/empty, falling back to Playwright...")
+            # Try to reuse page_id even if AJAX failed (e.g., IP blocked but page rendered)
+            page_id = _resolve_page_id(url)
+            if page_id:
+                logger.info("  curl_cffi resolved page_id=%s; passing to Playwright", page_id)
+            pw_rows = _try_playwright_fetch(
+                url, tour, tournament, default_year, pages, delay, save_html_dir,
+                page_id=page_id,
+            )
             rows.extend(pw_rows)
-            
+
             if save_html and pw_rows:
                 save_path = Path(save_html)
                 if pages > 1:
@@ -260,6 +338,7 @@ def capture_single(
                         f"{save_path.stem}_p1{save_path.suffix or '.html'}"
                     )
                 save_path.parent.mkdir(parents=True, exist_ok=True)
+                from racketfactory.oddsportal import fetch_rendered_html
                 html = fetch_rendered_html(url)
                 save_path.write_text(html)
 
@@ -269,8 +348,9 @@ def capture_single(
         print(f"wrote {path}")
     if not rows:
         print(
-            "WARNING: no rows parsed — check if curl_cffi is installed, "
-            "or save the HTML and add a fixture-specific parser/test",
+            "WARNING: no rows parsed — check that curl_cffi is installed, "
+            "that the URL matches a live OddsPortal tournament, and that "
+            "your IP can clear Cloudflare. See HANDOVER.md for debugging.",
             file=sys.stderr,
         )
     return len(rows)
@@ -313,7 +393,7 @@ def capture_bulk(
             continue
 
         page_rows: list[dict] = []
-        
+
         if dry_run:
             logger.info("    [DRY RUN] Would fetch %s", url)
             for pg in range(2, n_pages + 1):
@@ -321,26 +401,26 @@ def capture_bulk(
                 logger.info("    [DRY RUN] Would fetch %s", p_url)
             continue
 
-        # Try curl_cffi first (bypasses Cloudflare)
-        curl_rows = fetch_tournament_pages(
-            url,
-            tour=tour,
-            tournament=tournament,
-            default_year=year,
-            max_pages=n_pages,
-            sleep=delay,
-        )
-        
+        # Try curl_cffi first (bypasses Cloudflare on residential IPs)
+        curl_rows = _try_curl_fetch(url, tour, tournament, year, n_pages, delay)
+
         if curl_rows:
             logger.info("  [curl_cffi] Fetched %d rows", len(curl_rows))
             page_rows.extend(curl_rows)
         else:
-            # Fallback to Playwright
             logger.info("  [curl_cffi] Failed/empty, falling back to Playwright...")
-            pw_rows = _try_playwright_fetch(url, tour, tournament, year, n_pages, delay, save_html_dir)
+            # Try to recover the page_id so Playwright can skip the resolver.
+            page_id = _resolve_page_id(url)
+            pw_rows = _try_playwright_fetch(
+                url, tour, tournament, year, n_pages, delay, save_html_dir,
+                page_id=page_id,
+            )
             page_rows.extend(pw_rows)
             if not pw_rows:
-                logger.warning("  X Both curl_cffi and Playwright returned 0 rows for %s year %d", rk, year)
+                logger.warning(
+                    "  X Both curl_cffi and Playwright returned 0 rows for %s year %d",
+                    rk, year,
+                )
 
         all_rows.extend(page_rows)
 
@@ -389,7 +469,12 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="Print plan without fetching")
     ap.add_argument("--skip-exists", action="store_true", help="Skip if CSVs already exist")
     ap.add_argument("--no-checkpoint", action="store_true", help="Ignore existing progress checkpoint")
+    ap.add_argument("--force-render", action="store_true",
+                    help="Skip curl_cffi, go straight to Playwright render (same as ODDSPORTAL_USE_PLAYWRIGHT=1)")
     args = ap.parse_args()
+
+    if args.force_render:
+        os.environ["ODDSPORTAL_USE_PLAYWRIGHT"] = "1"
 
     if args.pages < 1:
         ap.error("--pages must be >= 1")

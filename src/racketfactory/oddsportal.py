@@ -4,12 +4,19 @@ OddsPortal is protected by Cloudflare WAF. curl_cffi impersonates Chrome TLS
 fingerprints to bypass the challenge. The script extracts page IDs from the
 tournament page, then fetches paginated AJAX data.
 
+URL pattern note (2026 SPA migration):
+    Old:  /tennis/<country>/<tournament>/results-<year>/
+    New:  /tennis/<country>/<tournament>/results/   (year moved to AJAX param)
+The year is now passed to the AJAX archive endpoint as a path segment, not in
+the page URL. See `_ajax_archive_url` for the new format.
+
 This module intentionally does NOT require Playwright at import time.
 """
 from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import time
 from collections import defaultdict
@@ -29,6 +36,34 @@ COLUMNS = [
     "captured_at", "oddsportal_url",
 ]
 
+# Cloudflare challenge indicators — used to detect that a fetched page is
+# actually a bot challenge rather than real content.
+_CF_CHALLENGE_MARKERS = (
+    "Just a moment",
+    "cf-challenge",
+    "cf_chl_opt",
+    "cf_chl_jschl",
+    "cf_clearance",
+    "Attention Required! | Cloudflare",
+    "Verifying you are human",
+    "_cf_chl_opt",
+    "challenge-platform",
+    "challenge-running",
+    "Checking your browser",
+)
+
+# 404 / error page detection — these pages are tiny and should not be parsed.
+_ERROR_PAGE_MARKERS = (
+    "<title>404",
+    "<title>403",
+    "<title>500",
+    "<title>502",
+    "<title>503",
+    "<title>504",
+    "Page Not Found",
+    "Gateway Time-out",
+)
+
 _MONTHS = {
     "jan": 1, "january": 1,
     "feb": 2, "february": 2,
@@ -47,49 +82,98 @@ _MONTHS = {
 # Tennis sport code on OddsPortal (basketball=3, tennis=2)
 _TENNIS_SPORT_CODE = 2
 
-# Page ID patterns — same as Hoop-Factory
+# Page ID patterns — covers legacy AJAX hydration AND post-2026 SPA hydration.
+# Order matters: try the most-specific legacy patterns first, then fall through
+# to generic id-blob regexes that match newer hydration formats.
 _PAGE_ID_PATTERNS = [
-    re.compile(r'pageOutrightsVar\s*=\s*\'?\{"id":"([A-Za-z0-9]+)"'),
-    re.compile(r'new\s+PageTournament\(\{"id":"([A-Za-z0-9]+)"'),
-    re.compile(r'PageTournament\(\s*\{\s*"id"\s*:\s*"([A-Za-z0-9]+)"'),
-    re.compile(r'"id":"([A-Za-z0-9]{6,12})"'),
+    re.compile(r"pageOutrightsVar\s*=\s*'?\{\"id\":\"([A-Za-z0-9]+)\""),
+    re.compile(r"new\s+PageTournament\(\{\"id\":\"([A-Za-z0-9]+)\""),
+    re.compile(r"PageTournament\(\s*\{\s*\"id\"\s*:\s*\"([A-Za-z0-9]+)\""),
+    re.compile(r"new\s+PageTournament\s*\(\s*\{[^}]{0,400}?\"id\"\s*:\s*\"([A-Za-z0-9]+)\"", re.S),
+    # data attributes on the tournament container
     re.compile(r'data-page-id="([A-Za-z0-9]+)"'),
     re.compile(r'data-tournament-id="([A-Za-z0-9]+)"'),
+    re.compile(r'data-event-id="([A-Za-z0-9]+)"'),
+    # post-2026 hydration blobs (NEXT_DATA, pageRepo, etc.)
+    re.compile(r'"tournamentId"\s*:\s*"([A-Za-z0-9]{6,12})"'),
+    re.compile(r'"_tournamentId"\s*:\s*"([A-Za-z0-9]{6,12})"'),
+    re.compile(r'"_tournamentUrl"\s*:\s*"[^"]*?/(\d{4,8})/?["\\]', re.S),
+    re.compile(r'"_tournamentTemplateId"\s*:\s*"([A-Za-z0-9]{6,12})"'),
+    # generic 6-12 char alphanumeric id (less specific, used as last resort)
+    re.compile(r'"id":"([A-Za-z0-9]{6,12})"'),
+    re.compile(r"'id':\s*'([A-Za-z0-9]{6,12})'"),
 ]
 
 
+def _is_cloudflare_challenge(html: str) -> bool:
+    """Return True if the HTML body looks like a CF bot-management challenge page."""
+    if not html:
+        return False
+    snippet = html[:8000]
+    return any(marker in snippet for marker in _CF_CHALLENGE_MARKERS)
+
+
+def _is_error_page(html: str) -> bool:
+    """Return True if the HTML body looks like a 404/5xx error page."""
+    if not html:
+        return True
+    snippet = html[:4000]
+    return any(marker in snippet for marker in _ERROR_PAGE_MARKERS)
+
+
 def _extract_page_id(html: str) -> str | None:
+    """Extract OddsPortal tournament page ID from a chunk of HTML."""
+    if not html:
+        return None
     for i, pat in enumerate(_PAGE_ID_PATTERNS):
-        m = pat.search(html or "")
+        m = pat.search(html)
         if m:
-            logger.info("oddsportal: page id matched pattern #%d: %s", i + 1, m.group(1))
-            return m.group(1)
+            candidate = m.group(1)
+            # The generic 6-12 char pattern can match unrelated IDs; require
+            # at least 8 chars for that fallback so we don't return noise.
+            if i >= len(_PAGE_ID_PATTERNS) - 2 and len(candidate) < 8:
+                continue
+            logger.info("oddsportal: page id matched pattern #%d: %s", i + 1, candidate)
+            return candidate
     return None
 
 
-def _curl_fetch(url: str, *, retries: int = 3) -> str:
-    """Fetch URL with curl_cffi, warming CF cookies on 403."""
+def _curl_fetch(url: str, *, retries: int = 3, impersonate: str = "chrome131") -> str:
+    """Fetch URL with curl_cffi, warming CF cookies on 403.
+
+    impersonate defaults to chrome131 because it carries a recent-enough JA3
+    fingerprint to clear the current Cloudflare challenge on residential IPs.
+    Override with the ODDSPORTAL_IMPERSONATE env var if a particular Chrome
+    version works better on your network.
+    """
     try:
         from curl_cffi import requests as cffi_requests
     except ImportError:
         logger.warning("curl_cffi not installed — oddsportal curl fetch disabled")
         return ""
-    
+
+    impersonate = os.getenv("ODDSPORTAL_IMPERSONATE", impersonate)
+
     cookies = None
+    last_status: int | None = None
     for attempt in range(retries):
         try:
-            kwargs = {"impersonate": "chrome110", "timeout": 25}
+            kwargs: dict[str, Any] = {"impersonate": impersonate, "timeout": 30}
             if cookies:
                 kwargs["cookies"] = cookies
             resp = cffi_requests.get(url, **kwargs)
+            last_status = resp.status_code
             if resp.status_code == 200:
                 return resp.text
             if resp.status_code == 403:
-                logger.info("oddsportal 403 on attempt %d, warming cookies", attempt + 1)
+                logger.info(
+                    "oddsportal 403 on attempt %d for %s, warming cookies",
+                    attempt + 1, url,
+                )
                 try:
                     warm = cffi_requests.get(
                         "https://www.oddsportal.com/",
-                        impersonate="chrome110",
+                        impersonate=impersonate,
                         timeout=20,
                     )
                     if warm.status_code == 200:
@@ -99,26 +183,50 @@ def _curl_fetch(url: str, *, retries: int = 3) -> str:
                 time.sleep(2 ** attempt)
                 continue
             if resp.status_code == 404:
+                logger.info("oddsportal 404 for %s", url)
                 return ""
             logger.warning("oddsportal %s returned %s", url, resp.status_code)
         except Exception as e:
-            logger.warning("oddsportal fetch error: %s", e)
+            logger.warning("oddsportal fetch error (attempt %d): %s", attempt + 1, e)
         time.sleep(2 ** attempt)
+    if last_status is not None:
+        logger.warning(
+            "oddsportal: gave up on %s after %d retries (last status %s)",
+            url, retries, last_status,
+        )
     return ""
 
 
-def _ajax_archive_url(page_id: str, page_num: int) -> str:
-    """Primary OddsPortal archive AJAX URL for tennis."""
+def _year_seg(year: int | None) -> str:
+    """Format the year path segment for the AJAX archive URL."""
+    return str(year) if year else "X0"
+
+
+def _ajax_archive_url(page_id: str, page_num: int, *, year: int | None = None) -> str:
+    """Primary OddsPortal archive AJAX URL for tennis.
+
+    After the 2026 SPA migration, the year is an explicit path segment
+    (replacing the legacy "X0" placeholder). If year is None we leave it as
+    "X0" which historically meant "any year"; the API in practice returns
+    the most recent season for that tournament, so pass a year whenever
+    possible.
+    """
     return (
         f"https://www.oddsportal.com/ajax-sport-country-tournament-archive_/"
-        f"{_TENNIS_SPORT_CODE}/{page_id}/X0/1/0/{page_num}/"
+        f"{_TENNIS_SPORT_CODE}/{page_id}/{_year_seg(year)}/1/0/{page_num}/"
     )
 
 
-def _ajax_archive_url_candidates(page_id: str, page_num: int) -> list[str]:
+def _ajax_archive_url_candidates(
+    page_id: str, page_num: int, *, year: int | None = None,
+) -> list[str]:
     """Candidate AJAX URL formats, primary first."""
     return [
-        _ajax_archive_url(page_id, page_num),
+        _ajax_archive_url(page_id, page_num, year=year),
+        # Old "X0" placeholder variant (legacy endpoints that ignore year)
+        f"https://www.oddsportal.com/ajax-sport-country-tournament-archive_/"
+        f"{_TENNIS_SPORT_CODE}/{page_id}/X0/1/0/{page_num}/",
+        # Query-param variant some endpoints accept
         f"https://www.oddsportal.com/ajax-sport-country-tournament-archive_/"
         f"{_TENNIS_SPORT_CODE}/{page_id}/?_=&page={page_num}",
     ]
@@ -257,7 +365,7 @@ def _parse_odds_html(
         prefix_date = _parse_date_text(_html_text(prefix), default_year=default_year)
         if prefix_date:
             current_date = prefix_date
-        
+
         round_match = re.search(r'([A-Z][a-z]+(?:\s*-\s*[A-Z][a-z]+)*)', _html_text(prefix))
         if round_match:
             current_round = round_match.group(1).strip()
@@ -279,7 +387,7 @@ def _parse_odds_html(
         two_sided = len(decimal_odds_list) >= 2 * len(bookmaker_links)
         round_info = _extract_round(row_html) or current_round
         score_info = _extract_score(row_html)
-        
+
         winner = ""
         if score_info and not re.search(r'retired|walkover|w/o|RET', score_info, re.I):
             nums = [int(x) for x in re.findall(r'\d+', score_info)]
@@ -292,7 +400,7 @@ def _parse_odds_html(
                     winner = player_b
 
         captured_at = datetime.now(timezone.utc).isoformat()
-        
+
         for i, bm in enumerate(bookmaker_links):
             bm_display = bm.strip() or "OddsPortal Rendered"
             if two_sided:
@@ -345,7 +453,7 @@ def _parse_ajax_payload(
             html_frag = str(payload)
     except json.JSONDecodeError:
         html_frag = payload_text
-    
+
     return _parse_odds_html(
         html_frag,
         tour=tour,
@@ -356,9 +464,24 @@ def _parse_ajax_payload(
 
 
 def _resolve_page_id(tournament_url: str) -> str | None:
-    """Fetch the tournament page and extract its page ID."""
+    """Fetch the tournament page and extract its page ID via curl_cffi.
+
+    Returns None if no ID can be resolved. The caller should then try the
+    Playwright-based path which can read the page ID from the rendered DOM
+    after Cloudflare's challenge has been cleared.
+    """
     html = _curl_fetch(tournament_url)
     if not html:
+        return None
+    if _is_error_page(html):
+        logger.warning("oddsportal: %s returned an error page", tournament_url)
+        return None
+    if _is_cloudflare_challenge(html):
+        logger.warning(
+            "oddsportal: CF challenge page returned for %s; "
+            "fall back to Playwright which can clear the challenge",
+            tournament_url,
+        )
         return None
     page_id = _extract_page_id(html)
     if page_id:
@@ -385,9 +508,16 @@ def fetch_tournament_pages(
     default_year: int | None = None,
     max_pages: int = 50,
     sleep: float = 1.0,
+    page_id: str | None = None,
 ) -> list[dict]:
-    """Fetch all pages for a tennis tournament using curl_cffi + AJAX."""
-    page_id = _resolve_page_id(tournament_url)
+    """Fetch all pages for a tennis tournament using curl_cffi + AJAX.
+
+    If page_id is supplied, the resolver is skipped. If curl_cffi fails
+    (Cloudflare challenge or empty response), the caller is expected to
+    retry via Playwright using `_fetch_ajax_via_playwright`.
+    """
+    if page_id is None:
+        page_id = _resolve_page_id(tournament_url)
     if not page_id:
         logger.warning("oddsportal: no page id for %s", tournament_url)
         return []
@@ -395,8 +525,13 @@ def fetch_tournament_pages(
     out: list[dict] = []
     for page_num in range(1, max_pages + 1):
         page_rows: list[dict] = []
-        for url in _ajax_archive_url_candidates(page_id, page_num):
+        for url in _ajax_archive_url_candidates(page_id, page_num, year=default_year):
             resp = _curl_fetch(url)
+            if _is_cloudflare_challenge(resp) or _is_error_page(resp):
+                logger.info(
+                    "oddsportal curl: skipping %s (challenge/error page)", url,
+                )
+                continue
             page_rows = _parse_ajax_payload(
                 resp,
                 tour=tour,
@@ -413,54 +548,383 @@ def fetch_tournament_pages(
             break
         if sleep:
             time.sleep(sleep)
-    
+
     logger.info(
-        "oddsportal curl: fetched %d rows for %s (%d pages)",
-        len(out), tournament_url, page_num
+        "oddsportal curl: fetched %d rows for %s (year=%s)",
+        len(out), tournament_url, default_year,
     )
     return out
 
 
 # ---- Playwright fallback (for when curl_cffi fails) -------------------------
 
-def fetch_rendered_html(url: str, *, timeout_ms: int = 60000) -> str:
-    """Render a URL with Playwright Chromium and return the HTML."""
+def _playwright_launch_kwargs() -> list[str]:
+    """Chromium launch flags that reduce bot fingerprinting."""
+    return [
+        "--disable-blink-features=AutomationControlled",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-features=IsolateOrigins,site-per-process",
+    ]
+
+
+def _playwright_stealth_script() -> str:
+    """JS injected at context creation to mask Playwright fingerprints."""
+    return """
+        // Hide webdriver
+        Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+        // Fake plugins / mimeTypes
+        Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
+        Object.defineProperty(navigator, 'languages', {get: () => ['en-US','en']});
+        // Chrome runtime shim
+        window.navigator.chrome = {runtime: {}, csi: function(){}, loadTimes: function(){}};
+        // Permissions API shape
+        const originalQuery = window.navigator.permissions && window.navigator.permissions.query;
+        if (originalQuery) {
+            window.navigator.permissions.query = (parameters) =>
+                parameters && parameters.name === 'notifications'
+                    ? Promise.resolve({state: Notification.permission})
+                    : originalQuery(parameters);
+        }
+    """
+
+
+def _wait_for_real_content(page, *, max_seconds: float = 90.0) -> bool:
+    """Wait until the page is past any Cloudflare challenge.
+
+    Returns True if real content loaded, False if we hit the max wait.
+    """
+    start = time.time()
+    selectors = (
+        ".eventRow",
+        "[data-testid*='event']",
+        "[class*='eventRow']",
+        "table.odds",
+    )
+    while time.time() - start < max_seconds:
+        try:
+            html = page.content()
+        except Exception:
+            time.sleep(1.0)
+            continue
+        if _is_cloudflare_challenge(html):
+            time.sleep(1.0)
+            continue
+        if _is_error_page(html):
+            return False
+        # Look for actual event content
+        try:
+            count = page.evaluate(
+                """(sels) => sels.some(s => document.querySelectorAll(s).length > 0)""",
+                list(selectors),
+            )
+        except Exception:
+            count = False
+        if count:
+            return True
+        time.sleep(1.0)
+    return False
+
+
+def fetch_rendered_html(url: str, *, timeout_ms: int = 90000) -> str:
+    """Render a URL with Playwright Chromium and return the HTML.
+
+    Hardened against Cloudflare bot challenges:
+      - Uses wait_until='load' (not 'networkidle') so a long-running CF
+        challenge script does not abort the navigation.
+      - Polls up to 90 s for either real event content or a CF challenge
+        to clear, then returns whatever is on the page at that point.
+      - Disables image/font loads to keep network noise low.
+      - Injects stealth JS to mask navigator.webdriver and friends.
+    """
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-            ],
+            args=_playwright_launch_kwargs(),
         )
         context = browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
             ),
             viewport={"width": 1440, "height": 1200},
             locale="en-GB",
             timezone_id="UTC",
         )
-        context.add_init_script("""
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            window.navigator.chrome = {runtime: {}};
-            Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
-            Object.defineProperty(navigator, 'languages', {get: () => ['en-US','en']});
-        """)
-        context.route("**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot}", lambda r: r.abort())
+        context.add_init_script(_playwright_stealth_script())
+        # Don't waste bandwidth on static assets — they often hang on CF.
+        context.route(
+            "**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot,ico}",
+            lambda r: r.abort(),
+        )
         page = context.new_page()
         try:
-            page.goto(url, wait_until="networkidle", timeout=timeout_ms)
-            time.sleep(2)
+            # 'commit' just waits for the response; CF challenges usually do
+            # return a response, just not the real page.
+            page.goto(url, wait_until="commit", timeout=timeout_ms)
         except Exception as exc:
-            logger.warning("goto timeout/failure for %s: %s", url, exc)
-        html = page.content()
+            logger.warning("goto commit failure for %s: %s", url, exc)
+        # Now wait for content (or CF to clear)
+        ok = _wait_for_real_content(page, max_seconds=timeout_ms / 1000.0)
+        if not ok:
+            logger.warning(
+                "fetch_rendered_html: real content did not appear for %s "
+                "within %d s; returning whatever is on the page",
+                url, timeout_ms // 1000,
+            )
+        try:
+            html = page.content()
+        except Exception as exc:
+            logger.warning("fetch_rendered_html: page.content() failed: %s", exc)
+            html = ""
         context.close()
         browser.close()
     return html
+
+
+def _fetch_ajax_via_playwright(
+    page_id: str,
+    *,
+    tour: str,
+    tournament: str,
+    default_year: int | None,
+    oddsportal_url: str,
+    max_pages: int = 50,
+    sleep: float = 1.0,
+    headless: bool = True,
+    timeout_ms: int = 90000,
+) -> list[dict]:
+    """Fetch AJAX archive pages from inside a Playwright browser context.
+
+    This is the most reliable path when curl_cffi is blocked by Cloudflare,
+    because the browser session has valid cf_clearance cookies after it
+    passes the challenge.
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        logger.warning("playwright not installed — Playwright AJAX path disabled")
+        return []
+
+    out: list[dict] = []
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=headless, args=_playwright_launch_kwargs())
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1440, "height": 1200},
+            locale="en-GB",
+            timezone_id="UTC",
+        )
+        context.add_init_script(_playwright_stealth_script())
+        context.route(
+            "**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot,ico}",
+            lambda r: r.abort(),
+        )
+        page = context.new_page()
+        # Navigate to the tournament page first so cf_clearance is set.
+        try:
+            page.goto(oddsportal_url, wait_until="commit", timeout=timeout_ms)
+        except Exception as exc:
+            logger.warning("playwright ajax goto failure: %s", exc)
+        _wait_for_real_content(page, max_seconds=timeout_ms / 1000.0)
+
+        for page_num in range(1, max_pages + 1):
+            rows: list[dict] = []
+            for url in _ajax_archive_url_candidates(page_id, page_num, year=default_year):
+                try:
+                    text = page.evaluate(
+                        """async (url) => {
+                            const resp = await fetch(url, {
+                                credentials: 'include',
+                                headers: {'x-requested-with': 'XMLHttpRequest'}
+                            });
+                            return await resp.text();
+                        }""",
+                        url,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "playwright AJAX fetch failed for %s: %s", url, exc,
+                    )
+                    continue
+                if not text:
+                    continue
+                if _is_cloudflare_challenge(text):
+                    logger.info("playwright AJAX returned CF challenge for %s", url)
+                    continue
+                rows = _parse_ajax_payload(
+                    str(text),
+                    tour=tour,
+                    tournament=tournament,
+                    default_year=default_year,
+                    oddsportal_url=oddsportal_url,
+                )
+                if rows:
+                    break
+            if not rows:
+                break
+            out.extend(rows)
+            if len(rows) < 5:
+                break
+            if sleep:
+                time.sleep(sleep)
+
+        browser.close()
+    logger.info(
+        "oddsportal Playwright AJAX: fetched %d rows for %s (year=%s)",
+        len(out), oddsportal_url, default_year,
+    )
+    return out
+
+
+def fetch_via_rendered_dom(
+    url: str,
+    *,
+    tour: str = "UNKNOWN",
+    tournament: str = "",
+    default_year: int | None = None,
+    oddsportal_url: str = "",
+    max_pages: int = 50,
+    sleep: float = 1.0,
+    timeout_ms: int = 90000,
+) -> list[dict]:
+    """Fetch OddsPortal tournament pages by clicking through the rendered DOM.
+
+    Last-resort path. Loads the tournament page in Playwright, scrapes the
+    rows on screen, then clicks the "Next" pagination button and repeats
+    until the button disappears or `max_pages` is reached. Useful when
+    AJAX endpoints are blocked but the rendered page is reachable.
+    """
+    try:
+        from racketfactory.entities import normalize_player
+    except ImportError:
+        normalize_player = lambda v: str(v or "").strip()  # noqa: E731
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        logger.warning("playwright not installed — render-DOM path disabled")
+        return []
+
+    out: list[dict] = []
+    seen: set[tuple] = set()
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True, args=_playwright_launch_kwargs())
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1440, "height": 1200},
+            locale="en-GB",
+            timezone_id="UTC",
+        )
+        context.add_init_script(_playwright_stealth_script())
+        context.route(
+            "**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot,ico}",
+            lambda r: r.abort(),
+        )
+        page = context.new_page()
+        try:
+            page.goto(url, wait_until="commit", timeout=timeout_ms)
+        except Exception as exc:
+            logger.warning("render-DOM goto failure: %s", exc)
+        _wait_for_real_content(page, max_seconds=timeout_ms / 1000.0)
+
+        for render_page in range(1, max_pages + 1):
+            html = ""
+            try:
+                html = page.content()
+            except Exception as exc:
+                logger.warning("render-DOM page.content() failed: %s", exc)
+                break
+            page_rows = parse_rendered_html(
+                html,
+                tour=tour,
+                tournament=tournament,
+                default_year=default_year,
+                oddsportal_url=oddsportal_url,
+            )
+            new_rows = []
+            for row in page_rows:
+                key = (
+                    row.get("match_date"),
+                    row.get("player_a"),
+                    row.get("player_b"),
+                    row.get("odds_a"),
+                    row.get("odds_b"),
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                new_rows.append(row)
+            if new_rows:
+                logger.info(
+                    "oddsportal render-DOM page %d: %d new rows",
+                    render_page, len(new_rows),
+                )
+                out.extend(new_rows)
+            elif render_page > 1:
+                break
+            if render_page >= max_pages:
+                break
+            # Try to click the next page button
+            clicked = _click_next_pagination(page)
+            if not clicked:
+                break
+            if sleep:
+                time.sleep(sleep)
+
+        browser.close()
+    return out
+
+
+def _click_next_pagination(page, *, timeout_ms: int = 15000) -> bool:
+    """Click OddsPortal's pagination 'Next' button if present."""
+    try:
+        before = page.evaluate(
+            """() => {
+                const first = document.querySelector('.eventRow, [data-testid*=\"event\"], [class*=\"eventRow\"]');
+                return first ? (first.id || (first.innerText || '').slice(0, 200)) : '';
+            }"""
+        )
+        clicked = page.evaluate(
+            """() => {
+                const norm = (el) => ((el.innerText || el.textContent || '').trim());
+                const cls = (el) => String(el.getAttribute('class') || '').toLowerCase();
+                const els = Array.from(document.querySelectorAll('[class*=\"pagination-link\"], a, button, div, span'));
+                let target = els.find((el) => cls(el).includes('pagination-link') && /next/i.test(norm(el)));
+                if (!target) target = els.find((el) => /next/i.test(norm(el)) && /pag/i.test(cls(el)));
+                if (!target) target = els.find((el) => /^next$/i.test(norm(el)));
+                if (!target) return false;
+                target.scrollIntoView({block: 'center'});
+                target.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, view: window}));
+                return true;
+            }"""
+        )
+        if not clicked:
+            return False
+        page.wait_for_timeout(1500)
+        try:
+            page.wait_for_function(
+                """(before) => {
+                    const first = document.querySelector('.eventRow, [data-testid*=\"event\"], [class*=\"eventRow\"]');
+                    const now = first ? (first.id || (first.innerText || '').slice(0, 200)) : '';
+                    return now && now !== before;
+                }""",
+                before,
+                timeout=timeout_ms,
+            )
+        except Exception:
+            page.wait_for_timeout(2000)
+        return True
+    except Exception as exc:
+        logger.warning("pagination click failed: %s", exc)
+        return False
 
 
 def parse_rendered_html(

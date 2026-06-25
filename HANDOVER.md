@@ -29,18 +29,18 @@ MVP architecture
 text
 
 Racket-Factory/
-  config/routes.json
-  src/racketfactory/
-    config.py         # route config loading
-    entities.py       # player/tour normalization
-    oddsportal.py     # OddsPortal HTML/CSV normalization helpers
-    warehouse.py      # CSV -> DuckDB
-    assay.py          # ROI and market summaries
-  scripts/
-    capture_oddsportal.py  # normalize exported CSV, saved HTML, or Playwright URL
-    build_warehouse.py
-    audit_market.py
-  tests/
+config/routes.json
+src/racketfactory/
+config.py # route config loading
+entities.py # player/tour normalization
+oddsportal.py # OddsPortal HTML/CSV normalization helpers
+warehouse.py # CSV -> DuckDB
+assay.py # ROI and market summaries
+scripts/
+capture_oddsportal.py # normalize exported CSV, saved HTML, or Playwright URL
+build_warehouse.py
+audit_market.py
+tests/
 Data contract
 Normalized match/odds rows live in localdata/oddsportal_tennis_YYYY-MM.csv.gz with columns:
 
@@ -67,7 +67,7 @@ Install:
 Bash
 
 pip install -r requirements.txt
-python3 -m playwright install chromium   # only needed for --url capture
+python3 -m playwright install chromium # only needed for --url capture
 Normalize an exported CSV:
 
 Bash
@@ -98,25 +98,25 @@ Tests:
 Bash
 
 PYTHONPATH=src pytest -q
-python3 -m py_compile src/racketfactory/*.py scripts/*.py
+python3 -m py_compile src/racketfactory/.py scripts/.py
 Bulk capture
 Routes are defined in config/routes.json. Each route has a url_template (with {year} placeholder), configured years, and a default page count.
 
 Bash
 
-# Capture everything
+Capture everything
 PYTHONPATH=src python3 scripts/bulk_capture.py --all
 
-# Capture specific routes
+Capture specific routes
 PYTHONPATH=src python3 scripts/bulk_capture.py --route ATP_WIMBLEDON WTA_WIMBLEDON --year 2024 2025 2026
 
-# Override pages and add delay
+Override pages and add delay
 PYTHONPATH=src python3 scripts/bulk_capture.py --route ATP_SINGLES --year 2026 --pages 20 --delay 8
 
-# Dry run to see what would be captured
+Dry run to see what would be captured
 PYTHONPATH=src python3 scripts/bulk_capture.py --all --dry-run
 
-# Skip routes that already have CSV files
+Skip routes that already have CSV files
 PYTHONPATH=src python3 scripts/bulk_capture.py --all --skip-exists
 Progress is checkpointed in localdata/.bulk_checkpoint.json so interrupted runs resume safely. Deduplication happens at write time — the same match from overlapping routes won't be counted twice.
 
@@ -127,13 +127,13 @@ Bash
 PYTHONPATH=src python3 scripts/build_warehouse.py
 PYTHONPATH=src python3 scripts/audit_market.py
 Route categories
-Category	Routes	Notes
-TOUR_AGGREGATE	ATP_SINGLES, WTA_SINGLES, ATP_CHALLENGER, ITF_MEN, ITF_WOMEN	Bulk captures of entire tour seasons. Highest volume, most data.
-GRAND_SLAM	ATP/WTA Australian/French/Wimbledon/US Open	8 routes covering all majors. ~3-5 pages each.
-MASTERS_1000	ATP Indian Wells through Paris	9 ATP 1000-level tournaments. ~3 pages each.
-WTA_1000	WTA Indian Wells through Beijing	8 WTA 1000-level tournaments. ~3 pages each.
-YEAR_END	ATP_FINALS, WTA_FINALS	Year-end championships. ~2 pages each.
-TEAM_EVENT	DAVIS_CUP, BJK_CUP	Team competitions. Segmented from individual tours.
+Category Routes Notes
+TOUR_AGGREGATE ATP_SINGLES, WTA_SINGLES, ATP_CHALLENGER, ITF_MEN, ITF_WOMEN Bulk captures of entire tour seasons. Highest volume, most data.
+GRAND_SLAM ATP/WTA Australian/French/Wimbledon/US Open 8 routes covering all majors. ~3-5 pages each.
+MASTERS_1000 ATP Indian Wells through Paris 9 ATP 1000-level tournaments. ~3 pages each.
+WTA_1000 WTA Indian Wells through Beijing 8 WTA 1000-level tournaments. ~3 pages each.
+YEAR_END ATP_FINALS, WTA_FINALS Year-end championships. ~2 pages each.
+TEAM_EVENT DAVIS_CUP, BJK_CUP Team competitions. Segmented from individual tours.
 Next build steps
 Run bulk capture for all routes and years.
 Verify data quality: row counts, date ranges, tour distribution.
