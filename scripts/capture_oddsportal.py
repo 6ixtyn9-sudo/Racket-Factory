@@ -117,6 +117,14 @@ class Checkpoint:
         )
         self.path.write_text(json.dumps(self.data, indent=2))
 
+    def summary(self) -> str:
+        lines = ["Progress checkpoint:"]
+        for rk, pages in sorted(self.data.items()):
+            total_pages = max(pages.values()) if pages else 0
+            years = sorted(pages.keys())
+            lines.append(f"  {rk}: {total_pages} pages across years " + ", ".join(years))
+        return "\n".join(lines) if lines[1:] else "  No checkpoints yet."
+
 
 def _row_dedup_key(row: dict) -> str:
     return (
