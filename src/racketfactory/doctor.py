@@ -1,13 +1,18 @@
 """
 Racket Factory — Health & Sanity Checks
 Single source of truth for repo health.
-Run with: python -m racketfactory.doctor
+Run with: python3 -m racketfactory.doctor
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
+# Allow running without PYTHONPATH=src
 ROOT = Path(__file__).resolve().parents[2]
+SRC_PATH = ROOT / "src"
+if str(SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(SRC_PATH))
+
 LOCALDATA = ROOT / "localdata"
 
 
@@ -41,16 +46,16 @@ def run_health_checks() -> dict:
 def main():
     print("🏥 Racket Factory Doctor")
     print("=" * 40)
-    
+
     results = run_health_checks()
-    
+
     all_passed = True
     for name, passed in results.items():
         status = "✅ PASS" if passed else "❌ FAIL"
         print(f"{name:25} {status}")
         if not passed:
             all_passed = False
-    
+
     print("=" * 40)
     if all_passed:
         print("All checks passed. Repo is healthy.")
