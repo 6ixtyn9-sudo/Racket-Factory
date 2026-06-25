@@ -1,8 +1,8 @@
 {
-    "_comment": "OddsPortal tennis route configuration. url_template uses {year} placeholder for forward compatibility; the live OddsPortal SPA URL is the same regardless of year (year is sent to the AJAX archive endpoint). Pagination appended to the rendered page via JavaScript; the capture script auto-handles it.",
+    "_comment": "OddsPortal tennis route configuration. Each route uses the year-in-slug URL pattern: <country>/<tournament>-{year}/results/. The base_url field stores the year-resolved URL for the current/latest year. Year is also passed to the AJAX archive endpoint. render-DOM fallback works because the year-specific URLs render the historical event rows server-side.",
     "ATP_AUSTRALIAN_OPEN": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/australia/atp-australian-open/results/",
+        "url_template": "https://www.oddsportal.com/tennis/australia/atp-australian-open-{year}/results/",
         "tournament": "Australian Open",
         "years": [
             2020,
@@ -15,11 +15,11 @@
         ],
         "pages_default": 5,
         "notes": "ATP Australian Open.",
-        "base_url": "https://www.oddsportal.com/tennis/australia/atp-australian-open/results/"
+        "base_url": "https://www.oddsportal.com/tennis/australia/atp-australian-open-2026/results/"
     },
     "ATP_FRENCH_OPEN": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/france/atp-french-open/results/",
+        "url_template": "https://www.oddsportal.com/tennis/france/atp-french-open-{year}/results/",
         "tournament": "French Open",
         "years": [
             2020,
@@ -32,11 +32,11 @@
         ],
         "pages_default": 5,
         "notes": "ATP Roland Garros.",
-        "base_url": "https://www.oddsportal.com/tennis/france/atp-french-open/results/"
+        "base_url": "https://www.oddsportal.com/tennis/france/atp-french-open-2026/results/"
     },
     "ATP_WIMBLEDON": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon/results/",
+        "url_template": "https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon-{year}/results/",
         "tournament": "Wimbledon",
         "years": [
             2020,
@@ -49,11 +49,11 @@
         ],
         "pages_default": 5,
         "notes": "ATP Wimbledon. Primary verified route.",
-        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon/results/"
+        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon-2026/results/"
     },
     "ATP_US_OPEN": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/usa/atp-us-open/results/",
+        "url_template": "https://www.oddsportal.com/tennis/usa/atp-us-open-{year}/results/",
         "tournament": "US Open",
         "years": [
             2020,
@@ -66,11 +66,11 @@
         ],
         "pages_default": 5,
         "notes": "ATP US Open.",
-        "base_url": "https://www.oddsportal.com/tennis/usa/atp-us-open/results/"
+        "base_url": "https://www.oddsportal.com/tennis/usa/atp-us-open-2026/results/"
     },
     "WTA_AUSTRALIAN_OPEN": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/australia/wta-australian-open/results/",
+        "url_template": "https://www.oddsportal.com/tennis/australia/wta-australian-open-{year}/results/",
         "tournament": "Australian Open",
         "years": [
             2020,
@@ -83,11 +83,11 @@
         ],
         "pages_default": 5,
         "notes": "WTA Australian Open.",
-        "base_url": "https://www.oddsportal.com/tennis/australia/wta-australian-open/results/"
+        "base_url": "https://www.oddsportal.com/tennis/australia/wta-australian-open-2026/results/"
     },
     "WTA_FRENCH_OPEN": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/france/wta-french-open/results/",
+        "url_template": "https://www.oddsportal.com/tennis/france/wta-french-open-{year}/results/",
         "tournament": "French Open",
         "years": [
             2020,
@@ -100,11 +100,11 @@
         ],
         "pages_default": 5,
         "notes": "WTA Roland Garros.",
-        "base_url": "https://www.oddsportal.com/tennis/france/wta-french-open/results/"
+        "base_url": "https://www.oddsportal.com/tennis/france/wta-french-open-2026/results/"
     },
     "WTA_WIMBLEDON": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/united-kingdom/wta-wimbledon/results/",
+        "url_template": "https://www.oddsportal.com/tennis/united-kingdom/wta-wimbledon-{year}/results/",
         "tournament": "Wimbledon",
         "years": [
             2020,
@@ -117,11 +117,11 @@
         ],
         "pages_default": 5,
         "notes": "WTA Wimbledon.",
-        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/wta-wimbledon/results/"
+        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/wta-wimbledon-2026/results/"
     },
     "WTA_US_OPEN": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/usa/wta-us-open/results/",
+        "url_template": "https://www.oddsportal.com/tennis/usa/wta-us-open-{year}/results/",
         "tournament": "US Open",
         "years": [
             2020,
@@ -134,11 +134,11 @@
         ],
         "pages_default": 5,
         "notes": "WTA US Open.",
-        "base_url": "https://www.oddsportal.com/tennis/usa/wta-us-open/results/"
+        "base_url": "https://www.oddsportal.com/tennis/usa/wta-us-open-2026/results/"
     },
     "ATP_INDIAN_WELLS": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/usa/indian-wells/results/",
+        "url_template": "https://www.oddsportal.com/tennis/usa/indian-wells-{year}/results/",
         "tournament": "Indian Wells",
         "years": [
             2020,
@@ -151,11 +151,11 @@
         ],
         "pages_default": 3,
         "notes": "ATP Indian Wells Masters 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/usa/indian-wells/results/"
+        "base_url": "https://www.oddsportal.com/tennis/usa/indian-wells-2026/results/"
     },
     "ATP_MIAMI": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/usa/miami/results/",
+        "url_template": "https://www.oddsportal.com/tennis/usa/miami-{year}/results/",
         "tournament": "Miami Open",
         "years": [
             2020,
@@ -168,11 +168,11 @@
         ],
         "pages_default": 3,
         "notes": "ATP Miami Open Masters 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/usa/miami/results/"
+        "base_url": "https://www.oddsportal.com/tennis/usa/miami-2026/results/"
     },
     "ATP_MONTE_CARLO": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/monaco/monte-carlo/results/",
+        "url_template": "https://www.oddsportal.com/tennis/monaco/monte-carlo-{year}/results/",
         "tournament": "Monte Carlo",
         "years": [
             2020,
@@ -185,11 +185,11 @@
         ],
         "pages_default": 3,
         "notes": "ATP Monte Carlo Masters 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/monaco/monte-carlo/results/"
+        "base_url": "https://www.oddsportal.com/tennis/monaco/monte-carlo-2026/results/"
     },
     "ATP_MADRID": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/spain/madrid/results/",
+        "url_template": "https://www.oddsportal.com/tennis/spain/madrid-{year}/results/",
         "tournament": "Madrid Open",
         "years": [
             2020,
@@ -202,11 +202,11 @@
         ],
         "pages_default": 3,
         "notes": "ATP Madrid Masters 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/spain/madrid/results/"
+        "base_url": "https://www.oddsportal.com/tennis/spain/madrid-2026/results/"
     },
     "ATP_ROME": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/italy/rome/results/",
+        "url_template": "https://www.oddsportal.com/tennis/italy/rome-{year}/results/",
         "tournament": "Italian Open",
         "years": [
             2020,
@@ -219,11 +219,11 @@
         ],
         "pages_default": 3,
         "notes": "ATP Rome Masters 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/italy/rome/results/"
+        "base_url": "https://www.oddsportal.com/tennis/italy/rome-2026/results/"
     },
     "ATP_CANADA": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/canada/canada/results/",
+        "url_template": "https://www.oddsportal.com/tennis/canada/canada-{year}/results/",
         "tournament": "Canadian Open",
         "years": [
             2020,
@@ -236,11 +236,11 @@
         ],
         "pages_default": 3,
         "notes": "ATP Canada Masters 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/canada/canada/results/"
+        "base_url": "https://www.oddsportal.com/tennis/canada/canada-2026/results/"
     },
     "ATP_CINCINNATI": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/usa/cincinnati/results/",
+        "url_template": "https://www.oddsportal.com/tennis/usa/cincinnati-{year}/results/",
         "tournament": "Cincinnati",
         "years": [
             2020,
@@ -253,11 +253,11 @@
         ],
         "pages_default": 3,
         "notes": "ATP Cincinnati Masters 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/usa/cincinnati/results/"
+        "base_url": "https://www.oddsportal.com/tennis/usa/cincinnati-2026/results/"
     },
     "ATP_SHANGHAI": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/china/shanghai/results/",
+        "url_template": "https://www.oddsportal.com/tennis/china/shanghai-{year}/results/",
         "tournament": "Shanghai Masters",
         "years": [
             2020,
@@ -270,11 +270,11 @@
         ],
         "pages_default": 3,
         "notes": "ATP Shanghai Masters 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/china/shanghai/results/"
+        "base_url": "https://www.oddsportal.com/tennis/china/shanghai-2026/results/"
     },
     "ATP_PARIS": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/france/paris/results/",
+        "url_template": "https://www.oddsportal.com/tennis/france/paris-{year}/results/",
         "tournament": "Paris Masters",
         "years": [
             2020,
@@ -287,11 +287,11 @@
         ],
         "pages_default": 3,
         "notes": "ATP Paris Masters 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/france/paris/results/"
+        "base_url": "https://www.oddsportal.com/tennis/france/paris-2026/results/"
     },
     "ATP_FINALS": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/atp-finals/results/",
+        "url_template": "https://www.oddsportal.com/tennis/atp-finals-{year}/results/",
         "tournament": "ATP Finals",
         "years": [
             2020,
@@ -304,11 +304,11 @@
         ],
         "pages_default": 2,
         "notes": "ATP Finals year-end championship.",
-        "base_url": "https://www.oddsportal.com/tennis/atp-finals/results/"
+        "base_url": "https://www.oddsportal.com/tennis/atp-finals-2026/results/"
     },
     "WTA_INDIAN_WELLS": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/usa/indian-wells-women/results/",
+        "url_template": "https://www.oddsportal.com/tennis/usa/indian-wells-women-{year}/results/",
         "tournament": "Indian Wells",
         "years": [
             2020,
@@ -321,11 +321,11 @@
         ],
         "pages_default": 3,
         "notes": "WTA Indian Wells 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/usa/indian-wells-women/results/"
+        "base_url": "https://www.oddsportal.com/tennis/usa/indian-wells-women-2026/results/"
     },
     "WTA_MIAMI": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/usa/miami-women/results/",
+        "url_template": "https://www.oddsportal.com/tennis/usa/miami-women-{year}/results/",
         "tournament": "Miami Open",
         "years": [
             2020,
@@ -338,11 +338,11 @@
         ],
         "pages_default": 3,
         "notes": "WTA Miami Open 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/usa/miami-women/results/"
+        "base_url": "https://www.oddsportal.com/tennis/usa/miami-women-2026/results/"
     },
     "WTA_MADRID": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/spain/madrid-women/results/",
+        "url_template": "https://www.oddsportal.com/tennis/spain/madrid-women-{year}/results/",
         "tournament": "Madrid Open",
         "years": [
             2020,
@@ -355,11 +355,11 @@
         ],
         "pages_default": 3,
         "notes": "WTA Madrid 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/spain/madrid-women/results/"
+        "base_url": "https://www.oddsportal.com/tennis/spain/madrid-women-2026/results/"
     },
     "WTA_ROME": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/italy/rome-women/results/",
+        "url_template": "https://www.oddsportal.com/tennis/italy/rome-women-{year}/results/",
         "tournament": "Italian Open",
         "years": [
             2020,
@@ -372,11 +372,11 @@
         ],
         "pages_default": 3,
         "notes": "WTA Rome 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/italy/rome-women/results/"
+        "base_url": "https://www.oddsportal.com/tennis/italy/rome-women-2026/results/"
     },
     "WTA_CANADA": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/canada/canada-women/results/",
+        "url_template": "https://www.oddsportal.com/tennis/canada/canada-women-{year}/results/",
         "tournament": "Canadian Open",
         "years": [
             2020,
@@ -389,11 +389,11 @@
         ],
         "pages_default": 3,
         "notes": "WTA Canada 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/canada/canada-women/results/"
+        "base_url": "https://www.oddsportal.com/tennis/canada/canada-women-2026/results/"
     },
     "WTA_CINCINNATI": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/usa/cincinnati-women/results/",
+        "url_template": "https://www.oddsportal.com/tennis/usa/cincinnati-women-{year}/results/",
         "tournament": "Cincinnati",
         "years": [
             2020,
@@ -406,11 +406,11 @@
         ],
         "pages_default": 3,
         "notes": "WTA Cincinnati 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/usa/cincinnati-women/results/"
+        "base_url": "https://www.oddsportal.com/tennis/usa/cincinnati-women-2026/results/"
     },
     "WTA_BEIJING": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/china/beijing/results/",
+        "url_template": "https://www.oddsportal.com/tennis/china/beijing-{year}/results/",
         "tournament": "China Open",
         "years": [
             2020,
@@ -423,11 +423,11 @@
         ],
         "pages_default": 3,
         "notes": "WTA Beijing 1000.",
-        "base_url": "https://www.oddsportal.com/tennis/china/beijing/results/"
+        "base_url": "https://www.oddsportal.com/tennis/china/beijing-2026/results/"
     },
     "WTA_FINALS": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/wta-finals/results/",
+        "url_template": "https://www.oddsportal.com/tennis/wta-finals-{year}/results/",
         "tournament": "WTA Finals",
         "years": [
             2020,
@@ -440,11 +440,11 @@
         ],
         "pages_default": 2,
         "notes": "WTA Finals year-end championship.",
-        "base_url": "https://www.oddsportal.com/tennis/wta-finals/results/"
+        "base_url": "https://www.oddsportal.com/tennis/wta-finals-2026/results/"
     },
     "DAVIS_CUP": {
         "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/davis-cup/results/",
+        "url_template": "https://www.oddsportal.com/tennis/davis-cup-{year}/results/",
         "tournament": "Davis Cup",
         "years": [
             2020,
@@ -457,11 +457,11 @@
         ],
         "pages_default": 3,
         "notes": "Davis Cup team event. Segmented from individual ATP.",
-        "base_url": "https://www.oddsportal.com/tennis/davis-cup/results/"
+        "base_url": "https://www.oddsportal.com/tennis/davis-cup-2026/results/"
     },
     "BJK_CUP": {
         "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/billie-jean-king-cup/results/",
+        "url_template": "https://www.oddsportal.com/tennis/billie-jean-king-cup-{year}/results/",
         "tournament": "Billie Jean King Cup",
         "years": [
             2020,
@@ -474,6 +474,6 @@
         ],
         "pages_default": 3,
         "notes": "Billie Jean King Cup. Segmented from individual WTA.",
-        "base_url": "https://www.oddsportal.com/tennis/billie-jean-king-cup/results/"
+        "base_url": "https://www.oddsportal.com/tennis/billie-jean-king-cup-2026/results/"
     }
 }

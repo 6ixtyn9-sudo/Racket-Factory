@@ -180,11 +180,14 @@ def test_is_error_page():
     assert _is_error_page("")  # empty is treated as error
 
 
-def test_routes_have_no_year_in_url():
-    """Regression: routes.json must use the new SPA URL (no year in path)."""
+def test_routes_use_year_in_slug_pattern():
+    """Regression: routes.json must use the year-in-slug URL pattern.
+
+    Pattern: /tennis/<country>/<tournament>-{year}/results/
+    This is what OddsPortal's year-selector dropdown uses.
+    """
     import json
     from pathlib import Path
-    # tests/ lives directly under repo root, so parents[1] is the repo root
     cfg_path = Path(__file__).resolve().parents[1] / "config" / "routes.json"
     assert cfg_path.exists(), f"routes.json not found at {cfg_path}"
     routes = json.loads(cfg_path.read_text())
@@ -193,6 +196,6 @@ def test_routes_have_no_year_in_url():
         if k.startswith("_"):
             continue
         url = r.get("url_template", "")
-        if "/results-" in url or "{year}" in url:
+        if "-{year}" not in url or not url.endswith("/results/"):
             bad.append((k, url))
-    assert not bad, f"Routes still using old-style URL: {bad}"
+    assert not bad, f"Routes not using year-in-slug pattern: {bad}"
