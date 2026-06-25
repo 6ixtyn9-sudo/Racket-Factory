@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 import json
@@ -18,8 +18,15 @@ COLUMNS = [
 ]
 
 _DATE_RE = re.compile(r"\b(20\d{2}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2})\b")
-_ODDS_RE = re.compile(r"(?<!\d)(\d+\.\d{2})(?!\d)")
-_SCORE_RE = re.compile(r"\b\d{1,2}[-:]\d{1,2}(?:\s+\d{1,2}[-:]\d{1,2})*\b")
+_DECIMAL_ODDS_RE = re.compile(r"(?<!\d)(\d+\.\d{2})(?!\d)")
+_AMERICAN_ODDS_RE = re.compile(r"(?<!\w)([+-]\d{3,4})(?!\w)")
+_SCORE_RE = re.compile(r"\b\d{1,2}\s*[-:–—]\s*\d{1,2}(?:\s+\d{1,2}\s*[-:–—]\s*\d{1,2})*\b")
+_MONTHS = {
+    "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+    "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+    "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9, "oct": 10,
+    "october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12,
+}
 
 
 def parse_date(value: object, default: str = "") -> str:
@@ -40,11 +47,57 @@ def parse_date(value: object, default: str = "") -> str:
         return default
 
 
-def to_decimal(value: object) -> float | None:
+def parse_oddsportal_date_header(text: object, *, default_year: int | None = None, today: date | None = None, default: str = "") -> str:
+    """Parse rendered OddsPortal date headers such as `Today, 25 Jun - Singles`.
+
+    OddsPortal rendered result pages often show relative labels for the current
+    page (`Today`, `Yesterday`) and otherwise day/month without a year.  The
+    caller can pass the tournament year inferred from the URL.
+    """
+    raw = " ".join(str(text or "").replace("\xa0", " ").split())
+    if not raw:
+        return default
+    today = today or datetime.now().date()
+    lowered = raw.lower()
+    if lowered.startswith("today"):
+        return today.isoformat()
+    if lowered.startswith("yesterday"):
+        return (today - timedelta(days=1)).isoformat()
+
+    m = re.search(r"\b(\d{1,2})\s+([A-Za-z]{3,9})(?:\s+(20\d{2}))?\b", raw)
+    if not m:
+        return parse_date(raw, default=default)
+    day = int(m.group(1))
+    month = _MONTHS.get(m.group(2).lower())
+    year = int(m.group(3)) if m.group(3) else (default_year or today.year)
+    if not month:
+        return default
     try:
-        f = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+        return date(year, month, day).isoformat()
+    except ValueError:
+        return default
+
+
+def to_decimal(value: object) -> float | None:
+    if value is None:
         return None
+    text = str(value).strip().replace("−", "-")
+    if not text:
+        return None
+    m = _AMERICAN_ODDS_RE.fullmatch(text)
+    if m:
+        american = int(m.group(1))
+        if american > 0:
+            f = 1.0 + american / 100.0
+        elif american < 0:
+            f = 1.0 + 100.0 / abs(american)
+        else:
+            return None
+    else:
+        try:
+            f = float(text)
+        except ValueError:
+            return None
     if f <= 1.0 or f > 1000:
         return None
     return round(f, 6)
@@ -100,18 +153,59 @@ def read_export_csv(path: str | Path) -> list[dict[str, Any]]:
 
 def _players_from_node(node) -> list[str]:
     selectors = [
-        "[class*='participant']", "[class*='team']", "[data-testid*='participant']",
+        ".participant-name", "[class*='participant']", "[class*='team']", "[data-testid*='participant']",
         "p[class*='participant']", "a[href*='/tennis/']",
     ]
     found: list[str] = []
     for sel in selectors:
         for p in node.select(sel):
-            text = normalize_player(p.get_text(" ", strip=True))
-            if text and not _ODDS_RE.fullmatch(text) and text not in found:
+            text = normalize_player(p.get("title") or p.get_text(" ", strip=True))
+            if text and not _DECIMAL_ODDS_RE.fullmatch(text) and not _AMERICAN_ODDS_RE.fullmatch(text) and text not in found:
                 found.append(text)
         if len(found) >= 2:
             return found[:2]
     return found[:2]
+
+
+def _odds_from_node(node) -> list[str]:
+    odds: list[str] = []
+    for p in node.select("p[data-testid*='odd-container'], [data-testid*='odd-container'] p"):
+        text = p.get_text(" ", strip=True).replace("−", "-")
+        if to_decimal(text) is not None and text not in odds:
+            odds.append(text)
+    if len(odds) >= 2:
+        return odds[-2:]
+    text = node.get_text(" ", strip=True).replace("−", "-")
+    found = _DECIMAL_ODDS_RE.findall(text) or _AMERICAN_ODDS_RE.findall(text)
+    return found[-2:]
+
+
+def _round_from_date_header(text: str) -> str:
+    if " - " not in text:
+        return ""
+    parts = [p.strip() for p in text.split(" - ") if p.strip()]
+    return " - ".join(parts[1:]) if len(parts) > 1 else ""
+
+
+def _score_and_winner_from_event(node, player_a: str, player_b: str, status_text: str) -> tuple[str, str]:
+    if re.search(r"\b(retired|ret\.)\b", status_text, flags=re.I):
+        return "RET", ""
+
+    participant_box = node.select_one('[data-testid="event-participants"]') or node
+    center = participant_box.select_one(".relative")
+    score_text = center.get_text(" ", strip=True) if center else participant_box.get_text(" ", strip=True)
+    score_match = _SCORE_RE.search(score_text.replace(":", "-")) or _SCORE_RE.search(node.get_text(" ", strip=True).replace(":", "-"))
+    score = ""
+    winner = ""
+    if score_match:
+        score = re.sub(r"\s*[-:–—]\s*", "-", score_match.group(0)).strip()
+        nums = [int(x) for x in re.findall(r"\d+", score)]
+        if len(nums) >= 2 and re.search(r"\b(finished|fin)\b", status_text, flags=re.I):
+            if nums[0] > nums[1]:
+                winner = player_a
+            elif nums[1] > nums[0]:
+                winner = player_b
+    return score, winner
 
 
 def parse_rendered_html(
@@ -121,21 +215,35 @@ def parse_rendered_html(
     tour: str = "UNKNOWN",
     tournament: str = "",
     oddsportal_url: str = "",
+    default_year: int | None = None,
+    today: date | None = None,
 ) -> list[dict[str, Any]]:
     """Parse saved/rendered OddsPortal tennis HTML.
 
-    This intentionally supports several rendered row shapes and avoids making
-    certification claims. Route-specific hardening should be driven by saved
-    fixtures from real pages.
+    Supports the current rendered `.eventRow` layout, including American odds
+    display, while keeping the older generic decimal parser as a fallback.
     """
     soup = BeautifulSoup(html, "lxml")
-    candidates = soup.select("[data-testid*='event'], .eventRow, .event-row, tr")
+    candidates = soup.select(".eventRow, [data-testid*='event'], .event-row, tr")
     rows: list[dict[str, Any]] = []
+    current_date = default_date
+    current_round = ""
+    seen_row_ids: set[int] = set()
+
     for node in candidates:
+        if id(node) in seen_row_ids:
+            continue
+        seen_row_ids.add(id(node))
+        date_header = node.select_one('[data-testid="date-header"]')
+        if date_header:
+            header_text = date_header.get_text(" ", strip=True)
+            current_date = parse_oddsportal_date_header(header_text, default_year=default_year, today=today, default=current_date)
+            current_round = _round_from_date_header(header_text)
+
         text = node.get_text(" ", strip=True)
         if not text:
             continue
-        odds = _ODDS_RE.findall(text)
+        odds = _odds_from_node(node)
         if len(odds) < 2:
             continue
         players = _players_from_node(node)
@@ -146,17 +254,26 @@ def parse_rendered_html(
             players = parts[:2]
         if len(players) < 2:
             continue
-        score_match = _SCORE_RE.search(text)
+
+        status = ""
+        status_node = node.select_one('[data-testid="time-item"]')
+        if status_node:
+            status = status_node.get_text(" ", strip=True)
+        score, inferred_winner = _score_and_winner_from_event(node, players[0], players[1], status)
+        if not score:
+            score_match = _SCORE_RE.search(text)
+            score = score_match.group(0) if score_match else ""
         rows.append({
-            "match_date": parse_date(text, default=default_date),
+            "match_date": current_date or parse_date(text, default=default_date),
             "tour": tour,
             "tournament": tournament,
+            "round": current_round,
             "player_a": players[0],
             "player_b": players[1],
             "odds_a": odds[-2],
             "odds_b": odds[-1],
-            "winner": "",
-            "score": score_match.group(0) if score_match else "",
+            "winner": inferred_winner,
+            "score": score,
             "source": "OddsPortal Rendered",
             "bookmaker": "OddsPortal Rendered",
             "oddsportal_url": oddsportal_url,

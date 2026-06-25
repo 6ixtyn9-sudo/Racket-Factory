@@ -4,6 +4,12 @@
         "base_url": "https://www.oddsportal.com/tennis/",
         "notes": "Route config placeholder. Add exact tournament/season URLs after saved HTML parser verification."
     },
+    "ATP_WIMBLEDON": {
+        "tour": "ATP",
+        "tournament": "Wimbledon",
+        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon/results/",
+        "notes": "Primary verified rendered OddsPortal ingestion route. Use --pages to capture paginated results."
+    },
     "WTA": {
         "tour": "WTA",
         "base_url": "https://www.oddsportal.com/tennis/",
