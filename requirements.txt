@@ -1,0 +1,7 @@
+pandas
+duckdb
+beautifulsoup4
+lxml
+pytest
+python-dotenv
+playwright

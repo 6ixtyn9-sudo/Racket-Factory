@@ -1,0 +1,12 @@
+{
+    "ATP": {
+        "tour": "ATP",
+        "base_url": "https://www.oddsportal.com/tennis/",
+        "notes": "Route config placeholder. Add exact tournament/season URLs after saved HTML parser verification."
+    },
+    "WTA": {
+        "tour": "WTA",
+        "base_url": "https://www.oddsportal.com/tennis/",
+        "notes": "Route config placeholder."
+    }
+}
