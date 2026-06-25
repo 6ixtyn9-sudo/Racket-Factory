@@ -14,7 +14,7 @@ Capture tennis match history and two-way odds, initially from OddsPortal rendere
 Normalize into CSV + DuckDB.
 Audit market behavior by tour, tournament, odds band, favorite/underdog, and closing-price side.
 Only after the market/results warehouse works, add prediction/consensus sources.
-Current status: v0.3 — OddsPortal URL pattern updated to post-2026 SPA layout; Playwright hardened against Cloudflare challenges; page-ID extraction covers new hydration formats; AJAX path can run inside the browser session to inherit cf_clearance cookies.
+Current status: v0.4 — year-in-slug URL pattern working; current-season fallback + retry-on-zero added for Cloudflare flakiness; 884+ rows of real historical data captured.
 
 Golden rules
 Odds/results first. Prediction sources later.
@@ -105,7 +105,7 @@ PYTHONPATH=src pytest -q
 python3 -m py_compile src/racketfactory/.py scripts/.py
 
 Bulk capture
-Routes are defined in config/routes.json. Each route has a url_template, configured years, and a default page count. Year is no longer in the URL — it is sent as a path parameter to the OddsPortal AJAX archive endpoint. The base URL is the SPA /results/ route.
+Routes are defined in config/routes.json. Each route uses the year-in-slug URL pattern: /tennis/<country>/<tournament>-{year}/results/.
 
 Bash
 
@@ -147,20 +147,28 @@ TEAM_EVENT DAVIS_CUP, BJK_CUP Team competitions. Segmented from individual tours
 Fetcher strategy (OddsPortal)
 The fetch path is:
 
-curl_cffi with a Chrome TLS fingerprint impersonation (chrome131 by default; override with ODDSPORTAL_IMPERSONATE env var) hits the tournament SPA page (/results/, no year in URL) and pulls the page ID from any of these sources, in order: PageTournament({...}) inline JS, pageOutrightsVar, data-page-id, data-tournament-id, embedded JSON hydration blobs (window.NEXT_DATA, pageRepo, PAGE_DATA, _tournamentUrl, _tournamentId), and stable 6-12 char id strings inside tournament meta tags.
-If curl_cffi returns the Cloudflare challenge page instead of content (logged as such), the resolver falls through to Playwright. Playwright uses wait_until="commit" (not "networkidle", which is too strict for CF), waits up to 90 s for the page to clear the Cloudflare challenge (and explicitly for the .eventRow selector to appear), then extracts the page ID from the rendered DOM using the same set of regexes.
-With the page ID in hand, the AJAX archive endpoint is hit:
-https://www.oddsportal.com/ajax-sport-country-tournament-archive_/2/{page_id}/{year}/1/0/{page_num}/ (sport 2 = tennis, year is now an explicit path segment, replacing the legacy "X0" placeholder).
-If curl_cffi AJAX still fails (Cloudflare blocks the IP), the AJAX calls are issued from inside the Playwright browser context via page.evaluate(fetch(...)). This is the most reliable path because the browser has a valid cf_clearance cookie.
-If even the in-browser AJAX path fails, the script falls back to clicking through the rendered-DOM pagination (.eventRow rows + Next button) as a last resort.
-Only after all four layers fail does the script return an empty row set.
+curl_cffi with a Chrome TLS fingerprint impersonation (chrome131 by default; override with ODDSPORTAL_IMPERSONATE env var) hits the year-in-slug tournament URL (/tennis/<country>/<tournament>-{year}/results/) and pulls the page ID.
+If curl_cffi returns the Cloudflare challenge page instead of content, the resolver falls through to Playwright. Playwright uses wait_until="commit" (not "networkidle", which is too strict for CF), waits up to 90 s (override with ODDSPORTAL_RENDER_TIMEOUT_MS) for the page to clear the Cloudflare challenge, then extracts the page ID from the rendered DOM.
+With the page ID, the AJAX archive endpoint is hit. Note: this endpoint returns base64-encrypted payloads (cipher changed in 2026) so it usually returns 0 rows.
+If both curl_cffi and Playwright AJAX fail, the script falls back to the render-DOM path: parses .eventRow elements from the live page and clicks "Next" pagination. This is the most reliable path on residential IPs.
+If the render-DOM path also returns 0 rows AND a page_id was resolved, retry once with a 150 s Playwright timeout (covers slow CF clears).
+If the year-in-slug URL returns 0 rows AND the year equals the current year, fall back to the no-year URL pattern (current season doesn't use year-in-slug).
+Only after all paths fail does the script log a warning and return 0 rows.
 
 Cloudflare notes
 Residential IPs usually clear CF automatically. Datacenter / VPN / cloud IPs may still get challenged. If you see:
 
 WARNING oddsportal: CF challenge page returned, falling back to Playwright -> your curl_cffi cookies were not yet cleared.
 INFO waiting up to 90 s for CF challenge to clear -> Playwright is waiting; if it times out, your IP is likely blocked.
-ERROR Playwright failed page N -> persistent block. Consider running with a residential proxy, exporting cookies manually from a real browser session, or using the ODDS_PORTAL_COOKIES env var with a Netscape cookie file.
+INFO First Playwright attempt returned 0 rows with page_id=X; retrying -> transient failure, the retry should usually succeed.
+INFO Year-in-slug URL returned 0 rows; trying current-season no-year URL -> current-season fallback engaged.
+ERROR All capture paths returned 0 rows -> persistent block. Consider running with a residential proxy or manually exporting cookies from a real browser session.
 
+Known data caveats
+
+Wimbledon 2020 was cancelled (COVID-19); the year-in-slug URL 404s, which is correct behavior.
+The current season's URL is the no-year variant; year-in-slug returns 404 for the in-progress year.
+OddsPortal AJAX responses are encrypted base64 in 2026 — we don't decrypt them. The render-DOM path bypasses this.
 Recent changes
-2026-06-25 - v0.3: Updated routes.json URL pattern from /results-{year}/ to /results/ (year moved to AJAX). Hardened fetch_rendered_html against CF (wait_until=commit, 90 s selector wait, /cdn-cgi/challenge-widget detection). Added _extract_page_id patterns for data-page-id, data-tournament-id, JSON hydration blobs. Added _fetch_ajax_via_playwright path that uses browser session cookies. Added 14 new tests in tests/test_oddsportal.py.
+2026-06-25 - v0.4: routes.json URL pattern = year-in-slug (/tennis/<country>/<tournament>-{year}/results/). Added _capture_with_retry (one retry with 150 s Playwright timeout when page_id was resolved). Added _no_year_url_fallback (auto-retry current-season captures via the no-year URL). Wired ODDSPORTAL_RENDER_TIMEOUT_MS env var into fetch_rendered_html. Added test_no_year_url_fallback_only_for_current_year.
+2026-06-25 - v0.3: Initial OddsPortal scrape fix. Updated routes.json URL pattern. Hardened fetch_rendered_html against CF. Added _extract_page_id patterns for new hydration formats. Added _fetch_ajax_via_playwright path. Added 14 new tests.

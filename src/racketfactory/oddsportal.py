@@ -626,17 +626,21 @@ def _wait_for_real_content(page, *, max_seconds: float = 90.0) -> bool:
     return False
 
 
-def fetch_rendered_html(url: str, *, timeout_ms: int = 90000) -> str:
+def fetch_rendered_html(url: str, *, timeout_ms: int | None = None) -> str:
     """Render a URL with Playwright Chromium and return the HTML.
 
     Hardened against Cloudflare bot challenges:
       - Uses wait_until='load' (not 'networkidle') so a long-running CF
         challenge script does not abort the navigation.
-      - Polls up to 90 s for either real event content or a CF challenge
-        to clear, then returns whatever is on the page at that point.
+      - Polls up to 90 s (overridable via ODDSPORTAL_RENDER_TIMEOUT_MS env var)
+        for either real event content or a CF challenge to clear.
       - Disables image/font loads to keep network noise low.
       - Injects stealth JS to mask navigator.webdriver and friends.
     """
+    import os as _os
+    if timeout_ms is None:
+        env_t = _os.getenv("ODDSPORTAL_RENDER_TIMEOUT_MS")
+        timeout_ms = int(env_t) if env_t else 90000
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch(

@@ -199,3 +199,25 @@ def test_routes_use_year_in_slug_pattern():
         if "-{year}" not in url or not url.endswith("/results/"):
             bad.append((k, url))
     assert not bad, f"Routes not using year-in-slug pattern: {bad}"
+
+
+# ---- v0.4 tests: reliability helpers ---------------------------------------
+
+def test_no_year_url_fallback_only_for_current_year():
+    """The fallback should ONLY fire for the current year, not past years."""
+    from scripts.capture_oddsportal import _no_year_url_fallback, _current_year
+    cy = _current_year()
+    # Current year -> fallback offered
+    url_with_year = f"https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon-{cy}/results/"
+    fb = _no_year_url_fallback(url_with_year, cy)
+    assert fb is not None
+    assert f"-{cy}" not in fb
+    assert fb.endswith("/results/")
+    # Past year -> no fallback
+    past = cy - 1
+    url_past = f"https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon-{past}/results/"
+    assert _no_year_url_fallback(url_past, past) is None
+    # No year in URL -> no fallback
+    assert _no_year_url_fallback(
+        "https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon/results/", cy,
+    ) is None

@@ -53,6 +53,7 @@ from racketfactory.oddsportal import (
     _is_cloudflare_challenge,
     _is_error_page,
     _resolve_page_id,
+    fetch_rendered_html,
     fetch_tournament_pages,
     fetch_via_rendered_dom,
     parse_embedded_json,
@@ -60,6 +61,7 @@ from racketfactory.oddsportal import (
     read_export_csv,
     write_monthly_csv,
 )
+from datetime import date as _date_today
 
 logging.basicConfig(
     level=logging.INFO,
@@ -105,6 +107,116 @@ def resolve_url(template: str, year: int) -> str:
 
 def _force_playwright() -> bool:
     return os.getenv("ODDSPORTAL_USE_PLAYWRIGHT", "").strip().lower() in {"1", "true", "yes"}
+
+
+def _current_year() -> int:
+    return _date_today.today().year
+
+
+def _no_year_url_fallback(url: str, year: int) -> str | None:
+    """If the URL contains '-{year}' for the current year, return the no-year variant.
+
+    The current season uses `/results/` without a year suffix; the year-in-slug
+    pattern (`/atp-wimbledon-2026/results/`) returns 404 for the in-progress season.
+    """
+    if year != _current_year():
+        return None
+    needle = f"-{year}"
+    if needle not in url:
+        return None
+    return url.replace(needle, "")
+
+
+def _capture_with_retry(
+    *,
+    url: str,
+    tour: str,
+    tournament: str,
+    year: int,
+    n_pages: int,
+    delay: float,
+    save_html_dir: Path | None,
+    page_id: str | None = None,
+) -> tuple[list[dict], str]:
+    """Capture rows for one URL with a single retry on transient failures.
+
+    Returns (rows, url_used). Retries with a longer Playwright timeout when
+    the first attempt returns 0 rows AND the page_id resolved cleanly (i.e.
+    we know CF is cleared but rendering was flaky).
+    """
+    curl_rows = _try_curl_fetch(url, tour, tournament, year, n_pages, delay)
+    if curl_rows:
+        logger.info("  [curl_cffi] Fetched %d rows", len(curl_rows))
+        return curl_rows, url
+
+    logger.info("  [curl_cffi] Failed/empty, falling back to Playwright...")
+    resolved_id = page_id if page_id else _resolve_page_id(url)
+    pw_rows = _try_playwright_fetch(
+        url, tour, tournament, year, n_pages, delay, save_html_dir,
+        page_id=resolved_id,
+    )
+    if pw_rows:
+        return pw_rows, url
+
+    if not resolved_id:
+        # Couldn't even resolve the page id — no point retrying.
+        return [], url
+
+    logger.info(
+        "  -> First Playwright attempt returned 0 rows with page_id=%s; retrying "
+        "with a longer 150 s timeout in case the render-DOM path just needed "
+        "more time for events to paint.",
+        resolved_id,
+    )
+    time.sleep(5)
+    # Second Playwright attempt with longer per-page timeout by temporarily
+    # monkey-patching the env, then a clean retry of the same fallback chain.
+    prev = os.environ.get("ODDSPORTAL_RENDER_TIMEOUT_MS")
+    os.environ["ODDSPORTAL_RENDER_TIMEOUT_MS"] = "150000"
+    try:
+        pw_rows2 = _try_playwright_fetch(
+            url, tour, tournament, year, n_pages, delay, save_html_dir,
+            page_id=resolved_id,
+        )
+    finally:
+        if prev is None:
+            os.environ.pop("ODDSPORTAL_RENDER_TIMEOUT_MS", None)
+        else:
+            os.environ["ODDSPORTAL_RENDER_TIMEOUT_MS"] = prev
+    return pw_rows2, url
+
+
+def _capture_url_with_current_year_fallback(
+    *,
+    url: str,
+    tour: str,
+    tournament: str,
+    year: int,
+    n_pages: int,
+    delay: float,
+    save_html_dir: Path | None,
+) -> tuple[list[dict], str]:
+    """Try a URL; if 0 rows and the year matches current year, try no-year fallback."""
+    rows, url_used = _capture_with_retry(
+        url=url, tour=tour, tournament=tournament, year=year,
+        n_pages=n_pages, delay=delay, save_html_dir=save_html_dir,
+    )
+    if rows:
+        return rows, url_used
+    fallback_url = _no_year_url_fallback(url, year)
+    if not fallback_url or fallback_url == url:
+        return rows, url_used
+    logger.info(
+        "  -> Year-in-slug URL returned 0 rows; trying current-season no-year URL: %s",
+        fallback_url,
+    )
+    fb_rows, fb_url_used = _capture_with_retry(
+        url=fallback_url, tour=tour, tournament=tournament, year=year,
+        n_pages=n_pages, delay=delay, save_html_dir=save_html_dir,
+    )
+    if fb_rows:
+        return fb_rows, fb_url_used
+    return rows, url_used
 
 
 def _try_curl_fetch(
@@ -313,34 +425,24 @@ def capture_single(
         ))
 
     if url:
-        # Try curl_cffi first (bypasses Cloudflare)
-        curl_rows = _try_curl_fetch(url, tour, tournament, default_year, pages, delay)
-        page_id: str | None = None
-        if curl_rows:
-            logger.info("  [curl_cffi] Fetched %d rows", len(curl_rows))
-            rows.extend(curl_rows)
-        else:
-            logger.info("  [curl_cffi] Failed/empty, falling back to Playwright...")
-            # Try to reuse page_id even if AJAX failed (e.g., IP blocked but page rendered)
-            page_id = _resolve_page_id(url)
-            if page_id:
-                logger.info("  curl_cffi resolved page_id=%s; passing to Playwright", page_id)
-            pw_rows = _try_playwright_fetch(
-                url, tour, tournament, default_year, pages, delay, save_html_dir,
-                page_id=page_id,
-            )
-            rows.extend(pw_rows)
+        # Capture with curl_cffi → Playwright → retry → current-year fallback.
+        rows_out, url_used = _capture_url_with_current_year_fallback(
+            url=url, tour=tour, tournament=tournament, year=default_year or _current_year(),
+            n_pages=pages, delay=delay, save_html_dir=save_html_dir,
+        )
+        rows.extend(rows_out)
+        if url_used != url:
+            logger.info("  [fallback] Captured from %s instead of %s", url_used, url)
 
-            if save_html and pw_rows:
-                save_path = Path(save_html)
-                if pages > 1:
-                    save_path = save_path.with_name(
-                        f"{save_path.stem}_p1{save_path.suffix or '.html'}"
-                    )
-                save_path.parent.mkdir(parents=True, exist_ok=True)
-                from racketfactory.oddsportal import fetch_rendered_html
-                html = fetch_rendered_html(url)
-                save_path.write_text(html)
+        if save_html and rows_out:
+            save_path = Path(save_html)
+            if pages > 1:
+                save_path = save_path.with_name(
+                    f"{save_path.stem}_p1{save_path.suffix or '.html'}"
+                )
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            html = fetch_rendered_html(url_used)
+            save_path.write_text(html)
 
     written = write_monthly_csv(rows, str(data_dir))
     print(f"normalized rows: {len(rows)}")
@@ -401,26 +503,19 @@ def capture_bulk(
                 logger.info("    [DRY RUN] Would fetch %s", p_url)
             continue
 
-        # Try curl_cffi first (bypasses Cloudflare on residential IPs)
-        curl_rows = _try_curl_fetch(url, tour, tournament, year, n_pages, delay)
-
-        if curl_rows:
-            logger.info("  [curl_cffi] Fetched %d rows", len(curl_rows))
-            page_rows.extend(curl_rows)
-        else:
-            logger.info("  [curl_cffi] Failed/empty, falling back to Playwright...")
-            # Try to recover the page_id so Playwright can skip the resolver.
-            page_id = _resolve_page_id(url)
-            pw_rows = _try_playwright_fetch(
-                url, tour, tournament, year, n_pages, delay, save_html_dir,
-                page_id=page_id,
+        # Capture with curl_cffi → Playwright → retry → current-year fallback.
+        rows, url_used = _capture_url_with_current_year_fallback(
+            url=url, tour=tour, tournament=tournament, year=year,
+            n_pages=n_pages, delay=delay, save_html_dir=save_html_dir,
+        )
+        page_rows.extend(rows)
+        if url_used != url:
+            logger.info("  [fallback] Captured from %s instead of %s", url_used, url)
+        if not rows:
+            logger.warning(
+                "  X All capture paths returned 0 rows for %s year %d",
+                rk, year,
             )
-            page_rows.extend(pw_rows)
-            if not pw_rows:
-                logger.warning(
-                    "  X Both curl_cffi and Playwright returned 0 rows for %s year %d",
-                    rk, year,
-                )
 
         all_rows.extend(page_rows)
 
