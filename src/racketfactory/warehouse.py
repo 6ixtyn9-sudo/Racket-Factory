@@ -12,28 +12,21 @@ logger = logging.getLogger(__name__)
 
 def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.csv.gz") -> Optional[Path]:
     """
-    Merge all tennis data sources into a unified warehouse.
-    
-    Args:
-        data_dir: Directory containing source CSVs.
-        output_file: The filename to write the final warehouse to.
-        
-    Returns:
-        Path to the created warehouse file, or None if failed.
+    Merge all tennis data sources into a unified warehouse, 
+    including external prediction sources.
     """
     data_path = Path(data_dir)
     if not data_path.exists():
         logger.error("Data directory not found: %s", data_path)
         return None
 
+    # 1. Load Match Data
     all_files = list(data_path.glob("*.csv.gz"))
-    
     dfs = []
     for f in all_files:
-        # We only take files intended for the warehouse (containing 'tennis')
-        if "tennis" in f.name:
+        if "tennis" in f.name and "predictions" not in f.name:
             try:
-                logger.info("Loading %s into warehouse...", f.name)
+                logger.info("Loading match data from %s...", f.name)
                 temp_df = pd.read_csv(f, low_memory=False)
                 if not temp_df.empty:
                     dfs.append(temp_df)
@@ -41,51 +34,69 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
                 logger.error("Failed to load %s: %s", f.name, e)
     
     if not dfs:
-        logger.error("No valid data files found to build warehouse.")
+        logger.error("No valid match data files found.")
         return None
     
-    try:
-        warehouse = pd.concat(dfs, ignore_index=True)
-        
-        # Explicit Column Cleanup
-        # Ensure essential columns are present; fill NaNs for critical keys
-        critical_cols = ["match_date", "tour", "tournament", "player_a", "player_b"]
-        for col in critical_cols:
-            if col not in warehouse.columns:
-                logger.warning("Warehouse missing critical column: %s. Creating empty column.", col)
-                warehouse[col] = ""
+    warehouse = pd.concat(dfs, ignore_index=True)
+    
+    # Standard Deduplication
+    critical_cols = ["match_date", "tour", "tournament", "player_a", "player_b"]
+    for col in critical_cols:
+        if col not in warehouse.columns:
+            warehouse[col] = ""
 
-        # Deduplication: The 'Holy Grail' key for tennis match identification.
-        # We use player keys (alphanumeric, case-insensitive) instead of display names
-        # to ensure 'Roger Federer' and 'ROGER FEDERER' are treated as the same person.
-        warehouse['p_a_key'] = warehouse['player_a'].apply(player_key)
-        warehouse['p_b_key'] = warehouse['player_b'].apply(player_key)
+    warehouse['p_a_key'] = warehouse['player_a'].apply(player_key)
+    warehouse['p_b_key'] = warehouse['player_b'].apply(player_key)
+    warehouse['_sorted_players'] = warehouse.apply(
+        lambda r: tuple(sorted([r['p_a_key'], r['p_b_key']])), axis=1
+    )
+    
+    warehouse = warehouse.drop_duplicates(
+        subset=["match_date", "tour", "tournament", "_sorted_players"], 
+        keep="last"
+    ).drop(columns=['p_a_key', 'p_b_key', '_sorted_players'])
+    
+    # 2. Join Predictions (The "Signal" Layer)
+    # We look for files matching predictions_*.csv.gz
+    pred_files = list(data_path.glob("predictions_*.csv.gz"))
+    if pred_files:
+        logger.info("Merging %d prediction files into warehouse...", len(pred_files))
+        pred_dfs = []
+        for pf in pred_files:
+            try:
+                pred_dfs.append(pd.read_csv(pf, low_memory=False))
+            except Exception as e:
+                logger.warning("Failed to load prediction file %s: %s", pf, e)
         
-        # Canonical dedup key: sort player keys so (A vs B) and (B vs A) entries
-        # from different sources collapse to the same match. Without this,
-        # cross-source duplicates with swapped player order survive dedup.
-        warehouse['_sorted_players'] = warehouse.apply(
-            lambda r: tuple(sorted([r['p_a_key'], r['p_b_key']])), axis=1
-        )
-        
-        initial_len = len(warehouse)
-        warehouse = warehouse.drop_duplicates(
-            subset=["match_date", "tour", "tournament", "_sorted_players"], 
-            keep="last"
-        ).drop(columns=['p_a_key', 'p_b_key', '_sorted_players'])
-        
-        # Final safety: ensure numeric types for odds
-        if "odds_a" in warehouse.columns:
-            warehouse["odds_a"] = pd.to_numeric(warehouse["odds_a"], errors='coerce')
-        if "odds_b" in warehouse.columns:
-            warehouse["odds_b"] = pd.to_numeric(warehouse["odds_b"], errors='coerce')
+        if pred_dfs:
+            preds_all = pd.concat(pred_dfs, ignore_index=True)
+            
+            # deduplicate predictions to keep the latest one
+            preds_all = preds_all.drop_duplicates(
+                subset=["match_date", "tour", "tournament", "player_a", "player_b"],
+                keep="last"
+            )
+            
+            # Join predictions to warehouse
+            # We use a left join to keep all matches, adding predictions where available
+            warehouse = warehouse.merge(
+                preds_all[['match_date', 'tour', 'tournament', 'player_a', 'player_b', 'predicted_winner', 'prediction_prob', 'source']],
+                on=["match_date", "tour", "tournament", "player_a", "player_b"],
+                how="left",
+                suffixes=('', '_pred')
+            )
+            # Rename source to clarify it's the predictor source
+            if 'source_pred' in warehouse.columns:
+                warehouse = warehouse.rename(columns={'source_pred': 'predicted_source'})
 
-        dest_path = data_path / output_file
-        warehouse.to_csv(dest_path, index=False, compression="gzip")
-        
-        logger.info("Warehouse build successful. %d -> %d rows.", initial_len, len(warehouse))
-        return dest_path
+    # Final safety: ensure numeric types for odds
+    if "odds_a" in warehouse.columns:
+        warehouse["odds_a"] = pd.to_numeric(warehouse["odds_a"], errors='coerce')
+    if "odds_b" in warehouse.columns:
+        warehouse["odds_b"] = pd.to_numeric(warehouse["odds_b"], errors='coerce')
 
-    except Exception as e:
-        logger.exception("Unexpected error during warehouse build: %s", e)
-        return None
+    dest_path = data_path / output_file
+    warehouse.to_csv(dest_path, index=False, compression="gzip")
+    
+    logger.info("Warehouse build successful. Total rows: %d", len(warehouse))
+    return dest_path

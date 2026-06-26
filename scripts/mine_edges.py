@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Racket Factory Edge Miner (Ma Golide Enhanced)
-Automated combinatorial discovery of Bankers and Robbers.
+Automated combinatorial discovery of Bankers and Robbers, including prediction signals.
 """
 import pandas as pd
 import argparse
@@ -53,6 +53,8 @@ def main() -> int:
     df['fav_odds'] = df.apply(lambda r: r['odds_a'] if r['odds_a'] < r['odds_b'] else r['odds_b'], axis=1)
     df['fav_odds_band'] = df['fav_odds'].apply(get_odds_band)
     
+    # Define the dimensions we want to "Self-Slice" across
+    # We add 'predicted_winner' to the mix!
     dimensions = {
         "tour": df['tour'].unique(),
         "_surface": df['_surface'].unique(),
@@ -60,6 +62,10 @@ def main() -> int:
         "winner_rank_band": df['winner_rank_band'].unique(),
         "_series": df['_series'].unique(),
     }
+    
+    # Add prediction source if it exists in the warehouse
+    if 'predicted_winner' in df.columns:
+        dimensions['predicted_winner'] = df['predicted_winner'].unique()
     
     for k, v in dimensions.items():
         dimensions[k] = [x for x in v if pd.notna(x) and x != "Unknown" and x != ""]
@@ -74,12 +80,11 @@ def main() -> int:
         query = " and ".join([f"{name} == '{val}'" for name, val in zip(dim_names, combo)])
         slice_df = df.query(query)
         
-        if len(slice_df) < 15: # Lower threshold for Ma Golide search
+        if len(slice_df) < 15: 
             continue
             
         res = assay_segment(slice_df)
         
-        # We want BANKERS (profitable) or ROBBERS (consistent losers)
         if res.grade in ["GOLD", "PLATINUM", "SILVER"] or res.tier == "ROBBER":
             results.append({
                 "Slice": " | ".join([f"{n}:{v}" for n, v in zip(dim_names, combo)]),
@@ -96,11 +101,10 @@ def main() -> int:
         logger.info("No high-conviction edges found.")
         return 0
 
-    # Sort by ROI descending (Bankers at top, Robbers at bottom)
     report = pd.DataFrame(results).sort_values("ROI", ascending=False)
     
     print("\n" + "="*120)
-    print("🚀 RACKET FACTORY EDGE MINER: MA GOLIDE SATELLITE MODE")
+    print("🚀 RACKET FACTORY EDGE MINER: SIGNAL INTELLIGENCE MODE")
     print("="*120)
     print(report.to_string(index=False))
     print("="*120 + "\n")
