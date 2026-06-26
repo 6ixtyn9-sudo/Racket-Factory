@@ -5,6 +5,7 @@ Statistical verification of betting edges using Wilson Score Intervals.
 import math
 import pandas as pd
 import numpy as np
+from scipy.stats import norm
 from typing import NamedTuple, Optional
 
 class AssayResult(NamedTuple):
@@ -20,7 +21,9 @@ def wilson_score_interval(successes: int, trials: int, confidence: float = 0.95)
     """Calculate the Wilson score interval for a binomial proportion."""
     if trials == 0:
         return 0.0, 0.0
-    z = 1.96 
+    # Use scipy to derive z from the confidence level — do NOT hardcode 1.96.
+    # This ensures the `confidence` parameter is actually respected.
+    z = norm.ppf((1 + confidence) / 2)
     p_hat = successes / trials
     denom = 1 + z**2 / trials
     center = p_hat + z**2 / (2 * trials)
@@ -51,10 +54,14 @@ def calculate_grade(lb: float, roi: float, n: int, break_even: float = 0.5238) -
         
     return "IRON"
 
-def assay_segment(df: pd.DataFrame, break_even: float = 0.5238) -> AssayResult:
+def assay_segment(df: pd.DataFrame) -> AssayResult:
     """
     Perform a full statistical assay on a slice of match data.
     SIMULATION: We bet on the MARKET FAVORITE (the player with the lowest odds).
+    
+    Break-even is computed DYNAMICALLY from the actual favourite odds in this
+    segment — never hardcoded. The required win-rate to break even at odds X
+    is 1/X; at average favourite odds of 1.47 you need 68%, not 52%.
     """
     n = len(df)
     if n == 0:
@@ -96,6 +103,14 @@ def assay_segment(df: pd.DataFrame, break_even: float = 0.5238) -> AssayResult:
 
     returns = df.apply(get_return, axis=1)
     roi = returns.mean() - 1
+    
+    # Dynamic break-even: the required win rate to be profitable at these specific odds.
+    # For a bet at odds X, you need to win more than 1/X of the time.
+    # Average this across all bets in the segment.
+    fav_odds = df.apply(
+        lambda r: r['odds_a'] if r['fav'] == 'a' else r['odds_b'], axis=1
+    )
+    break_even = float((1.0 / fav_odds).mean())
     
     lb, ub = wilson_score_interval(wins, n)
     grade = calculate_grade(lb, roi, n, break_even)

@@ -90,17 +90,30 @@ def normalize_row(row: dict, *, tour: str) -> Optional[dict[str, Any]]:
 
     captured_at = datetime.now(timezone.utc).isoformat()
 
+    # IMPORTANT: Assign player_a/player_b by odds rank (favourite = player_a),
+    # NOT by winner/loser identity. This prevents look-ahead bias: the assay
+    # must not know who won when deciding which player is 'a' or 'b'.
+    # The `winner` field remains the ground truth for outcome checking.
+    if odds_winner <= odds_loser:
+        # Winner is the favourite
+        p_a, p_b = winner, loser
+        odds_a, odds_b = odds_winner, odds_loser
+    else:
+        # Loser is the favourite (upset scenario)
+        p_a, p_b = loser, winner
+        odds_a, odds_b = odds_loser, odds_winner
+
     return {
         "match_date": match_date,
         "tour": normalize_tour(tour),
         "tournament": str(row.get("Tournament") or "").strip(),
         "round": str(row.get("Round") or "").strip(),
-        "player_a": winner,
-        "player_b": loser,
+        "player_a": p_a,
+        "player_b": p_b,
         "winner": winner,
         "score": format_score(row),
-        "odds_a": odds_winner,
-        "odds_b": odds_loser,
+        "odds_a": odds_a,
+        "odds_b": odds_b,
         "bookmaker": "Pinnacle" if pd.notna(row.get("PSW")) else (
             "Bet365" if pd.notna(row.get("B365W")) else "OddsPortal Avg"
         ),
@@ -192,10 +205,19 @@ def write_monthly_csv(
         if path.exists():
             existing = pd.read_csv(path, low_memory=False)
             df = pd.concat([existing, df], ignore_index=True)
-            df = df.drop_duplicates(
-                subset=["match_date", "tour", "tournament", "player_a", "player_b"],
-                keep="last",
+            # Use canonical player_key (lowercased, ASCII-folded, alphanumeric only)
+            # to deduplicate, not raw display names — prevents accent/case mismatches
+            # from creating duplicate entries at the source-file level.
+            from racketfactory.entities import player_key as _pk
+            df['_pa_key'] = df['player_a'].apply(_pk)
+            df['_pb_key'] = df['player_b'].apply(_pk)
+            df['_sorted_key'] = df.apply(
+                lambda r: tuple(sorted([r['_pa_key'], r['_pb_key']])), axis=1
             )
+            df = df.drop_duplicates(
+                subset=["match_date", "tour", "tournament", "_sorted_key"],
+                keep="last",
+            ).drop(columns=['_pa_key', '_pb_key', '_sorted_key'])
         df.to_csv(path, index=False, compression="gzip")
         written.append(path)
     return written

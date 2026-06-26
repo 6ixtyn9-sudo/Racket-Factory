@@ -61,11 +61,18 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
         warehouse['p_a_key'] = warehouse['player_a'].apply(player_key)
         warehouse['p_b_key'] = warehouse['player_b'].apply(player_key)
         
+        # Canonical dedup key: sort player keys so (A vs B) and (B vs A) entries
+        # from different sources collapse to the same match. Without this,
+        # cross-source duplicates with swapped player order survive dedup.
+        warehouse['_sorted_players'] = warehouse.apply(
+            lambda r: tuple(sorted([r['p_a_key'], r['p_b_key']])), axis=1
+        )
+        
         initial_len = len(warehouse)
         warehouse = warehouse.drop_duplicates(
-            subset=["match_date", "tour", "tournament", "p_a_key", "p_b_key"], 
+            subset=["match_date", "tour", "tournament", "_sorted_players"], 
             keep="last"
-        ).drop(columns=['p_a_key', 'p_b_key'])
+        ).drop(columns=['p_a_key', 'p_b_key', '_sorted_players'])
         
         # Final safety: ensure numeric types for odds
         if "odds_a" in warehouse.columns:
