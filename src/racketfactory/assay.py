@@ -17,67 +17,82 @@ class AssayResult(NamedTuple):
     verdict: str
 
 def wilson_score_interval(successes: int, trials: int, confidence: float = 0.95) -> tuple[float, float]:
-    """
-    Calculate the Wilson score interval for a binomial proportion.
-    This provides a lower bound (LB) and upper bound (UB) for the true win rate.
-    """
+    """Calculate the Wilson score interval for a binomial proportion."""
     if trials == 0:
         return 0.0, 0.0
-    
-    # z-score for 95% confidence
     z = 1.96 
-    
     p_hat = successes / trials
     denom = 1 + z**2 / trials
     center = p_hat + z**2 / (2 * trials)
     spread = z * math.sqrt((p_hat * (1 - p_hat) / trials) + (z**2 / (4 * trials**2)))
-    
     return (center - spread) / denom, (center + spread) / denom
 
 def calculate_grade(lb: float, roi: float, n: int, break_even: float = 0.5238) -> str:
-    """
-    Grade an edge based on the Wilson Lower Bound and sample size.
-    Break-even for 1.91 odds is ~52.38%.
-    """
+    """Grade an edge based on the Wilson Lower Bound and sample size."""
     if n < 30:
-        return "CHARCOAL"  # Insufficient data to make any claim
-    
+        return "CHARCOAL"
     if lb > break_even + 0.05 and n > 100:
-        return "PLATINUM"  # Statistically dominant edge
+        return "PLATINUM"
     if lb > break_even and n > 50:
-        return "GOLD"      # Valid, statistically significant edge
+        return "GOLD"
     if lb > break_even - 0.02 and roi > 0:
-        return "SILVER"    # Promising, but the LB hasn't cleared break-even yet
+        return "SILVER"
     if lb < break_even - 0.05:
-        return "BRONZE"    # Likely a losing strategy
-    
-    return "IRON"          # Neutral/Noisy
+        return "BRONZE"
+    return "IRON"
 
 def assay_segment(df: pd.DataFrame, break_even: float = 0.5238) -> AssayResult:
     """
     Perform a full statistical assay on a slice of match data.
+    SIMULATION: We bet on the MARKET FAVORITE (the player with the lowest odds).
     """
     n = len(df)
     if n == 0:
         return AssayResult(0, 0, 0, 0, 0, "CHARCOAL", "No Data")
 
-    # Ensure we have the necessary columns
-    if 'winner' not in df.columns or 'player_a' not in df.columns:
+    # Ensure essential columns exist
+    required = ['winner', 'odds_a', 'odds_b', 'player_a', 'player_b']
+    if not all(col in df.columns for col in required):
         return AssayResult(0, 0, n, 0, 0, "CHARCOAL", "Missing Data Columns")
 
-    # We test the 'edge' of player_a.
-    # A win is when player_a is the winner.
-    wins = (df['winner'] == df['player_a']).sum()
+    # 1. Identify the Favorite
+    # Favorite is the one with the minimum odds.
+    # We create a 'favorite' column: 'a' if odds_a < odds_b, else 'b'
+    def get_favorite(row):
+        oa, ob = row['odds_a'], row['odds_b']
+        if pd.isna(oa) or pd.isna(ob): return None
+        return 'a' if oa < ob else 'b'
+
+    df = df.copy()
+    df['fav'] = df.apply(get_favorite, axis=1)
+    df = df.dropna(subset=['fav'])
+    
+    n = len(df)
+    if n == 0:
+        return AssayResult(0, 0, 0, 0, 0, "CHARCOAL", "No Valid Odds")
+
+    # 2. Calculate Wins
+    # A win is when the favorite ('a' or 'b') is the winner.
+    def check_win(row):
+        if row['fav'] == 'a' and row['winner'] == row['player_a']:
+            return 1
+        if row['fav'] == 'b' and row['winner'] == row['player_b']:
+            return 1
+        return 0
+
+    wins_series = df.apply(check_win, axis=1)
+    wins = wins_series.sum()
     win_rate = wins / n
     
-    # ROI calculation: (Total Return - Total Stake) / Total Stake
-    # We use odds_a. We assume stake is 1 unit per match.
-    if 'odds_a' not in df.columns:
-        return AssayResult(win_rate, 0, n, 0, 0, "CHARCOAL", "Missing Odds Column")
+    # 3. Calculate ROI
+    # Return = odds_a if fav='a' and win, else odds_b if fav='b' and win, else 0
+    def get_return(row):
+        if row['fav'] == 'a':
+            return row['odds_a'] if row['winner'] == row['player_a'] else 0.0
+        else:
+            return row['odds_b'] if row['winner'] == row['player_b'] else 0.0
 
-    # Filter out NaN or invalid odds to prevent ROI corruption
-    valid_odds = pd.to_numeric(df['odds_a'], errors='coerce').fillna(1.0)
-    returns = valid_odds.where(df['winner'] == df['player_a'], 0.0)
+    returns = df.apply(get_return, axis=1)
     roi = returns.mean() - 1
     
     lb, ub = wilson_score_interval(wins, n)
