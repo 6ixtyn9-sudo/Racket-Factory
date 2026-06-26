@@ -182,13 +182,13 @@ def _extract_page_id(html: str) -> str | None:
     return None
 
 
-def _curl_fetch(url: str, *, retries: int = 3, impersonate: str = "chrome131") -> str:
+def _curl_fetch(url: str, *, retries: int = 3, impersonate: str = "chrome133a") -> str:
     """Fetch URL with curl_cffi, warming CF cookies on 403.
 
-    impersonate defaults to chrome131 because it carries a recent-enough JA3
-    fingerprint to clear the current Cloudflare challenge on residential IPs.
-    Override with the ODDSPORTAL_IMPERSONATE env var if a particular Chrome
-    version works better on your network.
+    impersonate defaults to chrome133a — the only confirmed bypass for the
+    current Cloudflare JA3 check on OddsPortal and Forebet.  chrome131 and
+    earlier get HTTP 403.  Override with the ODDSPORTAL_IMPERSONATE env var
+    if a newer Chrome version is needed later.
     """
     try:
         from curl_cffi import requests as cffi_requests

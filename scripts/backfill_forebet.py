@@ -206,10 +206,13 @@ def mode_daily(args) -> int:
                 # Try exact tournament match first
                 pred = pred_index.get((match_date, tourn), {}).get(key)
                 if not pred:
-                    # Fallback: any tournament on that date
-                    for k, v in pred_index.get(match_date, {}).items():
-                        if key in v:
-                            pred = v[key]
+                    # Fallback: scan all Forebet tournaments on the same date.
+                    # pred_index keys are (date, tournament) tuples, so a plain
+                    # date string never matches — we must iterate and check the
+                    # date component explicitly.
+                    for (d, _t), players in pred_index.items():
+                        if d == match_date and key in players:
+                            pred = players[key]
                             break
 
                 if not pred:
