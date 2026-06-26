@@ -49,7 +49,7 @@ def main() -> int:
         return 1
 
     # 1. Pre-calculate "Bands"
-    df['rank_band'] = df['_winner_rank'].apply(get_rank_band)
+    df['winner_rank_band'] = df['_winner_rank'].apply(get_rank_band)
     df['fav_odds'] = df.apply(lambda r: r['odds_a'] if r['odds_a'] < r['odds_b'] else r['odds_b'], axis=1)
     df['fav_odds_band'] = df['fav_odds'].apply(get_odds_band)
     
@@ -57,7 +57,7 @@ def main() -> int:
         "tour": df['tour'].unique(),
         "_surface": df['_surface'].unique(),
         "fav_odds_band": df['fav_odds_band'].unique(),
-        "winner_rank_band": df['rank_band'].unique(),
+        "winner_rank_band": df['winner_rank_band'].unique(),
         "_series": df['_series'].unique(),
     }
     
