@@ -41,15 +41,15 @@ text
 Racket-Factory/
 ├── config/routes.json
 ├── src/racketfactory/
-│   ├── config.py       # route config loading
-│   ├── entities.py     # player/tour normalization
-│   ├── oddsportal.py   # OddsPortal HTML/CSV normalization + fetch
-│   ├── warehouse.py    # CSV -> DuckDB
-│   └── assay.py        # ROI and market summaries
+│ ├── config.py # route config loading
+│ ├── entities.py # player/tour normalization
+│ ├── oddsportal.py # OddsPortal HTML/CSV normalization + fetch
+│ ├── warehouse.py # CSV -> DuckDB
+│ └── assay.py # ROI and market summaries
 ├── scripts/
-│   ├── capture_oddsportal.py  # normalize exported CSV, saved HTML, or Playwright URL
-│   ├── build_warehouse.py
-│   └── audit_market.py
+│ ├── capture_oddsportal.py # normalize exported CSV, saved HTML, or Playwright URL
+│ ├── build_warehouse.py
+│ └── audit_market.py
 └── tests/
 Data contract
 Normalized match/odds rows live in localdata/oddsportal_tennis_YYYY-MM.csv.gz with columns:
@@ -108,28 +108,28 @@ Tests:
 Bash
 
 PYTHONPATH=src pytest -q
-python3 -m py_compile src/racketfactory/*.py scripts/*.py
+python3 -m py_compile src/racketfactory/.py scripts/.py
 Bulk capture
 Routes are defined in config/routes.json. Each route uses the year-in-slug URL pattern: /tennis/<country>/<tournament>-{year}/results/.
 
 Bash
 
-# Capture everything
+Capture everything
 PYTHONPATH=src python3 scripts/capture_oddsportal.py --all
 
-# Capture specific routes
+Capture specific routes
 PYTHONPATH=src python3 scripts/capture_oddsportal.py --route ATP_WIMBLEDON WTA_WIMBLEDON --year 2024 2025 2026
 
-# Override pages and add delay
+Override pages and add delay
 PYTHONPATH=src python3 scripts/capture_oddsportal.py --route ATP_SHANGHAI --year 2023 2024 --pages 3 --delay 8
 
-# Dry run to see what would be captured
+Dry run to see what would be captured
 PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --dry-run
 
-# Skip routes that already have CSV files
+Skip routes that already have CSV files
 PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --skip-exists
 
-# Force Playwright only (skip curl_cffi even on residential IP)
+Force Playwright only (skip curl_cffi even on residential IP)
 ODDSPORTAL_USE_PLAYWRIGHT=1 PYTHONPATH=src python3 scripts/capture_oddsportal.py --route ATP_WIMBLEDON --year 2023
 Progress is checkpointed in localdata/.bulk_checkpoint.json so interrupted runs resume safely. Deduplication happens at write time — the same match from overlapping routes won't be counted twice.
 
@@ -140,12 +140,12 @@ Bash
 PYTHONPATH=src python3 scripts/build_warehouse.py
 PYTHONPATH=src python3 scripts/audit_market.py
 Route categories
-Category	Routes	Notes
-GRAND_SLAM	ATP/WTA Australian/French/Wimbledon/US Open	8 routes covering all majors. ~3-5 pages each.
-MASTERS_1000	ATP Indian Wells through Paris	9 ATP 1000-level tournaments. ~3 pages each.
-WTA_1000	WTA Indian Wells through Beijing	8 WTA 1000-level tournaments. ~3 pages each.
-YEAR_END	ATP_FINALS, WTA_FINALS	Year-end championships. ~2 pages each.
-TEAM_EVENT	DAVIS_CUP, BJK_CUP	Team competitions. Segmented from individual tours.
+Category Routes Notes
+GRAND_SLAM ATP/WTA Australian/French/Wimbledon/US Open 8 routes covering all majors. ~3-5 pages each.
+MASTERS_1000 ATP Indian Wells through Paris 9 ATP 1000-level tournaments. ~3 pages each.
+WTA_1000 WTA Indian Wells through Beijing 8 WTA 1000-level tournaments. ~3 pages each.
+YEAR_END ATP_FINALS, WTA_FINALS Year-end championships. ~2 pages each.
+TEAM_EVENT DAVIS_CUP, BJK_CUP Team competitions. Segmented from individual tours.
 Route slug reference (v0.5.1, 2026-06-26)
 All 28 routes verified against live OddsPortal:
 
