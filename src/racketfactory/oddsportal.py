@@ -26,6 +26,40 @@ from typing import Any, Iterable
 
 import pandas as pd
 
+
+def _load_op_cookies() -> dict:
+    """Load OddsPortal cookies from ODDSPORTAL_COOKIES env var.
+
+    Supports Netscape cookies.txt format (as exported by the
+    "Get cookies.txt LOCALLY" Chrome extension) and a simple
+    name=value-per-line fallback.
+    """
+    path = os.getenv("ODDSPORTAL_COOKIES", "").strip()
+    if not path:
+        return {}
+    try:
+        cookies: dict[str, str] = {}
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) >= 7:
+                    # Netscape format: domain, flag, path, secure, expiry, name, value
+                    name, value = parts[5], parts[6]
+                    cookies[name] = value
+                elif "=" in line and ";" not in line[:40]:
+                    # simple name=value per line fallback
+                    k, v = line.split("=", 1)
+                    cookies[k.strip()] = v.strip()
+        return cookies
+    except Exception:
+        return {}
+
+
+_OP_COOKIES = _load_op_cookies()
+
 logger = logging.getLogger(__name__)
 
 TENNIS_BASE = "https://www.oddsportal.com/tennis"
@@ -154,7 +188,7 @@ def _curl_fetch(url: str, *, retries: int = 3, impersonate: str = "chrome131") -
 
     impersonate = os.getenv("ODDSPORTAL_IMPERSONATE", impersonate)
 
-    cookies = None
+    cookies = dict(_OP_COOKIES) if _OP_COOKIES else None
     last_status: int | None = None
     for attempt in range(retries):
         try:
@@ -175,9 +209,12 @@ def _curl_fetch(url: str, *, retries: int = 3, impersonate: str = "chrome131") -
                         "https://www.oddsportal.com/",
                         impersonate=impersonate,
                         timeout=20,
+                        cookies=_OP_COOKIES or None,
                     )
                     if warm.status_code == 200:
-                        cookies = dict(warm.cookies)
+                        merged = dict(_OP_COOKIES)
+                        merged.update(dict(warm.cookies))
+                        cookies = merged
                 except Exception:
                     pass
                 time.sleep(2 ** attempt)
@@ -663,6 +700,14 @@ def fetch_rendered_html(url: str, *, timeout_ms: int | None = None) -> str:
             timezone_id="UTC",
         )
         context.add_init_script(_playwright_stealth_script())
+        if _OP_COOKIES:
+            try:
+                context.add_cookies([
+                    {"name": k, "value": v, "domain": ".oddsportal.com", "path": "/"}
+                    for k, v in _OP_COOKIES.items()
+                ])
+            except Exception:
+                pass
         # Don't waste bandwidth on static assets — they often hang on CF.
         context.route(
             "**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot,ico}",
@@ -730,6 +775,14 @@ def _fetch_ajax_via_playwright(
             timezone_id="UTC",
         )
         context.add_init_script(_playwright_stealth_script())
+        if _OP_COOKIES:
+            try:
+                context.add_cookies([
+                    {"name": k, "value": v, "domain": ".oddsportal.com", "path": "/"}
+                    for k, v in _OP_COOKIES.items()
+                ])
+            except Exception:
+                pass
         context.route(
             "**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot,ico}",
             lambda r: r.abort(),
@@ -834,6 +887,14 @@ def fetch_via_rendered_dom(
             timezone_id="UTC",
         )
         context.add_init_script(_playwright_stealth_script())
+        if _OP_COOKIES:
+            try:
+                context.add_cookies([
+                    {"name": k, "value": v, "domain": ".oddsportal.com", "path": "/"}
+                    for k, v in _OP_COOKIES.items()
+                ])
+            except Exception:
+                pass
         context.route(
             "**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot,ico}",
             lambda r: r.abort(),
