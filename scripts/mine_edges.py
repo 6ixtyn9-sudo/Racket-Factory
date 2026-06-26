@@ -55,10 +55,10 @@ def main() -> int:
     
     dimensions = {
         "tour": df['tour'].unique(),
-        "surface": df['_surface'].unique(),
+        "_surface": df['_surface'].unique(),
         "fav_odds_band": df['fav_odds_band'].unique(),
         "winner_rank_band": df['rank_band'].unique(),
-        "series": df['_series'].unique(),
+        "_series": df['_series'].unique(),
     }
     
     for k, v in dimensions.items():
