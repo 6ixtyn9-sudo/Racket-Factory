@@ -28,17 +28,27 @@ def wilson_score_interval(successes: int, trials: int, confidence: float = 0.95)
     return (center - spread) / denom, (center + spread) / denom
 
 def calculate_grade(lb: float, roi: float, n: int, break_even: float = 0.5238) -> str:
-    """Grade an edge based on the Wilson Lower Bound and sample size."""
+    """
+    Grade an edge based on the Wilson Lower Bound and ROI.
+    Crucially: No grade above SILVER is possible with a negative ROI.
+    """
     if n < 30:
-        return "CHARCOAL"
+        return "CHARCOAL"  # Insufficient data
+    
+    # The 'House Edge' case: High win rate, but negative ROI
+    if roi <= 0:
+        if lb < break_even - 0.05:
+            return "BRONZE" # Clearly losing
+        return "IRON"       # Neutral/Slow bleed
+    
+    # Positive ROI cases: now we check for statistical significance
     if lb > break_even + 0.05 and n > 100:
-        return "PLATINUM"
+        return "PLATINUM"  # Statistically dominant and profitable
     if lb > break_even and n > 50:
-        return "GOLD"
-    if lb > break_even - 0.02 and roi > 0:
-        return "SILVER"
-    if lb < break_even - 0.05:
-        return "BRONZE"
+        return "GOLD"      # Valid and profitable
+    if lb > break_even - 0.02:
+        return "SILVER"    # Promising, but noisy
+        
     return "IRON"
 
 def assay_segment(df: pd.DataFrame, break_even: float = 0.5238) -> AssayResult:
@@ -50,14 +60,10 @@ def assay_segment(df: pd.DataFrame, break_even: float = 0.5238) -> AssayResult:
     if n == 0:
         return AssayResult(0, 0, 0, 0, 0, "CHARCOAL", "No Data")
 
-    # Ensure essential columns exist
     required = ['winner', 'odds_a', 'odds_b', 'player_a', 'player_b']
     if not all(col in df.columns for col in required):
         return AssayResult(0, 0, n, 0, 0, "CHARCOAL", "Missing Data Columns")
 
-    # 1. Identify the Favorite
-    # Favorite is the one with the minimum odds.
-    # We create a 'favorite' column: 'a' if odds_a < odds_b, else 'b'
     def get_favorite(row):
         oa, ob = row['odds_a'], row['odds_b']
         if pd.isna(oa) or pd.isna(ob): return None
@@ -71,8 +77,6 @@ def assay_segment(df: pd.DataFrame, break_even: float = 0.5238) -> AssayResult:
     if n == 0:
         return AssayResult(0, 0, 0, 0, 0, "CHARCOAL", "No Valid Odds")
 
-    # 2. Calculate Wins
-    # A win is when the favorite ('a' or 'b') is the winner.
     def check_win(row):
         if row['fav'] == 'a' and row['winner'] == row['player_a']:
             return 1
@@ -84,8 +88,6 @@ def assay_segment(df: pd.DataFrame, break_even: float = 0.5238) -> AssayResult:
     wins = wins_series.sum()
     win_rate = wins / n
     
-    # 3. Calculate ROI
-    # Return = odds_a if fav='a' and win, else odds_b if fav='b' and win, else 0
     def get_return(row):
         if row['fav'] == 'a':
             return row['odds_a'] if row['winner'] == row['player_a'] else 0.0
@@ -102,6 +104,8 @@ def assay_segment(df: pd.DataFrame, break_even: float = 0.5238) -> AssayResult:
         verdict = "EDGE CONFIRMED"
     elif grade == "CHARCOAL":
         verdict = "INSUFFICIENT SAMPLE"
+    elif grade == "BRONZE":
+        verdict = "HOUSE EDGE"
     else:
         verdict = "NO STAT SIG"
 
