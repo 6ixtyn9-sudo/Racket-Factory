@@ -1,6 +1,7 @@
 """
-Racket Factory Assay Engine
-Statistical verification of betting edges using Wilson Score Intervals.
+Racket Factory Assay Engine (Ma Golide Enhanced)
+Statistical verification of betting edges using Wilson intervals, 
+shrinkage estimators, and Banker/Robber classification.
 """
 import math
 import pandas as pd
@@ -10,19 +11,19 @@ from typing import NamedTuple, Optional
 
 class AssayResult(NamedTuple):
     win_rate: float
+    shrunk_rate: float
     roi: float
     n: int
     wilson_lb: float
     wilson_ub: float
     grade: str
+    tier: str  # BANKER, ROBBER, or NEUTRAL
     verdict: str
 
 def wilson_score_interval(successes: int, trials: int, confidence: float = 0.95) -> tuple[float, float]:
     """Calculate the Wilson score interval for a binomial proportion."""
     if trials == 0:
         return 0.0, 0.0
-    # Use scipy to derive z from the confidence level — do NOT hardcode 1.96.
-    # This ensures the `confidence` parameter is actually respected.
     z = norm.ppf((1 + confidence) / 2)
     p_hat = successes / trials
     denom = 1 + z**2 / trials
@@ -30,46 +31,58 @@ def wilson_score_interval(successes: int, trials: int, confidence: float = 0.95)
     spread = z * math.sqrt((p_hat * (1 - p_hat) / trials) + (z**2 / (4 * trials**2)))
     return (center - spread) / denom, (center + spread) / denom
 
-def calculate_grade(lb: float, roi: float, n: int, break_even: float = 0.5238) -> str:
+def shrink_rate(wins: int, n: int, prior_alpha: float = 2.0, prior_beta: float = 2.0) -> float:
     """
-    Grade an edge based on the Wilson Lower Bound and ROI.
-    Crucially: No grade above SILVER is possible with a negative ROI.
+    Bayesian Shrinkage Estimator.
+    Pulls small sample win rates toward a prior mean (0.5) to prevent 
+    overestimating edges from tiny samples.
     """
-    if n < 30:
-        return "CHARCOAL"  # Insufficient data
+    return (wins + prior_alpha) / (n + prior_alpha + prior_beta)
+
+def calculate_grade(win_rate: float, shrunk_rate: float, lb: float, roi: float, n: int, break_even: float) -> str:
+    """
+    Assigns a grade based on the intersection of ROI, WinRate, and Wilson LB.
+    Shrunk rate is used to ensure the grade is grounded in sample size.
+    """
+    if n < 10: return "CHARCOAL"
     
-    # The 'House Edge' case: High win rate, but negative ROI
     if roi <= 0:
-        if lb < break_even - 0.05:
-            return "BRONZE" # Clearly losing
-        return "IRON"       # Neutral/Slow bleed
+        return "BRONZE" if lb < break_even - 0.05 else "IRON"
     
-    # Positive ROI cases: now we check for statistical significance
-    if lb > break_even + 0.05 and n > 100:
-        return "PLATINUM"  # Statistically dominant and profitable
-    if lb > break_even and n > 50:
-        return "GOLD"      # Valid and profitable
-    if lb > break_even - 0.02:
-        return "SILVER"    # Promising, but noisy
+    # Use shrunk_rate for the grade to penalize low-N 'fake' edges
+    if shrunk_rate > 0.85 and lb > break_even + 0.05 and n > 100:
+        return "PLATINUM"
+    if shrunk_rate > 0.72 and lb > break_even and n > 50:
+        return "GOLD"
+    if shrunk_rate > 0.62 and lb > break_even - 0.02:
+        return "SILVER"
         
     return "IRON"
 
-def assay_segment(df: pd.DataFrame) -> AssayResult:
+def classify_tier(win_rate: float, lb: float, n: int) -> str:
+    """
+    Classifies the signal as a BANKER (High Reliability) 
+    or a ROBBER (Consistently Wrong).
+    """
+    if n < 10: return "NEUTRAL"
+    if lb >= 0.60 and win_rate >= 0.72:
+        return "BANKER"
+    if win_rate < 0.40 and lb < 0.40:
+        return "ROBBER"
+    return "NEUTRAL"
+
+def assay_segment(df: pd.DataFrame, break_even: Optional[float] = None) -> AssayResult:
     """
     Perform a full statistical assay on a slice of match data.
-    SIMULATION: We bet on the MARKET FAVORITE (the player with the lowest odds).
-    
-    Break-even is computed DYNAMICALLY from the actual favourite odds in this
-    segment — never hardcoded. The required win-rate to break even at odds X
-    is 1/X; at average favourite odds of 1.47 you need 68%, not 52%.
+    SIMULATION: We bet on the MARKET FAVORITE.
     """
     n = len(df)
     if n == 0:
-        return AssayResult(0, 0, 0, 0, 0, "CHARCOAL", "No Data")
+        return AssayResult(0, 0, 0, 0, 0, 0, "CHARCOAL", "NEUTRAL", "No Data")
 
     required = ['winner', 'odds_a', 'odds_b', 'player_a', 'player_b']
     if not all(col in df.columns for col in required):
-        return AssayResult(0, 0, n, 0, 0, "CHARCOAL", "Missing Data Columns")
+        return AssayResult(0, 0, n, 0, 0, 0, "CHARCOAL", "NEUTRAL", "Missing Data Columns")
 
     def get_favorite(row):
         oa, ob = row['odds_a'], row['odds_b']
@@ -82,7 +95,7 @@ def assay_segment(df: pd.DataFrame) -> AssayResult:
     
     n = len(df)
     if n == 0:
-        return AssayResult(0, 0, 0, 0, 0, "CHARCOAL", "No Valid Odds")
+        return AssayResult(0, 0, 0, 0, 0, 0, "CHARCOAL", "NEUTRAL", "No Valid Odds")
 
     def check_win(row):
         if row['fav'] == 'a' and row['winner'] == row['player_a']:
@@ -104,32 +117,32 @@ def assay_segment(df: pd.DataFrame) -> AssayResult:
     returns = df.apply(get_return, axis=1)
     roi = returns.mean() - 1
     
-    # Dynamic break-even: the required win rate to be profitable at these specific odds.
-    # For a bet at odds X, you need to win more than 1/X of the time.
-    # Average this across all bets in the segment.
-    fav_odds = df.apply(
-        lambda r: r['odds_a'] if r['fav'] == 'a' else r['odds_b'], axis=1
-    )
-    break_even = float((1.0 / fav_odds).mean())
-    
+    if break_even is None:
+        fav_odds = df.apply(lambda r: r['odds_a'] if r['fav'] == 'a' else r['odds_b'], axis=1)
+        break_even = float((1.0 / fav_odds).mean())
+
     lb, ub = wilson_score_interval(wins, n)
-    grade = calculate_grade(lb, roi, n, break_even)
+    shrunk = shrink_rate(wins, n)
+    grade = calculate_grade(win_rate, shrunk, lb, roi, n, break_even)
+    tier = classify_tier(win_rate, lb, n)
     
     if grade in ["PLATINUM", "GOLD"]:
         verdict = "EDGE CONFIRMED"
+    elif tier == "ROBBER":
+        verdict = "FADE THIS SIGNAL"
     elif grade == "CHARCOAL":
         verdict = "INSUFFICIENT SAMPLE"
-    elif grade == "BRONZE":
-        verdict = "HOUSE EDGE"
     else:
         verdict = "NO STAT SIG"
 
     return AssayResult(
         win_rate=float(win_rate),
+        shrunk_rate=float(shrunk),
         roi=float(roi),
         n=int(n),
         wilson_lb=float(lb),
         wilson_ub=float(ub),
         grade=grade,
+        tier=tier,
         verdict=verdict
     )
