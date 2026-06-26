@@ -594,12 +594,18 @@ def _wait_for_real_content(page, *, max_seconds: float = 90.0) -> bool:
 
     Returns True if real content loaded, False if we hit the max wait.
     """
+    import random
     start = time.time()
+    # OddsPortal 2025/2026 SPA selectors – be generous
     selectors = (
         ".eventRow",
-        "[data-testid*='event']",
         "[class*='eventRow']",
+        "[data-testid*='event']",
         "table.odds",
+        "div.next-matches-tournament",
+        "#tournamentTable",
+        ".tournament-page",
+        "div[flex*=event]",
     )
     while time.time() - start < max_seconds:
         try:
@@ -640,7 +646,7 @@ def fetch_rendered_html(url: str, *, timeout_ms: int | None = None) -> str:
     import os as _os
     if timeout_ms is None:
         env_t = _os.getenv("ODDSPORTAL_RENDER_TIMEOUT_MS")
-        timeout_ms = int(env_t) if env_t else 90000
+        timeout_ms = int(env_t) if env_t else 120000
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch(

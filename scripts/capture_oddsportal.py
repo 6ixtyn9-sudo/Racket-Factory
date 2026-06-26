@@ -105,6 +105,16 @@ def resolve_url(template: str, year: int) -> str:
     return template.replace("{year}", str(year))
 
 
+def resolve_url_list(primary_template: str, alt_templates: list[str] | None, year: int) -> list[str]:
+    """Return primary URL followed by any alt_url_templates, de-duplicated."""
+    urls = [resolve_url(primary_template, year)]
+    for t in alt_templates or []:
+        u = resolve_url(t, year)
+        if u not in urls:
+            urls.append(u)
+    return urls
+
+
 def _force_playwright() -> bool:
     return os.getenv("ODDSPORTAL_USE_PLAYWRIGHT", "").strip().lower() in {"1", "true", "yes"}
 
@@ -195,27 +205,43 @@ def _capture_url_with_current_year_fallback(
     n_pages: int,
     delay: float,
     save_html_dir: Path | None,
+    alt_urls: list[str] | None = None,
 ) -> tuple[list[dict], str]:
-    """Try a URL; if 0 rows and the year matches current year, try no-year fallback."""
+    """Try a URL; if 0 rows try alt_url_templates, then current-year no-year fallback."""
+    # Primary
     rows, url_used = _capture_with_retry(
         url=url, tour=tour, tournament=tournament, year=year,
         n_pages=n_pages, delay=delay, save_html_dir=save_html_dir,
     )
     if rows:
         return rows, url_used
+
+    # Alt URL templates (e.g. Toronto vs Montreal, city variants for Finals)
+    for alt_url in alt_urls or []:
+        logger.info(
+            "  -> Primary URL returned 0 rows; trying alt URL: %s",
+            alt_url,
+        )
+        alt_rows, alt_url_used = _capture_with_retry(
+            url=alt_url, tour=tour, tournament=tournament, year=year,
+            n_pages=n_pages, delay=delay, save_html_dir=save_html_dir,
+        )
+        if alt_rows:
+            return alt_rows, alt_url_used
+
+    # Current-year no-year fallback
     fallback_url = _no_year_url_fallback(url, year)
-    if not fallback_url or fallback_url == url:
-        return rows, url_used
-    logger.info(
-        "  -> Year-in-slug URL returned 0 rows; trying current-season no-year URL: %s",
-        fallback_url,
-    )
-    fb_rows, fb_url_used = _capture_with_retry(
-        url=fallback_url, tour=tour, tournament=tournament, year=year,
-        n_pages=n_pages, delay=delay, save_html_dir=save_html_dir,
-    )
-    if fb_rows:
-        return fb_rows, fb_url_used
+    if fallback_url and fallback_url != url:
+        logger.info(
+            "  -> Year-in-slug URL returned 0 rows; trying current-season no-year URL: %s",
+            fallback_url,
+        )
+        fb_rows, fb_url_used = _capture_with_retry(
+            url=fallback_url, tour=tour, tournament=tournament, year=year,
+            n_pages=n_pages, delay=delay, save_html_dir=save_html_dir,
+        )
+        if fb_rows:
+            return fb_rows, fb_url_used
     return rows, url_used
 
 
@@ -365,17 +391,17 @@ def build_tasks(
     years: list[int] | None,
     pages: int | None,
 ) -> list[dict]:
-    """Expand route config into (url, year, pages, tour, tournament) tasks."""
     tasks: list[dict] = []
     for rk in route_keys:
-        if rk not in routes:
-            logger.warning("Route key %s not in %s — skipping", rk, ROUTES_PATH)
+        route = routes.get(rk)
+        if not route:
+            logger.warning("Route %s not found — skipping", rk)
             continue
-        route = routes[rk]
-        url_template = route.get("url_template") or route.get("base_url") or route.get("url")
+        url_template = route.get("url_template") or route.get("url") or route.get("base_url")
         if not url_template:
-            logger.warning("Route %s has no url_template/base_url — skipping", rk)
+            logger.warning("Route %s has no url_template — skipping", rk)
             continue
+        alt_templates = route.get("alt_url_templates", [])
         route_years = route.get("years", [])
         effective_years = [y for y in years if y in route_years] if years else route_years
         if not effective_years:
@@ -383,16 +409,17 @@ def build_tasks(
             continue
         for y in effective_years:
             n_pages = pages if pages is not None else route.get("pages_default", 5)
+            urls = resolve_url_list(url_template, alt_templates, y)
             tasks.append({
                 "route_key": rk,
-                "url": resolve_url(url_template, y),
+                "url": urls[0],
+                "alt_urls": urls[1:],
                 "tour": route.get("tour", "UNKNOWN"),
                 "tournament": route.get("tournament", ""),
                 "year": y,
                 "pages": n_pages,
             })
     return tasks
-
 
 # ---- Single-route capture (original API) ------------------------------------
 
@@ -429,6 +456,7 @@ def capture_single(
         rows_out, url_used = _capture_url_with_current_year_fallback(
             url=url, tour=tour, tournament=tournament, year=default_year or _current_year(),
             n_pages=pages, delay=delay, save_html_dir=save_html_dir,
+            alt_urls=[],
         )
         rows.extend(rows_out)
         if url_used != url:
@@ -503,10 +531,11 @@ def capture_bulk(
                 logger.info("    [DRY RUN] Would fetch %s", p_url)
             continue
 
-        # Capture with curl_cffi → Playwright → retry → current-year fallback.
+        # Capture with curl_cffi → Playwright → retry → alt_urls → current-year fallback.
         rows, url_used = _capture_url_with_current_year_fallback(
             url=url, tour=tour, tournament=tournament, year=year,
             n_pages=n_pages, delay=delay, save_html_dir=save_html_dir,
+            alt_urls=task.get("alt_urls", []),
         )
         page_rows.extend(rows)
         if url_used != url:
