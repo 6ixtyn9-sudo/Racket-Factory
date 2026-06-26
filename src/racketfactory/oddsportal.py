@@ -60,6 +60,16 @@ def _load_op_cookies() -> dict:
 
 _OP_COOKIES = _load_op_cookies()
 
+# URLs that returned a genuine HTTP 404 from OddsPortal's server (not CF).
+# Used to skip the Playwright fallback — a 404 means the page doesn't exist,
+# no amount of browser waiting will change that.
+_KNOWN_404_URLS: set[str] = set()
+
+
+def is_known_404(url: str) -> bool:
+    """Return True if curl_cffi already got a 404 for this URL."""
+    return url in _KNOWN_404_URLS
+
 logger = logging.getLogger(__name__)
 
 TENNIS_BASE = "https://www.oddsportal.com/tennis"
@@ -220,6 +230,7 @@ def _curl_fetch(url: str, *, retries: int = 3, impersonate: str = "chrome131") -
                 time.sleep(2 ** attempt)
                 continue
             if resp.status_code == 404:
+                _KNOWN_404_URLS.add(url)
                 logger.info("oddsportal 404 for %s", url)
                 return ""
             logger.warning("oddsportal %s returned %s", url, resp.status_code)

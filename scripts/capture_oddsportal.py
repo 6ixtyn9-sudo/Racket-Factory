@@ -56,6 +56,7 @@ from racketfactory.oddsportal import (
     fetch_rendered_html,
     fetch_tournament_pages,
     fetch_via_rendered_dom,
+    is_known_404,
     parse_embedded_json,
     parse_rendered_html,
     read_export_csv,
@@ -286,6 +287,16 @@ def _try_playwright_fetch(
       3. If AJAX still doesn't work, fall through to rendered-DOM pagination.
     """
     rows: list[dict] = []
+
+    # If curl_cffi already got a 404 for this URL, there is no point opening
+    # it in Playwright — a 404 from OddsPortal's server means the page
+    # doesn't exist, and no amount of browser waiting will fix that.
+    if is_known_404(tournament_url):
+        logger.info(
+            "  -> Skipping Playwright: curl_cffi already got 404 for %s",
+            tournament_url,
+        )
+        return rows
 
     if page_id is None:
         # Load the page first; this both clears CF and gives us the page_id.
