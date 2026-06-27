@@ -173,8 +173,8 @@ def mode_daily(args) -> int:
 
         logger.info("predictions-%s: %d raw matches parsed.", day, len(preds))
 
-        # Build a lookup index
-        pred_index: dict[tuple[str, str, tuple[str, str]], dict] = defaultdict(dict)
+        # Build a lookup index: (date, tournament) -> {signature -> prediction}
+        pred_index: dict[tuple[str, str], dict[tuple[str, str], dict]] = defaultdict(dict)
         for p in preds:
             if not p.get("match_date"):
                 continue
@@ -206,13 +206,10 @@ def mode_daily(args) -> int:
                 # Try exact tournament match first
                 pred = pred_index.get((match_date, tourn), {}).get(key)
                 if not pred:
-                    # Fallback: scan all Forebet tournaments on the same date.
-                    # pred_index keys are (date, tournament) tuples, so a plain
-                    # date string never matches — we must iterate and check the
-                    # date component explicitly.
-                    for (d, _t), players in pred_index.items():
-                        if d == match_date and key in players:
-                            pred = players[key]
+                    # Fallback: any tournament on that date
+                    for (dt_key, tourn_key), sig_dict in pred_index.items():
+                        if dt_key == match_date and key in sig_dict:
+                            pred = sig_dict[key]
                             break
 
                 if not pred:
