@@ -1,4 +1,4 @@
-name: Autonomous Hoop Factory 3-Hour Service
+name: Autonomous Racket Factory 3-Hour Service
 
 on:
   schedule:
@@ -16,7 +16,7 @@ on:
         options:
           - auto             # smart schedule: morning heavy OR intraday discovery
           - official_morning # force a full morning re-pick (overwrites baseline)
-          - picks_only       # re-mine + emit picks without heavy capture/build
+          - intraday_only    # re-mine + emit picks without heavy historical capture
 
 jobs:
   run-autonomous-agent:
@@ -28,14 +28,11 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-      ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-      BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY }}
       CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
       CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
       # Keep CI on the operator's wall clock so the morning/intraday split and
       # the same-day pick filter behave exactly like a local run.
       TZ: 'Africa/Johannesburg'
-      NBA_API_TIMEOUT: '30'
 
     steps:
       - name: Checkout repository
@@ -72,7 +69,6 @@ jobs:
           for f in $(git ls-files localdata/); do
             git checkout HEAD -- "$f" && echo "restored committed: $f"
           done
-          echo "consensus edges present: $(python3 -c "import json;d=json.load(open('localdata/edges_consensus.json'));print(len(d.get('edges', d if isinstance(d,list) else [])))" 2>/dev/null || echo n/a)"
 
       - name: Execute autonomous smart schedule
         run: |
@@ -81,8 +77,8 @@ jobs:
             echo ">>> Manual mode: $MODE"
             if [ "$MODE" = "official_morning" ]; then
               PYTHONPATH=src python3 scripts/daily.py --force-repick
-            elif [ "$MODE" = "picks_only" ]; then
-              PYTHONPATH=src python3 scripts/daily.py --picks-only
+            elif [ "$MODE" = "intraday_only" ]; then
+              PYTHONPATH=src python3 scripts/daily.py --intraday-only
             fi
           else
             # Exactly one autonomous iteration of the smart accumulating ledger.
@@ -100,7 +96,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: HoopFactory-Reports
+          name: RacketFactory-Reports
           path: |
             localdata/*.txt
             localdata/*.json

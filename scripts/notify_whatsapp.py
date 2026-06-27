@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Hoop Factory — WhatsApp operational heads-up (CallMeBot).
+"""Racket Factory — WhatsApp operational heads-up (CallMeBot).
 
 Edge-Factory parity, basketball-branded, and intentionally self-contained so it
-adds no new runtime coupling to ``src/hoopfactory``.  Reads the full day archive
+adds no new runtime coupling to ``src/racketfactory``.  Reads the full day archive
 ``localdata/picks_YYYY-MM-DD.json``, formats a mobile-friendly summary of the
 certified / caution picks, dedupes against an already-sent ledger so the same
 selection is never re-pinged within a day, and dispatches via the free CallMeBot
@@ -15,7 +15,7 @@ Environment
 -----------
   CALLMEBOT_APIKEY   CallMeBot personal API key (required to actually send)
   CALLMEBOT_PHONE    Destination phone in international format (required)
-  HOOP_FACTORY_NOTIFY_WATCHLIST=1   also notify WATCHLIST_* discoveries (optional)
+  RACKET_FACTORY_NOTIFY_WATCHLIST=1   also notify WATCHLIST_* discoveries (optional)
 
 Usage
 -----
@@ -136,9 +136,9 @@ def _prob(pick: dict[str, Any]) -> float:
 def format_summary(target_date: str, picks: list[dict[str, Any]], *, late_slate: bool) -> str:
     lines: list[str] = []
     if late_slate:
-        lines.append(f"🏀 *Hoop Factory Late-Slate Alert* 🏀\n📅 {target_date}\n⚡ Intraday discovery scan\n")
+        lines.append(f"🎾 *Racket Factory Late-Slate Alert* 🎾\n📅 {target_date}\n⚡ Intraday discovery scan\n")
     else:
-        lines.append(f"🏀 *Hoop Factory Official Picks* 🏀\n📅 {target_date}\n📊 Morning slate ledger\n")
+        lines.append(f"🎾 *Racket Factory Official Picks* 🎾\n📅 {target_date}\n📊 Morning slate ledger\n")
 
     buckets: dict[str, list[dict[str, Any]]] = {}
     for p in picks:
@@ -172,14 +172,14 @@ def send_callmebot(apikey: str, phone: str, message_text: str) -> str:
     clean_phone = "".join(ch for ch in str(phone) if ch.isdigit() or ch == "+")
     encoded = urllib.parse.quote(message_text)
     url = f"https://api.callmebot.com/whatsapp.php?phone={clean_phone}&text={encoded}&apikey={apikey}"
-    req = urllib.request.Request(url, headers={"User-Agent": "HoopFactory/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "RacketFactory/1.0"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read().decode("utf-8", "replace")
 
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-    ap = argparse.ArgumentParser(description="Hoop Factory WhatsApp heads-up (CallMeBot).")
+    ap = argparse.ArgumentParser(description="Racket Factory WhatsApp heads-up (CallMeBot).")
     ap.add_argument("--picks", default=None, help="Path to picks JSON (default: day archive).")
     ap.add_argument("--date", default=None, help="Target date YYYY-MM-DD (default: today, local TZ).")
     ap.add_argument("--force", action="store_true", help="Ignore the sent ledger and transmit anyway.")
@@ -196,7 +196,7 @@ def main() -> int:
 
     raw = _load_json_list(picks_file)
     notify_buckets = {BUCKET_CLEAN, BUCKET_CAUTION}
-    if os.environ.get("HOOP_FACTORY_NOTIFY_WATCHLIST", "").strip().lower() in {"1", "true", "yes", "on"}:
+    if os.environ.get("RACKET_FACTORY_NOTIFY_WATCHLIST", "").strip().lower() in {"1", "true", "yes", "on"}:
         notify_buckets |= {BUCKET_WL_ODDS, BUCKET_WL_SIGNAL}
 
     candidates = [p for p in raw if p.get("bucket") in notify_buckets]

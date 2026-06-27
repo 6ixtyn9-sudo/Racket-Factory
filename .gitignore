@@ -31,27 +31,13 @@ data/cache/
 # These survive GitHub Actions cache eviction so CI certifies autonomously
 # WITHOUT any local machine in the loop (Edge-Factory parity). They are small
 # JSON/markdown registries + reports, never the huge raw history CSVs.
-!localdata/edges_registry.json
-!localdata/edges_consensus.json
-!localdata/tipster_audit.json
-!localdata/tipster_audit.md
-!localdata/entity_registry.json
-!localdata/completed_games_audit.json
-# Certification chain consumed by certify_roi.py / picks_today.py gating:
-!localdata/source_accuracy.json
-!localdata/certification_report.json
-!localdata/calibration_params.json
-!localdata/reliability_diagram.json
-!localdata/tipster_prob_calibration.json
-!localdata/walk_forward_results.json
+!localdata/picks_*.json
+!localdata/whatsapp_sent_ledger_*.json
+!localdata/edges_*.txt
+!localdata/edges_*.json
 
-# NOTE on the BIG history data (results_kaggle.csv, odds_kaggle.csv, the
-# per-source tipster archive *.csv.gz, warehouse.duckdb): these stay IGNORED.
-# They are too large to live in normal commits. Provision them once on the CI
-# runner exactly like Edge-Factory committed its 3 core history CSVs — e.g.
-# commit them with Git LFS, restore from a release asset, or hydrate from
-# Supabase/object storage in an extra workflow step. The pipeline degrades
-# gracefully (WATCHLIST_* instead of CERTIFIED) when they are absent.
+# NOTE on the BIG history data: warehouse.csv.gz, oddsportal_*.csv, etc.
+# stay IGNORED. They are too large to live in normal commits.
 
 # Stray data files accidentally created in repo root (no extension)
 # Date-named files like "2026-06-14" should not be committed

@@ -9,6 +9,8 @@ import pandas as pd
 import argparse
 import logging
 import sys
+import json
+from datetime import datetime
 from pathlib import Path
 from itertools import product
 
@@ -70,6 +72,7 @@ def main() -> int:
     ap.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse")
     ap.add_argument("--min-n", type=int, default=15,
                     help="Minimum matches per slice (default 15)")
+    ap.add_argument("--date", default=None, help="Target date YYYY-MM-DD to extract specific picks (default: today)")
     args = ap.parse_args()
 
     try:
@@ -136,6 +139,7 @@ def main() -> int:
         if res.grade in ["GOLD", "PLATINUM", "SILVER"] or res.tier == "ROBBER":
             results.append({
                 "Slice": " | ".join([f"{n}:{v}" for n, v in zip(dim_names, combo)]),
+                "Combo_Dict": dict(zip(dim_names, combo)),
                 "N": res.n,
                 "WinRate": f"{res.win_rate:.2%}",
                 "Shrunk": f"{res.shrunk_rate:.2%}",
@@ -154,8 +158,58 @@ def main() -> int:
     print("\n" + "="*120)
     print("🚀 RACKET FACTORY EDGE MINER: SIGNAL INTELLIGENCE MODE")
     print("="*120)
-    print(report.to_string(index=False))
+    print(report.drop(columns=["Combo_Dict"]).to_string(index=False))
     print("="*120 + "\n")
+    
+    # 2. Extract Specific Picks for the Target Date
+    target_date = args.date or datetime.now().strftime("%Y-%m-%d")
+    today_df = df[df["match_date"] == target_date]
+    
+    picks_to_export = []
+    
+    if not today_df.empty:
+        for _, row in today_df.iterrows():
+            best_pick = None
+            best_roi = -999.0
+            
+            for res in results:
+                combo = res["Combo_Dict"]
+                # Check if the row matches all dimensions of the slice
+                match_all = True
+                for dim_name, dim_val in combo.items():
+                    if row.get(dim_name) != dim_val:
+                        match_all = False
+                        break
+                
+                if match_all:
+                    # Pick the one with the highest ROI if multiple slices match
+                    slice_roi = float(res["ROI"].strip('%')) / 100.0
+                    if slice_roi > best_roi:
+                        best_roi = slice_roi
+                        best_pick = res
+            
+            if best_pick:
+                # Format for the WhatsApp Notifier
+                is_robber = best_pick["Tier"] == "ROBBER"
+                bucket = "CERTIFIED_CLEAN" if not is_robber else "CAUTION"
+                prob = row.get("prediction_prob")
+                if pd.isna(prob):
+                    prob = None
+                
+                picks_to_export.append({
+                    "match": f"{row.get('player_a', 'A')} vs {row.get('player_b', 'B')}",
+                    "date": str(row.get("match_date", target_date)),
+                    "bucket": bucket,
+                    "pick": best_pick["Verdict"],
+                    "odds": row.get("fav_odds"),
+                    "confidence": prob,
+                    "slice_matched": best_pick["Slice"]
+                })
+                
+    picks_file = Path(f"localdata/picks_{target_date}.json")
+    picks_file.parent.mkdir(parents=True, exist_ok=True)
+    picks_file.write_text(json.dumps(picks_to_export, indent=2))
+    logger.info("Exported %d actionable picks to %s", len(picks_to_export), picks_file)
     
     return 0
 
