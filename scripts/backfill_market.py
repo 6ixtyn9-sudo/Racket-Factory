@@ -47,7 +47,7 @@ def main():
 
     # Determine predicted winner (the favorite)
     def get_winner(row):
-        return row["player_a"] if row["prob_home"] >= row["prob_away"] else row["player_b"]
+        return "player_a" if row["prob_home"] >= row["prob_away"] else "player_b"
         
     df_valid["predicted_winner"] = df_valid.apply(get_winner, axis=1)
     df_valid["prediction_prob"] = df_valid[["prob_home", "prob_away"]].max(axis=1)
