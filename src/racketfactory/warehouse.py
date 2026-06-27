@@ -247,21 +247,27 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
                     how="left",
                 )
 
-        # Clean up any legacy duplicate columns that may arise from prior files/runs.
-        for base in [
-            "predicted_winner_foretennis", "prediction_prob_foretennis",
-            "predicted_winner_market", "prediction_prob_market",
-            "predicted_winner", "prediction_prob", "predicted_source",
-        ]:
-            variants = [c for c in warehouse.columns if c == base or c.startswith(base + "_")]
-            if len(variants) > 1:
-                merged_col = warehouse[variants[0]].copy()
-                for c in variants[1:]:
-                    merged_col = merged_col.combine_first(warehouse[c])
-                warehouse[base] = merged_col
-                drop_cols = [c for c in variants if c != base]
-                if drop_cols:
-                    warehouse = warehouse.drop(columns=drop_cols)
+        # Clean up true duplicate artifacts only; preserve distinct source lanes.
+        duplicate_groups = {
+            "predicted_winner": ["predicted_winner", "predicted_winner_x", "predicted_winner_y", "predicted_winner_pred"],
+            "prediction_prob": ["prediction_prob", "prediction_prob_x", "prediction_prob_y", "prediction_prob_pred"],
+            "predicted_source": ["predicted_source", "predicted_source_x", "predicted_source_y", "source_pred"],
+            "predicted_winner_foretennis": ["predicted_winner_foretennis", "predicted_winner_foretennis_x", "predicted_winner_foretennis_y"],
+            "prediction_prob_foretennis": ["prediction_prob_foretennis", "prediction_prob_foretennis_x", "prediction_prob_foretennis_y"],
+            "predicted_winner_market": ["predicted_winner_market", "predicted_winner_market_x", "predicted_winner_market_y"],
+            "prediction_prob_market": ["prediction_prob_market", "prediction_prob_market_x", "prediction_prob_market_y"],
+        }
+        for base, variants in duplicate_groups.items():
+            present = [c for c in variants if c in warehouse.columns]
+            if not present:
+                continue
+            merged_col = warehouse[present[0]].copy()
+            for c in present[1:]:
+                merged_col = merged_col.combine_first(warehouse[c])
+            warehouse[base] = merged_col
+            drop_cols = [c for c in present if c != base]
+            if drop_cols:
+                warehouse = warehouse.drop(columns=drop_cols)
 
         # Backfill canonical prediction columns from injected live rows only where still missing.
         if "live_predicted_winner" in warehouse.columns:
