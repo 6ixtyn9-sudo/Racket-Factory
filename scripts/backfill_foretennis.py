@@ -34,6 +34,7 @@ def main():
     parser.add_argument("--mode", choices=["daily", "historical"], default="daily", help="Run mode")
     parser.add_argument("--tour", choices=["atp", "wta"], help="Tour for historical mode")
     parser.add_argument("--year", type=int, help="Year for historical mode")
+    parser.add_argument("--output-dir", default="localdata", help="Output directory")
     args = parser.parse_args()
 
     if args.mode == "historical" and (not args.tour or not args.year):
@@ -123,9 +124,17 @@ def main():
     # Drop duplicates in case of overlaps
     df_preds = df_preds.drop_duplicates(subset=["match_id"])
     
-    # Save the raw extractions to localdata for the warehouse builder to pick up
-    out_file = ROOT / f"localdata/foretennis_preds_{args.mode}.csv"
-    df_preds.to_csv(out_file, index=False)
+    # Save the raw extractions to the output dir for the warehouse builder to pick up
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    if args.mode == "daily":
+        filename = "predictions_foretennis_daily.csv.gz"
+    else:
+        filename = f"predictions_foretennis_{args.tour}_{args.year}.csv.gz"
+        
+    out_file = out_dir / filename
+    df_preds.to_csv(out_file, index=False, compression="gzip")
     logger.info(f"Saved {len(df_preds)} matched predictions to {out_file}")
 
 if __name__ == "__main__":
