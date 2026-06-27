@@ -27,12 +27,38 @@ logging.basicConfig(
 )
 logger = logging.getLogger("edge_miner")
 
-def get_rank_band(rank: float) -> str:
+def get_player_rank_band(rank: float) -> str:
     if pd.isna(rank): return "Unknown"
     if rank <= 10: return "Top 10"
     if rank <= 50: return "11-50"
     if rank <= 100: return "51-100"
     return "100+"
+
+def get_selected_side_rank_band(row: pd.Series) -> str:
+    """Pre-match rank band of the side we would actually back.
+
+    Priority:
+      1. primary prediction (`predicted_winner`)
+      2. ForeTennis prediction
+      3. market favorite as fallback
+    Uses pre-match player rank columns only.
+    """
+    pick = row.get("predicted_winner")
+    if pd.isna(pick) or pick == "":
+        pick = row.get("predicted_winner_foretennis")
+
+    if pd.notna(pick) and pick in {"player_a", "player_b"}:
+        rank_col = "rank_a" if pick == "player_a" else "rank_b"
+        if rank_col in row:
+            return get_player_rank_band(row.get(rank_col))
+
+    oa, ob = row.get("odds_a"), row.get("odds_b")
+    if pd.notna(oa) and pd.notna(ob):
+        fav_col = "rank_a" if oa <= ob else "rank_b"
+        if fav_col in row:
+            return get_player_rank_band(row.get(fav_col))
+
+    return "Unknown"
 
 def get_odds_band(odds: float) -> str:
     if pd.isna(odds): return "Unknown"
@@ -81,8 +107,8 @@ def main() -> int:
         logger.error("Could not load warehouse: %s", e)
         return 1
 
-    # 1. Pre-calculate "Bands"
-    df['winner_rank_band'] = df['_winner_rank'].apply(get_rank_band)
+    # 1. Pre-calculate live-safe feature bands
+    df['selected_rank_band'] = df.apply(get_selected_side_rank_band, axis=1)
     df['fav_odds'] = df.apply(
         lambda r: r['odds_a'] if pd.notna(r.get('odds_a')) and pd.notna(r.get('odds_b'))
                   and r['odds_a'] < r['odds_b'] else r.get('odds_b'), axis=1
@@ -104,7 +130,7 @@ def main() -> int:
         "tour": df['tour'].unique(),
         "_surface": df['_surface'].unique(),
         "fav_odds_band": df['fav_odds_band'].unique(),
-        "winner_rank_band": df['winner_rank_band'].unique(),
+        "selected_rank_band": df['selected_rank_band'].unique(),
         "_series": df['_series'].unique(),
     }
     
@@ -187,7 +213,15 @@ def main() -> int:
     
     # 2. Extract Specific Picks for the Target Date
     target_date = args.date or datetime.now().strftime("%Y-%m-%d")
-    today_df = df[df["match_date"] == target_date]
+    today_df = df[df["match_date"] == target_date].copy()
+
+    # Upcoming/live card should not rely on settled-match-only fields.
+    if "winner" in today_df.columns:
+        today_df = today_df[today_df["winner"].isna() | (today_df["winner"].astype(str).str.strip() == "")]
+    if "selected_rank_band" in today_df.columns:
+        today_df = today_df[today_df["selected_rank_band"] != "Unknown"]
+
+    logger.info("Today candidate rows after live filtering: %d", len(today_df))
     
     picks_to_export = []
     
@@ -230,11 +264,21 @@ def main() -> int:
                 if pd.isna(prob):
                     prob = None
                 
+                selected_pick = row.get("predicted_winner")
+                if pd.isna(selected_pick) or selected_pick == "":
+                    selected_pick = row.get("predicted_winner_foretennis")
+                if pd.isna(selected_pick) or selected_pick == "":
+                    oa, ob = row.get("odds_a"), row.get("odds_b")
+                    if pd.notna(oa) and pd.notna(ob):
+                        selected_pick = "player_a" if oa <= ob else "player_b"
+
                 picks_to_export.append({
                     "match": f"{row.get('player_a', 'A')} vs {row.get('player_b', 'B')}",
                     "date": str(row.get("match_date", target_date)),
                     "bucket": bucket,
                     "pick": best_pick["Verdict"],
+                    "selected_side": selected_pick,
+                    "selected_player": row.get("player_a") if selected_pick == "player_a" else (row.get("player_b") if selected_pick == "player_b" else None),
                     "odds": row.get("fav_odds"),
                     "confidence": prob,
                     "slice_matched": best_pick["Slice"]
