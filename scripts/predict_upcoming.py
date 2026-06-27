@@ -23,7 +23,9 @@ def main():
     
     if px_preds:
         df_px = pd.DataFrame(px_preds)
-        print(df_px[["match_date", "player_home", "player_away", "prob_home", "prob_away", "predicted_winner_name"]].to_string(index=False))
+        cols = [c for c in ["match_date", "match_time", "player_home", "player_away", "prob_home", "prob_away", "predicted_winner_name"] if c in df_px.columns]
+        df_px = df_px.sort_values(by=["match_date", "match_time"]) if "match_time" in df_px.columns else df_px.sort_values(by=["match_date"])
+        print(df_px[cols].to_string(index=False))
     else:
         print("No matches found on PredixSport.")
         
@@ -33,13 +35,17 @@ def main():
     
     if bc_preds:
         df_bc = pd.DataFrame(bc_preds)
-        print(df_bc[["match_date", "player_home", "player_away", "prob_home", "prob_away", "predicted_winner_name"]].to_string(index=False))
+        # force string cast to avoid NA display issues
+        for c in ["match_date", "match_time"]:
+            if c in df_bc.columns:
+                df_bc[c] = df_bc[c].fillna("")
+        cols = [c for c in ["match_date", "match_time", "player_home", "player_away", "prob_home", "prob_away", "predicted_winner_name"] if c in df_bc.columns]
+        df_bc = df_bc.sort_values(by=["match_date", "match_time"]) if "match_time" in df_bc.columns else df_bc.sort_values(by=["match_date"])
+        print(df_bc[cols].to_string(index=False))
     else:
         print("No matches found on BetClan.")
         
-    print("\n="*80)
-    print("Good luck, and have a wonderful time at church!")
-    print("="*80)
+    print("\n" + "="*80)
 
 if __name__ == "__main__":
     main()
