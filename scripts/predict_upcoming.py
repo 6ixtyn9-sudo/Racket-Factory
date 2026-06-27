@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
+from racketfactory.sources.forebet import ForebetPredictor
 
 
 def get_rank_band(rank: float) -> str:
@@ -154,7 +155,21 @@ def main():
     else:
         print("No matches found on BetClan.")
 
-    combined = pd.concat([df for df in [df_px, df_bc] if not df.empty], ignore_index=True) if (not df_px.empty or not df_bc.empty) else pd.DataFrame()
+    print("\n[3] Fetching Forebet AI...")
+    fb = ForebetPredictor()
+    fb_preds = fb.fetch_daily_predictions("today")
+    df_fb = pd.DataFrame(fb_preds) if fb_preds else pd.DataFrame()
+    if not df_fb.empty:
+        df_fb = to_live_card(df_fb, "Forebet")
+        print_section(
+            "Forebet live card",
+            df_fb.sort_values(by=[c for c in ["match_date"] if c in df_fb.columns]),
+            ["match_date", "player_home", "player_away", "match_type", "tour", "_series", "context_used", "prob_home", "prob_away", "pred_confidence", "predicted_winner"],
+        )
+    else:
+        print("No matches found on Forebet.")
+
+    combined = pd.concat([df for df in [df_px, df_bc, df_fb] if not df.empty], ignore_index=True) if (not df_px.empty or not df_bc.empty or not df_fb.empty) else pd.DataFrame()
     if not combined.empty:
         combined["pair_key"] = combined.apply(lambda r: "|".join(sorted([str(r.get("player_home", "")).lower(), str(r.get("player_away", "")).lower()])), axis=1)
         summary = combined.groupby(["match_date", "pair_key"], dropna=False).agg(
@@ -167,12 +182,12 @@ def main():
             context_used=("context_used", "first"),
         ).reset_index()
         print_section(
-            "\n[3] Combined upcoming candidate card",
+            "\n[4] Combined upcoming candidate card",
             summary.sort_values(by=[c for c in ["match_date"] if c in summary.columns]),
             ["match_date", "player_home", "player_away", "match_type", "tour", "_series", "context_used", "sources"],
         )
     else:
-        print("\n[3] Combined upcoming candidate card\n(none)")
+        print("\n[4] Combined upcoming candidate card\n(none)")
 
     print("\n" + "="*80)
 
