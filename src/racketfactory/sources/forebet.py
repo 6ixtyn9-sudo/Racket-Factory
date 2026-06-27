@@ -305,17 +305,31 @@ class ForebetPredictor:
     # ------------------------------------------------------------------
     def parse_page(self, html: str) -> list[dict[str, Any]]:
         """
-        Parse any Forebet page containing match predictions.
+        Parse any Forebet page containing tennis match predictions.
         Returns a list of dicts with:
           match_date, player_home, player_away,
           prob_home, prob_away, predicted_winner ('1' or '2'),
           tournament (if present), source='Forebet'
+        Filters out non-tennis anchors that can appear in shared page chrome.
         """
         soup = BeautifulSoup(html, "html.parser")
         results = []
 
         match_rows = soup.find_all("a", class_="tnmscn")
         for anchor in match_rows:
+            href = str(anchor.get("href", "") or "")
+            if "/tennis/" not in href:
+                continue
+
+            # Try to infer tour/tournament directly from tennis URL shape:
+            # /en/tennis/matches/{tour_slug}/{tournament_slug}/{match_id}
+            tour_slug = ""
+            tournament_slug = ""
+            m = re.search(r"/tennis/matches/([^/]+)/([^/]+)/", href)
+            if m:
+                tour_slug = m.group(1).strip()
+                tournament_slug = m.group(2).strip()
+
             # --- Players ---------------------------------------------------
             home_span = anchor.find("span", class_="homeTeam")
             away_span = anchor.find("span", class_="awayTeam")
@@ -337,19 +351,19 @@ class ForebetPredictor:
                 except ValueError:
                     match_date = None
 
-            # --- Tournament (only present on daily overview pages) ---------
+            # --- Tournament -----------------------------------------------
             tournament_name = None
-            # On daily pages, the tournament is usually in a preceding heading
-            # or we can infer it from the page context. For tournament pages,
-            # the caller already knows the tournament.
-            # Best-effort: look for a preceding .heading div
+            if tournament_slug:
+                tournament_name = tournament_slug.replace("-", " ").title()
             row_container = anchor.find_parent("div", class_="rcnt")
             if not row_container:
                 row_container = anchor.find_parent("div")
             if row_container:
                 prev_heading = row_container.find_previous("div", class_="heading")
                 if prev_heading:
-                    tournament_name = prev_heading.get_text(strip=True)
+                    heading_text = prev_heading.get_text(" ", strip=True)
+                    if heading_text:
+                        tournament_name = heading_text
 
             # --- Probabilities & Prediction --------------------------------
             prob_home = None
@@ -384,6 +398,8 @@ class ForebetPredictor:
                 "prob_away": prob_away,
                 "predicted_winner": predicted_winner,
                 "tournament": tournament_name,
+                "tour_slug": tour_slug,
+                "tournament_slug": tournament_slug,
                 "source": "Forebet",
             })
 

@@ -31,7 +31,7 @@ def infer_tour_and_series(text: str) -> tuple[str, str]:
         if any(x in lower for x in ["men", "atp", "boys"]):
             return ("ATP", "Grand Slam")
         return ("UNKNOWN", "Grand Slam")
-    if any(x in lower for x in ["atp challenger", "challenger"]):
+    if any(x in lower for x in ["piracicaba", "targu mures", "challenger", "atp challenger"]):
         return ("CHALLENGER", "Challenger")
     if "itf women" in lower:
         return ("ITF-W", "ITF")
@@ -72,7 +72,7 @@ def infer_from_players(player_home: str, player_away: str) -> tuple[str, str]:
 
 
 def classify_row(row: pd.Series) -> tuple[str, str, str]:
-    context_cols = ["tournament", "event_level", "match_label", "event", "competition", "category", "league"]
+    context_cols = ["tournament", "tour_slug", "tournament_slug", "event_level", "match_label", "event", "competition", "category", "league"]
     context_parts = [str(row.get(c, "") or "") for c in context_cols if c in row.index]
     context_text = " | ".join([x for x in context_parts if x.strip()])
     tour, series = infer_tour_and_series(context_text)
@@ -93,6 +93,21 @@ def to_live_card(df: pd.DataFrame, source_name: str) -> pd.DataFrame:
     out["match_label"] = out.get("match_label", "")
     if "tournament" not in out.columns:
         out["tournament"] = out.get("match_label", "")
+    out["player_home"] = out.get("player_home", "").astype(str).str.strip()
+    out["player_away"] = out.get("player_away", "").astype(str).str.strip()
+    if source_name == "Forebet":
+        bad_terms = {"fc", "united", "city", "vaasa", "gnistan", "uzbekistan", "congo"}
+        def looks_like_non_tennis(r: pd.Series) -> bool:
+            home = str(r.get("player_home", "")).lower()
+            away = str(r.get("player_away", "")).lower()
+            combo = f"{home} {away}"
+            if any(term in combo.split() for term in bad_terms):
+                return True
+            tournament = str(r.get("tournament", "")).lower()
+            if any(term in tournament for term in ["liga", "premier league", "cup qualifying", "vs vaasa"]):
+                return True
+            return False
+        out = out[~out.apply(looks_like_non_tennis, axis=1)].copy()
     classified = out.apply(classify_row, axis=1, result_type="expand")
     out[["tour", "_series", "context_used"]] = classified
     out["match_type"] = out.apply(
