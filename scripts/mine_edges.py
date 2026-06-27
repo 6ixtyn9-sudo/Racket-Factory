@@ -434,7 +434,7 @@ def main() -> int:
                         best_roi = slice_roi
                         best_pick = res
             
-            if best_pick:
+            if best_pick and best_pick["Verdict"] in {"EDGE CONFIRMED", "WATCHLIST", "FADE THIS SIGNAL"}:
                 bucket = "CERTIFIED_CLEAN" if best_pick["Verdict"] == "EDGE CONFIRMED" else ("WATCHLIST" if best_pick["Verdict"] == "WATCHLIST" else "CAUTION")
                 prob = row.get("prediction_prob")
                 if pd.isna(prob):
