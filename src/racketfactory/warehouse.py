@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from racketfactory.entities import player_key
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
+from racketfactory.sources.forebet import ForebetPredictor
 
 logger = logging.getLogger(__name__)
 
@@ -32,20 +33,30 @@ def infer_tour_and_series(text: str) -> tuple[str, str]:
         return ("ATP", "ATP500")
     if "atp 250" in lower or any(x in lower for x in ["atp mallorca", "atp eastbourne"]):
         return ("ATP", "ATP250")
-    if any(x in lower for x in ["atp challenger", "challenger"]):
+    if any(x in lower for x in ["piracicaba", "targu mures", "challenger", "atp challenger", "challenger-men", "challenger-women"]):
         return ("CHALLENGER", "Challenger")
-    if "wta" in lower:
+    if "itf women" in lower or "itf-w" in lower:
+        return ("ITF-W", "ITF")
+    if any(x in lower for x in ["itf men", "itf m", "itf-m"]):
+        return ("ITF-M", "ITF")
+    if "utr" in lower:
+        return ("UTR", "UTR")
+    if "wta" in lower or "wta-singles" in lower or "wta-doubles" in lower:
         return ("WTA", "WTA")
-    if "atp" in lower:
+    if "atp" in lower or "atp-singles" in lower or "atp-doubles" in lower:
         return ("ATP", "ATP")
     return ("UNKNOWN", "UNKNOWN")
 
 
 def build_live_rows() -> pd.DataFrame:
     rows = []
-    for source_name, predictor in [("PredixSport", PredixSportPredictor()), ("BetClan", BetClanPredictor())]:
+    for source_name, predictor, fetcher in [
+        ("PredixSport", PredixSportPredictor(), lambda p: p.fetch_daily()),
+        ("BetClan", BetClanPredictor(), lambda p: p.fetch_daily()),
+        ("Forebet", ForebetPredictor(), lambda p: p.fetch_daily_predictions("today")),
+    ]:
         try:
-            preds = predictor.fetch_daily()
+            preds = fetcher(predictor)
         except Exception as e:
             logger.warning("Live source %s failed during warehouse build: %s", source_name, e)
             preds = []
@@ -60,17 +71,32 @@ def build_live_rows() -> pd.DataFrame:
     if card.empty:
         return card
 
+    today_str = date.today().isoformat()
+    if "match_date" in card.columns:
+        card["match_date"] = card["match_date"].astype(str).str.strip()
+        card = card[card["match_date"] == today_str].copy()
+    if card.empty:
+        return card
+
+    card["player_home"] = card.get("player_home", "").astype(str).str.strip()
+    card["player_away"] = card.get("player_away", "").astype(str).str.strip()
+    card = card[(card["player_home"] != "") & (card["player_away"] != "")].copy()
+    if card.empty:
+        return card
+
+    if "tour_slug" in card.columns:
+        card = card[~((card["source"] == "Forebet") & (~card["tour_slug"].astype(str).str.contains("tennis|atp|wta|challenger", case=False, na=False)))].copy()
+    if card.empty:
+        return card
+
     card["match_type"] = card.apply(
         lambda r: "Doubles" if "/" in str(r.get("player_home", "")) or "/" in str(r.get("player_away", "")) else "Singles",
         axis=1,
     )
-    card = card[card["match_type"] == "Singles"].copy()
-    if card.empty:
-        return card
 
-    context_cols = [c for c in ["tournament", "event_level", "event_text"] if c in card.columns]
+    context_priority_cols = ["tournament", "tour_slug", "tournament_slug", "event_level", "event_text", "match_label", "event", "competition", "category", "league"]
     card["context_used"] = card.apply(
-        lambda r: " | ".join([str(r.get(c, "") or "") for c in context_cols if str(r.get(c, "") or "").strip()]),
+        lambda r: " | ".join([str(r.get(c, "") or "") for c in context_priority_cols if str(r.get(c, "") or "").strip()]),
         axis=1,
     )
     inferred = card["context_used"].apply(infer_tour_and_series)
@@ -78,7 +104,7 @@ def build_live_rows() -> pd.DataFrame:
     card["_series"] = inferred.apply(lambda x: x[1])
     card["_surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
     card.loc[card["_surface"].isin(["", "Nan", "None"]), "_surface"] = ""
-    card = card[card["tour"].isin(["ATP", "WTA", "CHALLENGER"])]
+    card = card[card["tour"].isin(["ATP", "WTA", "CHALLENGER", "ITF-M", "ITF-W", "UTR"])]
     if card.empty:
         return card
 
@@ -87,9 +113,12 @@ def build_live_rows() -> pd.DataFrame:
     card["_sorted_players"] = card.apply(lambda r: tuple(sorted([r["p_a_key"], r["p_b_key"]])), axis=1)
 
     grouped_rows = []
-    for (_, match_date, sorted_players), g in card.groupby(["tour", "match_date", "_sorted_players"], dropna=False):
+    for (_, match_date, match_type, sorted_players), g in card.groupby(["tour", "match_date", "match_type", "_sorted_players"], dropna=False):
+        g = g.copy()
+        g["name_score"] = g.get("player_home", "").astype(str).str.len() + g.get("player_away", "").astype(str).str.len()
+        g = g.sort_values("name_score", ascending=False)
         first = g.iloc[0]
-        tournament = first.get("tournament", "")
+        tournament = first.get("tournament", "") or first.get("tournament_slug", "") or first.get("context_used", "")
         winners = []
         probs = []
         for _, rr in g.iterrows():
