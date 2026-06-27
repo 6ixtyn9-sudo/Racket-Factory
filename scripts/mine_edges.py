@@ -47,17 +47,17 @@ def get_confidence_band(prob: float) -> str:
 
 def get_cross_source_agree(row: pd.Series) -> str:
     """
-    Compare Forebet (primary) vs ForeTennis (secondary) predictions.
-    Returns one of: Both | Disagree | ForebetOnly | ForeTennisOnly
+    Compare Market baseline vs ForeTennis AI predictions.
+    Returns one of: Both | Disagree | MarketOnly | ForeTennisOnly
     """
-    fb = row.get("predicted_winner")          # Forebet canonical
-    ft = row.get("predicted_winner_foretennis")  # ForeTennis suffixed
-    has_fb = pd.notna(fb) and fb != ""
+    mkt = row.get("predicted_winner_market") 
+    ft = row.get("predicted_winner_foretennis")
+    has_mkt = pd.notna(mkt) and mkt != ""
     has_ft = pd.notna(ft) and ft != ""
-    if has_fb and has_ft:
-        return "Both" if fb == ft else "Disagree"
-    if has_fb:
-        return "ForebetOnly"
+    if has_mkt and has_ft:
+        return "Both" if mkt == ft else "Disagree"
+    if has_mkt:
+        return "MarketOnly"
     if has_ft:
         return "ForeTennisOnly"
     return "Unknown"
@@ -104,8 +104,8 @@ def main() -> int:
     }
     
     # Add prediction dimensions only when that data is present
-    if 'predicted_winner' in df.columns:
-        dimensions['predicted_winner'] = df['predicted_winner'].unique()
+    if 'predicted_winner_foretennis' in df.columns:
+        dimensions['predicted_winner_foretennis'] = df['predicted_winner_foretennis'].unique()
     if 'pred_confidence' in df.columns:
         dimensions['pred_confidence'] = df['pred_confidence'].unique()
     if 'cross_source_agree' in df.columns:
