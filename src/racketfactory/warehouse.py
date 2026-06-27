@@ -48,6 +48,39 @@ def infer_tour_and_series(text: str) -> tuple[str, str]:
     return ("UNKNOWN", "UNKNOWN")
 
 
+def normalize_person_name(name: str) -> str:
+    name = " ".join(str(name or "").replace(".", " ").split()).strip().lower()
+    if not name:
+        return ""
+    parts = name.split()
+    if len(parts) >= 2 and len(parts[0]) == 1:
+        parts = parts[1:]
+    return " ".join(parts)
+
+
+def surname_tokens(name: str) -> tuple[str, ...]:
+    parts = normalize_person_name(name).split()
+    if not parts:
+        return tuple()
+    if len(parts) == 1:
+        return (parts[-1],)
+    return tuple(parts[-2:])
+
+
+def live_player_key(name: str) -> str:
+    tail = " ".join(surname_tokens(name))
+    return tail or normalize_person_name(name) or player_key(name)
+
+
+def canonical_display_name(name: str) -> str:
+    raw = " ".join(str(name or "").split()).strip()
+    if not raw:
+        return ""
+    if "/" in raw:
+        return " / ".join(part.strip() for part in raw.split("/"))
+    return raw
+
+
 def build_live_rows() -> pd.DataFrame:
     rows = []
     for source_name, predictor, fetcher in [
@@ -78,8 +111,8 @@ def build_live_rows() -> pd.DataFrame:
     if card.empty:
         return card
 
-    card["player_home"] = card.get("player_home", "").astype(str).str.strip()
-    card["player_away"] = card.get("player_away", "").astype(str).str.strip()
+    card["player_home"] = card.get("player_home", "").astype(str).map(canonical_display_name)
+    card["player_away"] = card.get("player_away", "").astype(str).map(canonical_display_name)
     card = card[(card["player_home"] != "") & (card["player_away"] != "")].copy()
     if card.empty:
         return card
@@ -108,12 +141,15 @@ def build_live_rows() -> pd.DataFrame:
     if card.empty:
         return card
 
-    card["p_a_key"] = card["player_home"].apply(player_key)
-    card["p_b_key"] = card["player_away"].apply(player_key)
+    card["p_a_key"] = card["player_home"].apply(live_player_key)
+    card["p_b_key"] = card["player_away"].apply(live_player_key)
     card["_sorted_players"] = card.apply(lambda r: tuple(sorted([r["p_a_key"], r["p_b_key"]])), axis=1)
 
     grouped_rows = []
     for (_, match_date, match_type, sorted_players), g in card.groupby(["tour", "match_date", "match_type", "_sorted_players"], dropna=False):
+        g = g.copy()
+        g["name_score"] = g.get("player_home", "").astype(str).str.len() + g.get("player_away", "").astype(str).str.len()
+        g = g.sort_values("name_score", ascending=False)
         g = g.copy()
         g["name_score"] = g.get("player_home", "").astype(str).str.len() + g.get("player_away", "").astype(str).str.len()
         g = g.sort_values("name_score", ascending=False)
