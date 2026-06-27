@@ -80,11 +80,15 @@ def main():
                 mapped = ft.map_prediction_to_player(p, player_a, player_b)
                 if mapped:
                     matched_predictions.append({
-                        "match_id": idx,
                         "match_date": date_str,
-                        "predicted_winner_foretennis": mapped["predicted_winner"],
-                        "prob_home_foretennis": mapped.get("prob_home"),
-                        "prob_away_foretennis": mapped.get("prob_away"),
+                        "tour": wh.at[idx, "tour"],
+                        "tournament": wh.at[idx, "tournament"],
+                        "player_a": player_a,
+                        "player_b": player_b,
+                        "predicted_winner": mapped["predicted_winner"],
+                        "prediction_prob": mapped.get("prediction_prob"),
+                        "source": "ForeTennis",
+                        "match_id": idx,  # Keep for deduplication
                     })
                     break
 
@@ -107,11 +111,15 @@ def main():
                     mapped = ft.map_prediction_to_player(p, player_a, player_b)
                     if mapped:
                         matched_predictions.append({
-                            "match_id": idx,
                             "match_date": date_str,
-                            "predicted_winner_foretennis": mapped["predicted_winner"],
-                            "prob_home_foretennis": mapped.get("prob_home"),
-                            "prob_away_foretennis": mapped.get("prob_away"),
+                            "tour": wh.at[idx, "tour"],
+                            "tournament": wh.at[idx, "tournament"],
+                            "player_a": player_a,
+                            "player_b": player_b,
+                            "predicted_winner": mapped["predicted_winner"],
+                            "prediction_prob": mapped.get("prediction_prob"),
+                            "source": "ForeTennis",
+                            "match_id": idx,
                         })
                         break
 
