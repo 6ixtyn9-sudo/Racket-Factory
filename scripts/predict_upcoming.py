@@ -71,6 +71,33 @@ def infer_from_players(player_home: str, player_away: str) -> tuple[str, str]:
     return ("UNKNOWN", "UNKNOWN")
 
 
+def normalize_person_name(name: str) -> str:
+    name = " ".join(str(name or "").replace(".", " ").split()).strip().lower()
+    if not name:
+        return ""
+    parts = name.split()
+    if len(parts) >= 2 and len(parts[0]) == 1:
+        return " ".join(parts[1:])
+    return name
+
+
+def canonical_display_name(name: str) -> str:
+    raw = " ".join(str(name or "").split()).strip()
+    if not raw:
+        return ""
+    if "/" in raw:
+        return " / ".join(part.strip() for part in raw.split("/"))
+    return raw
+
+
+def matchup_key(player_home: str, player_away: str) -> str:
+    names = sorted([
+        normalize_person_name(player_home),
+        normalize_person_name(player_away),
+    ])
+    return "|".join(names)
+
+
 def classify_row(row: pd.Series) -> tuple[str, str, str]:
     context_cols = ["tournament", "tour_slug", "tournament_slug", "event_level", "match_label", "event", "competition", "category", "league"]
     context_parts = [str(row.get(c, "") or "") for c in context_cols if c in row.index]
@@ -93,8 +120,8 @@ def to_live_card(df: pd.DataFrame, source_name: str) -> pd.DataFrame:
     out["match_label"] = out.get("match_label", "")
     if "tournament" not in out.columns:
         out["tournament"] = out.get("match_label", "")
-    out["player_home"] = out.get("player_home", "").astype(str).str.strip()
-    out["player_away"] = out.get("player_away", "").astype(str).str.strip()
+    out["player_home"] = out.get("player_home", "").astype(str).map(canonical_display_name)
+    out["player_away"] = out.get("player_away", "").astype(str).map(canonical_display_name)
     if source_name == "Forebet":
         bad_terms = {"fc", "united", "city", "vaasa", "gnistan", "uzbekistan", "congo"}
         def looks_like_non_tennis(r: pd.Series) -> bool:
@@ -186,15 +213,17 @@ def main():
 
     combined = pd.concat([df for df in [df_px, df_bc, df_fb] if not df.empty], ignore_index=True) if (not df_px.empty or not df_bc.empty or not df_fb.empty) else pd.DataFrame()
     if not combined.empty:
-        combined["pair_key"] = combined.apply(lambda r: "|".join(sorted([str(r.get("player_home", "")).lower(), str(r.get("player_away", "")).lower()])), axis=1)
+        combined["pair_key"] = combined.apply(lambda r: matchup_key(r.get("player_home", ""), r.get("player_away", "")), axis=1)
+        combined["name_score"] = combined["player_home"].astype(str).str.len() + combined["player_away"].astype(str).str.len()
+        combined = combined.sort_values(by=[c for c in ["match_date", "name_score"] if c in combined.columns], ascending=[True, False])
         summary = combined.groupby(["match_date", "pair_key"], dropna=False).agg(
             sources=("source", lambda s: ", ".join(sorted(set(map(str, s))))),
             player_home=("player_home", "first"),
             player_away=("player_away", "first"),
             match_type=("match_type", "first"),
-            tour=("tour", "first"),
-            _series=("_series", "first"),
-            context_used=("context_used", "first"),
+            tour=("tour", lambda s: next((x for x in s if str(x) not in {"", "UNKNOWN"}), s.iloc[0])),
+            _series=("_series", lambda s: next((x for x in s if str(x) not in {"", "UNKNOWN"}), s.iloc[0])),
+            context_used=("context_used", lambda s: next((x for x in s if str(x) not in {"", "<empty>"}), s.iloc[0])),
         ).reset_index()
         print_section(
             "\n[4] Combined upcoming candidate card",
