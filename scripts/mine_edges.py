@@ -12,7 +12,7 @@ import sys
 import json
 from datetime import datetime
 from pathlib import Path
-from itertools import product
+from itertools import combinations
 
 # Ensure src is in path
 ROOT = Path(__file__).resolve().parent.parent
@@ -120,45 +120,69 @@ def main() -> int:
         dimensions[k] = [x for x in v if pd.notna(x) and x != "Unknown" and x != ""]
 
     logger.info("Mining for Bankers and Robbers across %d dimensions...", len(dimensions))
-    
+
     results = []
     dim_names = list(dimensions.keys())
-    
-    # Pre-filter out 'Unknown' and NaNs from dimensions so they don't bloat the groupby
-    for d in dim_names:
-        df = df[~df[d].isin(["Unknown", ""])]
-        df = df.dropna(subset=[d])
 
-    # Super-fast pandas grouped mining
-    for combo, slice_df in df.groupby(dim_names):
-        if len(slice_df) < args.min_n:
-            continue
-            
-        res = assay_segment(slice_df)
-        
-        if res.grade in ["GOLD", "PLATINUM", "SILVER"] or res.tier == "ROBBER":
-            results.append({
-                "Slice": " | ".join([f"{n}:{v}" for n, v in zip(dim_names, combo)]),
-                "Combo_Dict": dict(zip(dim_names, combo)),
-                "N": res.n,
-                "WinRate": f"{res.win_rate:.2%}",
-                "Shrunk": f"{res.shrunk_rate:.2%}",
-                "ROI": f"{res.roi:.2%}",
-                "Grade": res.grade,
-                "Tier": res.tier,
-                "Verdict": res.verdict
-            })
+    # Mine across lower-dimensional combinations first so live rows have a much
+    # better chance of matching a historically profitable slice.
+    min_dims = 3
+    max_dims = min(5, len(dim_names))
+    logger.info("Evaluating dimension combinations from %dD to %dD...", min_dims, max_dims)
+
+    seen_signatures = set()
+    for r in range(min_dims, max_dims + 1):
+        for subset in combinations(dim_names, r):
+            subset = list(subset)
+            subset_df = df.copy()
+            for d in subset:
+                subset_df = subset_df[~subset_df[d].isin(["Unknown", ""])]
+                subset_df = subset_df.dropna(subset=[d])
+
+            if subset_df.empty:
+                continue
+
+            for combo, slice_df in subset_df.groupby(subset):
+                if not isinstance(combo, tuple):
+                    combo = (combo,)
+                if len(slice_df) < args.min_n:
+                    continue
+
+                res = assay_segment(slice_df)
+                if res.grade not in ["GOLD", "PLATINUM", "SILVER"] and res.tier != "ROBBER":
+                    continue
+
+                combo_dict = dict(zip(subset, combo))
+                signature = tuple(sorted(combo_dict.items()))
+                if signature in seen_signatures:
+                    continue
+                seen_signatures.add(signature)
+
+                results.append({
+                    "Slice": " | ".join([f"{n}:{v}" for n, v in combo_dict.items()]),
+                    "Combo_Dict": combo_dict,
+                    "Dims": len(combo_dict),
+                    "N": res.n,
+                    "WinRate": f"{res.win_rate:.2%}",
+                    "Shrunk": f"{res.shrunk_rate:.2%}",
+                    "ROI": f"{res.roi:.2%}",
+                    "Grade": res.grade,
+                    "Tier": res.tier,
+                    "Verdict": res.verdict
+                })
 
     if not results:
         logger.info("No high-conviction edges found.")
         return 0
 
-    report = pd.DataFrame(results).sort_values("ROI", ascending=False)
+    report = pd.DataFrame(results)
+    report["ROI_num"] = report["ROI"].str.rstrip('%').astype(float)
+    report = report.sort_values(["Verdict", "ROI_num", "N", "Dims"], ascending=[True, False, False, True])
     
     print("\n" + "="*120)
     print("🚀 RACKET FACTORY EDGE MINER: SIGNAL INTELLIGENCE MODE")
     print("="*120)
-    print(report.drop(columns=["Combo_Dict"]).to_string(index=False))
+    print(report.drop(columns=["Combo_Dict", "ROI_num"]).to_string(index=False))
     print("="*120 + "\n")
     
     # 2. Extract Specific Picks for the Target Date
@@ -180,18 +204,28 @@ def main() -> int:
                     if row.get(dim_name) != dim_val:
                         match_all = False
                         break
-                
+
                 if match_all:
-                    # Pick the one with the highest ROI if multiple slices match
+                    # Prefer stronger verdicts, then higher dimensional specificity,
+                    # then better ROI.
                     slice_roi = float(res["ROI"].strip('%')) / 100.0
-                    if slice_roi > best_roi:
+                    verdict_rank = {"EDGE CONFIRMED": 3, "WATCHLIST": 2, "FADE THIS SIGNAL": 1}.get(res["Verdict"], 0)
+                    best_verdict_rank = -1 if best_pick is None else {"EDGE CONFIRMED": 3, "WATCHLIST": 2, "FADE THIS SIGNAL": 1}.get(best_pick["Verdict"], 0)
+                    best_dims = -1 if best_pick is None else int(best_pick.get("Dims", 0))
+                    cur_dims = int(res.get("Dims", 0))
+                    if (
+                        best_pick is None
+                        or verdict_rank > best_verdict_rank
+                        or (verdict_rank == best_verdict_rank and cur_dims > best_dims)
+                        or (verdict_rank == best_verdict_rank and cur_dims == best_dims and slice_roi > best_roi)
+                    ):
                         best_roi = slice_roi
                         best_pick = res
             
             if best_pick:
                 # Format for the WhatsApp Notifier
                 is_robber = best_pick["Tier"] == "ROBBER"
-                bucket = "CERTIFIED_CLEAN" if not is_robber else "CAUTION"
+                bucket = "CERTIFIED_CLEAN" if best_pick["Verdict"] == "EDGE CONFIRMED" else ("WATCHLIST" if best_pick["Verdict"] == "WATCHLIST" else "CAUTION")
                 prob = row.get("prediction_prob")
                 if pd.isna(prob):
                     prob = None

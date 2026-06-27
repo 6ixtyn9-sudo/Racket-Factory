@@ -1,13 +1,13 @@
 """
 Racket Factory Assay Engine (Ma Golide Enhanced)
-Statistical verification of betting edges using Wilson intervals, 
+Statistical verification of betting edges using Wilson intervals,
 shrinkage estimators, and Banker/Robber classification.
 """
 import math
-import pandas as pd
-import numpy as np
-from scipy.stats import norm
 from typing import NamedTuple, Optional
+
+import pandas as pd
+from scipy.stats import norm
 
 class AssayResult(NamedTuple):
     win_rate: float
@@ -19,6 +19,40 @@ class AssayResult(NamedTuple):
     grade: str
     tier: str  # BANKER, ROBBER, or NEUTRAL
     verdict: str
+
+
+def roi_from_bets(decimal_odds: list[float], won_flags: list[bool]) -> float:
+    """Unit-stake ROI across a sequence of bets."""
+    if not decimal_odds:
+        return 0.0
+    returns = [(odds if won else 0.0) for odds, won in zip(decimal_odds, won_flags)]
+    return (sum(returns) / len(returns)) - 1.0
+
+
+def odds_band(odds: float) -> str:
+    """Coarse odds buckets used by the legacy tests and summaries."""
+    if odds < 1.20:
+        return "1.00-1.20"
+    if odds < 1.50:
+        return "1.20-1.50"
+    if odds < 1.75:
+        return "1.50-1.75"
+    if odds < 2.00:
+        return "1.75-2.00"
+    if odds < 2.50:
+        return "2.00-2.50"
+    return "2.50+"
+
+
+def score_rows(rows: list[dict]) -> dict[str, float | int]:
+    """Legacy convenience scorer used by tests."""
+    n = len(rows)
+    wins = sum(1 for row in rows if row.get("won"))
+    roi = roi_from_bets(
+        [float(row.get("decimal_odds", 0.0)) for row in rows],
+        [bool(row.get("won", False)) for row in rows],
+    )
+    return {"n": n, "wins": wins, "roi": roi}
 
 def wilson_score_interval(successes: int, trials: int, confidence: float = 0.95) -> tuple[float, float]:
     """Calculate the Wilson score interval for a binomial proportion."""
@@ -130,6 +164,8 @@ def assay_segment(df: pd.DataFrame, break_even: Optional[float] = None) -> Assay
         verdict = "EDGE CONFIRMED"
     elif tier == "ROBBER":
         verdict = "FADE THIS SIGNAL"
+    elif grade == "SILVER" and tier == "BANKER":
+        verdict = "WATCHLIST"
     elif grade == "CHARCOAL":
         verdict = "INSUFFICIENT SAMPLE"
     else:
