@@ -49,17 +49,19 @@ def infer_tour_and_series(text: str) -> tuple[str, str]:
 
 
 def normalize_person_name(name: str) -> str:
-    name = " ".join(str(name or "").replace(".", " ").split()).strip().lower()
+    name = " ".join(str(name or "").replace(".", " ").replace("/", " / ").split()).strip().lower()
     if not name:
         return ""
     parts = name.split()
+    if "/" in parts:
+        return " ".join(parts)
     if len(parts) >= 2 and len(parts[0]) == 1:
         parts = parts[1:]
     return " ".join(parts)
 
 
 def surname_tokens(name: str) -> tuple[str, ...]:
-    parts = normalize_person_name(name).split()
+    parts = [p for p in normalize_person_name(name).split() if p != "/"]
     if not parts:
         return tuple()
     if len(parts) == 1:
@@ -68,8 +70,16 @@ def surname_tokens(name: str) -> tuple[str, ...]:
 
 
 def live_player_key(name: str) -> str:
+    normalized = normalize_person_name(name)
+    if "/" in normalized:
+        parts = [part.strip() for part in normalized.split("/")]
+        member_keys = []
+        for part in parts:
+            tail = " ".join(surname_tokens(part))
+            member_keys.append(tail or normalize_person_name(part) or player_key(part))
+        return " / ".join(member_keys)
     tail = " ".join(surname_tokens(name))
-    return tail or normalize_person_name(name) or player_key(name)
+    return tail or normalized or player_key(name)
 
 
 def canonical_display_name(name: str) -> str:
@@ -79,6 +89,14 @@ def canonical_display_name(name: str) -> str:
     if "/" in raw:
         return " / ".join(part.strip() for part in raw.split("/"))
     return raw
+
+
+def choose_display_name(values: pd.Series) -> str:
+    vals = [canonical_display_name(v) for v in values if str(v or "").strip()]
+    if not vals:
+        return ""
+    vals = sorted(set(vals), key=lambda x: (-len(x), x))
+    return vals[0]
 
 
 def build_live_rows() -> pd.DataFrame:
@@ -172,8 +190,8 @@ def build_live_rows() -> pd.DataFrame:
             "tour": first.get("tour"),
             "tournament": tournament,
             "round": "",
-            "player_a": first.get("player_home"),
-            "player_b": first.get("player_away"),
+            "player_a": choose_display_name(g["player_home"]),
+            "player_b": choose_display_name(g["player_away"]),
             "winner": "",
             "score": "",
             "odds_a": pd.NA,

@@ -21,6 +21,7 @@ ITF-W
 UTR
 live injection is no longer singles-only; doubles can also enter the warehouse
 scripts/predict_upcoming.py was upgraded into a lean live-card diagnostic that merges cross-source rows more cleanly, including abbreviated vs full-name variants
+warehouse live-row injection now also attempts to prefer fuller display names when multiple sources describe the same matchup
 Important: this does not mean the system will always emit picks. A result like 0 actionable picks can now be a legitimate model outcome on a sparse slate rather than a broken pipeline.
 
 Quickstart
@@ -41,7 +42,6 @@ Inspect upcoming/live prediction surfaces:
 Bash
 
 PYTHONPATH=src python3 scripts/predict_upcoming.py
-
 Rebuild warehouse with same-day injected live rows:
 
 Bash
