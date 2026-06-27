@@ -1,0 +1,109 @@
+name: Autonomous Hoop Factory 3-Hour Service
+
+on:
+  schedule:
+    # Wake every 3 hours (00,03,06,09,12,15,18,21 UTC). The first wake of the
+    # local day runs the full morning heavy pipeline; later wakes accumulate
+    # the late slate without disturbing the locked morning baseline.
+    - cron: '0 0,3,6,9,12,15,18,21 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Execution mode'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto             # smart schedule: morning heavy OR intraday discovery
+          - official_morning # force a full morning re-pick (overwrites baseline)
+          - picks_only       # re-mine + emit picks without heavy capture/build
+
+jobs:
+  run-autonomous-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # Optional — pipeline degrades gracefully if any are unset.
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+      BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY }}
+      CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
+      CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
+      # Keep CI on the operator's wall clock so the morning/intraday split and
+      # the same-day pick filter behave exactly like a local run.
+      TZ: 'Africa/Johannesburg'
+      NBA_API_TIMEOUT: '30'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install supabase
+
+      - name: Restore localdata state (cache)
+        uses: actions/cache/restore@v4
+        with:
+          path: localdata
+          key: localdata-main-${{ github.run_id }}
+          restore-keys: |
+            localdata-main-
+
+      - name: Restore committed data (override stale cache)
+        # Committed files under localdata/ (registries + committed history)
+        # survive cache eviction, but actions/cache/restore unpacks localdata/
+        # AFTER checkout and can overwrite them with stale copies. Re-check out
+        # every git-tracked localdata file from HEAD so live versions win.
+        run: |
+          set -e
+          mkdir -p localdata
+          for f in $(git ls-files localdata/); do
+            git checkout HEAD -- "$f" && echo "restored committed: $f"
+          done
+          echo "consensus edges present: $(python3 -c "import json;d=json.load(open('localdata/edges_consensus.json'));print(len(d.get('edges', d if isinstance(d,list) else [])))" 2>/dev/null || echo n/a)"
+
+      - name: Execute autonomous smart schedule
+        run: |
+          MODE='${{ github.event.inputs.mode }}'
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$MODE" ] && [ "$MODE" != "auto" ]; then
+            echo ">>> Manual mode: $MODE"
+            if [ "$MODE" = "official_morning" ]; then
+              PYTHONPATH=src python3 scripts/daily.py --force-repick
+            elif [ "$MODE" = "picks_only" ]; then
+              PYTHONPATH=src python3 scripts/daily.py --picks-only
+            fi
+          else
+            # Exactly one autonomous iteration of the smart accumulating ledger.
+            PYTHONPATH=src python3 scripts/daily.py --auto-once
+          fi
+
+      - name: Persist localdata state (cache)
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: localdata
+          key: localdata-main-${{ github.run_id }}
+
+      - name: Upload pick ledgers & reports as artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: HoopFactory-Reports
+          path: |
+            localdata/*.txt
+            localdata/*.json
+            localdata/*.md
+          retention-days: 14
+          if-no-files-found: ignore
