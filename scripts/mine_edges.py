@@ -37,9 +37,37 @@ def get_odds_band(odds: float) -> str:
     if odds < 2.0: return "1.6-2.0"
     return "2.0+"
 
+def get_confidence_band(prob: float) -> str:
+    """Bucket prediction probability into confidence tiers."""
+    if pd.isna(prob): return "Unknown"
+    if prob >= 0.70: return "High"    # ≥70% confident
+    if prob >= 0.60: return "Medium"  # 60–70%
+    return "Low"                       # <60%
+
+
+def get_cross_source_agree(row: pd.Series) -> str:
+    """
+    Compare Forebet (primary) vs ForeTennis (secondary) predictions.
+    Returns one of: Both | Disagree | ForebetOnly | ForeTennisOnly
+    """
+    fb = row.get("predicted_winner")          # Forebet canonical
+    ft = row.get("predicted_winner_foretennis")  # ForeTennis suffixed
+    has_fb = pd.notna(fb) and fb != ""
+    has_ft = pd.notna(ft) and ft != ""
+    if has_fb and has_ft:
+        return "Both" if fb == ft else "Disagree"
+    if has_fb:
+        return "ForebetOnly"
+    if has_ft:
+        return "ForeTennisOnly"
+    return "Unknown"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Mine the warehouse for automated edges")
     ap.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse")
+    ap.add_argument("--min-n", type=int, default=15,
+                    help="Minimum matches per slice (default 15)")
     args = ap.parse_args()
 
     try:
@@ -50,11 +78,23 @@ def main() -> int:
 
     # 1. Pre-calculate "Bands"
     df['winner_rank_band'] = df['_winner_rank'].apply(get_rank_band)
-    df['fav_odds'] = df.apply(lambda r: r['odds_a'] if r['odds_a'] < r['odds_b'] else r['odds_b'], axis=1)
+    df['fav_odds'] = df.apply(
+        lambda r: r['odds_a'] if pd.notna(r.get('odds_a')) and pd.notna(r.get('odds_b'))
+                  and r['odds_a'] < r['odds_b'] else r.get('odds_b'), axis=1
+    )
     df['fav_odds_band'] = df['fav_odds'].apply(get_odds_band)
+
+    # pred_confidence — based on Forebet primary probability
+    if 'prediction_prob' in df.columns:
+        df['pred_confidence'] = df['prediction_prob'].apply(get_confidence_band)
+
+    # cross_source_agree — Forebet vs ForeTennis agreement
+    if 'predicted_winner_foretennis' in df.columns:
+        df['cross_source_agree'] = df.apply(get_cross_source_agree, axis=1)
+        logger.info("Cross-source agree distribution: %s",
+                    df['cross_source_agree'].value_counts().to_dict())
     
     # Define the dimensions we want to "Self-Slice" across
-    # We add 'predicted_winner' to the mix!
     dimensions = {
         "tour": df['tour'].unique(),
         "_surface": df['_surface'].unique(),
@@ -63,9 +103,13 @@ def main() -> int:
         "_series": df['_series'].unique(),
     }
     
-    # Add prediction source if it exists in the warehouse
+    # Add prediction dimensions only when that data is present
     if 'predicted_winner' in df.columns:
         dimensions['predicted_winner'] = df['predicted_winner'].unique()
+    if 'pred_confidence' in df.columns:
+        dimensions['pred_confidence'] = df['pred_confidence'].unique()
+    if 'cross_source_agree' in df.columns:
+        dimensions['cross_source_agree'] = df['cross_source_agree'].unique()
     
     for k, v in dimensions.items():
         dimensions[k] = [x for x in v if pd.notna(x) and x != "Unknown" and x != ""]
@@ -80,7 +124,7 @@ def main() -> int:
         query = " and ".join([f"{name} == '{val}'" for name, val in zip(dim_names, combo)])
         slice_df = df.query(query)
         
-        if len(slice_df) < 15: 
+        if len(slice_df) < args.min_n:
             continue
             
         res = assay_segment(slice_df)

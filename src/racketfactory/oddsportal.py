@@ -186,7 +186,7 @@ def _curl_fetch(url: str, *, retries: int = 3, impersonate: str = "chrome133a") 
     """Fetch URL with curl_cffi, warming CF cookies on 403.
 
     impersonate defaults to chrome133a — the only confirmed bypass for the
-    current Cloudflare JA3 check on OddsPortal and Forebet.  chrome131 and
+    current Cloudflare JA3 check on OddsPortal and Forebet.  chrome133a and
     earlier get HTTP 403.  Override with the ODDSPORTAL_IMPERSONATE env var
     if a newer Chrome version is needed later.
     """

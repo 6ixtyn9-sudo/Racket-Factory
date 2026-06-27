@@ -1,0 +1,21 @@
+[Unit]
+Description=Racket Factory Daily Intelligence Pipeline
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Edit these paths to match your installation
+WorkingDirectory=/home/%u/Racket-Factory
+ExecStart=/home/%u/Racket-Factory/scripts/daily_pipeline.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=racketfactory
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/%u/Racket-Factory/localdata
+
+[Install]
+WantedBy=multi-user.target

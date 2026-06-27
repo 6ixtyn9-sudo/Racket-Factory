@@ -56,38 +56,75 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
         keep="last"
     ).drop(columns=['p_a_key', 'p_b_key', '_sorted_players'])
     
-    # 2. Join Predictions (The "Signal" Layer)
-    # We look for files matching predictions_*.csv.gz
+    # 2. Multi-Source Prediction Join
+    # Primary source writes to canonical columns (predicted_winner, prediction_prob,
+    # predicted_source). Each additional source gets suffixed columns so sources
+    # never silently overwrite each other based on glob order.
+    #
+    # Source priority: Forebet is primary (most historical coverage). Any source
+    # not in PRIMARY_SOURCES is merged as a secondary with a suffix derived from
+    # its 'source' column value (lowercased, spaces→underscore).
+    PRIMARY_SOURCES = {"Forebet"}
+    JOIN_KEYS = ["match_date", "tour", "tournament", "player_a", "player_b"]
+
     pred_files = list(data_path.glob("predictions_*.csv.gz"))
     if pred_files:
-        logger.info("Merging %d prediction files into warehouse...", len(pred_files))
-        pred_dfs = []
+        logger.info("Loading %d prediction files for multi-source merge...", len(pred_files))
+
+        # Load and bucket by source name
+        source_dfs: dict[str, list[pd.DataFrame]] = {}
         for pf in pred_files:
             try:
-                pred_dfs.append(pd.read_csv(pf, low_memory=False))
+                pdf = pd.read_csv(pf, low_memory=False)
+                if pdf.empty or "source" not in pdf.columns:
+                    continue
+                src = pdf["source"].iloc[0]
+                source_dfs.setdefault(src, []).append(pdf)
             except Exception as e:
                 logger.warning("Failed to load prediction file %s: %s", pf, e)
-        
-        if pred_dfs:
-            preds_all = pd.concat(pred_dfs, ignore_index=True)
-            
-            # deduplicate predictions to keep the latest one
-            preds_all = preds_all.drop_duplicates(
-                subset=["match_date", "tour", "tournament", "player_a", "player_b"],
-                keep="last"
+
+        for src, frames in source_dfs.items():
+            merged = pd.concat(frames, ignore_index=True)
+            # Deduplicate within this source: keep most recent scrape
+            merged = merged.drop_duplicates(
+                subset=JOIN_KEYS, keep="last"
             )
-            
-            # Join predictions to warehouse
-            # We use a left join to keep all matches, adding predictions where available
-            warehouse = warehouse.merge(
-                preds_all[['match_date', 'tour', 'tournament', 'player_a', 'player_b', 'predicted_winner', 'prediction_prob', 'source']],
-                on=["match_date", "tour", "tournament", "player_a", "player_b"],
-                how="left",
-                suffixes=('', '_pred')
-            )
-            # Rename source to clarify it's the predictor source
-            if 'source_pred' in warehouse.columns:
-                warehouse = warehouse.rename(columns={'source_pred': 'predicted_source'})
+            pred_cols = [c for c in ["predicted_winner", "prediction_prob", "source"]
+                         if c in merged.columns]
+
+            if src in PRIMARY_SOURCES:
+                # Primary source → canonical column names
+                logger.info("Merging primary source '%s': %d predictions", src, len(merged))
+                warehouse = warehouse.merge(
+                    merged[JOIN_KEYS + pred_cols],
+                    on=JOIN_KEYS,
+                    how="left",
+                    suffixes=('', '_pred'),
+                )
+                if 'source_pred' in warehouse.columns:
+                    warehouse = warehouse.rename(columns={'source_pred': 'predicted_source'})
+            else:
+                # Secondary source → suffixed column names
+                suffix = src.lower().replace(" ", "_").replace("-", "_")
+                logger.info("Merging secondary source '%s' (suffix: _%s): %d predictions",
+                            src, suffix, len(merged))
+                rename_map = {c: f"{c}_{suffix}" for c in pred_cols if c != "source"}
+                merged_renamed = merged[JOIN_KEYS + pred_cols].rename(columns=rename_map)
+                # Drop 'source' col — it's redundant given the suffix encodes it
+                if "source" in merged_renamed.columns:
+                    merged_renamed = merged_renamed.drop(columns=["source"])
+                warehouse = warehouse.merge(
+                    merged_renamed,
+                    on=JOIN_KEYS,
+                    how="left",
+                )
+
+        # Report final prediction column coverage
+        pred_winner_cols = [c for c in warehouse.columns if c.startswith("predicted_winner")]
+        logger.info("Prediction columns in warehouse: %s", pred_winner_cols)
+        primary_cov = warehouse["predicted_winner"].notna().sum() if "predicted_winner" in warehouse.columns else 0
+        logger.info("Primary (Forebet) prediction coverage: %d/%d rows (%.1f%%)",
+                    primary_cov, len(warehouse), 100 * primary_cov / max(len(warehouse), 1))
 
     # Final safety: ensure numeric types for odds
     if "odds_a" in warehouse.columns:
