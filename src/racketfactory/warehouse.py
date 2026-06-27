@@ -125,13 +125,9 @@ def build_live_rows() -> pd.DataFrame:
             "_winner_rank": pd.NA,
             "_loser_rank": pd.NA,
             "_odds_source": "",
-            "predicted_winner": selected,
-            "prediction_prob": prob,
-            "predicted_source": "live_card",
-            "predicted_winner_foretennis": pd.NA,
-            "prediction_prob_foretennis": pd.NA,
-            "predicted_winner_market": pd.NA,
-            "prediction_prob_market": pd.NA,
+            "live_predicted_winner": selected,
+            "live_prediction_prob": prob,
+            "live_predicted_source": "live_card",
         })
     return pd.DataFrame(grouped_rows)
 
@@ -250,6 +246,40 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
                     on=JOIN_KEYS,
                     how="left",
                 )
+
+        # Clean up any legacy duplicate columns that may arise from prior files/runs.
+        for base in [
+            "predicted_winner_foretennis", "prediction_prob_foretennis",
+            "predicted_winner_market", "prediction_prob_market",
+            "predicted_winner", "prediction_prob", "predicted_source",
+        ]:
+            variants = [c for c in warehouse.columns if c == base or c.startswith(base + "_")]
+            if len(variants) > 1:
+                merged_col = warehouse[variants[0]].copy()
+                for c in variants[1:]:
+                    merged_col = merged_col.combine_first(warehouse[c])
+                warehouse[base] = merged_col
+                drop_cols = [c for c in variants if c != base]
+                if drop_cols:
+                    warehouse = warehouse.drop(columns=drop_cols)
+
+        # Backfill canonical prediction columns from injected live rows only where still missing.
+        if "live_predicted_winner" in warehouse.columns:
+            if "predicted_winner" not in warehouse.columns:
+                warehouse["predicted_winner"] = pd.NA
+            warehouse["predicted_winner"] = warehouse["predicted_winner"].combine_first(warehouse["live_predicted_winner"])
+        if "live_prediction_prob" in warehouse.columns:
+            if "prediction_prob" not in warehouse.columns:
+                warehouse["prediction_prob"] = pd.NA
+            warehouse["prediction_prob"] = warehouse["prediction_prob"].combine_first(warehouse["live_prediction_prob"])
+        if "live_predicted_source" in warehouse.columns:
+            if "predicted_source" not in warehouse.columns:
+                warehouse["predicted_source"] = pd.NA
+            warehouse["predicted_source"] = warehouse["predicted_source"].combine_first(warehouse["live_predicted_source"])
+
+        drop_live_cols = [c for c in ["live_predicted_winner", "live_prediction_prob", "live_predicted_source"] if c in warehouse.columns]
+        if drop_live_cols:
+            warehouse = warehouse.drop(columns=drop_live_cols)
 
         # Report final prediction column coverage
         pred_winner_cols = [c for c in warehouse.columns if c.startswith("predicted_winner")]
