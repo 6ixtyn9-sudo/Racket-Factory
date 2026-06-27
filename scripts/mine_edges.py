@@ -187,7 +187,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         axis=1,
     )
     card = card[card["match_type"] == "Singles"]
-    card = card[card["tour"].isin(["ATP", "WTA"])]
+    card = card[card["tour"].isin(["ATP", "WTA", "CHALLENGER", "ITF-M", "ITF-W", "UTR"])]
     if card.empty:
         return card.reset_index(drop=True)
 
