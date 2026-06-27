@@ -1,78 +1,51 @@
 #!/usr/bin/env python3
 """
 Capture BetClan Predictions
-Fetches daily predictions from BetClan and matches them to the warehouse.
+Fetches daily predictions from BetClan and appends to an archive.
 """
 import pandas as pd
 import argparse
 import logging
 import sys
 from pathlib import Path
+import os
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from racketfactory.sources.betclan import BetClanPredictor
-from racketfactory.entities import fuzzy_match_players
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s")
 logger = logging.getLogger("capture_betclan")
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse CSV")
     parser.add_argument("--output-dir", default="localdata", help="Output directory")
+    # To avoid argument parsing errors if old cron job calls it with --warehouse
+    parser.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse CSV (unused)")
     args = parser.parse_args()
 
-    wh_path = Path(args.warehouse)
-    if not wh_path.exists():
-        logger.error(f"Warehouse not found at {wh_path}")
-        return
-
-    logger.info(f"Loading warehouse from {wh_path}")
-    wh = pd.read_csv(wh_path, low_memory=False)
-    wh["match_date"] = pd.to_datetime(wh["match_date"]).dt.strftime("%Y-%m-%d")
-
-    pred_index = {}
-    for idx, row in wh.iterrows():
-        date_str = row["match_date"]
-        if pd.isna(row["player_a"]) or pd.isna(row["player_b"]): continue
-        if date_str not in pred_index: pred_index[date_str] = []
-        pred_index[date_str].append((idx, str(row["player_a"]), str(row["player_b"])))
-
+    out_file = Path(args.output_dir) / "archive_betclan.csv"
+    
     bc = BetClanPredictor()
     logger.info("Fetching BetClan daily predictions...")
     preds = bc.fetch_daily()
     
-    matched_predictions = []
-    for p in preds:
-        date_str = p.get("match_date")
-        if not date_str or date_str not in pred_index: continue
-        
-        for idx, player_a, player_b in pred_index[date_str]:
-            if fuzzy_match_players(p["player_home"], player_a) and fuzzy_match_players(p["player_away"], player_b):
-                matched_predictions.append({
-                    "match_id": idx, "match_date": date_str, "tour": wh.at[idx, "tour"], "tournament": wh.at[idx, "tournament"], "player_a": player_a, "player_b": player_b,
-                    "predicted_winner": "player_a" if p["predicted_winner"] == "1" else "player_b",
-                    "prob_home": p.get("prob_home"), "prob_away": p.get("prob_away"), "source": "BetClan"
-                })
-                break
-            elif fuzzy_match_players(p["player_home"], player_b) and fuzzy_match_players(p["player_away"], player_a):
-                matched_predictions.append({
-                    "match_id": idx, "match_date": date_str, "tour": wh.at[idx, "tour"], "tournament": wh.at[idx, "tournament"], "player_a": player_a, "player_b": player_b,
-                    "predicted_winner": "player_b" if p["predicted_winner"] == "1" else "player_a",
-                    "prob_home": p.get("prob_away"), "prob_away": p.get("prob_home"), "source": "BetClan"
-                })
-                break
-
-    if not matched_predictions:
-        logger.warning("No BetClan predictions matched to warehouse.")
+    if not preds:
+        logger.warning("No BetClan predictions fetched.")
         return
 
-    df_preds = pd.DataFrame(matched_predictions).drop_duplicates(subset=["match_id"])
-    out_file = Path(args.output_dir) / "predictions_betclan_daily.csv.gz"
-    df_preds.to_csv(out_file, index=False, compression="gzip")
-    logger.info(f"Saved {len(df_preds)} matched predictions to {out_file}")
+    df_new = pd.DataFrame(preds)
+    
+    if out_file.exists():
+        df_old = pd.read_csv(out_file)
+        df_combined = pd.concat([df_old, df_new], ignore_index=True)
+    else:
+        df_combined = df_new
+        
+    df_combined = df_combined.drop_duplicates(subset=["match_date", "player_home", "player_away"], keep="last")
+    df_combined.to_csv(out_file, index=False)
+    logger.info(f"Saved {len(df_new)} new predictions. Archive now has {len(df_combined)} records.")
 
 if __name__ == "__main__":
     main()

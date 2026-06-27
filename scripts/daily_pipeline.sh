@@ -70,13 +70,7 @@ fi
 # ---------------------------------------------------------------------------
 step "5/7" "Fetching PredixSport predictions..."
 PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/capture_predixsport.py" \
-        --warehouse "$LOCALDATA/warehouse.csv.gz" \
         --output-dir "$LOCALDATA" 2>&1 || true
-
-if [ ! -f "$LOCALDATA/predictions_predixsport_daily.csv.gz" ] || [ $(gunzip -c "$LOCALDATA/predictions_predixsport_daily.csv.gz" 2>/dev/null | wc -l) -lt 2 ]; then
-    log "[5/7] CRITICAL: PredixSport capture failed or returned < 2 rows. Halting pipeline to prevent data starvation."
-    exit 1
-fi
 log "[5/7] PredixSport fetch complete."
 
 # ---------------------------------------------------------------------------
@@ -84,13 +78,7 @@ log "[5/7] PredixSport fetch complete."
 # ---------------------------------------------------------------------------
 step "6/7" "Fetching BetClan predictions..."
 PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/capture_betclan.py" \
-        --warehouse "$LOCALDATA/warehouse.csv.gz" \
         --output-dir "$LOCALDATA" 2>&1 || true
-
-if [ ! -f "$LOCALDATA/predictions_betclan_daily.csv.gz" ] || [ $(gunzip -c "$LOCALDATA/predictions_betclan_daily.csv.gz" 2>/dev/null | wc -l) -lt 2 ]; then
-    log "[6/7] CRITICAL: BetClan capture failed or returned < 2 rows. Halting pipeline to prevent data starvation."
-    exit 1
-fi
 log "[6/7] BetClan fetch complete."
 
 # ---------------------------------------------------------------------------
@@ -100,7 +88,17 @@ step "7/7" "Rebuilding warehouse and mining edges..."
 PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/build_warehouse.py" \
     --data-dir "$LOCALDATA" \
     --output warehouse.csv.gz 2>&1
-log "[7/7] Warehouse rebuild complete."
+log "[7/7] Base warehouse build complete."
+
+PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/resolve_pending.py" \
+    --warehouse "$LOCALDATA/warehouse.csv.gz" \
+    --data-dir "$LOCALDATA" 2>&1
+log "[7/7] Resolved pending AI predictions against warehouse."
+
+PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/build_warehouse.py" \
+    --data-dir "$LOCALDATA" \
+    --output warehouse.csv.gz 2>&1
+log "[7/7] Final warehouse rebuild complete."
 
 PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/mine_edges.py" \
     --warehouse "$LOCALDATA/warehouse.csv.gz" 2>&1 \
