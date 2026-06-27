@@ -151,6 +151,8 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
     inferred = card["context_used"].apply(infer_tour_and_series)
     card["tour"] = inferred.apply(lambda x: x[0])
     card["_series"] = inferred.apply(lambda x: x[1])
+    card["_surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
+    card.loc[card["_surface"].isin(["", "Nan", "None"]), "_surface"] = "Unknown"
     card["pred_confidence"] = card.apply(
         lambda r: "High" if max(pd.to_numeric(r.get("prob_home"), errors="coerce") or 0,
                                  pd.to_numeric(r.get("prob_away"), errors="coerce") or 0) >= 70
@@ -162,11 +164,56 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         lambda r: "|".join(sorted([str(r.get("player_home", "")).strip().lower(), str(r.get("player_away", "")).strip().lower()])),
         axis=1,
     )
-    source_counts = card.groupby("pair_key")["source"].nunique().to_dict()
-    card["source_count"] = card["pair_key"].map(source_counts).fillna(1).astype(int)
     card = card[card["match_type"] == "Singles"]
     card = card[card["tour"].isin(["ATP", "WTA"])]
-    return card.reset_index(drop=True)
+    if card.empty:
+        return card.reset_index(drop=True)
+
+    grouped_rows = []
+    for (_, pair_key), g in card.groupby(["match_date", "pair_key"], dropna=False):
+        first = g.iloc[0]
+        winners = []
+        for _, rr in g.iterrows():
+            pick = str(rr.get("predicted_winner", "") or "")
+            if pick == "1":
+                winners.append("player_a")
+            elif pick == "2":
+                winners.append("player_b")
+        unique_winners = sorted(set(winners))
+        if len(unique_winners) > 1:
+            cross_source_agree = "Disagree"
+        elif len(unique_winners) == 1 and len(g["source"].unique()) > 1:
+            cross_source_agree = "Both"
+        elif len(unique_winners) == 1:
+            cross_source_agree = "MarketOnly"
+        else:
+            cross_source_agree = "Unknown"
+
+        selected_pick = unique_winners[0] if unique_winners else ("player_a" if str(first.get("predicted_winner", "")) == "1" else "player_b")
+        source_count = int(g["source"].nunique())
+        max_prob = max(pd.to_numeric(g.get("prob_home"), errors="coerce").max(), pd.to_numeric(g.get("prob_away"), errors="coerce").max())
+        if pd.isna(max_prob):
+            max_prob = None
+
+        grouped_rows.append({
+            "match_date": first.get("match_date"),
+            "player_home": first.get("player_home"),
+            "player_away": first.get("player_away"),
+            "player_a": first.get("player_home"),
+            "player_b": first.get("player_away"),
+            "tour": first.get("tour"),
+            "_series": first.get("_series"),
+            "_surface": first.get("_surface"),
+            "tournament": first.get("tournament"),
+            "context_used": first.get("context_used"),
+            "predicted_winner": selected_pick,
+            "predicted_winner_foretennis": selected_pick,
+            "cross_source_agree": cross_source_agree,
+            "pred_confidence": "High" if (max_prob is not None and max_prob >= 70) else ("Medium" if (max_prob is not None and max_prob >= 60) else "Low"),
+            "source": ", ".join(sorted(set(map(str, g["source"])))),
+            "source_count": source_count,
+        })
+    return pd.DataFrame(grouped_rows).reset_index(drop=True)
 
 
 def main() -> int:
