@@ -109,6 +109,16 @@ def infer_tour_and_series(text: str) -> tuple[str, str]:
         return ("ITF-W", "ITF")
     if "itf men" in lower or "itf m" in lower:
         return ("ITF-M", "ITF")
+    if "wta 1000" in lower:
+        return ("WTA", "WTA1000")
+    if "wta 500" in lower or any(x in lower for x in ["wta eastbourne", "wta bad homburg"]):
+        return ("WTA", "Premier")
+    if "wta 250" in lower:
+        return ("WTA", "WTA250")
+    if "atp 500" in lower:
+        return ("ATP", "ATP500")
+    if "atp 250" in lower or any(x in lower for x in ["atp mallorca", "atp eastbourne"]):
+        return ("ATP", "ATP250")
     if "wta" in lower:
         return ("WTA", "WTA")
     if "atp" in lower:
@@ -116,6 +126,18 @@ def infer_tour_and_series(text: str) -> tuple[str, str]:
     if "utr" in lower:
         return ("UTR", "UTR")
     return ("UNKNOWN", "UNKNOWN")
+
+
+def prob_to_odds_band(prob_pct: float) -> str:
+    if pd.isna(prob_pct):
+        return "Unknown"
+    if prob_pct >= 75:
+        return "1.1-1.3"
+    if prob_pct >= 62:
+        return "1.3-1.6"
+    if prob_pct >= 50:
+        return "1.6-2.0"
+    return "2.0+"
 
 
 def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
@@ -194,6 +216,10 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         max_prob = max(pd.to_numeric(g.get("prob_home"), errors="coerce").max(), pd.to_numeric(g.get("prob_away"), errors="coerce").max())
         if pd.isna(max_prob):
             max_prob = None
+        fav_odds_band = prob_to_odds_band(max_prob)
+        series_value = first.get("_series")
+        if (pd.isna(series_value) or str(series_value).strip() in {"", "ATP", "WTA", "UNKNOWN"}) and str(first.get("context_used", "")).strip():
+            _, series_value = infer_tour_and_series(first.get("context_used", ""))
 
         grouped_rows.append({
             "match_date": first.get("match_date"),
@@ -202,8 +228,9 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
             "player_a": first.get("player_home"),
             "player_b": first.get("player_away"),
             "tour": first.get("tour"),
-            "_series": first.get("_series"),
+            "_series": series_value,
             "_surface": first.get("_surface"),
+            "fav_odds_band": fav_odds_band,
             "tournament": first.get("tournament"),
             "context_used": first.get("context_used"),
             "predicted_winner": selected_pick,
