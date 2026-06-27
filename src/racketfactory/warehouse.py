@@ -114,7 +114,10 @@ def names_match(name_a: str, name_b: str) -> bool:
         shared = sum(1 for x, y in zip(toks_a, toks_b) if x == y)
         if shared >= max(1, len(toks_a) - 1):
             return True
-    return False
+    set_a = set(toks_a)
+    set_b = set(toks_b)
+    overlap = set_a & set_b
+    return len(overlap) >= min(len(set_a), len(set_b)) and len(overlap) >= 1
 
 
 def rows_refer_to_same_match(a: pd.Series, b: pd.Series) -> bool:
