@@ -213,15 +213,38 @@ def main() -> int:
     
     # 2. Extract Specific Picks for the Target Date
     target_date = args.date or datetime.now().strftime("%Y-%m-%d")
-    today_df = df[df["match_date"] == target_date].copy()
+    today_all = df[df["match_date"] == target_date].copy()
 
-    # Upcoming/live card should not rely on settled-match-only fields.
+    today_df = today_all.copy()
+    # Preferred path: genuine upcoming/live rows with no settled winner.
     if "winner" in today_df.columns:
         today_df = today_df[today_df["winner"].isna() | (today_df["winner"].astype(str).str.strip() == "")]
     if "selected_rank_band" in today_df.columns:
         today_df = today_df[today_df["selected_rank_band"] != "Unknown"]
 
-    logger.info("Today candidate rows after live filtering: %d", len(today_df))
+    # Fallback path: if the warehouse has no clean upcoming rows for today,
+    # assemble a live candidate set from prediction-bearing rows dated today.
+    if today_df.empty:
+        fallback = today_all.copy()
+        pred_mask = False
+        for col in ["predicted_winner", "predicted_winner_foretennis", "predicted_winner_market"]:
+            if col in fallback.columns:
+                mask = fallback[col].notna() & (fallback[col].astype(str).str.strip() != "")
+                pred_mask = mask if isinstance(pred_mask, bool) else (pred_mask | mask)
+        if not isinstance(pred_mask, bool):
+            fallback = fallback[pred_mask]
+        if "selected_rank_band" in fallback.columns:
+            fallback = fallback[fallback["selected_rank_band"] != "Unknown"]
+        if "fav_odds_band" in fallback.columns:
+            fallback = fallback[fallback["fav_odds_band"] != "Unknown"]
+        if "tour" in fallback.columns:
+            fallback = fallback[fallback["tour"].notna() & (fallback["tour"].astype(str).str.strip() != "")]
+        if "_series" in fallback.columns:
+            fallback = fallback[fallback["_series"].notna() & (fallback["_series"].astype(str).str.strip() != "")]
+        today_df = fallback
+        logger.info("Today candidate rows after live filtering: 0; fallback prediction-bearing rows: %d", len(today_df))
+    else:
+        logger.info("Today candidate rows after live filtering: %d", len(today_df))
     
     picks_to_export = []
     
