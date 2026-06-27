@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from racketfactory.assay import assay_segment
+from racketfactory.sources.predixsport import PredixSportPredictor
+from racketfactory.sources.betclan import BetClanPredictor
 
 logging.basicConfig(
     level=logging.INFO,
@@ -91,6 +93,80 @@ def get_cross_source_agree(row: pd.Series) -> str:
     if has_ft:
         return "ForeTennisOnly"
     return "Unknown"
+
+
+def infer_tour_and_series(text: str) -> tuple[str, str]:
+    lower = str(text or "").lower()
+    if any(x in lower for x in ["wimbledon", "roland garros", "us open", "australian open"]):
+        if any(x in lower for x in ["women", "wta", "girls"]):
+            return ("WTA", "Grand Slam")
+        if any(x in lower for x in ["men", "atp", "boys"]):
+            return ("ATP", "Grand Slam")
+        return ("UNKNOWN", "Grand Slam")
+    if any(x in lower for x in ["atp challenger", "challenger"]):
+        return ("CHALLENGER", "Challenger")
+    if "itf women" in lower:
+        return ("ITF-W", "ITF")
+    if "itf men" in lower or "itf m" in lower:
+        return ("ITF-M", "ITF")
+    if "wta" in lower:
+        return ("WTA", "WTA")
+    if "atp" in lower:
+        return ("ATP", "ATP")
+    if "utr" in lower:
+        return ("UTR", "UTR")
+    return ("UNKNOWN", "UNKNOWN")
+
+
+def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
+    rows = []
+    for source_name, predictor in [("PredixSport", PredixSportPredictor()), ("BetClan", BetClanPredictor())]:
+        try:
+            preds = predictor.fetch_daily()
+        except Exception as e:
+            logger.warning("Upcoming fallback source %s failed: %s", source_name, e)
+            preds = []
+        for row in preds:
+            row = dict(row)
+            row["source"] = source_name
+            rows.append(row)
+    if not rows:
+        return pd.DataFrame()
+
+    card = pd.DataFrame(rows)
+    if "match_date" in card.columns:
+        card = card[card["match_date"].astype(str) == str(target_date)].copy()
+    if card.empty:
+        return card
+
+    card["match_type"] = card.apply(
+        lambda r: "Doubles" if "/" in str(r.get("player_home", "")) or "/" in str(r.get("player_away", "")) else "Singles",
+        axis=1,
+    )
+    context_cols = [c for c in ["tournament", "event_level", "event_text"] if c in card.columns]
+    card["context_used"] = card.apply(
+        lambda r: " | ".join([str(r.get(c, "") or "") for c in context_cols if str(r.get(c, "") or "").strip()]),
+        axis=1,
+    )
+    inferred = card["context_used"].apply(infer_tour_and_series)
+    card["tour"] = inferred.apply(lambda x: x[0])
+    card["_series"] = inferred.apply(lambda x: x[1])
+    card["pred_confidence"] = card.apply(
+        lambda r: "High" if max(pd.to_numeric(r.get("prob_home"), errors="coerce") or 0,
+                                 pd.to_numeric(r.get("prob_away"), errors="coerce") or 0) >= 70
+        else ("Medium" if max(pd.to_numeric(r.get("prob_home"), errors="coerce") or 0,
+                              pd.to_numeric(r.get("prob_away"), errors="coerce") or 0) >= 60 else "Low"),
+        axis=1,
+    )
+    card["pair_key"] = card.apply(
+        lambda r: "|".join(sorted([str(r.get("player_home", "")).strip().lower(), str(r.get("player_away", "")).strip().lower()])),
+        axis=1,
+    )
+    source_counts = card.groupby("pair_key")["source"].nunique().to_dict()
+    card["source_count"] = card["pair_key"].map(source_counts).fillna(1).astype(int)
+    card = card[card["match_type"] == "Singles"]
+    card = card[card["tour"].isin(["ATP", "WTA"])]
+    return card.reset_index(drop=True)
 
 
 def main() -> int:
@@ -243,6 +319,11 @@ def main() -> int:
             fallback = fallback[fallback["_series"].notna() & (fallback["_series"].astype(str).str.strip() != "")]
         today_df = fallback
         logger.info("Today candidate rows after live filtering: 0; fallback prediction-bearing rows: %d", len(today_df))
+        if today_df.empty:
+            upcoming_df = build_upcoming_fallback_card(target_date)
+            logger.info("Upcoming-card fallback rows: %d", len(upcoming_df))
+            if not upcoming_df.empty:
+                today_df = upcoming_df
     else:
         logger.info("Today candidate rows after live filtering: %d", len(today_df))
     
@@ -280,30 +361,43 @@ def main() -> int:
                         best_pick = res
             
             if best_pick:
-                # Format for the WhatsApp Notifier
-                is_robber = best_pick["Tier"] == "ROBBER"
                 bucket = "CERTIFIED_CLEAN" if best_pick["Verdict"] == "EDGE CONFIRMED" else ("WATCHLIST" if best_pick["Verdict"] == "WATCHLIST" else "CAUTION")
                 prob = row.get("prediction_prob")
                 if pd.isna(prob):
+                    prob = row.get("pred_confidence")
+                if pd.isna(prob):
                     prob = None
-                
+
+                home_name = row.get("player_a", row.get("player_home", "A"))
+                away_name = row.get("player_b", row.get("player_away", "B"))
                 selected_pick = row.get("predicted_winner")
-                if pd.isna(selected_pick) or selected_pick == "":
+                selected_player = None
+                if selected_pick in {"player_a", "player_b"}:
+                    selected_player = home_name if selected_pick == "player_a" else away_name
+                elif selected_pick in {"1", "2"}:
+                    selected_player = home_name if selected_pick == "1" else away_name
+                else:
                     selected_pick = row.get("predicted_winner_foretennis")
-                if pd.isna(selected_pick) or selected_pick == "":
-                    oa, ob = row.get("odds_a"), row.get("odds_b")
-                    if pd.notna(oa) and pd.notna(ob):
-                        selected_pick = "player_a" if oa <= ob else "player_b"
+                    if selected_pick in {"player_a", "player_b"}:
+                        selected_player = home_name if selected_pick == "player_a" else away_name
+                    elif pd.isna(selected_pick) or selected_pick == "":
+                        oa, ob = row.get("odds_a"), row.get("odds_b")
+                        if pd.notna(oa) and pd.notna(ob):
+                            selected_pick = "player_a" if oa <= ob else "player_b"
+                            selected_player = home_name if selected_pick == "player_a" else away_name
 
                 picks_to_export.append({
-                    "match": f"{row.get('player_a', 'A')} vs {row.get('player_b', 'B')}",
+                    "match": f"{home_name} vs {away_name}",
                     "date": str(row.get("match_date", target_date)),
                     "bucket": bucket,
                     "pick": best_pick["Verdict"],
                     "selected_side": selected_pick,
-                    "selected_player": row.get("player_a") if selected_pick == "player_a" else (row.get("player_b") if selected_pick == "player_b" else None),
+                    "selected_player": selected_player,
                     "odds": row.get("fav_odds"),
                     "confidence": prob,
+                    "source_count": row.get("source_count"),
+                    "source": row.get("source"),
+                    "tournament": row.get("tournament"),
                     "slice_matched": best_pick["Slice"]
                 })
                 

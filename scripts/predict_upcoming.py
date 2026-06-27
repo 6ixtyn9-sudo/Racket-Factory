@@ -71,12 +71,15 @@ def infer_from_players(player_home: str, player_away: str) -> tuple[str, str]:
 
 
 def classify_row(row: pd.Series) -> tuple[str, str, str]:
-    context_cols = ["tournament", "match_label", "event", "competition", "category", "league"]
+    context_cols = ["tournament", "event_level", "match_label", "event", "competition", "category", "league"]
     context_parts = [str(row.get(c, "") or "") for c in context_cols if c in row.index]
     context_text = " | ".join([x for x in context_parts if x.strip()])
     tour, series = infer_tour_and_series(context_text)
     if tour == "UNKNOWN" and series == "UNKNOWN":
-        tour, series = infer_from_players(str(row.get("player_home", "")), str(row.get("player_away", "")))
+        tour, player_series = infer_from_players(str(row.get("player_home", "")), str(row.get("player_away", "")))
+        series = player_series if player_series != "Singles" else tour
+    if series == "Singles":
+        series = tour if tour != "UNKNOWN" else "UNKNOWN"
     match_type = "Doubles" if "/" in str(row.get("player_home", "")) or "/" in str(row.get("player_away", "")) else "Singles"
     return tour, series, context_text or "<empty>"
 
