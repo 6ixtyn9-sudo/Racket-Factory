@@ -6,9 +6,135 @@ import pandas as pd
 from pathlib import Path
 import logging
 from typing import Optional
+from datetime import date, timedelta
 from racketfactory.entities import player_key
+from racketfactory.sources.predixsport import PredixSportPredictor
+from racketfactory.sources.betclan import BetClanPredictor
 
 logger = logging.getLogger(__name__)
+
+
+def infer_tour_and_series(text: str) -> tuple[str, str]:
+    lower = str(text or "").lower()
+    if any(x in lower for x in ["wimbledon", "roland garros", "us open", "australian open"]):
+        if any(x in lower for x in ["women", "wta", "girls"]):
+            return ("WTA", "Grand Slam")
+        if any(x in lower for x in ["men", "atp", "boys"]):
+            return ("ATP", "Grand Slam")
+        return ("UNKNOWN", "Grand Slam")
+    if "wta 1000" in lower:
+        return ("WTA", "WTA1000")
+    if "wta 500" in lower or any(x in lower for x in ["wta eastbourne", "wta bad homburg"]):
+        return ("WTA", "Premier")
+    if "wta 250" in lower:
+        return ("WTA", "WTA250")
+    if "atp 500" in lower:
+        return ("ATP", "ATP500")
+    if "atp 250" in lower or any(x in lower for x in ["atp mallorca", "atp eastbourne"]):
+        return ("ATP", "ATP250")
+    if any(x in lower for x in ["atp challenger", "challenger"]):
+        return ("CHALLENGER", "Challenger")
+    if "wta" in lower:
+        return ("WTA", "WTA")
+    if "atp" in lower:
+        return ("ATP", "ATP")
+    return ("UNKNOWN", "UNKNOWN")
+
+
+def build_live_rows() -> pd.DataFrame:
+    rows = []
+    for source_name, predictor in [("PredixSport", PredixSportPredictor()), ("BetClan", BetClanPredictor())]:
+        try:
+            preds = predictor.fetch_daily()
+        except Exception as e:
+            logger.warning("Live source %s failed during warehouse build: %s", source_name, e)
+            preds = []
+        for row in preds:
+            row = dict(row)
+            row["source"] = source_name
+            rows.append(row)
+    if not rows:
+        return pd.DataFrame()
+
+    card = pd.DataFrame(rows)
+    if card.empty:
+        return card
+
+    card["match_type"] = card.apply(
+        lambda r: "Doubles" if "/" in str(r.get("player_home", "")) or "/" in str(r.get("player_away", "")) else "Singles",
+        axis=1,
+    )
+    card = card[card["match_type"] == "Singles"].copy()
+    if card.empty:
+        return card
+
+    context_cols = [c for c in ["tournament", "event_level", "event_text"] if c in card.columns]
+    card["context_used"] = card.apply(
+        lambda r: " | ".join([str(r.get(c, "") or "") for c in context_cols if str(r.get(c, "") or "").strip()]),
+        axis=1,
+    )
+    inferred = card["context_used"].apply(infer_tour_and_series)
+    card["tour"] = inferred.apply(lambda x: x[0])
+    card["_series"] = inferred.apply(lambda x: x[1])
+    card["_surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
+    card.loc[card["_surface"].isin(["", "Nan", "None"]), "_surface"] = ""
+    card = card[card["tour"].isin(["ATP", "WTA", "CHALLENGER"])]
+    if card.empty:
+        return card
+
+    card["p_a_key"] = card["player_home"].apply(player_key)
+    card["p_b_key"] = card["player_away"].apply(player_key)
+    card["_sorted_players"] = card.apply(lambda r: tuple(sorted([r["p_a_key"], r["p_b_key"]])), axis=1)
+
+    grouped_rows = []
+    for (_, match_date, sorted_players), g in card.groupby(["tour", "match_date", "_sorted_players"], dropna=False):
+        first = g.iloc[0]
+        tournament = first.get("tournament", "")
+        winners = []
+        probs = []
+        for _, rr in g.iterrows():
+            pick = str(rr.get("predicted_winner", "") or "")
+            if pick == "1":
+                winners.append("player_a")
+                probs.append(pd.to_numeric(rr.get("prob_home"), errors="coerce"))
+            elif pick == "2":
+                winners.append("player_b")
+                probs.append(pd.to_numeric(rr.get("prob_away"), errors="coerce"))
+        selected = winners[0] if winners else ""
+        prob = max([p for p in probs if pd.notna(p)], default=None)
+        grouped_rows.append({
+            "match_date": first.get("match_date"),
+            "tour": first.get("tour"),
+            "tournament": tournament,
+            "round": "",
+            "player_a": first.get("player_home"),
+            "player_b": first.get("player_away"),
+            "winner": "",
+            "score": "",
+            "odds_a": pd.NA,
+            "odds_b": pd.NA,
+            "bookmaker": "",
+            "source": ", ".join(sorted(set(map(str, g["source"])))),
+            "captured_at": pd.Timestamp.now().isoformat(),
+            "oddsportal_url": "",
+            "_surface": first.get("_surface", ""),
+            "_court": "",
+            "_series": first.get("_series", ""),
+            "_comment": "live_upcoming_injected",
+            "_location": first.get("country", "") if "country" in first.index else "",
+            "_winner_rank": pd.NA,
+            "_loser_rank": pd.NA,
+            "_odds_source": "",
+            "predicted_winner": selected,
+            "prediction_prob": prob,
+            "predicted_source": "live_card",
+            "predicted_winner_foretennis": pd.NA,
+            "prediction_prob_foretennis": pd.NA,
+            "predicted_winner_market": pd.NA,
+            "prediction_prob_market": pd.NA,
+        })
+    return pd.DataFrame(grouped_rows)
+
 
 def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.csv.gz") -> Optional[Path]:
     """
@@ -38,6 +164,12 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
         return None
     
     warehouse = pd.concat(dfs, ignore_index=True)
+
+    # Inject live upcoming rows so same-day candidates exist in the warehouse.
+    live_rows = build_live_rows()
+    if not live_rows.empty:
+        logger.info("Injecting %d live upcoming rows into warehouse before dedupe...", len(live_rows))
+        warehouse = pd.concat([warehouse, live_rows], ignore_index=True, sort=False)
     
     # Standard Deduplication
     critical_cols = ["match_date", "tour", "tournament", "player_a", "player_b"]
