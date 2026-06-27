@@ -32,7 +32,7 @@ class BetClanPredictor:
                 logger.error(f"BetClan request failed: {e}")
                 continue
 
-            links = re.findall(r"href='(https://www\.betclan\.com/tennis/predictionsdetails/[^']+)'", resp.text)
+            links = re.findall(r'https://www\.betclan\.com/tennis/predictionsdetails/[^"\']+', resp.text)
             
             for match_url in set(links):
                 try:
@@ -65,6 +65,14 @@ class BetClanPredictor:
                         m = re.search(r"width:\s*(\d+)%", x_container.get('style'))
                         if m: prob2 = int(m.group(1))
                         
+                    event_tag = s.find('span', class_='titleh2page') or s.find('div', class_='caption') or s.find('div', class_='portlet-title')
+                    tournament = " ".join(event_tag.get_text(" ", strip=True).split()) if event_tag else ""
+                    page_text = s.get_text(" ", strip=True)
+                    surface = ""
+                    surface_m = re.search(r'\b(Grass|Clay|Hard)\b', page_text, re.IGNORECASE)
+                    if surface_m:
+                        surface = surface_m.group(1).strip()
+
                     if not any(r["player_home"] == p1 for r in results):
                         m_date = __import__("re").search(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})", r.text)
                         match_time_str = m_date.group(1).replace("T", " ") if m_date else target_date + " 00:00"
@@ -79,6 +87,9 @@ class BetClanPredictor:
                         "prob_away": prob2,
                         "predicted_winner": "1" if winner_name.lower() == p1.lower() else "2",
                         "predicted_winner_name": winner_name,
+                        "tournament": tournament,
+                        "surface": surface,
+                        "event_text": tournament,
                         "source": "BetClan"
                     })
                 except Exception as e:

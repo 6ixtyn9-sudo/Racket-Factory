@@ -47,7 +47,30 @@ class PredixSportPredictor:
                 if len(players) == 2 and len(probs) == 2 and probs[0].isdigit() and probs[1].isdigit():
                     p1, p2 = players[0], players[1]
                     prob1, prob2 = int(probs[0]), int(probs[1])
-                    
+
+                    main = s.find('div', class_='main-content') or s.find('div', class_='container')
+                    main_text = " ".join(main.get_text(" ", strip=True).split()) if main else ""
+                    title_text = s.title.get_text(" ", strip=True) if s.title else ""
+
+                    tournament = ""
+                    country = ""
+                    surface = ""
+                    series = ""
+                    m = re.search(
+                        r"Today's Tennis Game Predictions\s+(.+?)\s+(Spain|Great Britain|United Kingdom|England|Germany|France|Italy|USA|United States|Australia)\s+(Grass|Clay|Hard)\s+(Atp\s*\d+|Wta\s*\d+|Challenger|Grand Slam)\s+([A-Za-z]+)",
+                        main_text,
+                        re.IGNORECASE,
+                    )
+                    if m:
+                        tournament = m.group(1).strip()
+                        country = m.group(2).strip()
+                        surface = m.group(3).strip()
+                        series = m.group(4).strip()
+                    else:
+                        m2 = re.search(r"AI predictions for .*? at ([A-Za-z][A-Za-z\s\-']+?)\.", title_text, re.IGNORECASE)
+                        if m2:
+                            tournament = m2.group(1).strip()
+
                     winner = p1 if prob1 >= prob2 else p2
                     if not any(r["player_home"] == p1 for r in results):
                         results.append({
@@ -59,6 +82,11 @@ class PredixSportPredictor:
                         "prob_away": prob2,
                         "predicted_winner": "1" if prob1 >= prob2 else "2",
                         "predicted_winner_name": winner,
+                        "tournament": tournament,
+                        "country": country,
+                        "surface": surface,
+                        "event_level": series,
+                        "event_text": main_text[:500],
                         "source": "PredixSport"
                     })
             except Exception as e:
