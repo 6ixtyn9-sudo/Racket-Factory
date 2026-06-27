@@ -191,6 +191,80 @@ class ForeTennisPredictor:
             return []
         return _parse_lastpredictions_page(html)
 
+    def fetch_tournaments_for_year(self, tour: str, year: int) -> list[str]:
+        url = f"https://www.foretennis.com/tournaments/{tour.lower()}/{year}"
+        try:
+            r = requests.get(url, impersonate="chrome133a", timeout=20)
+            if r.status_code != 200:
+                logger.error(f"Failed to fetch {url}: HTTP {r.status_code}")
+                return []
+            soup = BeautifulSoup(r.text, "html.parser")
+            links = set()
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                if f"/tournament/{tour.lower()}/" in href and str(year) in href:
+                    if href.startswith("/"):
+                        href = f"https://www.foretennis.com{href}"
+                    links.add(href)
+            return list(links)
+        except Exception as e:
+            logger.error(f"Error fetching tournaments for {tour} {year}: {e}")
+            return []
+
+    def fetch_tournament_predictions(self, tournament_url: str) -> list[dict[str, Any]]:
+        try:
+            r = requests.get(tournament_url, impersonate="chrome133a", timeout=20)
+            if r.status_code != 200:
+                return []
+            soup = BeautifulSoup(r.text, "html.parser")
+            results = []
+            h1 = soup.find("h1")
+            tournament_name = h1.text.strip() if h1 else tournament_url.split("/")[-3].replace("-", " ").title()
+            for tr in soup.find_all("tr"):
+                tds = tr.find_all("td")
+                if len(tds) < 6:
+                    continue
+                pnames_td = tr.find("td", class_="pnames")
+                if not pnames_td:
+                    continue
+                player_links = pnames_td.find_all("a")
+                if not player_links:
+                    continue
+                a_tag = player_links[0]
+                for span in a_tag.find_all("span", class_="ccode"):
+                    span.decompose()
+                parts = re.split(r"<br\s*/?>", str(a_tag), flags=re.IGNORECASE)
+                if len(parts) >= 2:
+                    p1 = BeautifulSoup(parts[0], "html.parser").text.strip()
+                    p2 = BeautifulSoup(parts[1], "html.parser").text.strip()
+                else:
+                    continue
+                date_div = pnames_td.find("div", class_="date_match")
+                match_date = date_div.text.strip() if date_div else None
+                if match_date:
+                    try:
+                        dt = datetime.strptime(match_date, "%d/%m/%Y %H:%M")
+                        match_date = dt.strftime("%Y-%m-%d")
+                    except ValueError:
+                        pass
+                prob1 = tds[2].text.strip().replace("%", "")
+                prob2 = tds[3].text.strip().replace("%", "")
+                pred = tds[4].text.strip()
+                results.append({
+                    "match_date": match_date,
+                    "tournament": tournament_name,
+                    "player_home": p1,
+                    "player_away": p2,
+                    "prob_home": int(prob1) if prob1.isdigit() else None,
+                    "prob_away": int(prob2) if prob2.isdigit() else None,
+                    "predicted_winner": pred,
+                    "source": "ForeTennis"
+                })
+            return results
+        except Exception as e:
+            logger.error(f"Error extracting from {tournament_url}: {e}")
+            return []
+
     def map_prediction_to_player(
         self, pred: dict[str, Any], player_a: str, player_b: str
     ) -> Optional[dict[str, Any]]:

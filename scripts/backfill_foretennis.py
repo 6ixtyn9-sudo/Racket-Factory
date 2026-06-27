@@ -2,13 +2,12 @@
 """
 Backfill ForeTennis Predictions
 
-Fetches the lastpredictions page (finished matches with results) and
-matches them to the warehouse. This is a genuine backtesting source —
-ForeTennis predictions include actual results, so we can validate accuracy.
+Fetches predictions from ForeTennis and matches them to the warehouse.
+Supports daily mode (lastpredictions) and historical mode (by Tour + Year).
 
 Usage:
-    PYTHONPATH=src python3 scripts/backfill_foretennis.py
-    PYTHONPATH=src python3 scripts/backfill_foretennis.py --warehouse localdata/warehouse.csv.gz
+    PYTHONPATH=src python3 scripts/backfill_foretennis.py --mode daily
+    PYTHONPATH=src python3 scripts/backfill_foretennis.py --mode historical --tour atp --year 2024
 """
 import pandas as pd
 import argparse
@@ -29,111 +28,105 @@ logging.basicConfig(
 )
 logger = logging.getLogger("backfill_foretennis")
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse CSV")
+    parser.add_argument("--mode", choices=["daily", "historical"], default="daily", help="Run mode")
+    parser.add_argument("--tour", choices=["atp", "wta"], help="Tour for historical mode")
+    parser.add_argument("--year", type=int, help="Year for historical mode")
+    args = parser.parse_args()
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description="Backfill predictions from ForeTennis")
-    ap.add_argument("--warehouse", default=str(ROOT / "localdata" / "warehouse.csv.gz"),
-                    help="Path to warehouse")
-    ap.add_argument("--output-dir", default=str(ROOT / "localdata"),
-                    help="Output directory")
-    args = ap.parse_args()
+    if args.mode == "historical" and (not args.tour or not args.year):
+        parser.error("--tour and --year are required for historical mode")
 
-    predictor = ForeTennisPredictor()
-    logger.info("Fetching ForeTennis lastpredictions...")
-    preds = predictor.fetch_lastpredictions()
-    if not preds:
-        logger.warning("No predictions returned from ForeTennis.")
-        return 1
+    wh_path = Path(args.warehouse)
+    if not wh_path.exists():
+        logger.error(f"Warehouse not found at {wh_path}")
+        return
 
-    logger.info("Fetched %d raw predictions from ForeTennis.", len(preds))
+    logger.info(f"Loading warehouse from {wh_path}")
+    wh = pd.read_csv(wh_path, compression="gzip", low_memory=False)
+    wh["match_date"] = pd.to_datetime(wh["match_date"]).dt.strftime("%Y-%m-%d")
 
-    # Build lookup index
-    pred_index: dict[tuple[str, tuple[str, str]], dict] = {}
-    for p in preds:
-        if not p.get("match_date"):
+    # Build pred_index dictionary
+    pred_index = {}
+    for idx, row in wh.iterrows():
+        date_str = row["match_date"]
+        # Ensure we don't crash on nan names
+        if pd.isna(row["player_a"]) or pd.isna(row["player_b"]):
             continue
-        h = name_signature(p["player_home"])
-        a = name_signature(p["player_away"])
-        key = tuple(sorted([h, a]))
-        pred_index[(p["match_date"], key)] = p
+            
+        pa_sig = name_signature(str(row["player_a"]))
+        pb_sig = name_signature(str(row["player_b"]))
+        if date_str not in pred_index:
+            pred_index[date_str] = []
+        pred_index[date_str].append((idx, pa_sig, pb_sig, str(row["player_a"]), str(row["player_b"])))
 
-    # Try to match against warehouse
-    predictions = []
-    matched = 0
-    if args.warehouse and Path(args.warehouse).exists():
-        try:
-            warehouse_df = pd.read_csv(args.warehouse, low_memory=False)
-        except Exception as e:
-            logger.warning("Could not read warehouse: %s", e)
-            warehouse_df = None
+    ft = ForeTennisPredictor()
+    matched_predictions = []
 
-        if warehouse_df is not None and not warehouse_df.empty:
-            for _, row in warehouse_df.iterrows():
-                match_date = str(row["match_date"])
-                sig_a = name_signature(row["player_a"])
-                sig_b = name_signature(row["player_b"])
-                key = tuple(sorted([sig_a, sig_b]))
-
-                pred = pred_index.get((match_date, key))
-                if not pred:
-                    continue
-
-                mapped = predictor.map_prediction_to_player(pred, row["player_a"], row["player_b"])
-                if not mapped:
-                    continue
-
-                predictions.append({
-                    "match_date": match_date,
-                    "tour": row["tour"],
-                    "tournament": row["tournament"],
-                    "player_a": row["player_a"],
-                    "player_b": row["player_b"],
-                    "predicted_winner": mapped["predicted_winner"],
-                    "prediction_prob": mapped["prediction_prob"],
-                    "source": "ForeTennis",
-                })
-                matched += 1
-
-            logger.info("Matched %d predictions to warehouse.", matched)
-    else:
-        logger.info("No warehouse found. Dumping raw predictions.")
+    if args.mode == "daily":
+        logger.info("Running in DAILY mode (lastpredictions)")
+        preds = ft.fetch_lastpredictions()
+        logger.info(f"Fetched {len(preds)} predictions from lastpredictions")
+        
         for p in preds:
-            predictions.append({
-                "match_date": p["match_date"],
-                "tour": "",  # Unknown without warehouse
-                "tournament": p.get("tournament", "Unknown"),
-                "player_a": p["player_home"],
-                "player_b": p["player_away"],
-                "predicted_winner": "player_a" if p.get("predicted_winner") == "1" else "player_b",
-                "prediction_prob": (p["prob_home"] / 100 if p.get("predicted_winner") == "1" else p.get("prob_away") / 100) if p.get("prob_home") is not None else None,
-                "source": "ForeTennis",
-            })
+            date_str = p.get("match_date")
+            if not date_str or date_str not in pred_index:
+                continue
+                
+            for idx, pa_sig, pb_sig, player_a, player_b in pred_index[date_str]:
+                mapped = ft.map_prediction_to_player(p, player_a, player_b)
+                if mapped:
+                    matched_predictions.append({
+                        "match_id": idx,
+                        "match_date": date_str,
+                        "predicted_winner_foretennis": mapped["predicted_winner"],
+                        "prob_home_foretennis": mapped.get("prob_home"),
+                        "prob_away_foretennis": mapped.get("prob_away"),
+                    })
+                    break
 
-    if not predictions:
-        logger.warning("No predictions matched or generated.")
-        return 1
+    else:
+        logger.info(f"Running in HISTORICAL mode for {args.tour.upper()} {args.year}")
+        tournaments = ft.fetch_tournaments_for_year(args.tour, args.year)
+        logger.info(f"Found {len(tournaments)} tournaments.")
+        
+        for t_url in tournaments:
+            logger.info(f"Fetching predictions from {t_url}")
+            preds = ft.fetch_tournament_predictions(t_url)
+            logger.info(f"  -> {len(preds)} predictions found.")
+            
+            for p in preds:
+                date_str = p.get("match_date")
+                if not date_str or date_str not in pred_index:
+                    continue
+                    
+                for idx, pa_sig, pb_sig, player_a, player_b in pred_index[date_str]:
+                    mapped = ft.map_prediction_to_player(p, player_a, player_b)
+                    if mapped:
+                        matched_predictions.append({
+                            "match_id": idx,
+                            "match_date": date_str,
+                            "predicted_winner_foretennis": mapped["predicted_winner"],
+                            "prob_home_foretennis": mapped.get("prob_home"),
+                            "prob_away_foretennis": mapped.get("prob_away"),
+                        })
+                        break
 
-    # Write to monthly CSVs
-    out_df = pd.DataFrame(predictions)
-    out_dir = Path(args.output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    if not matched_predictions:
+        logger.warning("No predictions matched to warehouse.")
+        return
 
-    by_month = out_df.groupby(out_df["match_date"].str[:7])
-    for month, group in by_month:
-        path = out_dir / f"predictions_foretennis_{month}.csv.gz"
-        if path.exists():
-            existing = pd.read_csv(path, low_memory=False)
-            group = pd.concat([existing, group], ignore_index=True)
-            group = group.drop_duplicates(
-                subset=["match_date", "tour", "tournament", "player_a", "player_b"],
-                keep="last",
-            )
-        group.to_csv(path, index=False, compression="gzip")
-        logger.info("Wrote %d predictions to %s", len(group), path)
-
-    logger.info("Backfill complete. Total predictions: %d", len(predictions))
-    return 0
-
+    df_preds = pd.DataFrame(matched_predictions)
+    
+    # Drop duplicates in case of overlaps
+    df_preds = df_preds.drop_duplicates(subset=["match_id"])
+    
+    # Save the raw extractions to localdata for the warehouse builder to pick up
+    out_file = ROOT / f"localdata/foretennis_preds_{args.mode}.csv"
+    df_preds.to_csv(out_file, index=False)
+    logger.info(f"Saved {len(df_preds)} matched predictions to {out_file}")
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
