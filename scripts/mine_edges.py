@@ -370,7 +370,11 @@ def main() -> int:
     if "winner" in today_df.columns:
         today_df = today_df[today_df["winner"].isna() | (today_df["winner"].astype(str).str.strip() == "")]
     if "selected_rank_band" in today_df.columns:
-        today_df = today_df[today_df["selected_rank_band"] != "Unknown"]
+        if "_comment" in today_df.columns:
+            live_injected_mask = today_df["_comment"].astype(str).str.strip().eq("live_upcoming_injected")
+            today_df = today_df[(today_df["selected_rank_band"] != "Unknown") | live_injected_mask]
+        else:
+            today_df = today_df[today_df["selected_rank_band"] != "Unknown"]
 
     # Fallback path: if the warehouse has no clean upcoming rows for today,
     # assemble a live candidate set from prediction-bearing rows dated today.
@@ -384,7 +388,11 @@ def main() -> int:
         if not isinstance(pred_mask, bool):
             fallback = fallback[pred_mask]
         if "selected_rank_band" in fallback.columns:
-            fallback = fallback[fallback["selected_rank_band"] != "Unknown"]
+            if "_comment" in fallback.columns:
+                live_injected_mask = fallback["_comment"].astype(str).str.strip().eq("live_upcoming_injected")
+                fallback = fallback[(fallback["selected_rank_band"] != "Unknown") | live_injected_mask]
+            else:
+                fallback = fallback[fallback["selected_rank_band"] != "Unknown"]
         if "fav_odds_band" in fallback.columns:
             fallback = fallback[fallback["fav_odds_band"] != "Unknown"]
         if "tour" in fallback.columns:
