@@ -38,3 +38,8 @@ def normalize_tour(value: object) -> str:
     if not text:
         return "UNKNOWN"
     return TOUR_ALIASES.get(text, text.upper())
+
+import difflib
+
+def fuzzy_match_players(name1: str, name2: str) -> bool:
+    return difflib.SequenceMatcher(None, name1.lower(), name2.lower()).ratio() > 0.75

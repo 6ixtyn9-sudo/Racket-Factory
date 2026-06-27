@@ -11,6 +11,15 @@ from datetime import date
 from curl_cffi import requests
 
 from racketfactory.entities import normalize_player
+import random
+
+BROWSER_PROFILES = ["chrome133a", "safari17_0", "firefox133"]
+
+def safe_prob(p):
+    try:
+        return int(float(str(p).replace('%', '').strip()))
+    except:
+        return None
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +30,7 @@ class PredixSportPredictor:
     def fetch_daily(self) -> list[dict[str, Any]]:
         url = f"{self.base_url}/tennis_predictions"
         try:
-            resp = requests.get(url, impersonate="chrome133a", timeout=20)
+            resp = requests.get(url, impersonate=random.choice(BROWSER_PROFILES), timeout=20)
             if resp.status_code != 200:
                 logger.error("Failed to fetch PredixSport index")
                 return []
@@ -36,7 +45,7 @@ class PredixSportPredictor:
         for link in set(links):
             match_url = self.base_url + link
             try:
-                r = requests.get(match_url, impersonate="chrome133a", timeout=20)
+                r = requests.get(match_url, impersonate=random.choice(BROWSER_PROFILES), timeout=20)
                 if r.status_code != 200:
                     continue
                 s = BeautifulSoup(r.text, 'html.parser')
@@ -44,11 +53,12 @@ class PredixSportPredictor:
                 players = [p.text.strip() for p in s.find_all('h2', class_='player-name')]
                 probs = [p.text.strip().replace('%', '') for p in s.find_all('div', class_='win-probability')]
                 
-                if len(players) == 2 and len(probs) == 2 and probs[0].isdigit() and probs[1].isdigit():
+                if len(players) == 2 and len(probs) == 2:
                     p1, p2 = players[0], players[1]
-                    prob1, prob2 = int(probs[0]), int(probs[1])
+                    prob1, prob2 = safe_prob(probs[0]), safe_prob(probs[1])
                     
-                    winner = p1 if prob1 >= prob2 else p2
+                    if prob1 is not None and prob2 is not None:
+                        winner = p1 if prob1 >= prob2 else p2
                     results.append({
                         "match_date": date.today().strftime("%Y-%m-%d"),
                         "player_home": p1,

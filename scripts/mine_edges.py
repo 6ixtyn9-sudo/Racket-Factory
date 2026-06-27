@@ -2,6 +2,8 @@
 """
 Racket Factory Edge Miner (Ma Golide Enhanced)
 Automated combinatorial discovery of Bankers and Robbers, including prediction signals.
+
+WARNING: ROI is currently calculated using Market Closing Odds. AI predictions captured early in the day must be evaluated against Opening Odds before live capital is deployed.
 """
 import pandas as pd
 import argparse

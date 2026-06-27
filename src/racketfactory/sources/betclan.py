@@ -11,6 +11,15 @@ from datetime import date, timedelta
 from curl_cffi import requests
 
 from racketfactory.entities import normalize_player
+import random
+
+BROWSER_PROFILES = ["chrome133a", "safari17_0", "firefox133"]
+
+def safe_prob(p):
+    try:
+        return int(float(str(p).replace('%', '').strip()))
+    except:
+        return None
 
 logger = logging.getLogger(__name__)
 
@@ -25,18 +34,18 @@ class BetClanPredictor:
             target_date = (date.today() + timedelta(days=day_offset)).strftime("%Y-%m-%d")
             url = f"{self.base_url}/{endpoint}/"
             try:
-                resp = requests.get(url, impersonate="chrome133a", timeout=20)
+                resp = requests.get(url, impersonate=random.choice(BROWSER_PROFILES), timeout=20)
                 if resp.status_code != 200:
                     continue
             except Exception as e:
                 logger.error(f"BetClan request failed: {e}")
                 continue
 
-            links = re.findall(r"href='(https://www\.betclan\.com/tennis/predictionsdetails/[^']+)'", resp.text)
+            links = re.findall(r"href=[\'\"](https://www\.betclan\.com/tennis/predictionsdetails/[^\'\"]+)[\'\"]", resp.text)
             
             for match_url in set(links):
                 try:
-                    r = requests.get(match_url, impersonate="chrome133a", timeout=20)
+                    r = requests.get(match_url, impersonate=random.choice(BROWSER_PROFILES), timeout=20)
                     if r.status_code != 200:
                         continue
                     s = BeautifulSoup(r.text, 'html.parser')
@@ -59,11 +68,11 @@ class BetClanPredictor:
                     
                     prob1, prob2 = None, None
                     if vote_container and 'width' in vote_container.get('style', ''):
-                        m = re.search(r"width:\s*(\d+)%", vote_container.get('style'))
-                        if m: prob1 = int(m.group(1))
+                        m = re.search(r"width:\s*([^%]+)%", vote_container.get('style'))
+                        if m: prob1 = safe_prob(m.group(1))
                     if x_container and 'width' in x_container.get('style', ''):
-                        m = re.search(r"width:\s*(\d+)%", x_container.get('style'))
-                        if m: prob2 = int(m.group(1))
+                        m = re.search(r"width:\s*([^%]+)%", x_container.get('style'))
+                        if m: prob2 = safe_prob(m.group(1))
                         
                     results.append({
                         "match_date": target_date,
