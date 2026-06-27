@@ -117,13 +117,15 @@ def main() -> int:
     logger.info("Mining for Bankers and Robbers across %d dimensions...", len(dimensions))
     
     results = []
-    all_combinations = list(product(*dimensions.values()))
     dim_names = list(dimensions.keys())
+    
+    # Pre-filter out 'Unknown' and NaNs from dimensions so they don't bloat the groupby
+    for d in dim_names:
+        df = df[~df[d].isin(["Unknown", ""])]
+        df = df.dropna(subset=[d])
 
-    for combo in all_combinations:
-        query = " and ".join([f"{name} == '{val}'" for name, val in zip(dim_names, combo)])
-        slice_df = df.query(query)
-        
+    # Super-fast pandas grouped mining
+    for combo, slice_df in df.groupby(dim_names):
         if len(slice_df) < args.min_n:
             continue
             
