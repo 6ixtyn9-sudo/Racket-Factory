@@ -77,8 +77,32 @@ def normalize_person_name(name: str) -> str:
         return ""
     parts = name.split()
     if len(parts) >= 2 and len(parts[0]) == 1:
-        return " ".join(parts[1:])
-    return name
+        parts = parts[1:]
+    return " ".join(parts)
+
+
+def person_tokens(name: str) -> tuple[str, ...]:
+    normalized = normalize_person_name(name)
+    if not normalized:
+        return tuple()
+    return tuple(normalized.split())
+
+
+def names_match(name_a: str, name_b: str) -> bool:
+    a = person_tokens(name_a)
+    b = person_tokens(name_b)
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    if len(a) == len(b):
+        shared = sum(1 for x, y in zip(a, b) if x == y)
+        if shared >= max(1, len(a) - 1):
+            return True
+    set_a = set(a)
+    set_b = set(b)
+    overlap = set_a & set_b
+    return len(overlap) >= min(len(set_a), len(set_b)) and len(overlap) >= 1
 
 
 def canonical_display_name(name: str) -> str:
@@ -96,6 +120,57 @@ def matchup_key(player_home: str, player_away: str) -> str:
         normalize_person_name(player_away),
     ])
     return "|".join(names)
+
+
+def matchup_keys(player_home: str, player_away: str) -> tuple[str, str]:
+    exact = matchup_key(player_home, player_away)
+    token_names = sorted([
+        " ".join(person_tokens(player_home)),
+        " ".join(person_tokens(player_away)),
+    ])
+    token_key = "|".join(token_names)
+    return exact, token_key
+
+
+def rows_refer_to_same_match(a: pd.Series, b: pd.Series) -> bool:
+    if str(a.get("match_date", "")) != str(b.get("match_date", "")):
+        return False
+    return (
+        (names_match(a.get("player_home", ""), b.get("player_home", "")) and names_match(a.get("player_away", ""), b.get("player_away", "")))
+        or
+        (names_match(a.get("player_home", ""), b.get("player_away", "")) and names_match(a.get("player_away", ""), b.get("player_home", "")))
+    )
+
+
+def collapse_combined_card(combined: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    used = set()
+    ordered = combined.sort_values(by=[c for c in ["match_date", "name_score"] if c in combined.columns], ascending=[True, False]).reset_index(drop=True)
+    for i, row in ordered.iterrows():
+        if i in used:
+            continue
+        group = [i]
+        used.add(i)
+        for j in range(i + 1, len(ordered)):
+            if j in used:
+                continue
+            other = ordered.iloc[j]
+            if rows_refer_to_same_match(row, other):
+                group.append(j)
+                used.add(j)
+        grp = ordered.iloc[group].copy()
+        rows.append({
+            "match_date": grp["match_date"].iloc[0],
+            "pair_key": grp.apply(lambda r: matchup_key(r.get("player_home", ""), r.get("player_away", "")), axis=1).iloc[0],
+            "sources": ", ".join(sorted(set(map(str, grp["source"])))),
+            "player_home": grp.iloc[0]["player_home"],
+            "player_away": grp.iloc[0]["player_away"],
+            "match_type": next((x for x in grp["match_type"] if str(x)), grp["match_type"].iloc[0]),
+            "tour": next((x for x in grp["tour"] if str(x) not in {"", "UNKNOWN"}), grp["tour"].iloc[0]),
+            "_series": next((x for x in grp["_series"] if str(x) not in {"", "UNKNOWN"}), grp["_series"].iloc[0]),
+            "context_used": next((x for x in grp["context_used"] if str(x) not in {"", "<empty>"}), grp["context_used"].iloc[0]),
+        })
+    return pd.DataFrame(rows)
 
 
 def classify_row(row: pd.Series) -> tuple[str, str, str]:
@@ -215,16 +290,7 @@ def main():
     if not combined.empty:
         combined["pair_key"] = combined.apply(lambda r: matchup_key(r.get("player_home", ""), r.get("player_away", "")), axis=1)
         combined["name_score"] = combined["player_home"].astype(str).str.len() + combined["player_away"].astype(str).str.len()
-        combined = combined.sort_values(by=[c for c in ["match_date", "name_score"] if c in combined.columns], ascending=[True, False])
-        summary = combined.groupby(["match_date", "pair_key"], dropna=False).agg(
-            sources=("source", lambda s: ", ".join(sorted(set(map(str, s))))),
-            player_home=("player_home", "first"),
-            player_away=("player_away", "first"),
-            match_type=("match_type", "first"),
-            tour=("tour", lambda s: next((x for x in s if str(x) not in {"", "UNKNOWN"}), s.iloc[0])),
-            _series=("_series", lambda s: next((x for x in s if str(x) not in {"", "UNKNOWN"}), s.iloc[0])),
-            context_used=("context_used", lambda s: next((x for x in s if str(x) not in {"", "<empty>"}), s.iloc[0])),
-        ).reset_index()
+        summary = collapse_combined_card(combined)
         print_section(
             "\n[4] Combined upcoming candidate card",
             summary.sort_values(by=[c for c in ["match_date"] if c in summary.columns]),
