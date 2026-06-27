@@ -81,6 +81,15 @@ def normalize_person_name(name: str) -> str:
     return " ".join(parts)
 
 
+def surname_tokens(name: str) -> tuple[str, ...]:
+    parts = normalize_person_name(name).split()
+    if not parts:
+        return tuple()
+    if len(parts) == 1:
+        return (parts[-1],)
+    return tuple(parts[-2:])
+
+
 def person_tokens(name: str) -> tuple[str, ...]:
     normalized = normalize_person_name(name)
     if not normalized:
@@ -94,6 +103,8 @@ def names_match(name_a: str, name_b: str) -> bool:
     if not a or not b:
         return False
     if a == b:
+        return True
+    if surname_tokens(name_a) == surname_tokens(name_b):
         return True
     if len(a) == len(b):
         shared = sum(1 for x, y in zip(a, b) if x == y)
@@ -116,20 +127,10 @@ def canonical_display_name(name: str) -> str:
 
 def matchup_key(player_home: str, player_away: str) -> str:
     names = sorted([
-        normalize_person_name(player_home),
-        normalize_person_name(player_away),
+        " ".join(surname_tokens(player_home)) or normalize_person_name(player_home),
+        " ".join(surname_tokens(player_away)) or normalize_person_name(player_away),
     ])
     return "|".join(names)
-
-
-def matchup_keys(player_home: str, player_away: str) -> tuple[str, str]:
-    exact = matchup_key(player_home, player_away)
-    token_names = sorted([
-        " ".join(person_tokens(player_home)),
-        " ".join(person_tokens(player_away)),
-    ])
-    token_key = "|".join(token_names)
-    return exact, token_key
 
 
 def rows_refer_to_same_match(a: pd.Series, b: pd.Series) -> bool:
