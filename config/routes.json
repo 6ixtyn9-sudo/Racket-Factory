@@ -239,7 +239,7 @@
             2026
         ],
         "pages_default": 3,
-        "notes": "ATP Canada Masters 1000 – alternates Toronto/Montreal. alt_url_templates tried automatically.",
+        "notes": "ATP Canada Masters 1000 \u2013 alternates Toronto/Montreal. alt_url_templates tried automatically.",
         "base_url": "https://www.oddsportal.com/tennis/canada/atp-toronto/results/",
         "alt_url_templates": [
             "https://www.oddsportal.com/tennis/canada/atp-toronto-{year}/results/",
@@ -401,7 +401,7 @@
             2026
         ],
         "pages_default": 3,
-        "notes": "WTA Canada 1000 – alternates Toronto/Montreal yearly. alt_url_templates tried automatically.",
+        "notes": "WTA Canada 1000 \u2013 alternates Toronto/Montreal yearly. alt_url_templates tried automatically.",
         "base_url": "https://www.oddsportal.com/tennis/canada/wta-toronto/results/",
         "alt_url_templates": [
             "https://www.oddsportal.com/tennis/canada/wta-toronto-{year}/results/",
@@ -571,28 +571,6 @@
             "https://www.oddsportal.com/tennis/great-britain/wta-nottingham-{year}/results/"
         ]
     },
-    "WTA_HERTOGENBOSCH": {
-        "tour": "WTA",
-        "url_template": "https://www.oddsportal.com/tennis/netherlands/wta-s-hertogenbosch-{year}/results/",
-        "tournament": "s-Hertogenbosch",
-        "years": [
-            2020,
-            2021,
-            2022,
-            2023,
-            2024,
-            2025,
-            2026
-        ],
-        "pages_default": 3,
-        "notes": "WTA Rosmalen / 's-Hertogenbosch (grass). Premier tier. Slug contains an apostrophe — alt_url_templates covers the unhyphenated and the non-possessive variants.",
-        "base_url": "https://www.oddsportal.com/tennis/netherlands/wta-s-hertogenbosch/results/",
-        "alt_url_templates": [
-            "https://www.oddsportal.com/tennis/netherlands/wta-rosmalen-{year}/results/",
-            "https://www.oddsportal.com/tennis/netherlands/wta-shertogenbosch-{year}/results/",
-            "https://www.oddsportal.com/tennis/netherlands/wta-hertogenbosch-{year}/results/"
-        ]
-    },
     "WTA_BAD_HOMBURG": {
         "tour": "WTA",
         "url_template": "https://www.oddsportal.com/tennis/germany/wta-bad-homburg-{year}/results/",
@@ -652,27 +630,6 @@
             "https://www.oddsportal.com/tennis/germany/atp-halle-open-{year}/results/"
         ]
     },
-    "ATP_QUEENS": {
-        "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/united-kingdom/atp-queens-{year}/results/",
-        "tournament": "Queens Club",
-        "years": [
-            2020,
-            2021,
-            2022,
-            2023,
-            2024,
-            2025,
-            2026
-        ],
-        "pages_default": 3,
-        "notes": "ATP Queen's Club Championships (grass). ATP500 tier. Apostrophe is stripped from slug.",
-        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/atp-queens/results/",
-        "alt_url_templates": [
-            "https://www.oddsportal.com/tennis/united-kingdom/atp-queens-club-{year}/results/",
-            "https://www.oddsportal.com/tennis/great-britain/atp-queens-{year}/results/"
-        ]
-    },
     "ATP_STUTTGART": {
         "tour": "ATP",
         "url_template": "https://www.oddsportal.com/tennis/germany/atp-stuttgart-{year}/results/",
@@ -710,28 +667,6 @@
         "base_url": "https://www.oddsportal.com/tennis/spain/atp-mallorca/results/",
         "alt_url_templates": [
             "https://www.oddsportal.com/tennis/spain/atp-mallorca-championships-{year}/results/"
-        ]
-    },
-    "ATP_HERTOGENBOSCH": {
-        "tour": "ATP",
-        "url_template": "https://www.oddsportal.com/tennis/netherlands/atp-s-hertogenbosch-{year}/results/",
-        "tournament": "s-Hertogenbosch",
-        "years": [
-            2020,
-            2021,
-            2022,
-            2023,
-            2024,
-            2025,
-            2026
-        ],
-        "pages_default": 3,
-        "notes": "ATP Rosmalen / 's-Hertogenbosch (grass). ATP250 tier.",
-        "base_url": "https://www.oddsportal.com/tennis/netherlands/atp-s-hertogenbosch/results/",
-        "alt_url_templates": [
-            "https://www.oddsportal.com/tennis/netherlands/atp-rosmalen-{year}/results/",
-            "https://www.oddsportal.com/tennis/netherlands/atp-shertogenbosch-{year}/results/",
-            "https://www.oddsportal.com/tennis/netherlands/atp-hertogenbosch-{year}/results/"
         ]
     }
 }
