@@ -24,8 +24,10 @@ import os
 import shlex
 import subprocess
 import sys
+import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -75,6 +77,74 @@ def save_morning_baseline(target_date: str, picks_text: str | None, *, overwrite
     if path.exists() and not overwrite:
         return
     path.write_text(picks_text)
+
+
+def get_actual_kickoff_date(pick: dict[str, Any], fallback: str) -> str:
+    """Extract the real match date from match_date/date/kickoff time, fallback to provided date."""
+    for key in ("match_date", "date", "kickoff", "time", "start_time", "ko"):
+        val = pick.get(key)
+        if val and isinstance(val, str) and len(val) >= 10:
+            match = re.search(r"(\d{4}-\d{2}-\d{2})", val)
+            if match:
+                return match.group(1)
+    return fallback
+
+
+def match_market_key(pick: dict[str, Any]) -> tuple[str, str, str]:
+    match_str = str(pick.get("match") or "").lower().strip()
+    selected = str(pick.get("selected_player") or pick.get("selected_side") or "").lower().strip()
+    return ("EVENT_ID", match_str, selected)
+
+
+def merge_picks(existing_ledger: list[dict[str, Any]], fresh_run: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen_keys: set[tuple[str, str, str]] = set()
+    merged: list[dict[str, Any]] = []
+
+    for pick in existing_ledger:
+        key = match_market_key(pick)
+        seen_keys.add(key)
+        merged.append(pick)
+
+    for pick in fresh_run:
+        key = match_market_key(pick)
+        if key not in seen_keys:
+            seen_keys.add(key)
+            merged.append(pick)
+
+    merged.sort(
+        key=lambda p: (
+            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2}.get(str(p.get("bucket")), 9),
+            -int(p.get("source_count") or 0),
+            str(p.get("match", "")),
+        )
+    )
+    return merged
+
+
+def archive_picks_by_kickoff(picks: list[dict[str, Any]], fallback_date: str) -> list[str]:
+    """Distribute picks to archives based on their actual kickoff date."""
+    if not picks:
+        return []
+    LOCALDATA.mkdir(parents=True, exist_ok=True)
+
+    by_date: dict[str, list[dict[str, Any]]] = {}
+    for p in picks:
+        d = get_actual_kickoff_date(p, fallback_date)
+        by_date.setdefault(d, []).append(p)
+
+    for d, date_picks in by_date.items():
+        archive_path = archived_picks_file(d)
+        existing: list[dict[str, Any]] = []
+        if archive_path.exists():
+            try:
+                existing = json.loads(archive_path.read_text())
+                if not isinstance(existing, list): existing = []
+            except Exception:
+                existing = []
+
+        merged = merge_picks(existing, date_picks)
+        archive_path.write_text(json.dumps(merged, indent=2, sort_keys=True))
+    return list(by_date.keys())
 
 
 # ------------------------------------------------- autonomous smart schedule --
@@ -158,14 +228,41 @@ def run_once(args: argparse.Namespace) -> None:
     # 4. Mine Edges
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --date {target}", "mine_edges", env=child_env)
 
-    # 5. Lock the morning baseline
-    archive = archived_picks_file(target)
-    if archive.exists():
-        save_morning_baseline(target, archive.read_text(), overwrite=args.force_repick)
+    # 5. Archive by Kickoff & Lock the morning baseline
+    picks_today = LOCALDATA / "picks_today.json"
+    if picks_today.exists():
+        try:
+            current_picks = json.loads(picks_today.read_text())
+            if not isinstance(current_picks, list):
+                current_picks = []
+        except Exception:
+            current_picks = []
+
+        distinct_dates = archive_picks_by_kickoff(current_picks, target)
+        if target not in distinct_dates:
+            distinct_dates.append(target)
+
+        for d in distinct_dates:
+            arch = archived_picks_file(d)
+            if arch.exists():
+                save_morning_baseline(d, arch.read_text(), overwrite=args.force_repick)
+    else:
+        archive = archived_picks_file(target)
+        if archive.exists():
+            save_morning_baseline(target, archive.read_text(), overwrite=args.force_repick)
+
+    # 6. Run Audit
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_recent_picks.py --end {target} --days 30 --warehouse localdata/warehouse.csv.gz", "audit_recent_picks", env=child_env)
+
+    # 7. Supabase Live Dashboard Sync (Optional)
+    sync_script = ROOT / "scripts" / "sync_supabase.py"
+    if sync_script.exists() and (os.getenv("SUPABASE_URL") or args.force_sync):
+        run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/sync_supabase.py --picks {archived_picks_file(target)} --target-date {target} --replace-date", "sync_supabase", env=child_env)
 
     print(f"\n=== Pipeline Complete — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===")
 
-    # 6. Optional WhatsApp heads-up
+    # 8. Optional WhatsApp heads-up
+    archive = archived_picks_file(target)
     if not args.skip_notify and os.getenv("CALLMEBOT_APIKEY") and os.getenv("CALLMEBOT_PHONE"):
         run_soft(
             f"{env_prefix} PYTHONPATH=src python3 scripts/notify_whatsapp.py --date {target} --picks {archive}",
@@ -181,6 +278,8 @@ def _build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--skip-notify", action="store_true", help="Do not send the WhatsApp heads-up")
     ap.add_argument("--force-repick", action="store_true",
                     help="Overwrite the morning baseline lock (dangerous — only use for replays)")
+    ap.add_argument("--force-sync", action="store_true",
+                    help="Force execution of Supabase sync script even if SUPABASE_URL is not in local env.")
     ap.add_argument("--auto-run", action="store_true",
                     help="Run the autonomous smart-schedule loop forever (sleeps between iterations).")
     ap.add_argument("--auto-once", action="store_true",

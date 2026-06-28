@@ -342,117 +342,6 @@ def write_official_pick_outputs(target_date: str, picks: list[dict]) -> None:
     logger.info("Wrote %d official picks to %s and %s", len(picks), today_path, archive_path)
 
 
-def audit_archived_picks(window_days: int = 30, warehouse_path: Path | None = None) -> dict:
-    warehouse_path = warehouse_path or (ROOT / "localdata" / "warehouse.csv.gz")
-    if not warehouse_path.exists():
-        return {
-            "start": None,
-            "end": None,
-            "archived_pick_rows": 0,
-            "settled_picks": 0,
-            "wins": 0,
-            "hit_rate": None,
-            "priced_picks": 0,
-            "roi": None,
-        }
-
-    try:
-        df = pd.read_csv(warehouse_path, low_memory=False)
-    except Exception as e:
-        logger.warning("Could not load warehouse for audit: %s", e)
-        return {
-            "start": None,
-            "end": None,
-            "archived_pick_rows": 0,
-            "settled_picks": 0,
-            "wins": 0,
-            "hit_rate": None,
-            "priced_picks": 0,
-            "roi": None,
-        }
-
-    today = date.today()
-    start = today - timedelta(days=max(0, window_days - 1))
-    archived_rows = []
-    for offset in range(window_days):
-        day = (start + timedelta(days=offset)).isoformat()
-        path = ROOT / "localdata" / f"picks_{day}.json"
-        if not path.exists():
-            continue
-        try:
-            data = json.loads(path.read_text())
-        except Exception:
-            continue
-        if isinstance(data, list):
-            for row in data:
-                if isinstance(row, dict):
-                    archived_rows.append(dict(row))
-
-    settled = []
-    for pick in archived_rows:
-        match_date = str(pick.get("date", ""))[:10]
-        if not match_date or match_date >= today.isoformat():
-            continue
-        player_home = str(pick.get("player_home") or "").strip()
-        player_away = str(pick.get("player_away") or "").strip()
-        if not player_home or not player_away:
-            continue
-        selected_player = str(pick.get("selected_player") or "").strip()
-        if not selected_player:
-            continue
-
-        candidates = df[df.get("match_date", pd.Series(dtype=object)).astype(str) == match_date].copy()
-        if candidates.empty:
-            continue
-        candidates = candidates[
-            (candidates.get("player_a", pd.Series(dtype=object)).astype(str) == player_home)
-            & (candidates.get("player_b", pd.Series(dtype=object)).astype(str) == player_away)
-        ]
-        if candidates.empty:
-            candidates = df[
-                (df.get("match_date", pd.Series(dtype=object)).astype(str) == match_date)
-                & (df.get("player_a", pd.Series(dtype=object)).astype(str) == player_away)
-                & (df.get("player_b", pd.Series(dtype=object)).astype(str) == player_home)
-            ].copy()
-        if candidates.empty or "winner" not in candidates.columns:
-            continue
-        settled_rows = candidates[candidates["winner"].notna() & (candidates["winner"].astype(str).str.strip() != "")]
-        if settled_rows.empty:
-            continue
-        row = settled_rows.iloc[0]
-        winner = str(row.get("winner") or "").strip()
-        won = winner == selected_player
-        odds = None
-        if str(pick.get("selected_side")) == "player_a":
-            odds = row.get("odds_a")
-        elif str(pick.get("selected_side")) == "player_b":
-            odds = row.get("odds_b")
-        try:
-            odds = float(odds) if pd.notna(odds) else None
-        except Exception:
-            odds = None
-        pnl = None if odds is None else (odds - 1.0 if won else -1.0)
-        settled.append({"won": won, "odds": odds, "pnl": pnl})
-
-    wins = sum(1 for row in settled if row["won"])
-    priced = [row for row in settled if row["pnl"] is not None]
-    pnl_sum = sum(float(row["pnl"]) for row in priced) if priced else 0.0
-    report = {
-        "start": start.isoformat(),
-        "end": today.isoformat(),
-        "archived_pick_rows": len(archived_rows),
-        "settled_picks": len(settled),
-        "wins": wins,
-        "hit_rate": round(wins / len(settled), 6) if settled else None,
-        "priced_picks": len(priced),
-        "roi": round(pnl_sum / len(priced), 6) if priced else None,
-    }
-    out_path = ROOT / "localdata" / "picks_audit_rolling.json"
-    out_path.write_text(json.dumps(report, indent=2))
-    logger.info("Wrote rolling picks audit to %s", out_path)
-    return report
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(description="Mine the warehouse for automated edges")
     ap.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse")
@@ -670,7 +559,6 @@ def main() -> int:
     )
 
     write_official_pick_outputs(target_date, picks_to_export)
-    audit_archived_picks(window_days=30, warehouse_path=Path(args.warehouse))
     logger.info("Exported %d actionable picks for %s", len(picks_to_export), target_date)
     return 0
 

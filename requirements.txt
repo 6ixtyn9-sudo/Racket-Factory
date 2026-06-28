@@ -10,3 +10,4 @@ python-dotenv
 playwright
 curl_cffi
 tenacity
+supabase
