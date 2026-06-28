@@ -31,6 +31,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("edge_miner")
 
+ACTIONABLE_BUCKETS = {"CERTIFIED_CLEAN", "CAUTION"}
+WATCHLIST_BUCKETS = {"WATCHLIST", "WATCHLIST_NO_ODDS", "WATCHLIST_UNKNOWN_CTX"}
+QUALIFYING_VERDICTS = {"EDGE CONFIRMED", "WATCHLIST"}
+
 
 def get_player_rank_band(rank: float) -> str:
     if pd.isna(rank): return "Unknown"
@@ -294,7 +298,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         max_away = away_probs.max() if not away_probs.empty else None
         probs = [p for p in [max_home, max_away] if pd.notna(p)]
         max_prob = max(probs) if probs else None
-        fav_odds_band = prob_to_odds_band(max_prob)
+        fav_odds_band = "Unknown"
         selected_prob = max_home if selected_pick == "player_a" else max_away
         if pd.isna(selected_prob):
             selected_prob = max_prob
@@ -337,14 +341,12 @@ def classify_bucket(best_pick: dict) -> str:
         return "CERTIFIED_CLEAN"
     if verdict == "WATCHLIST":
         return "WATCHLIST"
-    # REDTEAM Finding #1: ROBBER/FADE verdicts must NEVER be exported as a
-    # pick. The old mapping ("FADE THIS SIGNAL" -> "CAUTION") was the root
-    # cause of the 2026-06-28 run shipping 48 negatively-biased picks. We now
-    # route them to the SKIPPED_DEAD_EDGE bucket so they are visible in the
-    # archive JSON for transparency, but never reach the actionable set.
+    # ROBBER/FADE and neutral/no-stat slices must never be promoted to an
+    # actionable or watchlist betting row. If one leaks through diagnostics,
+    # mark it as skipped rather than making it look bettable.
     if verdict == "FADE THIS SIGNAL":
         return "SKIPPED_DEAD_EDGE"
-    return "WATCHLIST"
+    return "SKIPPED_VETO"
 
 
 def select_player_from_row(row: pd.Series, target_date: str) -> dict:
@@ -428,13 +430,17 @@ def main() -> int:
                     help="REDTEAM Finding #5: minimum historical N required for a slice to be "
                          "considered exportable as a live pick. Default 50 — anything smaller is "
                          "kept for transparency in the slice report but cannot become a pick.")
+    ap.add_argument("--min-edge-roi", type=float, default=0.0,
+                    help="Minimum historical slice ROI required before a slice may qualify a live row. "
+                         "Default 0.0. Increase to e.g. 0.02 for a stricter production regime.")
     ap.add_argument("--min-ev", type=float, default=0.0,
                     help="REDTEAM Finding #4: minimum per-bet expected value (decimal) required "
                          "for a pick to be exported. EV = conf*(odds-1) - (1-conf). Default 0.0 "
                          "(drop non-positive-EV bets). Set to negative to disable.")
-    ap.add_argument("--bet-side", choices=["favorite", "prediction"], default="favorite",
-                    help="REDTEAM Finding #3: what side does the slice assay test? 'favorite' "
-                         "(default, historical behaviour) or 'prediction' (follow predicted_winner*).")
+    ap.add_argument("--bet-side", choices=["favorite", "prediction"], default="prediction",
+                    help="REDTEAM: what side does the historical assay test? Default 'prediction' so "
+                         "the backtest follows the same side exported as the live selection. Use "
+                         "'favorite' only for market-favourite diagnostics.")
     ap.add_argument("--date", default=None, help="Target date YYYY-MM-DD to extract specific picks (default: today)")
     args = ap.parse_args()
 
@@ -494,8 +500,6 @@ def main() -> int:
                     if max_p is None or v > max_p: max_p = v
                 except (TypeError, ValueError):
                     pass
-        if max_p is not None:
-            return prob_to_odds_band(max_p)
         return 'Unknown'
 
     df['fav_odds_band'] = df.apply(calc_odds_band, axis=1)
@@ -624,9 +628,11 @@ def main() -> int:
                     # survive the min-N gate AND are not ROBBER/FADE can be
                     # used as actionable picks. The flag is consumed by the
                     # pick export loop below.
+                    "WilsonLB": f"{res.wilson_lb:.2%}",
                     "Exportable": (
-                        res.tier != "ROBBER"
-                        and res.verdict != "FADE THIS SIGNAL"
+                        res.verdict in QUALIFYING_VERDICTS
+                        and res.tier == "BANKER"
+                        and res.roi >= args.min_edge_roi
                         and res.n >= args.min_export_n
                     ),
                 })
@@ -736,15 +742,21 @@ def main() -> int:
 
                 if match_all:
                     slice_roi = float(str(res["ROI"]).strip('%')) / 100.0
-                    verdict_rank = {"EDGE CONFIRMED": 3, "WATCHLIST": 2, "FADE THIS SIGNAL": 1}.get(res["Verdict"], 0)
-                    best_verdict_rank = -1 if best_pick is None else {"EDGE CONFIRMED": 3, "WATCHLIST": 2, "FADE THIS SIGNAL": 1}.get(best_pick["Verdict"], 0)
+                    verdict_rank = {"EDGE CONFIRMED": 3, "WATCHLIST": 2}.get(res["Verdict"], 0)
+                    best_verdict_rank = -1 if best_pick is None else {"EDGE CONFIRMED": 3, "WATCHLIST": 2}.get(best_pick["Verdict"], 0)
                     best_dims = -1 if best_pick is None else int(best_pick.get("Dims", 0))
                     cur_dims = int(res.get("Dims", 0))
+                    best_n = -1 if best_pick is None else int(best_pick.get("N", 0))
+                    cur_n = int(res.get("N", 0))
+                    # Red-team ranking: prefer confirmed edge, then larger sample,
+                    # then more specific slice, then ROI. This avoids chasing tiny
+                    # high-ROI fragments when a broader, more stable slice exists.
                     if (
                         best_pick is None
                         or verdict_rank > best_verdict_rank
-                        or (verdict_rank == best_verdict_rank and cur_dims > best_dims)
-                        or (verdict_rank == best_verdict_rank and cur_dims == best_dims and slice_roi > best_roi)
+                        or (verdict_rank == best_verdict_rank and cur_n > best_n)
+                        or (verdict_rank == best_verdict_rank and cur_n == best_n and cur_dims > best_dims)
+                        or (verdict_rank == best_verdict_rank and cur_n == best_n and cur_dims == best_dims and slice_roi > best_roi)
                     ):
                         best_roi = slice_roi
                         best_pick = res
@@ -780,10 +792,20 @@ def main() -> int:
                     ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
 
                 bucket = classify_bucket(best_pick)
+                gate_reasons: list[str] = []
                 if odds_val is None:
                     bucket = "WATCHLIST_NO_ODDS"
+                    gate_reasons.append("missing_odds")
                 elif prob is None:
                     bucket = "WATCHLIST_UNKNOWN_CTX"
+                    gate_reasons.append("missing_probability")
+                elif ev is not None and ev < args.min_ev:
+                    bucket = "SKIPPED_DEAD_EDGE"
+                    gate_reasons.append(f"ev_below_min:{ev:.3f}<{args.min_ev:.3f}")
+                elif bucket not in ACTIONABLE_BUCKETS:
+                    gate_reasons.append("watchlist_not_actionable")
+
+                actionable = bucket in ACTIONABLE_BUCKETS and odds_val is not None and prob is not None and ev is not None and ev >= args.min_ev
 
                 base.update({
                     "bucket": bucket,
@@ -797,14 +819,14 @@ def main() -> int:
                     "edge_grade": best_pick.get("Grade"),
                     "edge_tier": best_pick.get("Tier"),
                     "edge_verdict": best_pick.get("Verdict"),
+                    "edge_wilson_lb": best_pick.get("WilsonLB"),
                     "roi_estimate": best_pick.get("ROI"),
+                    "actionable": actionable,
+                    "gate_reasons": gate_reasons,
+                    "assay_bet_side": args.bet_side,
                 })
 
-                # REDTEAM Finding #4 gate: by default we DO NOT export
-                # negative-EV picks. Set --min-ev to a negative number to
-                # disable the gate (useful for diagnostics only).
-                if ev is not None and ev < args.min_ev:
-                    base["bucket"] = "SKIPPED_DEAD_EDGE"
+                if bucket == "SKIPPED_DEAD_EDGE" and ev is not None and ev < args.min_ev:
                     base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
 
                 picks_to_export.append(base)
@@ -821,7 +843,7 @@ def main() -> int:
         )
     )
 
-    actionable_count = sum(1 for p in picks_to_export if p.get("bucket") in {"CERTIFIED_CLEAN", "CAUTION"})
+    actionable_count = sum(1 for p in picks_to_export if p.get("actionable") is True)
     watchlist_count = sum(1 for p in picks_to_export if str(p.get("bucket", "")).startswith("WATCHLIST"))
     skipped_count = sum(1 for p in picks_to_export if str(p.get("bucket", "")).startswith("SKIPPED"))
 

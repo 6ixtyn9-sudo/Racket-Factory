@@ -5,8 +5,12 @@ Handles the merging and deduplication of various tennis data sources.
 import pandas as pd
 from pathlib import Path
 import logging
+import os
 from typing import Optional
 from datetime import date, timedelta
+from urllib.parse import urlencode
+from urllib.request import urlopen
+import json
 from racketfactory.entities import player_key
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
@@ -146,6 +150,88 @@ def names_match(name_a: str, name_b: str) -> bool:
     return len(overlap) >= min(len(set_a), len(set_b)) and len(overlap) >= 1
 
 
+
+def odds_pair_key(player_a: str, player_b: str) -> tuple[str, str]:
+    return tuple(sorted([live_player_key(player_a), live_player_key(player_b)]))
+
+
+def fetch_the_odds_api_h2h() -> dict[tuple[str, str], dict]:
+    api_key = os.environ.get("THE_ODDS_API_KEY", "").strip()
+    if not api_key or api_key == "your_key_here":
+        return {}
+
+    index: dict[tuple[str, str], dict] = {}
+    params = {
+        "apiKey": api_key,
+        "regions": os.environ.get("THE_ODDS_API_REGIONS", "uk,eu,us"),
+        "markets": "h2h",
+        "oddsFormat": "decimal",
+        "dateFormat": "iso",
+    }
+    for sport_key in ("tennis_atp_wimbledon", "tennis_wta_wimbledon"):
+        url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/odds/?{urlencode(params)}"
+        try:
+            with urlopen(url, timeout=20) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            logger.warning("The Odds API fetch failed for %s: %s", sport_key, e)
+            continue
+
+        for event in payload if isinstance(payload, list) else []:
+            home = event.get("home_team", "")
+            away = event.get("away_team", "")
+            if not home or not away:
+                continue
+            best: dict[str, dict] = {}
+            for bm in event.get("bookmakers", []) or []:
+                bm_title = bm.get("title") or bm.get("key") or ""
+                for market in bm.get("markets", []) or []:
+                    if market.get("key") != "h2h":
+                        continue
+                    for outcome in market.get("outcomes", []) or []:
+                        name = outcome.get("name", "")
+                        try:
+                            price = float(outcome.get("price"))
+                        except (TypeError, ValueError):
+                            continue
+                        if price <= 1.0:
+                            continue
+                        k = live_player_key(name)
+                        cur = best.get(k)
+                        if cur is None or price > cur["price"]:
+                            best[k] = {"price": price, "bookmaker": bm_title, "last_update": bm.get("last_update", "")}
+
+            hk, ak = live_player_key(home), live_player_key(away)
+            if hk in best and ak in best:
+                index[odds_pair_key(home, away)] = {
+                    "home": home,
+                    "away": away,
+                    "home_key": hk,
+                    "away_key": ak,
+                    "prices": best,
+                    "sport_key": sport_key,
+                    "commence_time": event.get("commence_time", ""),
+                }
+
+    if index:
+        logger.info("Loaded %d h2h events from The Odds API", len(index))
+    return index
+
+
+def match_the_odds_api_event(odds_index: dict[tuple[str, str], dict], player_a: str, player_b: str) -> Optional[dict]:
+    if not odds_index:
+        return None
+    direct = odds_index.get(odds_pair_key(player_a, player_b))
+    if direct:
+        return direct
+    for event in odds_index.values():
+        if (
+            (names_match(player_a, event.get("home", "")) and names_match(player_b, event.get("away", "")))
+            or (names_match(player_a, event.get("away", "")) and names_match(player_b, event.get("home", "")))
+        ):
+            return event
+    return None
+
 def rows_refer_to_same_match(a: pd.Series, b: pd.Series) -> bool:
     if str(a.get("match_date", "")) != str(b.get("match_date", "")):
         return False
@@ -228,10 +314,10 @@ def build_live_rows() -> pd.DataFrame:
     if card.empty:
         return card
 
-    today_str = date.today().isoformat()
+    upcoming_dates = {date.today().isoformat(), (date.today() + timedelta(days=1)).isoformat()}
     if "match_date" in card.columns:
         card["match_date"] = card["match_date"].astype(str).str.strip()
-        card = card[card["match_date"] == today_str].copy()
+        card = card[card["match_date"].isin(upcoming_dates)].copy()
     if card.empty:
         return card
 
@@ -273,6 +359,8 @@ def build_live_rows() -> pd.DataFrame:
     if card.empty:
         return card
 
+    odds_index = fetch_the_odds_api_h2h()
+
     grouped_rows = []
     for _, first in card.iterrows():
         winners = []
@@ -290,7 +378,22 @@ def build_live_rows() -> pd.DataFrame:
         
         odds_h = first.get("odds_home")
         odds_a = first.get("odds_away")
-        
+        bookmaker = "LiveScraper" if pd.notna(odds_h) else ""
+        odds_source = "LiveScraper" if pd.notna(odds_h) else ""
+
+        odds_event = None
+        if pd.isna(odds_h) or pd.isna(odds_a):
+            odds_event = match_the_odds_api_event(odds_index, first.get("player_home"), first.get("player_away"))
+            if odds_event:
+                prices = odds_event.get("prices", {})
+                a_price = prices.get(live_player_key(first.get("player_home")), {})
+                b_price = prices.get(live_player_key(first.get("player_away")), {})
+                if a_price and b_price:
+                    odds_h = a_price.get("price")
+                    odds_a = b_price.get("price")
+                    bookmaker = f"{a_price.get('bookmaker', '')}/{b_price.get('bookmaker', '')}".strip("/")
+                    odds_source = "the_odds_api"
+
         grouped_rows.append({
             "match_date": first.get("match_date"),
             "match_time": first.get("match_time", ""),
@@ -303,7 +406,7 @@ def build_live_rows() -> pd.DataFrame:
             "score": "",
             "odds_a": odds_h if pd.notna(odds_h) else pd.NA,
             "odds_b": odds_a if pd.notna(odds_a) else pd.NA,
-            "bookmaker": "LiveScraper" if pd.notna(odds_h) else "",
+            "bookmaker": bookmaker,
             "source": first.get("source", ""),
             "captured_at": pd.Timestamp.now().isoformat(),
             "oddsportal_url": "",
@@ -314,7 +417,8 @@ def build_live_rows() -> pd.DataFrame:
             "_location": first.get("country", "") if "country" in first.index else "",
             "_winner_rank": pd.NA,
             "_loser_rank": pd.NA,
-            "_odds_source": "LiveScraper" if pd.notna(odds_h) else "",
+            "_odds_source": odds_source,
+            "_odds_commence_time": odds_event.get("commence_time", "") if odds_event else "",
             "live_predicted_winner": selected,
             "live_prediction_prob": prob,
             "live_predicted_source": "live_card",
