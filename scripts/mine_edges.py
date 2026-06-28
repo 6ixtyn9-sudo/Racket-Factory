@@ -295,6 +295,14 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         probs = [p for p in [max_home, max_away] if pd.notna(p)]
         max_prob = max(probs) if probs else None
         fav_odds_band = prob_to_odds_band(max_prob)
+        selected_prob = max_home if selected_pick == "player_a" else max_away
+        if pd.isna(selected_prob):
+            selected_prob = max_prob
+        prediction_prob = None
+        if selected_prob is not None and pd.notna(selected_prob):
+            prediction_prob = float(selected_prob)
+            if prediction_prob > 1.0:
+                prediction_prob /= 100.0
         series_value = first.get("_series")
         if (pd.isna(series_value) or str(series_value).strip() in {"", "ATP", "WTA", "UNKNOWN"}) and str(first.get("context_used", "")).strip():
             _, series_value = infer_tour_and_series(first.get("context_used", ""), row=first)
@@ -314,6 +322,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
             "context_used": first.get("context_used"),
             "predicted_winner": selected_pick,
             "predicted_winner_foretennis": selected_pick,
+            "prediction_prob": prediction_prob,
             "cross_source_agree": cross_source_agree,
             "pred_confidence": "High" if (max_prob is not None and max_prob >= 70) else ("Medium" if (max_prob is not None and max_prob >= 60) else "Low"),
             "source": ", ".join(sorted(set(map(str, g["source"])))),
@@ -770,8 +779,14 @@ def main() -> int:
                     p_dec = max(0.0, min(1.0, prob / 100.0))
                     ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
 
+                bucket = classify_bucket(best_pick)
+                if odds_val is None:
+                    bucket = "WATCHLIST_NO_ODDS"
+                elif prob is None:
+                    bucket = "WATCHLIST_UNKNOWN_CTX"
+
                 base.update({
-                    "bucket": classify_bucket(best_pick),
+                    "bucket": bucket,
                     "pick": best_pick["Verdict"],
                     "odds": odds_val,
                     "confidence": prob,
@@ -806,8 +821,19 @@ def main() -> int:
         )
     )
 
+    actionable_count = sum(1 for p in picks_to_export if p.get("bucket") in {"CERTIFIED_CLEAN", "CAUTION"})
+    watchlist_count = sum(1 for p in picks_to_export if str(p.get("bucket", "")).startswith("WATCHLIST"))
+    skipped_count = sum(1 for p in picks_to_export if str(p.get("bucket", "")).startswith("SKIPPED"))
+
     write_official_pick_outputs(target_date, picks_to_export)
-    logger.info("Exported %d actionable picks for %s", len(picks_to_export), target_date)
+    logger.info(
+        "Exported %d rows for %s (%d actionable, %d watchlist, %d skipped)",
+        len(picks_to_export),
+        target_date,
+        actionable_count,
+        watchlist_count,
+        skipped_count,
+    )
     return 0
 
 
