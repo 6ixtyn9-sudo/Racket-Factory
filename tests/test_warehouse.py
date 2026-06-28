@@ -26,3 +26,86 @@ def test_build_warehouse_counts(tmp_path):
     assert counts["oddsportal_rows"] == 1
     assert counts["settled_matches"] == 1
     assert counts["market_sides"] == 2
+
+
+def test_live_odds_alignment_identifies_likely_side_inversions():
+    from racketfactory.warehouse import odds_suspicious_for_probability, valid_two_way_decimal_pair
+
+    assert not valid_two_way_decimal_pair(9.50, 9.70)
+    assert odds_suspicious_for_probability(79, 9.50)
+    assert odds_suspicious_for_probability(73, 3.40)
+    assert not odds_suspicious_for_probability(82, 1.02)
+
+
+def test_collapse_live_card_repairs_side_inverted_live_odds():
+    from racketfactory.warehouse import collapse_live_card
+
+    card = pd.DataFrame([{
+        "match_date": "2026-06-29",
+        "match_time": "13:00",
+        "tour": "WTA",
+        "match_type": "Singles",
+        "player_home": "Jelena Ostapenko",
+        "player_away": "Harriet Dart",
+        "tournament": "Wimbledon",
+        "surface": "Grass",
+        "source": "BetClan",
+        "predicted_winner": "1",
+        "prob_home": 79,
+        "prob_away": 21,
+        "odds_home": 9.50,
+        "odds_away": 1.02,
+    }])
+
+    collapsed = collapse_live_card(card)
+
+    assert len(collapsed) == 1
+    assert collapsed.loc[0, "odds_home"] == 1.02
+    assert collapsed.loc[0, "odds_away"] == 9.50
+
+
+def test_collapse_live_card_reorients_reversed_source_before_aggregating_odds():
+    from racketfactory.warehouse import collapse_live_card
+
+    card = pd.DataFrame([
+        {
+            "match_date": "2026-06-29",
+            "match_time": "12:00",
+            "tour": "ATP",
+            "match_type": "Singles",
+            "player_home": "Denis Shapovalov",
+            "player_away": "Pablo Carreno Busta",
+            "tournament": "Wimbledon",
+            "surface": "Grass",
+            "source": "BetClan",
+            "predicted_winner": "2",
+            "prob_home": 27,
+            "prob_away": 73,
+            "odds_home": 3.80,
+            "odds_away": 1.28,
+        },
+        {
+            "match_date": "2026-06-29",
+            "match_time": "12:00",
+            "tour": "ATP",
+            "match_type": "Singles",
+            "player_home": "P. Carreno-Busta",
+            "player_away": "D. Shapovalov",
+            "tournament": "Wimbledon",
+            "surface": "Grass",
+            "source": "Forebet",
+            "predicted_winner": "1",
+            "prob_home": 73,
+            "prob_away": 27,
+            "odds_home": 1.30,
+            "odds_away": 3.60,
+        },
+    ])
+
+    collapsed = collapse_live_card(card)
+
+    assert len(collapsed) == 1
+    assert collapsed.loc[0, "player_home"] == "Denis Shapovalov"
+    assert collapsed.loc[0, "player_away"] == "Pablo Carreno Busta"
+    assert collapsed.loc[0, "odds_home"] == 3.80
+    assert collapsed.loc[0, "odds_away"] == 1.30

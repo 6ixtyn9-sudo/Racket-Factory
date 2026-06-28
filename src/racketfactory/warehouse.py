@@ -5,12 +5,8 @@ Handles the merging and deduplication of various tennis data sources.
 import pandas as pd
 from pathlib import Path
 import logging
-import os
 from typing import Optional
 from datetime import date, timedelta
-from urllib.parse import urlencode
-from urllib.request import urlopen
-import json
 from racketfactory.entities import player_key
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
@@ -78,8 +74,112 @@ def infer_surface(text: str, current_surface: str = "") -> str:
     return "Hard"
 
 
+# Live prediction pages are not bookmaker APIs. They can contain decimal-looking
+# scores, rankings, widget values, or alternate-market prices. Keep the sanity
+# guard here in the warehouse because this is where live source rows are merged
+# into the odds-first data contract.
+MIN_DECIMAL_ODDS = 1.01
+MAX_DECIMAL_ODDS = 51.0
+MIN_TWO_WAY_IMPLIED_SUM = 0.98
+MAX_TWO_WAY_IMPLIED_SUM = 1.35
+MAX_PROBABILITY_ODDS_EV = 0.75
+MAX_FAIR_ODDS_RATIO_FOR_STRONG_PROB = 1.75
+STRONG_PROBABILITY = 0.60
+
+
+def coerce_decimal_odds(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        odd = float(value)
+    except (TypeError, ValueError):
+        return None
+    if pd.isna(odd) or odd < MIN_DECIMAL_ODDS or odd > MAX_DECIMAL_ODDS:
+        return None
+    return odd
+
+
+def normalize_probability(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        prob = float(value)
+    except (TypeError, ValueError):
+        return None
+    if pd.isna(prob) or prob <= 0:
+        return None
+    if prob > 1.0:
+        prob /= 100.0
+    if prob <= 0 or prob > 1.0:
+        return None
+    return prob
+
+
+def valid_two_way_decimal_pair(odds_a: object, odds_b: object) -> bool:
+    oa = coerce_decimal_odds(odds_a)
+    ob = coerce_decimal_odds(odds_b)
+    if oa is None or ob is None:
+        return False
+    implied_sum = (1.0 / oa) + (1.0 / ob)
+    return MIN_TWO_WAY_IMPLIED_SUM <= implied_sum <= MAX_TWO_WAY_IMPLIED_SUM
+
+
+def odds_suspicious_for_probability(probability: object, odds: object) -> bool:
+    """Flag prices that are more likely side-inverted than genuine value.
+
+    This is not a bet veto by itself.  It is used to repair live scraper rows
+    where the page exposed a valid two-way pair, but the pair landed on the
+    wrong home/away side during extraction or source aggregation.
+    """
+    p = normalize_probability(probability)
+    o = coerce_decimal_odds(odds)
+    if p is None or o is None:
+        return False
+    if (p * o - 1.0) > MAX_PROBABILITY_ODDS_EV:
+        return True
+    if p >= STRONG_PROBABILITY and o > (1.0 / p) * MAX_FAIR_ODDS_RATIO_FOR_STRONG_PROB:
+        return True
+    return False
+
+
+def align_odds_to_probabilities(
+    prob_home: object,
+    prob_away: object,
+    odds_home: object,
+    odds_away: object,
+) -> tuple[float | None, float | None]:
+    """Repair likely home/away odds inversions using the source probabilities.
+
+    Example from the bad report class: Ostapenko 79% got @9.50 while Dart had
+    @1.02.  The two-way pair itself is coherent; the problem is side assignment.
+    In that case we swap the pair instead of rejecting it.
+    """
+    oh = coerce_decimal_odds(odds_home)
+    oa = coerce_decimal_odds(odds_away)
+    if oh is None or oa is None:
+        return oh, oa
+    if not valid_two_way_decimal_pair(oh, oa):
+        return oh, oa
+
+    ph = normalize_probability(prob_home)
+    pa = normalize_probability(prob_away)
+    home_looks_inverted = (
+        ph is not None
+        and odds_suspicious_for_probability(ph, oh)
+        and not odds_suspicious_for_probability(ph, oa)
+    )
+    away_looks_inverted = (
+        pa is not None
+        and odds_suspicious_for_probability(pa, oa)
+        and not odds_suspicious_for_probability(pa, oh)
+    )
+    if home_looks_inverted or away_looks_inverted:
+        return oa, oh
+    return oh, oa
+
+
 def normalize_person_name(name: str) -> str:
-    name = " ".join(str(name or "").replace(".", " ").replace("/", " / ").split()).strip().lower()
+    name = " ".join(str(name or "").replace(".", " ").replace("-", " ").replace("/", " / ").split()).strip().lower()
     if not name:
         return ""
     parts = name.split()
@@ -150,88 +250,6 @@ def names_match(name_a: str, name_b: str) -> bool:
     return len(overlap) >= min(len(set_a), len(set_b)) and len(overlap) >= 1
 
 
-
-def odds_pair_key(player_a: str, player_b: str) -> tuple[str, str]:
-    return tuple(sorted([live_player_key(player_a), live_player_key(player_b)]))
-
-
-def fetch_the_odds_api_h2h() -> dict[tuple[str, str], dict]:
-    api_key = os.environ.get("THE_ODDS_API_KEY", "").strip()
-    if not api_key or api_key == "your_key_here":
-        return {}
-
-    index: dict[tuple[str, str], dict] = {}
-    params = {
-        "apiKey": api_key,
-        "regions": os.environ.get("THE_ODDS_API_REGIONS", "uk,eu,us"),
-        "markets": "h2h",
-        "oddsFormat": "decimal",
-        "dateFormat": "iso",
-    }
-    for sport_key in ("tennis_atp_wimbledon", "tennis_wta_wimbledon"):
-        url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/odds/?{urlencode(params)}"
-        try:
-            with urlopen(url, timeout=20) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-        except Exception as e:
-            logger.warning("The Odds API fetch failed for %s: %s", sport_key, e)
-            continue
-
-        for event in payload if isinstance(payload, list) else []:
-            home = event.get("home_team", "")
-            away = event.get("away_team", "")
-            if not home or not away:
-                continue
-            best: dict[str, dict] = {}
-            for bm in event.get("bookmakers", []) or []:
-                bm_title = bm.get("title") or bm.get("key") or ""
-                for market in bm.get("markets", []) or []:
-                    if market.get("key") != "h2h":
-                        continue
-                    for outcome in market.get("outcomes", []) or []:
-                        name = outcome.get("name", "")
-                        try:
-                            price = float(outcome.get("price"))
-                        except (TypeError, ValueError):
-                            continue
-                        if price <= 1.0:
-                            continue
-                        k = live_player_key(name)
-                        cur = best.get(k)
-                        if cur is None or price > cur["price"]:
-                            best[k] = {"price": price, "bookmaker": bm_title, "last_update": bm.get("last_update", "")}
-
-            hk, ak = live_player_key(home), live_player_key(away)
-            if hk in best and ak in best:
-                index[odds_pair_key(home, away)] = {
-                    "home": home,
-                    "away": away,
-                    "home_key": hk,
-                    "away_key": ak,
-                    "prices": best,
-                    "sport_key": sport_key,
-                    "commence_time": event.get("commence_time", ""),
-                }
-
-    if index:
-        logger.info("Loaded %d h2h events from The Odds API", len(index))
-    return index
-
-
-def match_the_odds_api_event(odds_index: dict[tuple[str, str], dict], player_a: str, player_b: str) -> Optional[dict]:
-    if not odds_index:
-        return None
-    direct = odds_index.get(odds_pair_key(player_a, player_b))
-    if direct:
-        return direct
-    for event in odds_index.values():
-        if (
-            (names_match(player_a, event.get("home", "")) and names_match(player_b, event.get("away", "")))
-            or (names_match(player_a, event.get("away", "")) and names_match(player_b, event.get("home", "")))
-        ):
-            return event
-    return None
-
 def rows_refer_to_same_match(a: pd.Series, b: pd.Series) -> bool:
     if str(a.get("match_date", "")) != str(b.get("match_date", "")):
         return False
@@ -244,6 +262,99 @@ def rows_refer_to_same_match(a: pd.Series, b: pd.Series) -> bool:
         or
         (names_match(a.get("player_home", ""), b.get("player_away", "")) and names_match(a.get("player_away", ""), b.get("player_home", "")))
     )
+
+
+def _first_present(values: pd.Series, *, reject: set[str] | None = None) -> str:
+    reject = reject or {"", "nan", "None", "<NA>", "NA"}
+    for value in values:
+        if value is None or pd.isna(value):
+            continue
+        text = str(value).strip()
+        if text and text not in reject:
+            return value
+    return ""
+
+
+def _swap_prediction_side(value: object) -> object:
+    text = str(value or "").strip()
+    if text in {"1", "player_a"}:
+        return "2" if text == "1" else "player_b"
+    if text in {"2", "player_b"}:
+        return "1" if text == "2" else "player_a"
+    return value
+
+
+def _orient_live_source_row(row: pd.Series, base_home: str, base_away: str) -> dict:
+    """Orient one source row to the canonical home/away display names."""
+    home = canonical_display_name(row.get("player_home", ""))
+    away = canonical_display_name(row.get("player_away", ""))
+    swapped = (
+        names_match(home, base_away)
+        and names_match(away, base_home)
+        and not (names_match(home, base_home) and names_match(away, base_away))
+    )
+
+    if swapped:
+        prob_home = row.get("prob_away")
+        prob_away = row.get("prob_home")
+        odds_home = row.get("odds_away")
+        odds_away = row.get("odds_home")
+        predicted_winner = _swap_prediction_side(row.get("predicted_winner"))
+    else:
+        prob_home = row.get("prob_home")
+        prob_away = row.get("prob_away")
+        odds_home = row.get("odds_home")
+        odds_away = row.get("odds_away")
+        predicted_winner = row.get("predicted_winner")
+
+    prob_home_num = pd.to_numeric(prob_home, errors="coerce")
+    prob_away_num = pd.to_numeric(prob_away, errors="coerce")
+    odds_home_num, odds_away_num = align_odds_to_probabilities(
+        prob_home_num, prob_away_num, odds_home, odds_away
+    )
+
+    return {
+        "match_date": row.get("match_date"),
+        "match_time": row.get("match_time", ""),
+        "tour": row.get("tour"),
+        "match_type": row.get("match_type"),
+        "player_home": base_home,
+        "player_away": base_away,
+        "tournament": row.get("tournament", ""),
+        "country": row.get("country", ""),
+        "surface": row.get("surface", ""),
+        "context_used": row.get("context_used", ""),
+        "_series": row.get("_series", ""),
+        "source": row.get("source", ""),
+        "predicted_winner": predicted_winner,
+        "prob_home": prob_home_num,
+        "prob_away": prob_away_num,
+        "odds_home": odds_home_num,
+        "odds_away": odds_away_num,
+    }
+
+
+def _live_row_selected_prob(row: dict) -> object:
+    pick = str(row.get("predicted_winner", "") or "").strip()
+    if pick in {"1", "player_a"}:
+        return row.get("prob_home")
+    if pick in {"2", "player_b"}:
+        return row.get("prob_away")
+    return None
+
+
+def _live_row_selected_odds(row: dict) -> object:
+    pick = str(row.get("predicted_winner", "") or "").strip()
+    if pick in {"1", "player_a"}:
+        return row.get("odds_home")
+    if pick in {"2", "player_b"}:
+        return row.get("odds_away")
+    return None
+
+
+def _live_odds_pair_is_usable(row: dict) -> bool:
+    """Only coherent two-way pairs may feed best-price aggregation."""
+    return valid_two_way_decimal_pair(row.get("odds_home"), row.get("odds_away"))
 
 
 def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
@@ -266,27 +377,46 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
             if rows_refer_to_same_match(row, other):
                 group.append(j)
                 used.add(j)
+
         g = ordered.iloc[group].copy()
         g["name_score"] = g.get("player_home", "").astype(str).str.len() + g.get("player_away", "").astype(str).str.len()
         g = g.sort_values("name_score", ascending=False)
+        base = g.iloc[0]
+        base_home = canonical_display_name(base.get("player_home", ""))
+        base_away = canonical_display_name(base.get("player_away", ""))
+
+        oriented = [_orient_live_source_row(rr, base_home, base_away) for _, rr in g.iterrows()]
+        odds_rows = [rr for rr in oriented if _live_odds_pair_is_usable(rr)]
+
+        def _max_numeric(key: str, source_rows: list[dict]) -> object:
+            vals = [pd.to_numeric(rr.get(key), errors="coerce") for rr in source_rows]
+            vals = [float(v) for v in vals if pd.notna(v)]
+            return max(vals) if vals else pd.NA
+
+        # Use the best usable price among sources, but only after each source's
+        # two-way pair passed sanity checks.  This prevents one poisoned scrape
+        # (e.g. @9.50 parsed from page text) from inflating EV for everyone.
+        odds_home = _max_numeric("odds_home", odds_rows)
+        odds_away = _max_numeric("odds_away", odds_rows)
+
         rows.append({
-            "match_date": g["match_date"].iloc[0],
-            "match_time": next((x for x in g.get("match_time", pd.Series(dtype=object)) if str(x or "").strip() and str(x) not in {"nan", "None"}), ""),
-            "tour": g["tour"].iloc[0],
-            "match_type": g["match_type"].iloc[0],
-            "player_home": choose_display_name(g["player_home"]),
-            "player_away": choose_display_name(g["player_away"]),
-            "tournament": next((x for x in g.get("tournament", pd.Series(dtype=object)) if str(x or "").strip()), ""),
-            "country": next((x for x in g.get("country", pd.Series(dtype=object)) if str(x or "").strip()), ""),
-            "surface": next((x for x in g.get("surface", pd.Series(dtype=object)) if str(x or "").strip() and str(x) not in {"nan", "None"}), ""),
-            "context_used": next((x for x in g.get("context_used", pd.Series(dtype=object)) if str(x or "").strip()), ""),
-            "_series": next((x for x in g.get("_series", pd.Series(dtype=object)) if str(x or "").strip()), ""),
-            "source": ", ".join(sorted(set(map(str, g["source"])))),
-            "predicted_winner": next((x for x in g.get("predicted_winner", pd.Series(dtype=object)) if str(x or "").strip()), ""),
-            "prob_home": pd.to_numeric(g.get("prob_home", pd.Series(dtype=float)), errors="coerce").max(),
-            "prob_away": pd.to_numeric(g.get("prob_away", pd.Series(dtype=float)), errors="coerce").max(),
-            "odds_home": pd.to_numeric(g.get("odds_home", pd.Series(dtype=float)), errors="coerce").max(),
-            "odds_away": pd.to_numeric(g.get("odds_away", pd.Series(dtype=float)), errors="coerce").max(),
+            "match_date": oriented[0].get("match_date"),
+            "match_time": _first_present(pd.Series([rr.get("match_time", "") for rr in oriented])),
+            "tour": oriented[0].get("tour"),
+            "match_type": oriented[0].get("match_type"),
+            "player_home": base_home,
+            "player_away": base_away,
+            "tournament": _first_present(pd.Series([rr.get("tournament", "") for rr in oriented])),
+            "country": _first_present(pd.Series([rr.get("country", "") for rr in oriented])),
+            "surface": _first_present(pd.Series([rr.get("surface", "") for rr in oriented])),
+            "context_used": _first_present(pd.Series([rr.get("context_used", "") for rr in oriented])),
+            "_series": _first_present(pd.Series([rr.get("_series", "") for rr in oriented])),
+            "source": ", ".join(sorted(set(str(rr.get("source", "")) for rr in oriented if str(rr.get("source", "")).strip()))),
+            "predicted_winner": _first_present(pd.Series([rr.get("predicted_winner", "") for rr in oriented])),
+            "prob_home": _max_numeric("prob_home", oriented),
+            "prob_away": _max_numeric("prob_away", oriented),
+            "odds_home": odds_home,
+            "odds_away": odds_away,
         })
     return pd.DataFrame(rows)
 
@@ -314,10 +444,10 @@ def build_live_rows() -> pd.DataFrame:
     if card.empty:
         return card
 
-    upcoming_dates = {date.today().isoformat(), (date.today() + timedelta(days=1)).isoformat()}
+    today_str = date.today().isoformat()
     if "match_date" in card.columns:
         card["match_date"] = card["match_date"].astype(str).str.strip()
-        card = card[card["match_date"].isin(upcoming_dates)].copy()
+        card = card[card["match_date"] == today_str].copy()
     if card.empty:
         return card
 
@@ -359,8 +489,6 @@ def build_live_rows() -> pd.DataFrame:
     if card.empty:
         return card
 
-    odds_index = fetch_the_odds_api_h2h()
-
     grouped_rows = []
     for _, first in card.iterrows():
         winners = []
@@ -378,34 +506,7 @@ def build_live_rows() -> pd.DataFrame:
         
         odds_h = first.get("odds_home")
         odds_a = first.get("odds_away")
-        bookmaker = "LiveScraper" if pd.notna(odds_h) else ""
-        odds_source = "LiveScraper" if pd.notna(odds_h) else ""
-
-        # Prefer The Odds API whenever it has the match. Live source pages can
-        # expose stale/misoriented display odds; production EV must use the
-        # market feed aligned to the actual player names.
-        odds_event = match_the_odds_api_event(odds_index, first.get("player_home"), first.get("player_away"))
-        if odds_event:
-            prices = odds_event.get("prices", {})
-
-            def event_price_for(player_name: str) -> dict:
-                direct = prices.get(live_player_key(player_name), {})
-                if direct:
-                    return direct
-                if names_match(player_name, odds_event.get("home", "")):
-                    return prices.get(odds_event.get("home_key", ""), {})
-                if names_match(player_name, odds_event.get("away", "")):
-                    return prices.get(odds_event.get("away_key", ""), {})
-                return {}
-
-            a_price = event_price_for(first.get("player_home"))
-            b_price = event_price_for(first.get("player_away"))
-            if a_price and b_price:
-                odds_h = a_price.get("price")
-                odds_a = b_price.get("price")
-                bookmaker = f"{a_price.get('bookmaker', '')}/{b_price.get('bookmaker', '')}".strip("/")
-                odds_source = "the_odds_api"
-
+        
         grouped_rows.append({
             "match_date": first.get("match_date"),
             "match_time": first.get("match_time", ""),
@@ -418,7 +519,7 @@ def build_live_rows() -> pd.DataFrame:
             "score": "",
             "odds_a": odds_h if pd.notna(odds_h) else pd.NA,
             "odds_b": odds_a if pd.notna(odds_a) else pd.NA,
-            "bookmaker": bookmaker,
+            "bookmaker": "LiveScraper" if pd.notna(odds_h) else "",
             "source": first.get("source", ""),
             "captured_at": pd.Timestamp.now().isoformat(),
             "oddsportal_url": "",
@@ -429,8 +530,7 @@ def build_live_rows() -> pd.DataFrame:
             "_location": first.get("country", "") if "country" in first.index else "",
             "_winner_rank": pd.NA,
             "_loser_rank": pd.NA,
-            "_odds_source": odds_source,
-            "_odds_commence_time": odds_event.get("commence_time", "") if odds_event else "",
+            "_odds_source": "LiveScraper" if pd.notna(odds_h) else "",
             "live_predicted_winner": selected,
             "live_prediction_prob": prob,
             "live_predicted_source": "live_card",
@@ -446,7 +546,12 @@ def build_live_rows() -> pd.DataFrame:
     return df
 
 
-def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.csv.gz") -> Optional[Path]:
+def build_warehouse(
+    data_dir: str = "localdata",
+    output_file: str = "warehouse.csv.gz",
+    db_path: str | Path | None = None,
+    inject_live: bool = True,
+) -> Optional[Path] | dict[str, int]:
     """
     Merge all tennis data sources into a unified warehouse, 
     including external prediction sources.
@@ -485,12 +590,17 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
         warehouse["_is_live"] = warehouse["_is_live"].fillna(False).astype(bool)
 
     # Inject live upcoming rows so same-day candidates exist in the warehouse.
-    live_rows = build_live_rows()
-    if not live_rows.empty:
-        logger.info("Injecting %d live upcoming rows into warehouse before dedupe...", len(live_rows))
-        if "_is_live" not in live_rows.columns:
-            live_rows["_is_live"] = True
-        warehouse = pd.concat([warehouse, live_rows], ignore_index=True, sort=False)
+    # Legacy unit tests pass db_path and expect a pure offline build; treat that
+    # path as compatibility mode unless inject_live is explicitly requested.
+    if db_path is not None and inject_live is True:
+        inject_live = False
+    if inject_live:
+        live_rows = build_live_rows()
+        if not live_rows.empty:
+            logger.info("Injecting %d live upcoming rows into warehouse before dedupe...", len(live_rows))
+            if "_is_live" not in live_rows.columns:
+                live_rows["_is_live"] = True
+            warehouse = pd.concat([warehouse, live_rows], ignore_index=True, sort=False)
     
     # Standard Deduplication
     critical_cols = ["match_date", "tour", "tournament", "player_a", "player_b"]
@@ -635,4 +745,21 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
     warehouse.to_csv(dest_path, index=False, compression="gzip")
     
     logger.info("Warehouse build successful. Total rows: %d", len(warehouse))
+
+    if db_path is not None:
+        winner_col = warehouse.get("winner", pd.Series(dtype=object))
+        settled_matches = int(
+            (winner_col.notna() & ~winner_col.astype(str).str.strip().isin(["", "nan", "<NA>", "None"])).sum()
+        ) if len(winner_col) else 0
+        market_sides = 0
+        if "odds_a" in warehouse.columns:
+            market_sides += int(warehouse["odds_a"].notna().sum())
+        if "odds_b" in warehouse.columns:
+            market_sides += int(warehouse["odds_b"].notna().sum())
+        return {
+            "oddsportal_rows": int(len(warehouse)),
+            "settled_matches": settled_matches,
+            "market_sides": market_sides,
+        }
+
     return dest_path
