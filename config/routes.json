@@ -508,5 +508,230 @@
             "https://www.oddsportal.com/tennis/billie-jean-king-cup-{year}/results/",
             "https://www.oddsportal.com/tennis/world/billie-jean-king-cup-{year}/results/"
         ]
+    },
+    "_grass_premier_note": "REDTEAM coverage fix: grass-court WTA Premier + ATP500 events. These give the slice-mining cohort real closing-odds evidence for the (Grass, Premier) combinations that were being matched from the BetClan live card with no warehouse anchor. All routes use alt_url_templates so a 404 on the primary slug falls through to alternates without losing the run.",
+    "WTA_EASTBOURNE": {
+        "tour": "WTA",
+        "url_template": "https://www.oddsportal.com/tennis/united-kingdom/wta-eastbourne-{year}/results/",
+        "tournament": "Eastbourne",
+        "years": [
+            2020,
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "WTA Eastbourne International (grass). Premier tier. Slug may be /wta-eastbourne-international/ on older years.",
+        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/wta-eastbourne/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/united-kingdom/wta-eastbourne-international-{year}/results/",
+            "https://www.oddsportal.com/tennis/great-britain/wta-eastbourne-{year}/results/"
+        ]
+    },
+    "WTA_BIRMINGHAM": {
+        "tour": "WTA",
+        "url_template": "https://www.oddsportal.com/tennis/united-kingdom/wta-birmingham-{year}/results/",
+        "tournament": "Birmingham",
+        "years": [
+            2020,
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "WTA Birmingham Classic (grass). Premier tier.",
+        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/wta-birmingham/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/great-britain/wta-birmingham-{year}/results/"
+        ]
+    },
+    "WTA_NOTTINGHAM": {
+        "tour": "WTA",
+        "url_template": "https://www.oddsportal.com/tennis/united-kingdom/wta-nottingham-{year}/results/",
+        "tournament": "Nottingham",
+        "years": [
+            2020,
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "WTA Nottingham Open (grass). Premier tier.",
+        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/wta-nottingham/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/great-britain/wta-nottingham-{year}/results/"
+        ]
+    },
+    "WTA_HERTOGENBOSCH": {
+        "tour": "WTA",
+        "url_template": "https://www.oddsportal.com/tennis/netherlands/wta-s-hertogenbosch-{year}/results/",
+        "tournament": "s-Hertogenbosch",
+        "years": [
+            2020,
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "WTA Rosmalen / 's-Hertogenbosch (grass). Premier tier. Slug contains an apostrophe — alt_url_templates covers the unhyphenated and the non-possessive variants.",
+        "base_url": "https://www.oddsportal.com/tennis/netherlands/wta-s-hertogenbosch/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/netherlands/wta-rosmalen-{year}/results/",
+            "https://www.oddsportal.com/tennis/netherlands/wta-shertogenbosch-{year}/results/",
+            "https://www.oddsportal.com/tennis/netherlands/wta-hertogenbosch-{year}/results/"
+        ]
+    },
+    "WTA_BAD_HOMBURG": {
+        "tour": "WTA",
+        "url_template": "https://www.oddsportal.com/tennis/germany/wta-bad-homburg-{year}/results/",
+        "tournament": "Bad Homburg",
+        "years": [
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "WTA Bad Homburg Open (grass). Premier tier. First edition 2021.",
+        "base_url": "https://www.oddsportal.com/tennis/germany/wta-bad-homburg/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/germany/wta-bad-homburg-open-{year}/results/"
+        ]
+    },
+    "WTA_BERLIN": {
+        "tour": "WTA",
+        "url_template": "https://www.oddsportal.com/tennis/germany/wta-berlin-{year}/results/",
+        "tournament": "Berlin",
+        "years": [
+            2020,
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "WTA Berlin (grass). Premier tier.",
+        "base_url": "https://www.oddsportal.com/tennis/germany/wta-berlin/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/germany/wta-berlin-open-{year}/results/"
+        ]
+    },
+    "ATP_HALLE": {
+        "tour": "ATP",
+        "url_template": "https://www.oddsportal.com/tennis/germany/atp-halle-{year}/results/",
+        "tournament": "Halle",
+        "years": [
+            2020,
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "ATP Halle Open (grass). ATP500 tier.",
+        "base_url": "https://www.oddsportal.com/tennis/germany/atp-halle/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/germany/atp-halle-open-{year}/results/"
+        ]
+    },
+    "ATP_QUEENS": {
+        "tour": "ATP",
+        "url_template": "https://www.oddsportal.com/tennis/united-kingdom/atp-queens-{year}/results/",
+        "tournament": "Queens Club",
+        "years": [
+            2020,
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "ATP Queen's Club Championships (grass). ATP500 tier. Apostrophe is stripped from slug.",
+        "base_url": "https://www.oddsportal.com/tennis/united-kingdom/atp-queens/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/united-kingdom/atp-queens-club-{year}/results/",
+            "https://www.oddsportal.com/tennis/great-britain/atp-queens-{year}/results/"
+        ]
+    },
+    "ATP_STUTTGART": {
+        "tour": "ATP",
+        "url_template": "https://www.oddsportal.com/tennis/germany/atp-stuttgart-{year}/results/",
+        "tournament": "Stuttgart",
+        "years": [
+            2020,
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "ATP Stuttgart Open (grass). ATP250 tier.",
+        "base_url": "https://www.oddsportal.com/tennis/germany/atp-stuttgart/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/germany/atp-stuttgart-open-{year}/results/"
+        ]
+    },
+    "ATP_MALLORCA": {
+        "tour": "ATP",
+        "url_template": "https://www.oddsportal.com/tennis/spain/atp-mallorca-{year}/results/",
+        "tournament": "Mallorca",
+        "years": [
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "ATP Mallorca Championships (grass). ATP250 tier. First edition 2021.",
+        "base_url": "https://www.oddsportal.com/tennis/spain/atp-mallorca/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/spain/atp-mallorca-championships-{year}/results/"
+        ]
+    },
+    "ATP_HERTOGENBOSCH": {
+        "tour": "ATP",
+        "url_template": "https://www.oddsportal.com/tennis/netherlands/atp-s-hertogenbosch-{year}/results/",
+        "tournament": "s-Hertogenbosch",
+        "years": [
+            2020,
+            2021,
+            2022,
+            2023,
+            2024,
+            2025,
+            2026
+        ],
+        "pages_default": 3,
+        "notes": "ATP Rosmalen / 's-Hertogenbosch (grass). ATP250 tier.",
+        "base_url": "https://www.oddsportal.com/tennis/netherlands/atp-s-hertogenbosch/results/",
+        "alt_url_templates": [
+            "https://www.oddsportal.com/tennis/netherlands/atp-rosmalen-{year}/results/",
+            "https://www.oddsportal.com/tennis/netherlands/atp-shertogenbosch-{year}/results/",
+            "https://www.oddsportal.com/tennis/netherlands/atp-hertogenbosch-{year}/results/"
+        ]
     }
 }

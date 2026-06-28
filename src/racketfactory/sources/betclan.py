@@ -5,6 +5,7 @@ Forward-capture of daily AI predictions.
 from __future__ import annotations
 import logging
 import re
+from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from typing import Any, Optional
 from datetime import date, timedelta
@@ -20,6 +21,136 @@ class BetClanPredictor:
 
     def _clean_text(self, value: str) -> str:
         return " ".join(str(value or "").split()).strip()
+
+    @staticmethod
+    def _extract_odds_from_soup(soup: BeautifulSoup) -> tuple[Optional[float], Optional[float]]:
+        """
+        Best-effort decimal odds extraction from any BetClan page. Returns
+        (odds_home, odds_away). Either may be None if not found.
+
+        Strategies, in order:
+          1. Iterate elements with class containing odds/odd/price/etc.
+          2. Walk every <table> row and look for two decimals per row.
+          3. Fall back to a global regex over the entire page text.
+        The function stops at the first strategy that yields two numeric odds
+        because once we have a pair, deeper guesses are more likely wrong than
+        right. Single-odds matches are accumulated separately.
+        """
+        odds_home: Optional[float] = None
+        odds_away: Optional[float] = None
+
+        # Strategy 1: class-driven scanning — broader class set than the
+        # historical inline scrape, including 'price', 'coef', 'decimal',
+        # 'quote' (BetClan variant) and the Portuguese/Spanish 'cuota'.
+        # Use a separator on get_text so adjacent spans/divs don't fuse their
+        # numbers into one malformed token like "1.852.10".
+        for tag in soup.find_all(["div", "span", "td", "button", "a", "b", "i", "strong", "em"]):
+            text = tag.get_text(" ", strip=True)
+            cls_str = " ".join(str(c) for c in (tag.get("class") or [])).lower()
+            id_str = str(tag.get("id") or "").lower()
+            haystack = cls_str + " " + id_str
+            if not any(w in haystack for w in (
+                "odds", "odd", "odd-val", "bet-odd", "box-odds", "price",
+                "val", "bet", "book", "market", "quote", "coef", "decimal",
+                "payout", "1x2", "moneyline",
+            )):
+                continue
+            matches = re.findall(r"\b([1-9]\.\d{1,3})\b", text)
+            if len(matches) >= 2:
+                try:
+                    return float(matches[0]), float(matches[1])
+                except (TypeError, ValueError):
+                    continue
+            if len(matches) == 1:
+                try:
+                    v = float(matches[0])
+                    if odds_home is None:
+                        odds_home = v
+                    elif odds_away is None and abs(v - odds_home) > 0.02:
+                        odds_away = v
+                except (TypeError, ValueError):
+                    continue
+
+        # Strategy 2: walk every <table> row for two-decimal patterns.
+        for table in soup.find_all("table"):
+            for tr in table.find_all("tr"):
+                row_text = tr.get_text(" ", strip=True)
+                row_matches = re.findall(r"\b([1-9]\.\d{1,3})\b", row_text)
+                if len(row_matches) >= 2:
+                    try:
+                        return float(row_matches[0]), float(row_matches[1])
+                    except (TypeError, ValueError):
+                        continue
+
+        # Strategy 3: global regex fallback. Only act if we found a clean pair.
+        if odds_home is None or odds_away is None:
+            full_text = soup.get_text(" ", strip=True)
+            full_matches = re.findall(r"\b([1-9]\.\d{1,3})\b", full_text)
+            # Heuristic: the first two decimal odds near the match header are
+            # usually the home/away odds; subsequent ones are other markets.
+            if len(full_matches) >= 2:
+                try:
+                    if odds_home is None:
+                        odds_home = float(full_matches[0])
+                    if odds_away is None:
+                        odds_away = float(full_matches[1])
+                except (TypeError, ValueError):
+                    pass
+
+        return odds_home, odds_away
+
+    def _find_odds_subpage(self, prediction_soup: BeautifulSoup, prediction_url: str) -> list[str]:
+        """
+        Discover candidate per-match odds subpages from a BetClan prediction
+        page. Returns a list of URLs to try, ordered by likelihood.
+        """
+        candidates: list[str] = []
+        seen: set[str] = set()
+
+        def _add(url: str) -> None:
+            if not url:
+                return
+            if url in seen:
+                return
+            seen.add(url)
+            candidates.append(url)
+
+        # 1. Explicit odds links inside the prediction page DOM.
+        odds_link_keywords = ("odds", "1x2", "bookmaker", "market", "prices", "picks")
+        for a in prediction_soup.find_all("a", href=True):
+            href = str(a.get("href", "") or "").strip()
+            if not href or "/tennis/" not in href:
+                continue
+            lowered = href.lower()
+            if any(k in lowered for k in odds_link_keywords):
+                _add(urljoin(prediction_url, href))
+
+        # 2. Parallel URL guess: /predictionsdetails/X/ -> /oddsdetails/X/ or /odds/X/.
+        parsed = urlparse(prediction_url)
+        path = parsed.path or ""
+        # Extract the trailing id slug so we can rebuild paths.
+        slug = ""
+        m = re.search(r"predictionsdetails/([^/?#]+)", path)
+        if m:
+            slug = m.group(1)
+        if slug:
+            for prefix in ("/tennis/oddsdetails/", "/tennis/odds/", "/tennis/match-odds/", "/tennis/bookmaker-odds/"):
+                _add(f"{parsed.scheme}://{parsed.netloc}{prefix}{slug}")
+        return candidates
+
+    def _fetch_odds_subpage(self, url: str) -> Optional[BeautifulSoup]:
+        """Fetch one candidate odds subpage. Returns None on any error or 404."""
+        try:
+            resp = requests.get(url, impersonate="chrome133a", timeout=15)
+        except Exception as e:
+            logger.debug(f"BetClan odds subpage fetch error for {url}: {e}")
+            return None
+        if resp.status_code != 200:
+            return None
+        try:
+            return BeautifulSoup(resp.text, "html.parser")
+        except Exception:
+            return None
 
     def _extract_context(self, soup: BeautifulSoup) -> tuple[str, str, str]:
         """Extract focused BetClan context with minimal bleed from nearby widgets."""
@@ -118,27 +249,24 @@ class BetClanPredictor:
                         clean_p1 = re.sub(r"[^a-z]", "", p1.lower())
                         pred_win = "1" if clean_p1 in clean_w or clean_w in clean_p1 else "2"
 
-                    # Robustly extract bookmaker odds across all possible containers and buttons
-                    odds_home, odds_away = None, None
-                    for tag in s.find_all(["div", "span", "td", "button", "a"]):
-                        text = tag.get_text(strip=True)
-                        cls_str = str(tag.get("class", [])).lower()
-                        if any(w in cls_str for w in ("odds", "odd", "odd-val", "bet-odd", "box-odds", "price", "val", "bet", "book", "market")):
-                            matches = re.findall(r"\b([1-9]\.\d{1,3})\b", text)
-                            if len(matches) >= 2:
-                                odds_home, odds_away = float(matches[0]), float(matches[1])
-                                break
-                            elif len(matches) == 1:
-                                if odds_home is None: odds_home = float(matches[0])
-                                elif odds_away is None: odds_away = float(matches[0])
+                    # Robustly extract bookmaker odds from the prediction page itself.
+                    # This is the historical behaviour; for many matches BetClan hides
+                    # the odds behind a separate /odds/ subpage, handled below.
+                    odds_home, odds_away = self._extract_odds_from_soup(s)
 
-                    # Fallback regex search on the entire odds/prediction section text
+                    # REDTEAM coverage fix: if the prediction page didn't expose
+                    # decimal odds, try to follow from the prediction page to a
+                    # per-match odds subpage. Best-effort, capped at two attempts
+                    # so we don't double the latency budget for every match.
                     if odds_home is None or odds_away is None:
-                        main_box = s.find("div", class_=re.compile(r"odds|predict|match", re.I)) or s
-                        txt = main_box.get_text(" ", strip=True)
-                        matches = re.findall(r"\b([1-9]\.\d{1,3})\b", txt)
-                        if len(matches) >= 2:
-                            odds_home, odds_away = float(matches[0]), float(matches[1])
+                        for sub_url in self._find_odds_subpage(s, match_url)[:2]:
+                            sub_soup = self._fetch_odds_subpage(sub_url)
+                            if sub_soup is None:
+                                continue
+                            sub_home, sub_away = self._extract_odds_from_soup(sub_soup)
+                            if sub_home is not None and sub_away is not None:
+                                odds_home, odds_away = sub_home, sub_away
+                                break
 
                     page_text = s.get_text(" ", strip=True)
                     tournament, event_text, category_text = self._extract_context(s)
