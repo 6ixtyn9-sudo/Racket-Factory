@@ -128,45 +128,47 @@ def get_cross_source_agree(row: pd.Series, pred_cols: list[str]) -> str:
 
 def infer_tour_and_series(text: str, row: pd.Series | None = None) -> tuple[str, str]:
     lower = str(text or "").lower()
-    if any(x in lower for x in ["wimbledon", "roland garros", "us open", "australian open"]):
-        if any(x in lower for x in ["women", "wta", "girls"]):
-            return ("WTA", "Grand Slam")
-        if any(x in lower for x in ["men", "atp", "boys"]):
-            return ("ATP", "Grand Slam")
-        if row is not None and str(row.get("source", "")) == "BetClan":
-            tournament_text = str(row.get("tournament", "") or "").lower()
-            event_text = str(row.get("event_text", "") or "").lower()
-            category_text = str(row.get("category", "") or "").lower()
-            if not any(x in f"{tournament_text} | {event_text} | {category_text}" for x in ["women", "wta", "girls"]):
-                if not ("/" in str(row.get("player_home", "")) or "/" in str(row.get("player_away", ""))):
-                    return ("ATP", "Grand Slam")
-        return ("UNKNOWN", "Grand Slam")
-    if any(x in lower for x in ["atp challenger", "challenger"]):
+    
+    tour = "UNKNOWN"
+    if any(x in lower for x in ["wta", "women", "girls"]): tour = "WTA"
+    elif any(x in lower for x in ["atp", "men", "boys"]): tour = "ATP"
+    elif any(x in lower for x in ["challenger"]): tour = "CHALLENGER"
+    elif "itf" in lower: tour = "ITF-M" if any(w in lower for w in ["men", " m ", "-m"]) else "ITF-W"
+    elif "utr" in lower: tour = "UTR"
+    
+    if row is not None and tour == "UNKNOWN":
+        tour_val = str(row.get("tour", "")).upper()
+        if tour_val in ("ATP", "WTA", "CHALLENGER", "ITF-M", "ITF-W", "UTR"):
+            tour = tour_val
+
+    if any(x in lower for x in ["wimbledon", "roland garros", "us open", "australian open", "grand slam"]):
+        return (tour if tour != "UNKNOWN" else "ATP", "Grand Slam")
+        
+    if any(x in lower for x in ["challenger", "piracicaba", "targu mures"]):
         return ("CHALLENGER", "Challenger")
-    if "itf women" in lower:
-        return ("ITF-W", "ITF")
-    if "itf men" in lower or "itf m" in lower:
-        return ("ITF-M", "ITF")
-    if "wta 1000" in lower:
-        return ("WTA", "WTA1000")
-    if "wta 500" in lower or any(x in lower for x in ["wta eastbourne", "wta bad homburg"]):
-        return ("WTA", "Premier")
-    if "wta 250" in lower:
-        return ("WTA", "WTA250")
-    if "atp 500" in lower:
-        return ("ATP", "ATP500")
-    if "atp 250" in lower or any(x in lower for x in ["atp mallorca", "atp eastbourne"]):
-        return ("ATP", "ATP250")
-    if any(x in lower for x in ["women doubles", "wta doubles"]) or re.search(r"\bwd\b", lower):
-        return ("WTA", "WTA")
-    if any(x in lower for x in ["men doubles", "atp doubles"]) or re.search(r"\bmd\b", lower):
-        return ("ATP", "ATP")
-    if "wta" in lower:
-        return ("WTA", "WTA")
-    if "atp" in lower:
-        return ("ATP", "ATP")
+    if "itf" in lower:
+        return (tour if tour != "UNKNOWN" else "ITF-M", "ITF")
     if "utr" in lower:
         return ("UTR", "UTR")
+        
+    if tour == "WTA":
+        if any(x in lower for x in ["wta 1000", "madrid", "rome", "miami", "indian wells", "beijing", "wuhan", "cincinnati", "toronto", "montreal", "doha", "dubai"]):
+            return ("WTA", "WTA1000")
+        if any(x in lower for x in ["wta 500", "premier", "eastbourne", "bad homburg", "stuttgart", "berlin", "charleston", "san diego", "abudhabi", "abu dhabi", "brisbane", "adelaide", "tokyo", "zhengzhou", "ningbo", "monterrey", "strasbourg"]):
+            return ("WTA", "Premier")
+        if any(x in lower for x in ["wta 250", "international", "mallorca", "birmingham", "nottingham", "s-hertogenbosch", "hertogenbosch", "palermo", "budapest", "prague", "warsaw", "hamburg", "cluj", "monastir", "jiujiang", "linz", "rouen", "rabat", "bogota", "austin", "hobart", "auckland", "hua hin", "merida", "guangzhou"]):
+            return ("WTA", "International")
+        return ("WTA", "International")
+        
+    if tour == "ATP":
+        if any(x in lower for x in ["masters 1000", "atp 1000", "madrid", "rome", "miami", "indian wells", "monte carlo", "monte-carlo", "cincinnati", "toronto", "montreal", "shanghai", "paris"]):
+            return ("ATP", "Masters 1000")
+        if any(x in lower for x in ["atp 500", "halle", "queens", "queen's", "hamburg", "washington", "beijing", "tokyo", "basel", "vienna", "acapulco", "dubai", "rotterdam", "rio", "barcelona"]):
+            return ("ATP", "ATP500")
+        if any(x in lower for x in ["atp 250", "eastbourne", "mallorca", "mallorca championships", "s-hertogenbosch", "hertogenbosch", "stuttgart", "geneva", "lyon", "estoril", "marrakech", "houston", "munich", "bucharest", "båstad", "bastad", "gstaad", "newport", "umag", "atlanta", "kitzbühel", "kitzbuhel", "los cabos", "winston-salem", "chengdu", "zhuhai", "astana", "almaty", "antwerp", "stockholm", "metz", "sofia", "brisbane", "adelaide", "auckland", "cordoba", "buenos aires", "delray beach", "santiago", "marseille", "doha"]):
+            return ("ATP", "ATP250")
+        return ("ATP", "ATP250")
+
     return ("UNKNOWN", "UNKNOWN")
 
 
@@ -579,7 +581,14 @@ def main() -> int:
                 combo = res["Combo_Dict"]
                 match_all = True
                 for dim_name, dim_val in combo.items():
-                    if row.get(dim_name) != dim_val:
+                    r_val = row.get(dim_name)
+                    if r_val != dim_val:
+                        # Allow historical series equivalences (International <-> WTA250, Premier <-> WTA500)
+                        if dim_name == "_series":
+                            if dim_val == "International" and r_val == "WTA250": continue
+                            if dim_val == "WTA250" and r_val == "International": continue
+                            if dim_val == "Premier" and r_val == "WTA500": continue
+                            if dim_val == "WTA500" and r_val == "Premier": continue
                         match_all = False
                         break
 

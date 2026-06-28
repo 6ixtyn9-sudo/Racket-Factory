@@ -15,36 +15,49 @@ from racketfactory.sources.forebet import ForebetPredictor, name_signature
 logger = logging.getLogger(__name__)
 
 
-def infer_tour_and_series(text: str) -> tuple[str, str]:
+def infer_tour_and_series(text: str, row: pd.Series | None = None) -> tuple[str, str]:
     lower = str(text or "").lower()
-    if any(x in lower for x in ["wimbledon", "roland garros", "us open", "australian open"]):
-        if any(x in lower for x in ["women", "wta", "girls"]):
-            return ("WTA", "Grand Slam")
-        if any(x in lower for x in ["men", "atp", "boys"]):
-            return ("ATP", "Grand Slam")
-        return ("UNKNOWN", "Grand Slam")
-    if "wta 1000" in lower:
-        return ("WTA", "WTA1000")
-    if "wta 500" in lower or any(x in lower for x in ["wta eastbourne", "wta bad homburg"]):
-        return ("WTA", "Premier")
-    if "wta 250" in lower:
-        return ("WTA", "WTA250")
-    if "atp 500" in lower:
-        return ("ATP", "ATP500")
-    if "atp 250" in lower or any(x in lower for x in ["atp mallorca", "atp eastbourne"]):
-        return ("ATP", "ATP250")
-    if any(x in lower for x in ["piracicaba", "targu mures", "challenger", "atp challenger", "challenger-men", "challenger-women"]):
+    
+    tour = "UNKNOWN"
+    if any(x in lower for x in ["wta", "women", "girls"]): tour = "WTA"
+    elif any(x in lower for x in ["atp", "men", "boys"]): tour = "ATP"
+    elif any(x in lower for x in ["challenger"]): tour = "CHALLENGER"
+    elif "itf" in lower: tour = "ITF-M" if any(w in lower for w in ["men", " m ", "-m"]) else "ITF-W"
+    elif "utr" in lower: tour = "UTR"
+    
+    if row is not None and tour == "UNKNOWN":
+        tour_val = str(row.get("tour", "")).upper()
+        if tour_val in ("ATP", "WTA", "CHALLENGER", "ITF-M", "ITF-W", "UTR"):
+            tour = tour_val
+
+    if any(x in lower for x in ["wimbledon", "roland garros", "us open", "australian open", "grand slam"]):
+        return (tour if tour != "UNKNOWN" else "ATP", "Grand Slam")
+        
+    if any(x in lower for x in ["challenger", "piracicaba", "targu mures"]):
         return ("CHALLENGER", "Challenger")
-    if "itf women" in lower or "itf-w" in lower:
-        return ("ITF-W", "ITF")
-    if any(x in lower for x in ["itf men", "itf m", "itf-m"]):
-        return ("ITF-M", "ITF")
+    if "itf" in lower:
+        return (tour if tour != "UNKNOWN" else "ITF-M", "ITF")
     if "utr" in lower:
         return ("UTR", "UTR")
-    if "wta" in lower or "wta-singles" in lower or "wta-doubles" in lower:
-        return ("WTA", "WTA")
-    if "atp" in lower or "atp-singles" in lower or "atp-doubles" in lower:
-        return ("ATP", "ATP")
+        
+    if tour == "WTA":
+        if any(x in lower for x in ["wta 1000", "madrid", "rome", "miami", "indian wells", "beijing", "wuhan", "cincinnati", "toronto", "montreal", "doha", "dubai"]):
+            return ("WTA", "WTA1000")
+        if any(x in lower for x in ["wta 500", "premier", "eastbourne", "bad homburg", "stuttgart", "berlin", "charleston", "san diego", "abudhabi", "abu dhabi", "brisbane", "adelaide", "tokyo", "zhengzhou", "ningbo", "monterrey", "strasbourg"]):
+            return ("WTA", "Premier")
+        if any(x in lower for x in ["wta 250", "international", "mallorca", "birmingham", "nottingham", "s-hertogenbosch", "hertogenbosch", "palermo", "budapest", "prague", "warsaw", "hamburg", "cluj", "monastir", "jiujiang", "linz", "rouen", "rabat", "bogota", "austin", "hobart", "auckland", "hua hin", "merida", "guangzhou"]):
+            return ("WTA", "International")
+        return ("WTA", "International")
+        
+    if tour == "ATP":
+        if any(x in lower for x in ["masters 1000", "atp 1000", "madrid", "rome", "miami", "indian wells", "monte carlo", "monte-carlo", "cincinnati", "toronto", "montreal", "shanghai", "paris"]):
+            return ("ATP", "Masters 1000")
+        if any(x in lower for x in ["atp 500", "halle", "queens", "queen's", "hamburg", "washington", "beijing", "tokyo", "basel", "vienna", "acapulco", "dubai", "rotterdam", "rio", "barcelona"]):
+            return ("ATP", "ATP500")
+        if any(x in lower for x in ["atp 250", "eastbourne", "mallorca", "mallorca championships", "s-hertogenbosch", "hertogenbosch", "stuttgart", "geneva", "lyon", "estoril", "marrakech", "houston", "munich", "bucharest", "båstad", "bastad", "gstaad", "newport", "umag", "atlanta", "kitzbühel", "kitzbuhel", "los cabos", "winston-salem", "chengdu", "zhuhai", "astana", "almaty", "antwerp", "stockholm", "metz", "sofia", "brisbane", "adelaide", "auckland", "cordoba", "buenos aires", "delray beach", "santiago", "marseille", "doha"]):
+            return ("ATP", "ATP250")
+        return ("ATP", "ATP250")
+
     return ("UNKNOWN", "UNKNOWN")
 
 
@@ -229,7 +242,8 @@ def build_live_rows() -> pd.DataFrame:
         lambda r: " | ".join([str(r.get(c, "") or "") for c in context_priority_cols if str(r.get(c, "") or "").strip()]),
         axis=1,
     )
-    inferred = card["context_used"].apply(infer_tour_and_series)
+    
+    inferred = card.apply(lambda r: infer_tour_and_series(r.get("context_used", ""), row=r), axis=1)
     card["tour"] = inferred.apply(lambda x: x[0])
     card["_series"] = inferred.apply(lambda x: x[1])
     card["_surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
