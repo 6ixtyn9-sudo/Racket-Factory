@@ -316,7 +316,6 @@ class ForebetPredictor:
             if "/tennis/" not in href:
                 continue
 
-            # Try to infer tour/tournament directly from tennis URL shape:
             tour_slug = ""
             tournament_slug = ""
             m = re.search(r"/tennis/matches/([^/]+)/([^/]+)/", href)
@@ -378,15 +377,20 @@ class ForebetPredictor:
                         except ValueError:
                             pass
 
-                pred_div = row.find("div", class_=re.compile(r"predict_(y|no)"))
+                # Correctly match predict containers on today/tomorrow pages as well as yesterday
+                pred_div = row.find("div", class_=re.compile(r"predict", re.I))
                 if pred_div:
                     forepr = pred_div.find("span", class_="forepr")
                     if forepr:
                         inner = forepr.find("span")
                         if inner:
                             predicted_winner = inner.get_text(strip=True)
+                        else:
+                            predicted_winner = forepr.get_text(strip=True)
+                    else:
+                        txt = pred_div.get_text(strip=True)
+                        if txt in ("1", "2"): predicted_winner = txt
 
-                # Extract odds containers if present on page
                 odd_spans = row.find_all(["span", "div"], class_=re.compile(r"odd|pOdd|avg_odd|bot_odd|lrg_odd", re.I))
                 for osp in odd_spans:
                     txt = osp.get_text(strip=True)
@@ -480,10 +484,10 @@ class ForebetPredictor:
 
         predicted_winner = pred.get("predicted_winner")
         prob = None
-        if predicted_winner == "1":
+        if predicted_winner in ("1", "player_a"):
             winner = "player_a" if home_is_a else "player_b"
             prob = pred["prob_home"] / 100 if pred["prob_home"] is not None else None
-        elif predicted_winner == "2":
+        elif predicted_winner in ("2", "player_b"):
             winner = "player_b" if home_is_a else "player_a"
             prob = pred["prob_away"] / 100 if pred["prob_away"] is not None else None
         else:

@@ -10,7 +10,7 @@ from datetime import date, timedelta
 from racketfactory.entities import player_key
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
-from racketfactory.sources.forebet import ForebetPredictor
+from racketfactory.sources.forebet import ForebetPredictor, name_signature
 
 logger = logging.getLogger(__name__)
 
@@ -246,11 +246,11 @@ def build_live_rows() -> pd.DataFrame:
     for _, first in card.iterrows():
         winners = []
         probs = []
-        pick = str(first.get("predicted_winner", "") or "")
-        if pick == "1":
+        pick = str(first.get("predicted_winner", "") or "").strip()
+        if pick in ("1", "player_a"):
             winners.append("player_a")
             probs.append(pd.to_numeric(first.get("prob_home"), errors="coerce"))
-        elif pick == "2":
+        elif pick in ("2", "player_b"):
             winners.append("player_b")
             probs.append(pd.to_numeric(first.get("prob_away"), errors="coerce"))
         selected = winners[0] if winners else ""
@@ -344,7 +344,14 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
     
     # 2. Multi-Source Prediction Join
     PRIMARY_SOURCES = {"Forebet"}
-    JOIN_KEYS = ["match_date", "tour", "tournament", "player_a", "player_b"]
+
+    # Create canonical merge keys in warehouse based on match_date and player signatures
+    warehouse['_key_a'] = warehouse['player_a'].astype(str).map(name_signature)
+    warehouse['_key_b'] = warehouse['player_b'].astype(str).map(name_signature)
+    warehouse['_merge_key'] = warehouse.apply(
+        lambda r: f"{r['match_date']}|" + "|".join(sorted([r['_key_a'], r['_key_b']])), axis=1
+    )
+    warehouse = warehouse.drop(columns=['_key_a', '_key_b'])
 
     pred_files = list(data_path.glob("predictions_*.csv.gz"))
     if pred_files:
@@ -363,17 +370,23 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
 
         for src, frames in source_dfs.items():
             merged = pd.concat(frames, ignore_index=True)
-            merged = merged.drop_duplicates(
-                subset=JOIN_KEYS, keep="last"
+            if "match_date" not in merged.columns or "player_a" not in merged.columns or "player_b" not in merged.columns:
+                continue
+            merged['_key_a'] = merged['player_a'].astype(str).map(name_signature)
+            merged['_key_b'] = merged['player_b'].astype(str).map(name_signature)
+            merged['_merge_key'] = merged.apply(
+                lambda r: f"{r['match_date']}|" + "|".join(sorted([r['_key_a'], r['_key_b']])), axis=1
             )
-            pred_cols = [c for c in ["predicted_winner", "prediction_prob", "source"]
+            merged = merged.drop_duplicates(subset=['_merge_key'], keep="last")
+            
+            pred_cols = [c for c in ["predicted_winner", "prediction_prob", "odds_a", "odds_b", "source"]
                          if c in merged.columns]
 
             if src in PRIMARY_SOURCES:
                 logger.info("Merging primary source '%s': %d predictions", src, len(merged))
                 warehouse = warehouse.merge(
-                    merged[JOIN_KEYS + pred_cols],
-                    on=JOIN_KEYS,
+                    merged[['_merge_key'] + pred_cols],
+                    on='_merge_key',
                     how="left",
                     suffixes=('', '_pred'),
                 )
@@ -384,12 +397,12 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
                 logger.info("Merging secondary source '%s' (suffix: _%s): %d predictions",
                             src, suffix, len(merged))
                 rename_map = {c: f"{c}_{suffix}" for c in pred_cols if c != "source"}
-                merged_renamed = merged[JOIN_KEYS + pred_cols].rename(columns=rename_map)
+                merged_renamed = merged[['_merge_key'] + pred_cols].rename(columns=rename_map)
                 if "source" in merged_renamed.columns:
                     merged_renamed = merged_renamed.drop(columns=["source"])
                 warehouse = warehouse.merge(
                     merged_renamed,
-                    on=JOIN_KEYS,
+                    on='_merge_key',
                     how="left",
                 )
 
@@ -414,6 +427,15 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
             if drop_cols:
                 warehouse = warehouse.drop(columns=drop_cols)
 
+        if "odds_a" in warehouse.columns:
+            for col in [c for c in warehouse.columns if c.startswith("odds_a_")]:
+                warehouse["odds_a"] = warehouse["odds_a"].combine_first(warehouse[col])
+                warehouse = warehouse.drop(columns=[col])
+        if "odds_b" in warehouse.columns:
+            for col in [c for c in warehouse.columns if c.startswith("odds_b_")]:
+                warehouse["odds_b"] = warehouse["odds_b"].combine_first(warehouse[col])
+                warehouse = warehouse.drop(columns=[col])
+
         if "live_predicted_winner" in warehouse.columns:
             if "predicted_winner" not in warehouse.columns:
                 warehouse["predicted_winner"] = pd.NA
@@ -427,7 +449,7 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
                 warehouse["predicted_source"] = pd.NA
             warehouse["predicted_source"] = warehouse["predicted_source"].combine_first(warehouse["live_predicted_source"])
 
-        drop_live_cols = [c for c in ["live_predicted_winner", "live_prediction_prob", "live_predicted_source"] if c in warehouse.columns]
+        drop_live_cols = [c for c in ["live_predicted_winner", "live_prediction_prob", "live_predicted_source", "_merge_key"] if c in warehouse.columns]
         if drop_live_cols:
             warehouse = warehouse.drop(columns=drop_live_cols)
 

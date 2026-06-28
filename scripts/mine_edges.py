@@ -51,7 +51,7 @@ def get_selected_side_rank_band(row: pd.Series, pred_cols: list[str]) -> str:
     pick = None
     for col in pred_cols:
         val = row.get(col)
-        if pd.notna(val) and str(val).strip() != "":
+        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
             pick = str(val).strip()
             break
 
@@ -98,8 +98,8 @@ def get_cross_source_agree(row: pd.Series, pred_cols: list[str]) -> str:
     """
     mkt = row.get("predicted_winner_market")
     ft = row.get("predicted_winner_foretennis")
-    has_mkt = pd.notna(mkt) and str(mkt).strip() != ""
-    has_ft = pd.notna(ft) and str(ft).strip() != ""
+    has_mkt = pd.notna(mkt) and str(mkt).strip() not in {"", "nan", "<NA>", "None"}
+    has_ft = pd.notna(ft) and str(ft).strip() not in {"", "nan", "<NA>", "None"}
     if has_mkt and has_ft:
         return "Both" if mkt == ft else "Disagree"
     if has_mkt:
@@ -112,7 +112,7 @@ def get_cross_source_agree(row: pd.Series, pred_cols: list[str]) -> str:
     sources_count = 0
     for col in pred_cols:
         val = row.get(col)
-        if pd.notna(val) and str(val).strip() != "":
+        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
             picks.add(str(val).strip())
             sources_count += 1
 
@@ -327,7 +327,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
     pred_cols = [c for c in row.index if c.startswith("predicted_winner")]
     for col in pred_cols:
         val = row.get(col)
-        if pd.notna(val) and str(val).strip() != "":
+        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
             selected_pick = str(val).strip()
             break
 
@@ -347,7 +347,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
     source_val = row.get("source", "")
     source_count = row.get("source_count")
     if pd.isna(source_count) or source_count is None:
-        source_count = len([c for c in pred_cols if pd.notna(row.get(c)) and str(row.get(c)).strip() != ""])
+        source_count = len([c for c in pred_cols if pd.notna(row.get(c)) and str(row.get(c)).strip() not in {"", "nan", "<NA>", "None"}])
 
     return {
         "match": f"{home_name} vs {away_name}",
@@ -411,7 +411,7 @@ def main() -> int:
         max_p = None
         for col in prob_cols:
             p_val = row.get(col)
-            if pd.notna(p_val):
+            if pd.notna(p_val) and str(p_val).strip() not in {"nan", "<NA>", "None"}:
                 try:
                     v = float(p_val)
                     if max_p is None or v > max_p: max_p = v
@@ -428,7 +428,7 @@ def main() -> int:
         max_p = None
         for col in prob_cols:
             p_val = row.get(col)
-            if pd.notna(p_val):
+            if pd.notna(p_val) and str(p_val).strip() not in {"nan", "<NA>", "None"}:
                 try:
                     v = float(p_val)
                     if max_p is None or v > max_p: max_p = v
@@ -543,7 +543,7 @@ def main() -> int:
         pred_mask = False
         for col in pred_cols:
             if col in fallback.columns:
-                mask = fallback[col].notna() & (fallback[col].astype(str).str.strip() != "")
+                mask = fallback[col].notna() & (~fallback[col].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))
                 pred_mask = mask if isinstance(pred_mask, bool) else (pred_mask | mask)
         if not isinstance(pred_mask, bool):
             fallback = fallback[pred_mask]
@@ -556,9 +556,9 @@ def main() -> int:
         if "fav_odds_band" in fallback.columns:
             fallback = fallback[fallback["fav_odds_band"] != "Unknown"]
         if "tour" in fallback.columns:
-            fallback = fallback[fallback["tour"].notna() & (fallback["tour"].astype(str).str.strip() != "")]
+            fallback = fallback[fallback["tour"].notna() & (~fallback["tour"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))]
         if "_series" in fallback.columns:
-            fallback = fallback[fallback["_series"].notna() & (fallback["_series"].astype(str).str.strip() != "")]
+            fallback = fallback[fallback["_series"].notna() & (~fallback["_series"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))]
         today_df = fallback
         logger.info("Today candidate rows after live filtering: 0; fallback prediction-bearing rows: %d", len(today_df))
         if today_df.empty:
@@ -603,7 +603,7 @@ def main() -> int:
                 prob = None
                 for col in prob_cols:
                     pval = row.get(col)
-                    if pd.notna(pval):
+                    if pd.notna(pval) and str(pval).strip() not in {"nan", "<NA>", "None"}:
                         try:
                             v = float(pval)
                             if prob is None or v > prob: prob = v
