@@ -215,7 +215,7 @@ def run_once(args: argparse.Namespace) -> None:
         )
 
     # 2. Daily Prediction Sources
-    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet", env=child_env)
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday today tomorrow --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_foretennis.py --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_foretennis", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_predixsport.py --output-dir localdata", "capture_predixsport", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_betclan.py --output-dir localdata", "capture_betclan", env=child_env)

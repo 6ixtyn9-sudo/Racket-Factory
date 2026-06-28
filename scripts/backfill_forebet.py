@@ -52,7 +52,7 @@ def _write_predictions(predictions: list[dict], output_dir: Path) -> None:
     out_df = pd.DataFrame(predictions)
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    by_month = out_df.groupby(out_df["match_date"].str[:7])
+    by_month = out_df.groupby(out_df["match_date"].astype(str).str[:7])
     for month, group in by_month:
         path = out_dir / f"predictions_forebet_{month}.csv.gz"
         if path.exists():
@@ -143,6 +143,8 @@ def mode_tournament(args) -> int:
                 "player_b": row["player_b"],
                 "predicted_winner": mapped["predicted_winner"],
                 "prediction_prob": mapped["prediction_prob"],
+                "odds_a": pred.get("odds_home") if mapped["predicted_winner"] == "player_a" else pred.get("odds_away"),
+                "odds_b": pred.get("odds_away") if mapped["predicted_winner"] == "player_a" else pred.get("odds_home"),
                 "source": "Forebet",
             })
             matched_count += 1
@@ -164,6 +166,13 @@ def mode_daily(args) -> int:
     predictor = ForebetPredictor()
     predictions: list[dict] = []
 
+    warehouse_df = None
+    if args.warehouse and Path(args.warehouse).exists():
+        try:
+            warehouse_df = pd.read_csv(args.warehouse, low_memory=False)
+        except Exception as e:
+            logger.warning("Could not read warehouse for matching: %s", e)
+
     for day in args.days:
         logger.info("Fetching predictions-%s ...", day)
         preds = predictor.fetch_daily_predictions(day)
@@ -173,76 +182,69 @@ def mode_daily(args) -> int:
 
         logger.info("predictions-%s: %d raw matches parsed.", day, len(preds))
 
-        # Build a lookup index: (date, tournament) -> {signature -> prediction}
-        pred_index: dict[tuple[str, str], dict[tuple[str, str], dict]] = defaultdict(dict)
-        for p in preds:
-            if not p.get("match_date"):
-                continue
-            h = name_signature(p["player_home"])
-            a = name_signature(p["player_away"])
-            key = tuple(sorted([h, a]))
-            # Use tournament name if available, otherwise "Unknown"
-            tourn = p.get("tournament") or "Unknown"
-            pred_index[(p["match_date"], tourn)][key] = p
-
-        # If the user passed a warehouse, try to match and enrich with tour/tournament
-        warehouse_df = None
-        if args.warehouse and Path(args.warehouse).exists():
-            try:
-                warehouse_df = pd.read_csv(args.warehouse, low_memory=False)
-            except Exception as e:
-                logger.warning("Could not read warehouse for matching: %s", e)
-
         if warehouse_df is not None and not warehouse_df.empty:
-            # Match daily predictions to warehouse rows
             matched = 0
-            for _, row in warehouse_df.iterrows():
-                match_date = str(row["match_date"])
-                sig_a = name_signature(row["player_a"])
-                sig_b = name_signature(row["player_b"])
-                key = tuple(sorted([sig_a, sig_b]))
-                tourn = row.get("tournament", "Unknown")
+            unmatched = 0
+            for p in preds:
+                match_date = p.get("match_date")
+                if not match_date:
+                    continue
+                h = name_signature(p["player_home"])
+                a = name_signature(p["player_away"])
+                key = tuple(sorted([h, a]))
 
-                # Try exact tournament match first
-                pred = pred_index.get((match_date, tourn), {}).get(key)
-                if not pred:
-                    # Fallback: any tournament on that date
-                    for (dt_key, tourn_key), sig_dict in pred_index.items():
-                        if dt_key == match_date and key in sig_dict:
-                            pred = sig_dict[key]
+                w_rows = warehouse_df[warehouse_df["match_date"].astype(str) == str(match_date)]
+                found = False
+                for _, row in w_rows.iterrows():
+                    sig_a = name_signature(row["player_a"])
+                    sig_b = name_signature(row["player_b"])
+                    w_key = tuple(sorted([sig_a, sig_b]))
+                    if key == w_key:
+                        mapped = predictor.map_prediction_to_player(p, row["player_a"], row["player_b"])
+                        if mapped:
+                            predictions.append({
+                                "match_date": match_date,
+                                "tour": row["tour"],
+                                "tournament": row["tournament"],
+                                "player_a": row["player_a"],
+                                "player_b": row["player_b"],
+                                "predicted_winner": mapped["predicted_winner"],
+                                "prediction_prob": mapped["prediction_prob"],
+                                "odds_a": p.get("odds_home") if mapped["predicted_winner"] == "player_a" else p.get("odds_away"),
+                                "odds_b": p.get("odds_away") if mapped["predicted_winner"] == "player_a" else p.get("odds_home"),
+                                "source": "Forebet",
+                            })
+                            matched += 1
+                            found = True
                             break
+                if not found:
+                    predictions.append({
+                        "match_date": match_date,
+                        "tour": "",
+                        "tournament": p.get("tournament", "Unknown"),
+                        "player_a": p["player_home"],
+                        "player_b": p["player_away"],
+                        "predicted_winner": "player_a" if p.get("predicted_winner") == "1" else "player_b",
+                        "prediction_prob": (p["prob_home"] if p.get("predicted_winner") == "1" else p.get("prob_away")) / 100 if p.get("prob_home") is not None else None,
+                        "odds_a": p.get("odds_home"),
+                        "odds_b": p.get("odds_away"),
+                        "source": "Forebet",
+                    })
+                    unmatched += 1
 
-                if not pred:
-                    continue
-
-                mapped = predictor.map_prediction_to_player(pred, row["player_a"], row["player_b"])
-                if not mapped:
-                    continue
-
-                predictions.append({
-                    "match_date": match_date,
-                    "tour": row["tour"],
-                    "tournament": row["tournament"],
-                    "player_a": row["player_a"],
-                    "player_b": row["player_b"],
-                    "predicted_winner": mapped["predicted_winner"],
-                    "prediction_prob": mapped["prediction_prob"],
-                    "source": "Forebet",
-                })
-                matched += 1
-
-            logger.info("predictions-%s: %d matched to warehouse.", day, matched)
+            logger.info("predictions-%s: %d matched to warehouse, %d stored as new upcoming matches.", day, matched, unmatched)
         else:
-            # No warehouse — just dump raw predictions with best-effort tournament
             for p in preds:
                 predictions.append({
                     "match_date": p["match_date"],
-                    "tour": "",  # Unknown without warehouse
+                    "tour": "",
                     "tournament": p.get("tournament", "Unknown"),
                     "player_a": p["player_home"],
                     "player_b": p["player_away"],
                     "predicted_winner": "player_a" if p.get("predicted_winner") == "1" else "player_b",
                     "prediction_prob": (p["prob_home"] if p.get("predicted_winner") == "1" else p.get("prob_away")) / 100 if p.get("prob_home") is not None else None,
+                    "odds_a": p.get("odds_home"),
+                    "odds_b": p.get("odds_away"),
                     "source": "Forebet",
                 })
             logger.info("predictions-%s: %d raw predictions stored (no warehouse match).", day, len(preds))
