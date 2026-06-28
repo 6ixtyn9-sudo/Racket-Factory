@@ -3,8 +3,8 @@
 Fetch today's and tomorrow's predictions for immediate review and align them to
 Racket Factory's live-pick dimensions without creating new pipeline surfaces.
 """
-import re
 import sys
+import re
 from pathlib import Path
 import pandas as pd
 
@@ -61,18 +61,6 @@ def infer_tour_and_series(text: str, row: pd.Series | None = None) -> tuple[str,
     if "utr" in lower:
         return ("UTR", "UTR")
     return ("UNKNOWN", "UNKNOWN")
-
-
-def detect_match_type(row: pd.Series) -> str:
-    if "/" in str(row.get("player_home", "")) or "/" in str(row.get("player_away", "")):
-        return "Doubles"
-    context = " | ".join(
-        str(row.get(c, "") or "") for c in ["tournament", "event_text", "category", "match_label"] if c in row.index
-    ).lower()
-    if any(x in context for x in ["women doubles", "wta doubles", "men doubles", "atp doubles", "mixed doubles"]) or re.search(r"\b(?:wd|md)\b", context):
-        return "Doubles"
-    return "Singles"
-
 
 
 def infer_from_players(player_home: str, player_away: str) -> tuple[str, str]:
@@ -201,6 +189,17 @@ def collapse_combined_card(combined: pd.DataFrame) -> pd.DataFrame:
             "context_used": next((x for x in grp["context_used"] if str(x) not in {"", "<empty>"}), grp["context_used"].iloc[0]),
         })
     return pd.DataFrame(rows)
+
+
+def detect_match_type(row: pd.Series) -> str:
+    if "/" in str(row.get("player_home", "")) or "/" in str(row.get("player_away", "")):
+        return "Doubles"
+    context = " | ".join(
+        str(row.get(c, "") or "") for c in ["tournament", "event_text", "category", "match_label"] if c in row.index
+    ).lower()
+    if any(x in context for x in ["women doubles", "wta doubles", "men doubles", "atp doubles", "mixed doubles"]) or re.search(r"\b(?:wd|md)\b", context):
+        return "Doubles"
+    return "Singles"
 
 
 def classify_row(row: pd.Series) -> tuple[str, str, str]:
