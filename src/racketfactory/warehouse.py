@@ -381,18 +381,30 @@ def build_live_rows() -> pd.DataFrame:
         bookmaker = "LiveScraper" if pd.notna(odds_h) else ""
         odds_source = "LiveScraper" if pd.notna(odds_h) else ""
 
-        odds_event = None
-        if pd.isna(odds_h) or pd.isna(odds_a):
-            odds_event = match_the_odds_api_event(odds_index, first.get("player_home"), first.get("player_away"))
-            if odds_event:
-                prices = odds_event.get("prices", {})
-                a_price = prices.get(live_player_key(first.get("player_home")), {})
-                b_price = prices.get(live_player_key(first.get("player_away")), {})
-                if a_price and b_price:
-                    odds_h = a_price.get("price")
-                    odds_a = b_price.get("price")
-                    bookmaker = f"{a_price.get('bookmaker', '')}/{b_price.get('bookmaker', '')}".strip("/")
-                    odds_source = "the_odds_api"
+        # Prefer The Odds API whenever it has the match. Live source pages can
+        # expose stale/misoriented display odds; production EV must use the
+        # market feed aligned to the actual player names.
+        odds_event = match_the_odds_api_event(odds_index, first.get("player_home"), first.get("player_away"))
+        if odds_event:
+            prices = odds_event.get("prices", {})
+
+            def event_price_for(player_name: str) -> dict:
+                direct = prices.get(live_player_key(player_name), {})
+                if direct:
+                    return direct
+                if names_match(player_name, odds_event.get("home", "")):
+                    return prices.get(odds_event.get("home_key", ""), {})
+                if names_match(player_name, odds_event.get("away", "")):
+                    return prices.get(odds_event.get("away_key", ""), {})
+                return {}
+
+            a_price = event_price_for(first.get("player_home"))
+            b_price = event_price_for(first.get("player_away"))
+            if a_price and b_price:
+                odds_h = a_price.get("price")
+                odds_a = b_price.get("price")
+                bookmaker = f"{a_price.get('bookmaker', '')}/{b_price.get('bookmaker', '')}".strip("/")
+                odds_source = "the_odds_api"
 
         grouped_rows.append({
             "match_date": first.get("match_date"),
