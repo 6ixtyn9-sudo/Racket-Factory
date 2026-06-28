@@ -774,7 +774,17 @@ def main() -> int:
                         except (TypeError, ValueError):
                             pass
 
-                odds_val = row.get("fav_odds")
+                # Price the actual exported selection, not the market favourite.
+                # `fav_odds` is only a historical slice dimension; using it for
+                # EV/display would underprice underdog selections and can flip
+                # a valid positive-EV candidate into SKIPPED_DEAD_EDGE.
+                side = str(base.get("selected_side") or "").strip()
+                if side in {"player_a", "1"}:
+                    odds_val = row.get("odds_a")
+                elif side in {"player_b", "2"}:
+                    odds_val = row.get("odds_b")
+                else:
+                    odds_val = row.get("fav_odds")
                 try:
                     odds_val = float(odds_val)
                     if pd.isna(odds_val): odds_val = None
