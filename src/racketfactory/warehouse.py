@@ -61,6 +61,19 @@ def infer_tour_and_series(text: str, row: pd.Series | None = None) -> tuple[str,
     return ("UNKNOWN", "UNKNOWN")
 
 
+def infer_surface(text: str, current_surface: str = "") -> str:
+    if str(current_surface).strip() in ("Hard", "Clay", "Grass"):
+        return str(current_surface).strip()
+    lower = str(text or "").lower()
+    if any(x in lower for x in ["wimbledon", "eastbourne", "mallorca", "bad homburg", "s-hertogenbosch", "hertogenbosch", "queens", "queen's", "halle", "birmingham", "nottingham", "berlin", "newport", "grass"]):
+        return "Grass"
+    if any(x in lower for x in ["french open", "roland garros", "madrid", "rome", "monte carlo", "monte-carlo", "barcelona", "estoril", "munich", "geneva", "lyon", "båstad", "bastad", "gstaad", "umag", "kitzbühel", "kitzbuhel", "hamburg", "palermo", "budapest", "prague", "bogota", "rabat", "marrakech", "santiago", "cordoba", "buenos aires", "iasi", "brasov", "clay"]):
+        return "Clay"
+    if any(x in lower for x in ["australian open", "us open", "indian wells", "miami", "cincinnati", "toronto", "montreal", "shanghai", "paris", "beijing", "tokyo", "doha", "dubai", "acapulco", "rotterdam", "basel", "vienna", "washington", "winston-salem", "los cabos", "atlanta", "chengdu", "zhuhai", "astana", "almaty", "stockholm", "antwerp", "metz", "sofia", "brisbane", "adelaide", "auckland", "delray beach", "dallas", "marseille", "montpellier", "monastir", "ningbo", "seoul", "hong kong", "cluj", "jiujiang", "linz", "rouen", "austin", "hobart", "hua hin", "merida", "guangzhou", "finals", "hard"]):
+        return "Hard"
+    return "Hard"
+
+
 def normalize_person_name(name: str) -> str:
     name = " ".join(str(name or "").replace(".", " ").replace("/", " / ").split()).strip().lower()
     if not name:
@@ -246,8 +259,11 @@ def build_live_rows() -> pd.DataFrame:
     inferred = card.apply(lambda r: infer_tour_and_series(r.get("context_used", ""), row=r), axis=1)
     card["tour"] = inferred.apply(lambda x: x[0])
     card["_series"] = inferred.apply(lambda x: x[1])
-    card["_surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
-    card.loc[card["_surface"].isin(["", "Nan", "None"]), "_surface"] = ""
+    
+    card["surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
+    card.loc[card["surface"].isin(["", "Nan", "None"]), "surface"] = ""
+    card["_surface"] = card.apply(lambda r: infer_surface(r.get("context_used", ""), r.get("surface", "")), axis=1)
+
     card = card[card["tour"].isin(["ATP", "WTA", "CHALLENGER", "ITF-M", "ITF-W", "UTR"])]
     if card.empty:
         return card
@@ -289,7 +305,7 @@ def build_live_rows() -> pd.DataFrame:
             "source": first.get("source", ""),
             "captured_at": pd.Timestamp.now().isoformat(),
             "oddsportal_url": "",
-            "_surface": first.get("_surface", ""),
+            "_surface": infer_surface(tournament, first.get("surface", "")),
             "_court": "",
             "_series": first.get("_series", ""),
             "_comment": "live_upcoming_injected",

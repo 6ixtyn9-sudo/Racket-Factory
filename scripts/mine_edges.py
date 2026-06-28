@@ -172,6 +172,19 @@ def infer_tour_and_series(text: str, row: pd.Series | None = None) -> tuple[str,
     return ("UNKNOWN", "UNKNOWN")
 
 
+def infer_surface(text: str, current_surface: str = "") -> str:
+    if str(current_surface).strip() in ("Hard", "Clay", "Grass"):
+        return str(current_surface).strip()
+    lower = str(text or "").lower()
+    if any(x in lower for x in ["wimbledon", "eastbourne", "mallorca", "bad homburg", "s-hertogenbosch", "hertogenbosch", "queens", "queen's", "halle", "birmingham", "nottingham", "berlin", "newport", "grass"]):
+        return "Grass"
+    if any(x in lower for x in ["french open", "roland garros", "madrid", "rome", "monte carlo", "monte-carlo", "barcelona", "estoril", "munich", "geneva", "lyon", "båstad", "bastad", "gstaad", "umag", "kitzbühel", "kitzbuhel", "hamburg", "palermo", "budapest", "prague", "bogota", "rabat", "marrakech", "santiago", "cordoba", "buenos aires", "iasi", "brasov", "clay"]):
+        return "Clay"
+    if any(x in lower for x in ["australian open", "us open", "indian wells", "miami", "cincinnati", "toronto", "montreal", "shanghai", "paris", "beijing", "tokyo", "doha", "dubai", "acapulco", "rotterdam", "basel", "vienna", "washington", "winston-salem", "los cabos", "atlanta", "chengdu", "zhuhai", "astana", "almaty", "stockholm", "antwerp", "metz", "sofia", "brisbane", "adelaide", "auckland", "delray beach", "dallas", "marseille", "montpellier", "monastir", "ningbo", "seoul", "hong kong", "cluj", "jiujiang", "linz", "rouen", "austin", "hobart", "hua hin", "merida", "guangzhou", "finals", "hard"]):
+        return "Hard"
+    return "Hard"
+
+
 def prob_to_odds_band(prob_pct: float) -> str:
     if pd.isna(prob_pct):
         return "Unknown"
@@ -447,6 +460,10 @@ def main() -> int:
 
     # Calculate cross_source_agree across all available prediction columns
     df['cross_source_agree'] = df.apply(lambda r: get_cross_source_agree(r, pred_cols), axis=1)
+    
+    # Ensure _surface is fully populated
+    df['_surface'] = df.apply(lambda r: infer_surface(r.get("tournament", "") or r.get("context_used", ""), r.get("_surface", "")), axis=1)
+
     logger.info("Cross-source agree distribution: %s", df['cross_source_agree'].value_counts().to_dict())
 
     dimensions = {
@@ -582,13 +599,15 @@ def main() -> int:
                 match_all = True
                 for dim_name, dim_val in combo.items():
                     r_val = row.get(dim_name)
-                    if r_val != dim_val:
+                    if str(r_val).replace(" ", "").lower() != str(dim_val).replace(" ", "").lower():
                         # Allow historical series equivalences (International <-> WTA250, Premier <-> WTA500)
                         if dim_name == "_series":
-                            if dim_val == "International" and r_val == "WTA250": continue
-                            if dim_val == "WTA250" and r_val == "International": continue
-                            if dim_val == "Premier" and r_val == "WTA500": continue
-                            if dim_val == "WTA500" and r_val == "Premier": continue
+                            d_clean = str(dim_val).replace(" ", "").lower()
+                            r_clean = str(r_val).replace(" ", "").lower()
+                            if d_clean == "international" and r_clean == "wta250": continue
+                            if d_clean == "wta250" and r_clean == "international": continue
+                            if d_clean == "premier" and r_clean == "wta500": continue
+                            if d_clean == "wta500" and r_clean == "premier": continue
                         match_all = False
                         break
 
