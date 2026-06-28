@@ -71,6 +71,19 @@ class PredixSportPredictor:
                         if m2:
                             tournament = m2.group(1).strip()
 
+                    # Try to extract bookmaker odds from PredixSport page
+                    odds_home, odds_away = None, None
+                    for tag in s.find_all(["div", "span"]):
+                        text = tag.get_text(strip=True)
+                        if any(w in str(tag.get("class", [])).lower() for w in ("odds", "odd", "bet", "price")):
+                            matches = re.findall(r"\b([1-9]\.\d{2})\b", text)
+                            if len(matches) >= 2:
+                                odds_home, odds_away = float(matches[0]), float(matches[1])
+                                break
+                            elif len(matches) == 1:
+                                if odds_home is None: odds_home = float(matches[0])
+                                elif odds_away is None: odds_away = float(matches[0])
+
                     winner = p1 if prob1 >= prob2 else p2
                     if not any(r["player_home"] == p1 for r in results):
                         results.append({
@@ -80,6 +93,8 @@ class PredixSportPredictor:
                         "player_away": p2,
                         "prob_home": prob1,
                         "prob_away": prob2,
+                        "odds_home": odds_home,
+                        "odds_away": odds_away,
                         "predicted_winner": "1" if prob1 >= prob2 else "2",
                         "predicted_winner_name": winner,
                         "tournament": tournament,

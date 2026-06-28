@@ -40,21 +40,23 @@ def get_player_rank_band(rank: float) -> str:
     return "100+"
 
 
-def get_selected_side_rank_band(row: pd.Series) -> str:
+def get_selected_side_rank_band(row: pd.Series, pred_cols: list[str]) -> str:
     """Pre-match rank band of the side we would actually back.
 
     Priority:
-      1. primary prediction (`predicted_winner`)
-      2. ForeTennis prediction
-      3. market favorite as fallback
+      1. primary predictions (`predicted_winner*`)
+      2. market favorite as fallback
     Uses pre-match player rank columns only.
     """
-    pick = row.get("predicted_winner")
-    if pd.isna(pick) or pick == "":
-        pick = row.get("predicted_winner_foretennis")
+    pick = None
+    for col in pred_cols:
+        val = row.get(col)
+        if pd.notna(val) and str(val).strip() != "":
+            pick = str(val).strip()
+            break
 
-    if pd.notna(pick) and pick in {"player_a", "player_b"}:
-        rank_col = "rank_a" if pick == "player_a" else "rank_b"
+    if pd.notna(pick) and pick in {"player_a", "player_b", "1", "2"}:
+        rank_col = "rank_a" if pick in {"player_a", "1"} else "rank_b"
         if rank_col in row:
             return get_player_rank_band(row.get(rank_col))
 
@@ -78,26 +80,49 @@ def get_odds_band(odds: float) -> str:
 def get_confidence_band(prob: float) -> str:
     """Bucket prediction probability into confidence tiers."""
     if pd.isna(prob): return "Unknown"
-    if prob >= 0.70: return "High"
-    if prob >= 0.60: return "Medium"
+    try:
+        p = float(prob)
+    except (TypeError, ValueError):
+        return "Unknown"
+    if p > 1.0:
+        p /= 100.0
+    if p >= 0.70: return "High"
+    if p >= 0.60: return "Medium"
     return "Low"
 
 
-def get_cross_source_agree(row: pd.Series) -> str:
+def get_cross_source_agree(row: pd.Series, pred_cols: list[str]) -> str:
     """
-    Compare Market baseline vs ForeTennis AI predictions.
+    Compare Market baseline vs ForeTennis AI predictions and other sources.
     Returns one of: Both | Disagree | MarketOnly | ForeTennisOnly
     """
     mkt = row.get("predicted_winner_market")
     ft = row.get("predicted_winner_foretennis")
-    has_mkt = pd.notna(mkt) and mkt != ""
-    has_ft = pd.notna(ft) and ft != ""
+    has_mkt = pd.notna(mkt) and str(mkt).strip() != ""
+    has_ft = pd.notna(ft) and str(ft).strip() != ""
     if has_mkt and has_ft:
         return "Both" if mkt == ft else "Disagree"
     if has_mkt:
         return "MarketOnly"
     if has_ft:
         return "ForeTennisOnly"
+
+    # Check all available predicted_winner columns for live upcoming matches
+    picks = set()
+    sources_count = 0
+    for col in pred_cols:
+        val = row.get(col)
+        if pd.notna(val) and str(val).strip() != "":
+            picks.add(str(val).strip())
+            sources_count += 1
+
+    if len(picks) > 1:
+        return "Disagree"
+    elif len(picks) == 1 and sources_count > 1:
+        return "Both"
+    elif len(picks) == 1:
+        return "MarketOnly"
+
     return "Unknown"
 
 
@@ -148,6 +173,8 @@ def infer_tour_and_series(text: str, row: pd.Series | None = None) -> tuple[str,
 def prob_to_odds_band(prob_pct: float) -> str:
     if pd.isna(prob_pct):
         return "Unknown"
+    if prob_pct <= 1.0 and prob_pct > 0:
+        prob_pct *= 100.0
     if prob_pct >= 75:
         return "1.1-1.3"
     if prob_pct >= 62:
@@ -293,24 +320,34 @@ def classify_bucket(best_pick: dict) -> str:
 def select_player_from_row(row: pd.Series, target_date: str) -> dict:
     home_name = row.get("player_a", row.get("player_home", "A"))
     away_name = row.get("player_b", row.get("player_away", "B"))
-    selected_pick = row.get("predicted_winner")
+
+    selected_pick = None
     selected_player = None
+
+    pred_cols = [c for c in row.index if c.startswith("predicted_winner")]
+    for col in pred_cols:
+        val = row.get(col)
+        if pd.notna(val) and str(val).strip() != "":
+            selected_pick = str(val).strip()
+            break
+
     if selected_pick in {"player_a", "player_b"}:
         selected_player = home_name if selected_pick == "player_a" else away_name
     elif selected_pick in {"1", "2"}:
         selected_player = home_name if selected_pick == "1" else away_name
     else:
-        selected_pick = row.get("predicted_winner_foretennis")
-        if selected_pick in {"player_a", "player_b"}:
+        oa, ob = row.get("odds_a"), row.get("odds_b")
+        if pd.notna(oa) and pd.notna(ob):
+            selected_pick = "player_a" if oa <= ob else "player_b"
             selected_player = home_name if selected_pick == "player_a" else away_name
-        elif pd.isna(selected_pick) or selected_pick == "":
-            oa, ob = row.get("odds_a"), row.get("odds_b")
-            if pd.notna(oa) and pd.notna(ob):
-                selected_pick = "player_a" if oa <= ob else "player_b"
-                selected_player = home_name if selected_pick == "player_a" else away_name
+        else:
+            selected_pick = "player_a"
+            selected_player = home_name
 
-        if selected_pick in {"1", "2"}:
-            selected_player = home_name if selected_pick == "1" else away_name
+    source_val = row.get("source", "")
+    source_count = row.get("source_count")
+    if pd.isna(source_count) or source_count is None:
+        source_count = len([c for c in pred_cols if pd.notna(row.get(c)) and str(row.get(c)).strip() != ""])
 
     return {
         "match": f"{home_name} vs {away_name}",
@@ -318,8 +355,8 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
         "selected_side": selected_pick,
         "selected_player": selected_player,
         "tournament": row.get("tournament"),
-        "source": row.get("source"),
-        "source_count": row.get("source_count"),
+        "source": source_val,
+        "source_count": source_count,
         "tour": row.get("tour"),
         "series": row.get("_series"),
         "surface": row.get("_surface"),
@@ -356,20 +393,59 @@ def main() -> int:
         logger.error("Could not load warehouse: %s", e)
         return 1
 
-    df['selected_rank_band'] = df.apply(get_selected_side_rank_band, axis=1)
+    pred_cols = [c for c in df.columns if c.startswith("predicted_winner")]
+    prob_cols = [c for c in df.columns if c.startswith("prediction_prob")]
+
+    df['selected_rank_band'] = df.apply(lambda r: get_selected_side_rank_band(r, pred_cols), axis=1)
     df['fav_odds'] = df.apply(
         lambda r: r['odds_a'] if pd.notna(r.get('odds_a')) and pd.notna(r.get('odds_b'))
                   and r['odds_a'] < r['odds_b'] else r.get('odds_b'), axis=1
     )
-    df['fav_odds_band'] = df['fav_odds'].apply(get_odds_band)
 
-    if 'prediction_prob' in df.columns:
-        df['pred_confidence'] = df['prediction_prob'].apply(get_confidence_band)
+    # Calculate fav_odds_band from odds, backfilling from prediction probabilities for live matches
+    def calc_odds_band(row):
+        val = row.get('fav_odds')
+        band = get_odds_band(val)
+        if band != 'Unknown':
+            return band
+        max_p = None
+        for col in prob_cols:
+            p_val = row.get(col)
+            if pd.notna(p_val):
+                try:
+                    v = float(p_val)
+                    if max_p is None or v > max_p: max_p = v
+                except (TypeError, ValueError):
+                    pass
+        if max_p is not None:
+            return prob_to_odds_band(max_p)
+        return 'Unknown'
 
-    if 'predicted_winner_foretennis' in df.columns:
-        df['cross_source_agree'] = df.apply(get_cross_source_agree, axis=1)
-        logger.info("Cross-source agree distribution: %s",
-                    df['cross_source_agree'].value_counts().to_dict())
+    df['fav_odds_band'] = df.apply(calc_odds_band, axis=1)
+
+    # Calculate pred_confidence across all available probability columns
+    def calc_pred_confidence(row):
+        max_p = None
+        for col in prob_cols:
+            p_val = row.get(col)
+            if pd.notna(p_val):
+                try:
+                    v = float(p_val)
+                    if max_p is None or v > max_p: max_p = v
+                except (TypeError, ValueError):
+                    pass
+        if max_p is not None:
+            if max_p > 1.0: max_p /= 100.0
+            if max_p >= 0.70: return "High"
+            if max_p >= 0.60: return "Medium"
+            return "Low"
+        return "Unknown"
+
+    df['pred_confidence'] = df.apply(calc_pred_confidence, axis=1)
+
+    # Calculate cross_source_agree across all available prediction columns
+    df['cross_source_agree'] = df.apply(lambda r: get_cross_source_agree(r, pred_cols), axis=1)
+    logger.info("Cross-source agree distribution: %s", df['cross_source_agree'].value_counts().to_dict())
 
     dimensions = {
         "tour": df['tour'].unique(),
@@ -377,14 +453,9 @@ def main() -> int:
         "fav_odds_band": df['fav_odds_band'].unique(),
         "selected_rank_band": df['selected_rank_band'].unique(),
         "_series": df['_series'].unique(),
+        "pred_confidence": df['pred_confidence'].unique(),
+        "cross_source_agree": df['cross_source_agree'].unique(),
     }
-
-    if 'predicted_winner_foretennis' in df.columns:
-        dimensions['predicted_winner_foretennis'] = df['predicted_winner_foretennis'].unique()
-    if 'pred_confidence' in df.columns:
-        dimensions['pred_confidence'] = df['pred_confidence'].unique()
-    if 'cross_source_agree' in df.columns:
-        dimensions['cross_source_agree'] = df['cross_source_agree'].unique()
 
     for k, v in dimensions.items():
         dimensions[k] = [x for x in v if pd.notna(x) and x != "Unknown" and x != ""]
@@ -470,7 +541,7 @@ def main() -> int:
     if today_df.empty:
         fallback = today_all.copy()
         pred_mask = False
-        for col in ["predicted_winner", "predicted_winner_foretennis", "predicted_winner_market"]:
+        for col in pred_cols:
             if col in fallback.columns:
                 mask = fallback[col].notna() & (fallback[col].astype(str).str.strip() != "")
                 pred_mask = mask if isinstance(pred_mask, bool) else (pred_mask | mask)
@@ -529,11 +600,15 @@ def main() -> int:
 
             if best_pick and best_pick["Verdict"] in {"EDGE CONFIRMED", "WATCHLIST", "FADE THIS SIGNAL"}:
                 base = select_player_from_row(row, target_date)
-                prob = row.get("prediction_prob")
-                if pd.isna(prob):
-                    prob = row.get("pred_confidence")
-                if pd.isna(prob):
-                    prob = None
+                prob = None
+                for col in prob_cols:
+                    pval = row.get(col)
+                    if pd.notna(pval):
+                        try:
+                            v = float(pval)
+                            if prob is None or v > prob: prob = v
+                        except (TypeError, ValueError):
+                            pass
                 base.update({
                     "bucket": classify_bucket(best_pick),
                     "pick": best_pick["Verdict"],

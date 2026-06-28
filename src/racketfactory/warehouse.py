@@ -172,6 +172,8 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
             "predicted_winner": next((x for x in g.get("predicted_winner", pd.Series(dtype=object)) if str(x or "").strip()), ""),
             "prob_home": pd.to_numeric(g.get("prob_home", pd.Series(dtype=float)), errors="coerce").max(),
             "prob_away": pd.to_numeric(g.get("prob_away", pd.Series(dtype=float)), errors="coerce").max(),
+            "odds_home": pd.to_numeric(g.get("odds_home", pd.Series(dtype=float)), errors="coerce").max(),
+            "odds_away": pd.to_numeric(g.get("odds_away", pd.Series(dtype=float)), errors="coerce").max(),
         })
     return pd.DataFrame(rows)
 
@@ -254,6 +256,10 @@ def build_live_rows() -> pd.DataFrame:
         selected = winners[0] if winners else ""
         prob = max([p for p in probs if pd.notna(p)], default=None)
         tournament = first.get("tournament", "") or first.get("tournament_slug", "") or first.get("context_used", "")
+        
+        odds_h = first.get("odds_home")
+        odds_a = first.get("odds_away")
+        
         grouped_rows.append({
             "match_date": first.get("match_date"),
             "tour": first.get("tour"),
@@ -263,9 +269,9 @@ def build_live_rows() -> pd.DataFrame:
             "player_b": first.get("player_away"),
             "winner": "",
             "score": "",
-            "odds_a": pd.NA,
-            "odds_b": pd.NA,
-            "bookmaker": "",
+            "odds_a": odds_h if pd.notna(odds_h) else pd.NA,
+            "odds_b": odds_a if pd.notna(odds_a) else pd.NA,
+            "bookmaker": "LiveScraper" if pd.notna(odds_h) else "",
             "source": first.get("source", ""),
             "captured_at": pd.Timestamp.now().isoformat(),
             "oddsportal_url": "",
@@ -276,7 +282,7 @@ def build_live_rows() -> pd.DataFrame:
             "_location": first.get("country", "") if "country" in first.index else "",
             "_winner_rank": pd.NA,
             "_loser_rank": pd.NA,
-            "_odds_source": "",
+            "_odds_source": "LiveScraper" if pd.notna(odds_h) else "",
             "live_predicted_winner": selected,
             "live_prediction_prob": prob,
             "live_predicted_source": "live_card",
@@ -337,13 +343,6 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
     ).drop(columns=['p_a_key', 'p_b_key', '_sorted_players'])
     
     # 2. Multi-Source Prediction Join
-    # Primary source writes to canonical columns (predicted_winner, prediction_prob,
-    # predicted_source). Each additional source gets suffixed columns so sources
-    # never silently overwrite each other based on glob order.
-    #
-    # Source priority: Forebet is primary (most historical coverage). Any source
-    # not in PRIMARY_SOURCES is merged as a secondary with a suffix derived from
-    # its 'source' column value (lowercased, spaces→underscore).
     PRIMARY_SOURCES = {"Forebet"}
     JOIN_KEYS = ["match_date", "tour", "tournament", "player_a", "player_b"]
 
@@ -351,7 +350,6 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
     if pred_files:
         logger.info("Loading %d prediction files for multi-source merge...", len(pred_files))
 
-        # Load and bucket by source name
         source_dfs: dict[str, list[pd.DataFrame]] = {}
         for pf in pred_files:
             try:
@@ -365,7 +363,6 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
 
         for src, frames in source_dfs.items():
             merged = pd.concat(frames, ignore_index=True)
-            # Deduplicate within this source: keep most recent scrape
             merged = merged.drop_duplicates(
                 subset=JOIN_KEYS, keep="last"
             )
@@ -373,7 +370,6 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
                          if c in merged.columns]
 
             if src in PRIMARY_SOURCES:
-                # Primary source → canonical column names
                 logger.info("Merging primary source '%s': %d predictions", src, len(merged))
                 warehouse = warehouse.merge(
                     merged[JOIN_KEYS + pred_cols],
@@ -384,13 +380,11 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
                 if 'source_pred' in warehouse.columns:
                     warehouse = warehouse.rename(columns={'source_pred': 'predicted_source'})
             else:
-                # Secondary source → suffixed column names
                 suffix = src.lower().replace(" ", "_").replace("-", "_")
                 logger.info("Merging secondary source '%s' (suffix: _%s): %d predictions",
                             src, suffix, len(merged))
                 rename_map = {c: f"{c}_{suffix}" for c in pred_cols if c != "source"}
                 merged_renamed = merged[JOIN_KEYS + pred_cols].rename(columns=rename_map)
-                # Drop 'source' col — it's redundant given the suffix encodes it
                 if "source" in merged_renamed.columns:
                     merged_renamed = merged_renamed.drop(columns=["source"])
                 warehouse = warehouse.merge(
@@ -399,7 +393,6 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
                     how="left",
                 )
 
-        # Clean up true duplicate artifacts only; preserve distinct source lanes.
         duplicate_groups = {
             "predicted_winner": ["predicted_winner", "predicted_winner_x", "predicted_winner_y", "predicted_winner_pred"],
             "prediction_prob": ["prediction_prob", "prediction_prob_x", "prediction_prob_y", "prediction_prob_pred"],
@@ -421,7 +414,6 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
             if drop_cols:
                 warehouse = warehouse.drop(columns=drop_cols)
 
-        # Backfill canonical prediction columns from injected live rows only where still missing.
         if "live_predicted_winner" in warehouse.columns:
             if "predicted_winner" not in warehouse.columns:
                 warehouse["predicted_winner"] = pd.NA
@@ -439,14 +431,12 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
         if drop_live_cols:
             warehouse = warehouse.drop(columns=drop_live_cols)
 
-        # Report final prediction column coverage
         pred_winner_cols = [c for c in warehouse.columns if c.startswith("predicted_winner")]
         logger.info("Prediction columns in warehouse: %s", pred_winner_cols)
         primary_cov = warehouse["predicted_winner"].notna().sum() if "predicted_winner" in warehouse.columns else 0
         logger.info("Primary (Forebet) prediction coverage: %d/%d rows (%.1f%%)",
                     primary_cov, len(warehouse), 100 * primary_cov / max(len(warehouse), 1))
 
-    # Final safety: ensure numeric types for odds
     if "odds_a" in warehouse.columns:
         warehouse["odds_a"] = pd.to_numeric(warehouse["odds_a"], errors='coerce')
     if "odds_b" in warehouse.columns:

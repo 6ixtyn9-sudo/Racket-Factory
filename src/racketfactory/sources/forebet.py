@@ -306,11 +306,6 @@ class ForebetPredictor:
     def parse_page(self, html: str) -> list[dict[str, Any]]:
         """
         Parse any Forebet page containing tennis match predictions.
-        Returns a list of dicts with:
-          match_date, player_home, player_away,
-          prob_home, prob_away, predicted_winner ('1' or '2'),
-          tournament (if present), source='Forebet'
-        Filters out non-tennis anchors that can appear in shared page chrome.
         """
         soup = BeautifulSoup(html, "html.parser")
         results = []
@@ -322,7 +317,6 @@ class ForebetPredictor:
                 continue
 
             # Try to infer tour/tournament directly from tennis URL shape:
-            # /en/tennis/matches/{tour_slug}/{tournament_slug}/{match_id}
             tour_slug = ""
             tournament_slug = ""
             m = re.search(r"/tennis/matches/([^/]+)/([^/]+)/", href)
@@ -365,10 +359,12 @@ class ForebetPredictor:
                     if heading_text:
                         tournament_name = heading_text
 
-            # --- Probabilities & Prediction --------------------------------
+            # --- Probabilities, Odds & Prediction --------------------------
             prob_home = None
             prob_away = None
             predicted_winner = None
+            odds_home = None
+            odds_away = None
 
             row = row_container
             if row:
@@ -390,12 +386,26 @@ class ForebetPredictor:
                         if inner:
                             predicted_winner = inner.get_text(strip=True)
 
+                # Extract odds containers if present on page
+                odd_spans = row.find_all(["span", "div"], class_=re.compile(r"odd|pOdd|avg_odd|bot_odd|lrg_odd", re.I))
+                for osp in odd_spans:
+                    txt = osp.get_text(strip=True)
+                    matches = re.findall(r"\b([1-9]\.\d{2})\b", txt)
+                    if len(matches) >= 2:
+                        odds_home, odds_away = float(matches[0]), float(matches[1])
+                        break
+                    elif len(matches) == 1:
+                        if odds_home is None: odds_home = float(matches[0])
+                        elif odds_away is None: odds_away = float(matches[0])
+
             results.append({
                 "match_date": match_date,
                 "player_home": home,
                 "player_away": away,
                 "prob_home": prob_home,
                 "prob_away": prob_away,
+                "odds_home": odds_home,
+                "odds_away": odds_away,
                 "predicted_winner": predicted_winner,
                 "tournament": tournament_name,
                 "tour_slug": tour_slug,
@@ -420,8 +430,6 @@ class ForebetPredictor:
         if not html:
             return []
         preds = self.parse_page(html)
-        # Tag each prediction with the tournament name since the page parser
-        # may not have extracted it from the HTML headings
         for p in preds:
             p["tournament"] = tournament
         return preds
@@ -449,15 +457,12 @@ class ForebetPredictor:
         """
         Map a Forebet prediction (home/away orientation) to the warehouse
         player_a / player_b orientation using name-signature matching.
-        Returns a dict with predicted_winner ('player_a' or 'player_b')
-        and prediction_prob (probability assigned to the predicted winner).
         """
         sig_a = name_signature(player_a)
         sig_b = name_signature(player_b)
         sig_home = name_signature(pred["player_home"])
         sig_away = name_signature(pred["player_away"])
 
-        # Determine which warehouse player maps to homeTeam
         if sig_a == sig_home:
             home_is_a = True
         elif sig_b == sig_home:

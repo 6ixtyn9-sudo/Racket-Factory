@@ -22,12 +22,7 @@ class BetClanPredictor:
         return " ".join(str(value or "").split()).strip()
 
     def _extract_context(self, soup: BeautifulSoup) -> tuple[str, str, str]:
-        """Extract focused BetClan context with minimal bleed from nearby widgets.
-
-        Prefer the most specific title/header node first, then fall back to the
-        page title. Avoid broad container text such as generic caption blocks
-        that can concatenate other tournament labels on the page.
-        """
+        """Extract focused BetClan context with minimal bleed from nearby widgets."""
         primary_selectors = [
             ("span", "titleh2page"),
             ("div", "portlet-title"),
@@ -115,6 +110,19 @@ class BetClanPredictor:
                         if m:
                             prob2 = int(m.group(1))
 
+                    # Try to extract bookmaker odds from BetClan page
+                    odds_home, odds_away = None, None
+                    for tag in s.find_all(["div", "span", "td"]):
+                        text = tag.get_text(strip=True)
+                        if any(w in str(tag.get("class", [])).lower() for w in ("odds", "odd", "odd-val", "bet-odd", "box-odds")):
+                            matches = re.findall(r"\b([1-9]\.\d{2})\b", text)
+                            if len(matches) >= 2:
+                                odds_home, odds_away = float(matches[0]), float(matches[1])
+                                break
+                            elif len(matches) == 1:
+                                if odds_home is None: odds_home = float(matches[0])
+                                elif odds_away is None: odds_away = float(matches[0])
+
                     page_text = s.get_text(" ", strip=True)
                     tournament, event_text, category_text = self._extract_context(s)
 
@@ -141,6 +149,8 @@ class BetClanPredictor:
                             "player_away": p2,
                             "prob_home": prob1,
                             "prob_away": prob2,
+                            "odds_home": odds_home,
+                            "odds_away": odds_away,
                             "predicted_winner": "1" if winner_name.lower() == p1.lower() else "2",
                             "predicted_winner_name": winner_name,
                             "tournament": tournament,
