@@ -654,6 +654,7 @@ def main() -> int:
                     if pd.notna(pval) and str(pval).strip() not in {"nan", "<NA>", "None"}:
                         try:
                             v = float(pval)
+                            if v <= 1.0 and v > 0: v *= 100.0
                             if prob is None or v > prob: prob = v
                         except (TypeError, ValueError):
                             pass

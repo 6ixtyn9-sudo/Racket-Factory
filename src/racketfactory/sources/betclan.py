@@ -110,6 +110,14 @@ class BetClanPredictor:
                         if m:
                             prob2 = int(m.group(1))
 
+                    # Robustly determine predicted winner using probabilities or clean name matching
+                    if prob1 is not None and prob2 is not None:
+                        pred_win = "1" if prob1 >= prob2 else "2"
+                    else:
+                        clean_w = re.sub(r"[^a-z]", "", winner_name.lower())
+                        clean_p1 = re.sub(r"[^a-z]", "", p1.lower())
+                        pred_win = "1" if clean_p1 in clean_w or clean_w in clean_p1 else "2"
+
                     # Robustly extract bookmaker odds across all possible containers and buttons
                     odds_home, odds_away = None, None
                     for tag in s.find_all(["div", "span", "td", "button", "a"]):
@@ -160,7 +168,7 @@ class BetClanPredictor:
                             "prob_away": prob2,
                             "odds_home": odds_home,
                             "odds_away": odds_away,
-                            "predicted_winner": "1" if winner_name.lower() == p1.lower() else "2",
+                            "predicted_winner": pred_win,
                             "predicted_winner_name": winner_name,
                             "tournament": tournament,
                             "surface": surface,

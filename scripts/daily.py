@@ -218,6 +218,8 @@ def generate_daily_report(target_date: str, output_path: Path | None = None) -> 
                 kickoff = format_kickoff(p)
                 pick_str = str(p.get("selected_player") or p.get("selected_side") or "?").upper()
                 conf = float(p.get("confidence") or 0)
+                if conf <= 1.0 and conf > 0:
+                    conf *= 100.0
 
                 lines.append(
                     f"  [{label}] {match:42s} KO {kickoff:5s} -> "
