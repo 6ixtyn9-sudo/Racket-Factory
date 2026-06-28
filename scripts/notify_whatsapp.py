@@ -144,18 +144,36 @@ def format_summary(target_date: str, picks: list[dict[str, Any]], *, late_slate:
     for p in picks:
         buckets.setdefault(str(p.get("bucket", "UNKNOWN")), []).append(p)
 
+    def _ev(p: dict[str, Any]) -> str:
+        ev = p.get("expected_value")
+        if ev is None:
+            return ""
+        try:
+            return f" | EV: {float(ev):+.2f}u"
+        except (TypeError, ValueError):
+            return ""
+
     clean = buckets.get(BUCKET_CLEAN, [])
     if clean:
         lines.append(f"✅ *CERTIFIED CLEAN* ({len(clean)})")
         for p in sorted(clean, key=lambda x: -_prob(x)):
-            lines.append(f"• *{p.get('match', '?')}* ➡️ *{_selection(p)}* {_odds_display(p)}")
+            lines.append(f"• *{p.get('match', '?')}* ➡️ *{_selection(p)}* {_odds_display(p)}{_ev(p)}")
             lines.append(f"   └ [tip: {_kickoff(p)}] | Prob: {_prob(p):.0f}%\n")
+
+    # REDTEAM Finding #1: SKIPPED_DEAD_EDGE is the bucket for rows the miner
+    # explicitly told us to FADE. We surface the count only — never the
+    # individual matches — so the operator knows the model saw negative-edge
+    # rows but is not tempted to act on them from a phone notification.
+    skipped = buckets.get("SKIPPED_DEAD_EDGE", [])
+    if skipped:
+        lines.append(f"🚫 *{len(skipped)} FADE / NEG-EV rows suppressed* "
+                     f"(ROBBER slices + non-positive EV). Not actionable.\n")
 
     caution = buckets.get(BUCKET_CAUTION, [])
     if caution:
         lines.append(f"⚠️ *CAUTION* ({len(caution)})")
         for p in sorted(caution, key=lambda x: -_prob(x)):
-            lines.append(f"• *{p.get('match', '?')}* ➡️ *{_selection(p)}* {_odds_display(p)}")
+            lines.append(f"• *{p.get('match', '?')}* ➡️ *{_selection(p)}* {_odds_display(p)}{_ev(p)}")
             lines.append(f"   └ [tip: {_kickoff(p)}] | Prob: {_prob(p):.0f}%\n")
 
     wl = [p for p in picks if str(p.get("bucket", "")).startswith("WATCHLIST")]
@@ -195,9 +213,15 @@ def main() -> int:
         return 0
 
     raw = _load_json_list(picks_file)
+    # REDTEAM Finding #1: SKIPPED_DEAD_EDGE rows are never sent through
+    # WhatsApp. The notify set below is intentional — only CERTIFIED_CLEAN
+    # and (optionally) CAUTION reach the operator. CAUTION is gated by the
+    # `--min-ev 0` default in mine_edges so anything reaching this bucket
+    # has positive EV; SKIPPED_DEAD_EDGE is still excluded for clarity.
     notify_buckets = {BUCKET_CLEAN, BUCKET_CAUTION}
     if os.environ.get("RACKET_FACTORY_NOTIFY_WATCHLIST", "").strip().lower() in {"1", "true", "yes", "on"}:
         notify_buckets |= {BUCKET_WL_ODDS, BUCKET_WL_SIGNAL}
+    notify_buckets -= {"SKIPPED_DEAD_EDGE", "SKIPPED_VETO"}
 
     candidates = [p for p in raw if p.get("bucket") in notify_buckets]
     if not candidates:

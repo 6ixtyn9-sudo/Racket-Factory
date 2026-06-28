@@ -105,10 +105,63 @@ def classify_tier(win_rate: float, lb: float, n: int) -> str:
         return "ROBBER"
     return "NEUTRAL"
 
-def assay_segment(df: pd.DataFrame, break_even: Optional[float] = None) -> AssayResult:
+def _pick_side(row: pd.Series, bet_side: str) -> Optional[str]:
+    """
+    Return 'a' or 'b' indicating which side a hypothetical bet is placed on,
+    or None if it cannot be determined for this row.
+
+    bet_side:
+      - "favorite": lowest decimal odds
+      - "prediction": first non-null predicted_winner* column (player_a/player_b/1/2)
+    """
+    if bet_side == "favorite":
+        oa, ob = row.get('odds_a'), row.get('odds_b')
+        try:
+            oa = float(oa) if pd.notna(oa) else None
+        except (TypeError, ValueError):
+            oa = None
+        try:
+            ob = float(ob) if pd.notna(ob) else None
+        except (TypeError, ValueError):
+            ob = None
+        if oa is None or ob is None:
+            return None
+        return 'a' if oa < ob else 'b'
+
+    if bet_side == "prediction":
+        for col in [c for c in row.index if c.startswith("predicted_winner")]:
+            val = row.get(col)
+            if pd.isna(val):
+                continue
+            s = str(val).strip()
+            if s in ("", "nan", "<NA>", "None"):
+                continue
+            if s in ("player_a", "1"):
+                return 'a'
+            if s in ("player_b", "2"):
+                return 'b'
+            # Value matches one of the player names directly
+            pa = str(row.get('player_a') or "").strip()
+            pb = str(row.get('player_b') or "").strip()
+            if pa and s == pa:
+                return 'a'
+            if pb and s == pb:
+                return 'b'
+        return None
+
+    raise ValueError(f"Unknown bet_side: {bet_side!r}")
+
+
+def assay_segment(df: pd.DataFrame, break_even: Optional[float] = None, bet_side: str = "favorite") -> AssayResult:
     """
     Perform a full statistical assay on a slice of match data.
-    SIMULATION: We bet on the MARKET FAVORITE.
+
+    bet_side controls what side is treated as the simulated bet:
+      - "favorite"   (default): we bet on the lower-odds side
+      - "prediction":           we bet on whatever predicted_winner* column says
+
+    Both modes require the slice to have settled outcomes (winner populated)
+    and decimal odds. Rows with missing inputs are dropped from the assay.
     """
     n = len(df)
     if n == 0:
@@ -118,15 +171,11 @@ def assay_segment(df: pd.DataFrame, break_even: Optional[float] = None) -> Assay
     if not all(col in df.columns for col in required):
         return AssayResult(0, 0, n, 0, 0, 0, "CHARCOAL", "NEUTRAL", "Missing Data Columns")
 
-    def get_favorite(row):
-        oa, ob = row['odds_a'], row['odds_b']
-        if pd.isna(oa) or pd.isna(ob): return None
-        return 'a' if oa < ob else 'b'
-
     df = df.copy()
-    df['fav'] = df.apply(get_favorite, axis=1)
+    df['fav'] = df.apply(lambda r: _pick_side(r, bet_side), axis=1)
     df = df.dropna(subset=['fav'])
-    
+    df = df[df['fav'].isin(['a', 'b'])]
+
     n = len(df)
     if n == 0:
         return AssayResult(0, 0, 0, 0, 0, 0, "CHARCOAL", "NEUTRAL", "No Valid Odds")

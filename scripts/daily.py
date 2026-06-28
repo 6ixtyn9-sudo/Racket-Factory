@@ -114,7 +114,10 @@ def merge_picks(existing_ledger: list[dict[str, Any]], fresh_run: list[dict[str,
 
     merged.sort(
         key=lambda p: (
-            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2}.get(str(p.get("bucket")), 9),
+            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2,
+             "SKIPPED_DEAD_EDGE": 3, "WATCHLIST_NO_ODDS": 4, "WATCHLIST_UNKNOWN_CTX": 5,
+             "SKIPPED_VETO": 6}.get(str(p.get("bucket")), 9),
+            -float(p.get("expected_value") or 0.0),
             -int(p.get("source_count") or 0),
             str(p.get("match", "")),
         )
@@ -194,7 +197,7 @@ def generate_daily_report(target_date: str, output_path: Path | None = None) -> 
             "WATCHLIST_NO_ODDS": "WATCHLIST — NO MATCHED ODDS",
             "WATCHLIST_UNKNOWN_CTX": "WATCHLIST — UNKNOWN CONTEXT",
             "SKIPPED_VETO": "SKIPPED — VETO CONTEXT",
-            "SKIPPED_DEAD_EDGE": "SKIPPED — DEAD EDGE",
+            "SKIPPED_DEAD_EDGE": "SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)",
         }
 
         for b in bucket_order:
@@ -213,6 +216,14 @@ def generate_daily_report(target_date: str, output_path: Path | None = None) -> 
                 else:
                     odds = "@n/a"
 
+                ev_val = p.get("expected_value")
+                ev_str = ""
+                if ev_val is not None and str(ev_val).strip() not in {"nan", "<NA>", "None", ""}:
+                    try:
+                        ev_str = f"  EV {float(ev_val):+.2f}u"
+                    except (TypeError, ValueError):
+                        ev_str = ""
+
                 label = p.get("slice_matched") or p.get("rule", "?")
                 match = str(p.get("match", ""))[:42]
                 kickoff = format_kickoff(p)
@@ -223,7 +234,7 @@ def generate_daily_report(target_date: str, output_path: Path | None = None) -> 
 
                 lines.append(
                     f"  [{label}] {match:42s} KO {kickoff:5s} -> "
-                    f"{pick_str:5s}  conf {conf:.0f}% {odds}"
+                    f"{pick_str:5s}  conf {conf:.0f}% {odds}{ev_str}"
                 )
                 lines.append(
                     f"     bucket={b}  "
@@ -308,6 +319,18 @@ def run_once(args: argparse.Namespace) -> None:
         run_soft(
             f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_tennisdata.py --year {year}",
             f"backfill_tennisdata {year}",
+            env=child_env,
+        )
+    else:
+        # REDTEAM Finding #6: in intraday mode we still need yesterday's
+        # results to flow into the warehouse so the audit can measure
+        # settled picks. We re-capture only the current year with the
+        # checkpoint reset, which is one bulk pass per run and tolerates
+        # CF re-challenge gracefully. Failures are non-fatal so an outage
+        # in the results pass does not block picks.
+        run_soft(
+            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --year {year} --no-checkpoint --delay 8",
+            f"settle_yesterday_results {year}",
             env=child_env,
         )
 

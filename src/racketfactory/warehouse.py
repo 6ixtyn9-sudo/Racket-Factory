@@ -318,8 +318,16 @@ def build_live_rows() -> pd.DataFrame:
             "live_predicted_winner": selected,
             "live_prediction_prob": prob,
             "live_predicted_source": "live_card",
+            # Explicit boolean flag so downstream code can filter unambiguously,
+            # independently of the free-form `_comment` text.
+            "_is_live": True,
         })
-    return pd.DataFrame(grouped_rows)
+    if not grouped_rows:
+        return pd.DataFrame()
+    df = pd.DataFrame(grouped_rows)
+    if "_is_live" not in df.columns:
+        df["_is_live"] = True
+    return df
 
 
 def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.csv.gz") -> Optional[Path]:
@@ -351,10 +359,21 @@ def build_warehouse(data_dir: str = "localdata", output_file: str = "warehouse.c
     
     warehouse = pd.concat(dfs, ignore_index=True)
 
+    # Mark every historical row as not live-injected. Downstream consumers
+    # (mine_edges.py) use this column to keep live rows out of historical
+    # slice mining — they have empty `winner` so they would otherwise show as
+    # guaranteed losses and bias the win-rate assays downward.
+    if "_is_live" not in warehouse.columns:
+        warehouse["_is_live"] = False
+    else:
+        warehouse["_is_live"] = warehouse["_is_live"].fillna(False).astype(bool)
+
     # Inject live upcoming rows so same-day candidates exist in the warehouse.
     live_rows = build_live_rows()
     if not live_rows.empty:
         logger.info("Injecting %d live upcoming rows into warehouse before dedupe...", len(live_rows))
+        if "_is_live" not in live_rows.columns:
+            live_rows["_is_live"] = True
         warehouse = pd.concat([warehouse, live_rows], ignore_index=True, sort=False)
     
     # Standard Deduplication

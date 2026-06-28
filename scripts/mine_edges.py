@@ -328,8 +328,13 @@ def classify_bucket(best_pick: dict) -> str:
         return "CERTIFIED_CLEAN"
     if verdict == "WATCHLIST":
         return "WATCHLIST"
+    # REDTEAM Finding #1: ROBBER/FADE verdicts must NEVER be exported as a
+    # pick. The old mapping ("FADE THIS SIGNAL" -> "CAUTION") was the root
+    # cause of the 2026-06-28 run shipping 48 negatively-biased picks. We now
+    # route them to the SKIPPED_DEAD_EDGE bucket so they are visible in the
+    # archive JSON for transparency, but never reach the actionable set.
     if verdict == "FADE THIS SIGNAL":
-        return "CAUTION"
+        return "SKIPPED_DEAD_EDGE"
     return "WATCHLIST"
 
 
@@ -410,6 +415,17 @@ def main() -> int:
     ap.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse")
     ap.add_argument("--min-n", type=int, default=15,
                     help="Minimum matches per slice (default 15)")
+    ap.add_argument("--min-export-n", type=int, default=50,
+                    help="REDTEAM Finding #5: minimum historical N required for a slice to be "
+                         "considered exportable as a live pick. Default 50 — anything smaller is "
+                         "kept for transparency in the slice report but cannot become a pick.")
+    ap.add_argument("--min-ev", type=float, default=0.0,
+                    help="REDTEAM Finding #4: minimum per-bet expected value (decimal) required "
+                         "for a pick to be exported. EV = conf*(odds-1) - (1-conf). Default 0.0 "
+                         "(drop non-positive-EV bets). Set to negative to disable.")
+    ap.add_argument("--bet-side", choices=["favorite", "prediction"], default="favorite",
+                    help="REDTEAM Finding #3: what side does the slice assay test? 'favorite' "
+                         "(default, historical behaviour) or 'prediction' (follow predicted_winner*).")
     ap.add_argument("--date", default=None, help="Target date YYYY-MM-DD to extract specific picks (default: today)")
     args = ap.parse_args()
 
@@ -419,11 +435,29 @@ def main() -> int:
         logger.error("Could not load warehouse: %s", e)
         return 1
 
+    # REDTEAM Finding #2 (pre-step): identify live-injected rows so we can
+    # (a) exclude them from historical slice mining (they have empty winner
+    #     and would otherwise count as guaranteed losses), and
+    # (b) still include them in today's pick matching so the operator sees
+    #     the same-day slate.
+    live_mask = pd.Series(False, index=df.index)
+    if "_is_live" in df.columns:
+        try:
+            live_mask = df["_is_live"].astype(str).str.strip().str.lower().isin({"true", "1", "yes"})
+        except Exception:
+            live_mask = pd.Series(False, index=df.index)
+    if "_comment" in df.columns and not live_mask.any():
+        live_mask = df["_comment"].astype(str).str.strip() == "live_upcoming_injected"
+
     pred_cols = [c for c in df.columns if c.startswith("predicted_winner")]
     prob_cols = [c for c in df.columns if c.startswith("prediction_prob")]
 
+    # REDTEAM Finding #2 (pre-step 2): apply the dimensional derivations to
+    # the WHOLE warehouse first, then split into historical and live cohorts.
+    # This keeps `fav_odds`, `pred_confidence`, `cross_source_agree`, etc.
+    # populated on live rows so the export loop can compute EV correctly.
     df['selected_rank_band'] = df.apply(lambda r: get_selected_side_rank_band(r, pred_cols), axis=1)
-    
+
     def get_fav_odds(r):
         oa, ob = r.get('odds_a'), r.get('odds_b')
         try: oa = float(oa) if pd.notna(oa) and str(oa).strip() not in {"", "nan", "<NA>", "None"} else None
@@ -437,7 +471,6 @@ def main() -> int:
 
     df['fav_odds'] = df.apply(get_fav_odds, axis=1)
 
-    # Calculate fav_odds_band from odds, backfilling from prediction probabilities for live matches
     def calc_odds_band(row):
         val = row.get('fav_odds')
         band = get_odds_band(val)
@@ -458,7 +491,6 @@ def main() -> int:
 
     df['fav_odds_band'] = df.apply(calc_odds_band, axis=1)
 
-    # Calculate pred_confidence across all available probability columns
     def calc_pred_confidence(row):
         max_p = None
         for col in prob_cols:
@@ -478,11 +510,39 @@ def main() -> int:
 
     df['pred_confidence'] = df.apply(calc_pred_confidence, axis=1)
 
-    # Calculate cross_source_agree across all available prediction columns
     df['cross_source_agree'] = df.apply(lambda r: get_cross_source_agree(r, pred_cols), axis=1)
-    
-    # Ensure _surface is fully populated
     df['_surface'] = df.apply(lambda r: infer_surface(r.get("tournament", "") or r.get("context_used", ""), r.get("_surface", "")), axis=1)
+
+    if live_mask.any():
+        logger.info(
+            "REDTEAM guard: %d live-injected rows tagged for pick matching only "
+            "(excluded from historical slice mining).",
+            int(live_mask.sum()),
+        )
+    df_live_only = df[live_mask].copy()
+
+    # Now restrict the slice-mining cohort to settled, non-live rows.
+    settled_mask = pd.Series(True, index=df.index)
+    if "winner" in df.columns:
+        settled_mask = (
+            df["winner"].notna()
+            & (~df["winner"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))
+        )
+    df_hist = df[~live_mask & settled_mask].copy()
+    n_uns = int((~settled_mask & ~live_mask).sum())
+    if n_uns:
+        logger.info(
+            "REDTEAM guard: %d historical rows excluded from slice mining "
+            "(empty/unsettled `winner`).",
+            n_uns,
+        )
+
+    df = df_hist  # downstream code operates on the historical cohort only
+    # The dimensional derivations (selected_rank_band, fav_odds, fav_odds_band,
+    # pred_confidence, cross_source_agree, _surface) were applied to the FULL
+    # warehouse above before splitting. Reusing them here on df_hist would
+    # be redundant; we only need to keep them in sync when the schema is
+    # missing on a row.
 
     logger.info("Cross-source agree distribution: %s", df['cross_source_agree'].value_counts().to_dict())
 
@@ -526,7 +586,11 @@ def main() -> int:
                 if len(slice_df) < args.min_n:
                     continue
 
-                res = assay_segment(slice_df)
+                res = assay_segment(slice_df, bet_side=args.bet_side)
+                # REDTEAM Finding #1: ROBBER/FADE slices are still mined (so
+                # they can be shown in the slice report) but they cannot
+                # promote a live row to a pick. We continue to the slice
+                # collection but skip the export path later.
                 if res.grade not in ["GOLD", "PLATINUM", "SILVER"] and res.tier != "ROBBER":
                     continue
 
@@ -546,7 +610,16 @@ def main() -> int:
                     "ROI": f"{res.roi:.2%}",
                     "Grade": res.grade,
                     "Tier": res.tier,
-                    "Verdict": res.verdict
+                    "Verdict": res.verdict,
+                    # REDTEAM Finding #5: mark exportability. Only slices that
+                    # survive the min-N gate AND are not ROBBER/FADE can be
+                    # used as actionable picks. The flag is consumed by the
+                    # pick export loop below.
+                    "Exportable": (
+                        res.tier != "ROBBER"
+                        and res.verdict != "FADE THIS SIGNAL"
+                        and res.n >= args.min_export_n
+                    ),
                 })
 
     if not results:
@@ -565,7 +638,22 @@ def main() -> int:
         results = report.to_dict("records")
 
     target_date = args.date or datetime.now().strftime("%Y-%m-%d")
-    today_all = df[df["match_date"] == target_date].copy()
+    # REDTEAM Finding #2 follow-up: today's pick candidates need BOTH
+    # unsettled historical rows for `target_date` AND live-injected rows for
+    # the same date. We excluded live rows from `df` (the slice-mining
+    # cohort), but they still have to participate in pick matching so the
+    # operator sees actionable matches for today's slate.
+    today_hist = df[df["match_date"] == target_date].copy() if not df.empty else df.copy()
+    today_live = (
+        df_live_only[df_live_only["match_date"] == target_date].copy()
+        if not df_live_only.empty else df_live_only.copy()
+    )
+    if today_hist.empty:
+        today_all = today_live.copy()
+    elif today_live.empty:
+        today_all = today_hist.copy()
+    else:
+        today_all = pd.concat([today_hist, today_live], ignore_index=True, sort=False)
 
     today_df = today_all.copy()
     if "winner" in today_df.columns:
@@ -615,6 +703,12 @@ def main() -> int:
             best_roi = -999.0
 
             for res in results:
+                # REDTEAM Finding #1: ROBBER/FADE slices never promote a row
+                # to a pick. They are still emitted as SKIPPED_DEAD_EDGE
+                # rows further down so the slice is visible, but they cannot
+                # be the basis of an actionable bet.
+                if not res.get("Exportable", False):
+                    continue
                 combo = res["Combo_Dict"]
                 match_all = True
                 for dim_name, dim_val in combo.items():
@@ -646,7 +740,7 @@ def main() -> int:
                         best_roi = slice_roi
                         best_pick = res
 
-            if best_pick and best_pick["Verdict"] in {"EDGE CONFIRMED", "WATCHLIST", "FADE THIS SIGNAL"}:
+            if best_pick is not None:
                 base = select_player_from_row(row, target_date)
                 prob = None
                 for col in prob_cols:
@@ -658,19 +752,30 @@ def main() -> int:
                             if prob is None or v > prob: prob = v
                         except (TypeError, ValueError):
                             pass
-                            
+
                 odds_val = row.get("fav_odds")
                 try:
                     odds_val = float(odds_val)
                     if pd.isna(odds_val): odds_val = None
                 except (TypeError, ValueError):
                     odds_val = None
-                    
+
+                # REDTEAM Finding #4: compute per-bet expected value and drop
+                # non-positive-EV rows from the actionable set. EV is computed
+                # on the decimal odds captured at scrape time, so live picks
+                # inherit the same approximation caveat the HANDOVER already
+                # documents (closing vs opening odds).
+                ev = None
+                if prob is not None and odds_val is not None and odds_val > 1.0:
+                    p_dec = max(0.0, min(1.0, prob / 100.0))
+                    ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
+
                 base.update({
                     "bucket": classify_bucket(best_pick),
                     "pick": best_pick["Verdict"],
                     "odds": odds_val,
                     "confidence": prob,
+                    "expected_value": ev,
                     "slice_matched": best_pick["Slice"],
                     "edge_dims": best_pick.get("Dims"),
                     "edge_n": best_pick.get("N"),
@@ -679,12 +784,23 @@ def main() -> int:
                     "edge_verdict": best_pick.get("Verdict"),
                     "roi_estimate": best_pick.get("ROI"),
                 })
+
+                # REDTEAM Finding #4 gate: by default we DO NOT export
+                # negative-EV picks. Set --min-ev to a negative number to
+                # disable the gate (useful for diagnostics only).
+                if ev is not None and ev < args.min_ev:
+                    base["bucket"] = "SKIPPED_DEAD_EDGE"
+                    base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
+
                 picks_to_export.append(base)
 
     picks_to_export = sorted(
         picks_to_export,
         key=lambda p: (
-            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2}.get(str(p.get("bucket")), 9),
+            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2,
+             "SKIPPED_DEAD_EDGE": 3, "WATCHLIST_NO_ODDS": 4, "WATCHLIST_UNKNOWN_CTX": 5,
+             "SKIPPED_VETO": 6}.get(str(p.get("bucket")), 9),
+            -float(p.get("expected_value") or 0.0),
             -int(p.get("source_count") or 0),
             str(p.get("match")),
         )
