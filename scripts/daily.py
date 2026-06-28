@@ -15,6 +15,7 @@ For each run we materialise the full day ledger under ``localdata/``:
 
   picks_YYYY-MM-DD.json              full archive (every pick)
   picks_morning_YYYY-MM-DD.json      locked morning baseline (first write of the day)
+  picks_YYYY-MM-DD.txt               human friendly report (Edge-Factory parity)
 """
 from __future__ import annotations
 
@@ -147,6 +148,100 @@ def archive_picks_by_kickoff(picks: list[dict[str, Any]], fallback_date: str) ->
     return list(by_date.keys())
 
 
+def format_kickoff(pick: dict[str, Any]) -> str:
+    for key in ("kickoff", "match_time", "time", "start_time", "ko"):
+        value = pick.get(key)
+        if value not in (None, "", "nan", "<NA>"):
+            return str(value)
+    return "n/a"
+
+
+def generate_daily_report(target_date: str, output_path: Path | None = None) -> Path | None:
+    """Generate a human-readable .txt summary matching Edge-Factory parity."""
+    report_file = output_path or (LOCALDATA / f"picks_{target_date}.txt")
+    picks_file = LOCALDATA / "picks_today.json"
+    if not picks_file.exists():
+        return None
+    try:
+        picks = json.loads(picks_file.read_text())
+        if not isinstance(picks, list): picks = []
+        now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        lines = [
+            f"Racket Factory Picks — {target_date}",
+            "=" * 60,
+            f"Generated at: {now_ts}",
+            ""
+        ]
+
+        buckets: dict[str, list[dict[str, Any]]] = {}
+        for p in picks:
+            b = p.get("bucket", "UNKNOWN")
+            buckets.setdefault(str(b), []).append(p)
+
+        bucket_order = [
+            "CERTIFIED_CLEAN",
+            "CAUTION",
+            "WATCHLIST",
+            "WATCHLIST_NO_ODDS",
+            "WATCHLIST_UNKNOWN_CTX",
+            "SKIPPED_VETO",
+            "SKIPPED_DEAD_EDGE",
+        ]
+        bucket_labels = {
+            "CERTIFIED_CLEAN": "CERTIFIED CLEAN PICKS",
+            "CAUTION": "CAUTION PICKS",
+            "WATCHLIST": "WATCHLIST PICKS",
+            "WATCHLIST_NO_ODDS": "WATCHLIST — NO MATCHED ODDS",
+            "WATCHLIST_UNKNOWN_CTX": "WATCHLIST — UNKNOWN CONTEXT",
+            "SKIPPED_VETO": "SKIPPED — VETO CONTEXT",
+            "SKIPPED_DEAD_EDGE": "SKIPPED — DEAD EDGE",
+        }
+
+        for b in bucket_order:
+            bpicks = buckets.get(b, [])
+            lines.append(f"\n{bucket_labels.get(b, b)}")
+            lines.append("=" * 60)
+            if not bpicks:
+                lines.append("  (none)")
+                continue
+
+            for p in sorted(bpicks, key=lambda x: -float(x.get("confidence") or 0)):
+                odds_val = p.get("odds")
+                if odds_val is not None and str(odds_val).strip() not in {"nan", "<NA>", "None", ""}:
+                    try: odds = f"@{float(odds_val):.2f}"
+                    except: odds = f"@{odds_val}"
+                else:
+                    odds = "@n/a"
+
+                label = p.get("slice_matched") or p.get("rule", "?")
+                match = str(p.get("match", ""))[:42]
+                kickoff = format_kickoff(p)
+                pick_str = str(p.get("selected_player") or p.get("selected_side") or "?").upper()
+                conf = float(p.get("confidence") or 0)
+
+                lines.append(
+                    f"  [{label}] {match:42s} KO {kickoff:5s} -> "
+                    f"{pick_str:5s}  conf {conf:.0f}% {odds}"
+                )
+                lines.append(
+                    f"     bucket={b}  "
+                    f"tour={p.get('tour', 'UNKNOWN')}  series={p.get('series', 'UNKNOWN')}  surface={p.get('surface', 'UNKNOWN')}  source={p.get('source', 'UNKNOWN')}"
+                )
+
+        lines.append("")
+        lines.append("⚠️  Flat stakes only. Best odds inflate ROI (~halve it).")
+        lines.append("⚠️  Bet only what you can afford to lose.")
+
+        LOCALDATA.mkdir(parents=True, exist_ok=True)
+        report_file.write_text("\n".join(lines))
+        print(f"\n>>> generate_daily_report")
+        print(f"Report written: {report_file}")
+        return report_file
+    except Exception as exc:
+        print(f"Could not generate report: {exc}")
+        return None
+
+
 # ------------------------------------------------- autonomous smart schedule --
 def _now_local() -> datetime:
     return datetime.now(local_tz())
@@ -251,17 +346,20 @@ def run_once(args: argparse.Namespace) -> None:
         if archive.exists():
             save_morning_baseline(target, archive.read_text(), overwrite=args.force_repick)
 
-    # 6. Run Audit
+    # 6. Generate human friendly TXT report (Edge-Factory parity)
+    generate_daily_report(target)
+
+    # 7. Run Audit
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_recent_picks.py --end {target} --days 30 --warehouse localdata/warehouse.csv.gz", "audit_recent_picks", env=child_env)
 
-    # 7. Supabase Live Dashboard Sync (Optional)
+    # 8. Supabase Live Dashboard Sync (Optional)
     sync_script = ROOT / "scripts" / "sync_supabase.py"
     if sync_script.exists() and (os.getenv("SUPABASE_URL") or args.force_sync):
         run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/sync_supabase.py --picks {archived_picks_file(target)} --target-date {target} --replace-date", "sync_supabase", env=child_env)
 
     print(f"\n=== Pipeline Complete — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===")
 
-    # 8. Optional WhatsApp heads-up
+    # 9. Optional WhatsApp heads-up
     archive = archived_picks_file(target)
     if not args.skip_notify and os.getenv("CALLMEBOT_APIKEY") and os.getenv("CALLMEBOT_PHONE"):
         run_soft(

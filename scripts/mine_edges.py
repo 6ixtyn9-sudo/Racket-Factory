@@ -301,6 +301,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
 
         grouped_rows.append({
             "match_date": first.get("match_date"),
+            "match_time": first.get("match_time", ""),
             "player_home": first.get("player_home"),
             "player_away": first.get("player_away"),
             "player_a": first.get("player_home"),
@@ -364,9 +365,19 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
     if pd.isna(source_count) or source_count is None:
         source_count = len([c for c in pred_cols if pd.notna(row.get(c)) and str(row.get(c)).strip() not in {"", "nan", "<NA>", "None"}])
 
+    ctx_val = row.get("context_used")
+    if pd.isna(ctx_val) or str(ctx_val).strip() in {"nan", "<NA>", "None", ""}:
+        ctx_val = row.get("tournament", "")
+        
+    time_val = row.get("match_time")
+    if pd.isna(time_val) or str(time_val).strip() in {"nan", "<NA>", "None", ""}:
+        time_val = "n/a"
+
     return {
         "match": f"{home_name} vs {away_name}",
         "date": str(row.get("match_date", target_date)),
+        "match_time": str(time_val),
+        "kickoff": str(time_val),
         "selected_side": selected_pick,
         "selected_player": selected_player,
         "tournament": row.get("tournament"),
@@ -377,7 +388,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
         "surface": row.get("_surface"),
         "pred_confidence": row.get("pred_confidence"),
         "cross_source_agree": row.get("cross_source_agree"),
-        "context_used": row.get("context_used"),
+        "context_used": ctx_val,
         "player_home": home_name,
         "player_away": away_name,
     }
@@ -412,10 +423,19 @@ def main() -> int:
     prob_cols = [c for c in df.columns if c.startswith("prediction_prob")]
 
     df['selected_rank_band'] = df.apply(lambda r: get_selected_side_rank_band(r, pred_cols), axis=1)
-    df['fav_odds'] = df.apply(
-        lambda r: r['odds_a'] if pd.notna(r.get('odds_a')) and pd.notna(r.get('odds_b'))
-                  and r['odds_a'] < r['odds_b'] else r.get('odds_b'), axis=1
-    )
+    
+    def get_fav_odds(r):
+        oa, ob = r.get('odds_a'), r.get('odds_b')
+        try: oa = float(oa) if pd.notna(oa) and str(oa).strip() not in {"", "nan", "<NA>", "None"} else None
+        except: oa = None
+        try: ob = float(ob) if pd.notna(ob) and str(ob).strip() not in {"", "nan", "<NA>", "None"} else None
+        except: ob = None
+        if oa is not None and ob is not None: return min(oa, ob)
+        if oa is not None: return oa
+        if ob is not None: return ob
+        return None
+
+    df['fav_odds'] = df.apply(get_fav_odds, axis=1)
 
     # Calculate fav_odds_band from odds, backfilling from prediction probabilities for live matches
     def calc_odds_band(row):
@@ -637,10 +657,18 @@ def main() -> int:
                             if prob is None or v > prob: prob = v
                         except (TypeError, ValueError):
                             pass
+                            
+                odds_val = row.get("fav_odds")
+                try:
+                    odds_val = float(odds_val)
+                    if pd.isna(odds_val): odds_val = None
+                except (TypeError, ValueError):
+                    odds_val = None
+                    
                 base.update({
                     "bucket": classify_bucket(best_pick),
                     "pick": best_pick["Verdict"],
-                    "odds": row.get("fav_odds"),
+                    "odds": odds_val,
                     "confidence": prob,
                     "slice_matched": best_pick["Slice"],
                     "edge_dims": best_pick.get("Dims"),

@@ -185,6 +185,7 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
         g = g.sort_values("name_score", ascending=False)
         rows.append({
             "match_date": g["match_date"].iloc[0],
+            "match_time": next((x for x in g.get("match_time", pd.Series(dtype=object)) if str(x or "").strip() and str(x) not in {"nan", "None"}), ""),
             "tour": g["tour"].iloc[0],
             "match_type": g["match_type"].iloc[0],
             "player_home": choose_display_name(g["player_home"]),
@@ -292,6 +293,7 @@ def build_live_rows() -> pd.DataFrame:
         
         grouped_rows.append({
             "match_date": first.get("match_date"),
+            "match_time": first.get("match_time", ""),
             "tour": first.get("tour"),
             "tournament": tournament,
             "round": "",

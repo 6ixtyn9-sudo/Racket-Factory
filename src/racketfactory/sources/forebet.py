@@ -333,14 +333,16 @@ class ForebetPredictor:
             if not home or not away:
                 continue
 
-            # --- Date ------------------------------------------------------
+            # --- Date & Time -----------------------------------------------
             date_span = anchor.find("span", class_="date_bah")
             match_date = None
+            match_time = ""
             if date_span:
                 date_text = date_span.get_text(strip=True)
                 try:
                     dt = datetime.strptime(date_text, "%d/%m/%Y %H:%M")
                     match_date = dt.strftime("%Y-%m-%d")
+                    match_time = dt.strftime("%H:%M")
                 except ValueError:
                     match_date = None
 
@@ -391,10 +393,11 @@ class ForebetPredictor:
                         txt = pred_div.get_text(strip=True)
                         if txt in ("1", "2"): predicted_winner = txt
 
-                odd_spans = row.find_all(["span", "div"], class_=re.compile(r"odd|pOdd|avg_odd|bot_odd|lrg_odd", re.I))
+                # Robustly check odds containers across all possible tags and classes
+                odd_spans = row.find_all(["span", "div", "button", "a"], class_=re.compile(r"odd|pOdd|avg_odd|bot_odd|lrg_odd|price|val|bet", re.I))
                 for osp in odd_spans:
                     txt = osp.get_text(strip=True)
-                    matches = re.findall(r"\b([1-9]\.\d{2})\b", txt)
+                    matches = re.findall(r"\b([1-9]\.\d{1,3})\b", txt)
                     if len(matches) >= 2:
                         odds_home, odds_away = float(matches[0]), float(matches[1])
                         break
@@ -402,8 +405,15 @@ class ForebetPredictor:
                         if odds_home is None: odds_home = float(matches[0])
                         elif odds_away is None: odds_away = float(matches[0])
 
+                if odds_home is None or odds_away is None:
+                    txt = row.get_text(" ", strip=True)
+                    matches = re.findall(r"\b([1-9]\.\d{1,3})\b", txt)
+                    if len(matches) >= 2:
+                        odds_home, odds_away = float(matches[0]), float(matches[1])
+
             results.append({
                 "match_date": match_date,
+                "match_time": match_time,
                 "player_home": home,
                 "player_away": away,
                 "prob_home": prob_home,

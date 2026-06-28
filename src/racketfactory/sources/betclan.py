@@ -110,18 +110,27 @@ class BetClanPredictor:
                         if m:
                             prob2 = int(m.group(1))
 
-                    # Try to extract bookmaker odds from BetClan page
+                    # Robustly extract bookmaker odds across all possible containers and buttons
                     odds_home, odds_away = None, None
-                    for tag in s.find_all(["div", "span", "td"]):
+                    for tag in s.find_all(["div", "span", "td", "button", "a"]):
                         text = tag.get_text(strip=True)
-                        if any(w in str(tag.get("class", [])).lower() for w in ("odds", "odd", "odd-val", "bet-odd", "box-odds")):
-                            matches = re.findall(r"\b([1-9]\.\d{2})\b", text)
+                        cls_str = str(tag.get("class", [])).lower()
+                        if any(w in cls_str for w in ("odds", "odd", "odd-val", "bet-odd", "box-odds", "price", "val", "bet", "book", "market")):
+                            matches = re.findall(r"\b([1-9]\.\d{1,3})\b", text)
                             if len(matches) >= 2:
                                 odds_home, odds_away = float(matches[0]), float(matches[1])
                                 break
                             elif len(matches) == 1:
                                 if odds_home is None: odds_home = float(matches[0])
                                 elif odds_away is None: odds_away = float(matches[0])
+
+                    # Fallback regex search on the entire odds/prediction section text
+                    if odds_home is None or odds_away is None:
+                        main_box = s.find("div", class_=re.compile(r"odds|predict|match", re.I)) or s
+                        txt = main_box.get_text(" ", strip=True)
+                        matches = re.findall(r"\b([1-9]\.\d{1,3})\b", txt)
+                        if len(matches) >= 2:
+                            odds_home, odds_away = float(matches[0]), float(matches[1])
 
                     page_text = s.get_text(" ", strip=True)
                     tournament, event_text, category_text = self._extract_context(s)
