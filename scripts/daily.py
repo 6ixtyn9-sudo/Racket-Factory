@@ -16,6 +16,11 @@ For each run we materialise the full day ledger under ``localdata/``:
   picks_YYYY-MM-DD.json              full archive (every pick)
   picks_morning_YYYY-MM-DD.json      locked morning baseline (first write of the day)
   picks_YYYY-MM-DD.txt               human friendly report (Edge-Factory parity)
+
+The daily trigger also runs an inline next-day planner by default (matching
+Edge Factory's operating style): after today's official ledger is created, it
+re-mines tomorrow's slate and writes forecast reports/JSON under ``localdata/``
+without replacing today's live ``picks_today.json``.
 """
 from __future__ import annotations
 
@@ -58,6 +63,41 @@ def run_soft(cmd: str, label: str, *, env: dict | None = None) -> None:
     result = subprocess.run(cmd, shell=True, cwd=ROOT, env=env)
     if result.returncode != 0:
         print(f"WARNING: non-critical step failed: {label}")
+
+
+def run_capture(cmd: str, label: str, *, env: dict | None = None) -> str:
+    """Run a command and return captured combined stdout/stderr.
+
+    Used by the inline future planner so tomorrow/next-day scans can print a
+    compact summary while still surfacing the full output if the miner fails.
+    """
+    print(f"\n>>> {label}")
+    result = subprocess.run(
+        cmd,
+        shell=True,
+        cwd=ROOT,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 0:
+        print(result.stdout, end="")
+        print(f"FAILED: {label}")
+        sys.exit(result.returncode)
+    return result.stdout
+
+
+def print_mine_run_summary(output: str) -> None:
+    """Print concise future-planner status from mine_edges.py output."""
+    interesting = ("Exported ", "Wrote ", "Today candidate rows", "Upcoming-card fallback rows")
+    printed = False
+    for line in output.splitlines():
+        if any(token in line for token in interesting):
+            print(f"  {line}")
+            printed = True
+    if not printed:
+        print("  mine_edges completed")
 
 
 # ------------------------------------------------------------ archive helpers --
@@ -159,22 +199,68 @@ def format_kickoff(pick: dict[str, Any]) -> str:
     return "n/a"
 
 
-def generate_daily_report(target_date: str, output_path: Path | None = None) -> Path | None:
+def load_picks_file(path: Path | None = None) -> list[dict[str, Any]]:
+    picks_file = path or (LOCALDATA / "picks_today.json")
+    if not picks_file.exists():
+        return []
+    try:
+        data = json.loads(picks_file.read_text())
+    except Exception:
+        return []
+    if not isinstance(data, list):
+        return []
+    return [p for p in data if isinstance(p, dict)]
+
+
+def pick_date(pick: dict[str, Any], fallback: str) -> str:
+    for key in ("match_date", "date", "picked_for", "target_date"):
+        value = pick.get(key)
+        if value:
+            return str(value)[:10]
+    return fallback
+
+
+def tag_picks(picks: list[dict[str, Any]], target: str) -> list[dict[str, Any]]:
+    tagged: list[dict[str, Any]] = []
+    for pick in picks:
+        p = dict(pick)
+        p.setdefault("date", target)
+        p.setdefault("picked_for", target)
+        tagged.append(p)
+    return tagged
+
+
+def restore_picks_today(picks_text: str | None) -> None:
+    """Restore the live ledger after a future-planner scan."""
+    if picks_text is None:
+        return
+    LOCALDATA.mkdir(parents=True, exist_ok=True)
+    (LOCALDATA / "picks_today.json").write_text(picks_text)
+
+
+def generate_daily_report(
+    target_date: str,
+    output_path: Path | None = None,
+    source_picks: list[dict[str, Any]] | None = None,
+    header_title: str | None = None,
+    metadata_lines: list[str] | None = None,
+) -> Path | None:
     """Generate a human-readable .txt summary matching Edge-Factory parity."""
     report_file = output_path or (LOCALDATA / f"picks_{target_date}.txt")
     picks_file = LOCALDATA / "picks_today.json"
-    if not picks_file.exists():
+    if source_picks is None and not picks_file.exists():
         return None
     try:
-        picks = json.loads(picks_file.read_text())
-        if not isinstance(picks, list): picks = []
+        picks = source_picks if source_picks is not None else load_picks_file(picks_file)
         now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         lines = [
-            f"Racket Factory Picks — {target_date}",
+            header_title or f"Racket Factory Picks — {target_date}",
             "=" * 60,
             f"Generated at: {now_ts}",
-            ""
         ]
+        if metadata_lines:
+            lines.extend(metadata_lines)
+        lines.append("")
 
         buckets: dict[str, list[dict[str, Any]]] = {}
         for p in picks:
@@ -255,6 +341,89 @@ def generate_daily_report(target_date: str, output_path: Path | None = None) -> 
         return None
 
 
+def write_future_outputs(all_picks: list[dict[str, Any]], days: int, snapshot_as_of: str) -> None:
+    """Write aggregate machine-readable next-day/future planner outputs."""
+    LOCALDATA.mkdir(parents=True, exist_ok=True)
+    json_file = LOCALDATA / f"picks_next_{days}days.json"
+    json_file.write_text(json.dumps(all_picks, indent=2, sort_keys=True))
+
+    manifest_file = LOCALDATA / f"picks_next_{days}days_manifest.json"
+    manifest = {
+        "ledger_kind": "forecast",
+        "snapshot_as_of": snapshot_as_of,
+        "days": days,
+        "row_count": len(all_picks),
+    }
+    manifest_file.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+    print(f"Future planner wrote: {json_file}")
+    print(f"Future planner manifest: {manifest_file}")
+
+
+def run_future_planner(
+    start_date: str,
+    days: int,
+    target_picks: list[dict[str, Any]],
+    run_as_of: str,
+    env_prefix: str,
+    child_env: dict[str, str],
+) -> None:
+    """Inline N-day planner using mine_edges.py as the Racket pick engine.
+
+    This mirrors Edge Factory's future planner: today's picks are reused, then
+    each future day is mined and written to its own forecast report/archive. The
+    planner restores today's official picks_today.json before the pipeline syncs
+    or notifies, so future picks never replace today's live ledger by accident.
+    """
+    if days <= 0:
+        print("future_days <= 0 — skipping future planner")
+        return
+
+    print(f"\n>>> future planner ({days}-day reports)")
+    start = datetime.strptime(start_date, "%Y-%m-%d").date()
+    all_picks: list[dict[str, Any]] = tag_picks(target_picks, start_date)
+    print(f"  {start_date}: reused target picks ({len(target_picks)} rows)")
+
+    for offset in range(1, days):
+        target = (start + timedelta(days=offset)).isoformat()
+        output = run_capture(
+            f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --date {target}",
+            f"future planner: mine_edges {target}",
+            env=child_env,
+        )
+        print_mine_run_summary(output)
+
+        forecast_file = archived_picks_file(target)
+        day_picks = load_picks_file(forecast_file)
+        if not day_picks:
+            print(f"  {target}: no future picks found")
+
+        # Ensure the forecast ledger is tagged to the day it was mined for.
+        day_picks = tag_picks(day_picks, target)
+        forecast_file.write_text(json.dumps(day_picks, indent=2, sort_keys=True))
+
+        all_picks = merge_picks(all_picks, day_picks)
+        day_specific = [p for p in all_picks if pick_date(p, "9999-99-99") == target]
+        generate_daily_report(
+            target,
+            source_picks=day_specific,
+            metadata_lines=[f"Snapshot as of: {run_as_of}", "Ledger kind: forecast"],
+        )
+        print(f"  {target}: forecast rows {len(day_specific)}")
+
+    all_picks.sort(
+        key=lambda p: (
+            pick_date(p, "9999-99-99"),
+            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2,
+             "SKIPPED_DEAD_EDGE": 3, "WATCHLIST_NO_ODDS": 4, "WATCHLIST_UNKNOWN_CTX": 5,
+             "SKIPPED_VETO": 6}.get(str(p.get("bucket")), 9),
+            -float(p.get("expected_value") or 0.0),
+            -int(p.get("source_count") or 0),
+            str(p.get("match", "")),
+        )
+    )
+    write_future_outputs(all_picks, days, run_as_of)
+
+
 # ------------------------------------------------- autonomous smart schedule --
 def _now_local() -> datetime:
     return datetime.now(local_tz())
@@ -307,6 +476,7 @@ def run_once(args: argparse.Namespace) -> None:
     print("=== Racket Factory Daily Pipeline (Tennis) ===")
     print(f"    target date : {target}")
     print(f"    mode        : {'auto-run' if args.auto_run else ('intraday-only' if args.intraday_only else 'full')}")
+    print(f"    future_days : {args.future_days}")
     print(f"    run as-of   : {run_as_of} (tz={DEFAULT_LOCAL_TZ})")
 
     if not args.intraday_only:
@@ -371,8 +541,20 @@ def run_once(args: argparse.Namespace) -> None:
         if archive.exists():
             save_morning_baseline(target, archive.read_text(), overwrite=args.force_repick)
 
-    # 6. Generate human friendly TXT report (Edge-Factory parity)
-    generate_daily_report(target)
+    # 6. Generate human friendly TXT report + inline next-day planner (Edge-Factory parity)
+    target_archive = archived_picks_file(target)
+    if target_archive.exists():
+        target_picks_text = target_archive.read_text()
+        target_picks = load_picks_file(target_archive)
+    elif picks_today.exists():
+        target_picks_text = picks_today.read_text()
+        target_picks = load_picks_file(picks_today)
+    else:
+        target_picks_text = None
+        target_picks = []
+    generate_daily_report(target, source_picks=target_picks)
+    run_future_planner(target, args.future_days, target_picks, run_as_of, env_prefix, child_env)
+    restore_picks_today(target_picks_text)
 
     # 7. Run Audit
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_recent_picks.py --end {target} --days 30 --warehouse localdata/warehouse.csv.gz", "audit_recent_picks", env=child_env)
@@ -409,6 +591,8 @@ def _build_parser() -> argparse.ArgumentParser:
                     help="Run exactly ONE smart-schedule iteration and exit (use this in CI).")
     ap.add_argument("--auto-interval-hours", type=float, default=3.0,
                     help="Sleep between --auto-run iterations (default: 3h, matching the CI cadence).")
+    ap.add_argument("--future-days", type=int, default=2,
+                    help="Days ahead for inline future planner (default: 2 = today + tomorrow). Use 0 to disable.")
     return ap
 
 
