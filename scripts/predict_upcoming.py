@@ -3,6 +3,7 @@
 Fetch today's and tomorrow's predictions for immediate review and align them to
 Racket Factory's live-pick dimensions without creating new pipeline surfaces.
 """
+import re
 import sys
 from pathlib import Path
 import pandas as pd
@@ -23,13 +24,25 @@ def get_rank_band(rank: float) -> str:
     return "100+"
 
 
-def infer_tour_and_series(text: str) -> tuple[str, str]:
+def infer_tour_and_series(text: str, row: pd.Series | None = None) -> tuple[str, str]:
     lower = str(text or "").lower()
     if any(x in lower for x in ["wimbledon", "roland garros", "us open", "australian open"]):
         if any(x in lower for x in ["women", "wta", "girls"]):
             return ("WTA", "Grand Slam")
         if any(x in lower for x in ["men", "atp", "boys"]):
             return ("ATP", "Grand Slam")
+        # Conservative BetClan-only fallback:
+        # when the source is BetClan and the event text is a generic slam label
+        # such as "Wimbledon Prediction", classify as ATP only if the row is
+        # clearly singles and no women's markers are present anywhere in the
+        # available context fields.
+        if row is not None and str(row.get("source", "")) == "BetClan":
+            tournament_text = str(row.get("tournament", "") or "").lower()
+            event_text = str(row.get("event_text", "") or "").lower()
+            category_text = str(row.get("category", "") or "").lower()
+            if not any(x in f"{tournament_text} | {event_text} | {category_text}" for x in ["women", "wta", "girls"]):
+                if not ("/" in str(row.get("player_home", "")) or "/" in str(row.get("player_away", ""))):
+                    return ("ATP", "Grand Slam")
         return ("UNKNOWN", "Grand Slam")
     if any(x in lower for x in ["piracicaba", "targu mures", "challenger", "atp challenger"]):
         return ("CHALLENGER", "Challenger")
@@ -37,6 +50,10 @@ def infer_tour_and_series(text: str) -> tuple[str, str]:
         return ("ITF-W", "ITF")
     if "itf men" in lower or "itf m" in lower:
         return ("ITF-M", "ITF")
+    if any(x in lower for x in ["women doubles", "wta doubles"]) or re.search(r"\bwd\b", lower):
+        return ("WTA", "WTA")
+    if any(x in lower for x in ["men doubles", "atp doubles"]) or re.search(r"\bmd\b", lower):
+        return ("ATP", "ATP")
     if "wta" in lower:
         return ("WTA", "WTA")
     if "atp" in lower:
@@ -44,6 +61,18 @@ def infer_tour_and_series(text: str) -> tuple[str, str]:
     if "utr" in lower:
         return ("UTR", "UTR")
     return ("UNKNOWN", "UNKNOWN")
+
+
+def detect_match_type(row: pd.Series) -> str:
+    if "/" in str(row.get("player_home", "")) or "/" in str(row.get("player_away", "")):
+        return "Doubles"
+    context = " | ".join(
+        str(row.get(c, "") or "") for c in ["tournament", "event_text", "category", "match_label"] if c in row.index
+    ).lower()
+    if any(x in context for x in ["women doubles", "wta doubles", "men doubles", "atp doubles", "mixed doubles"]) or re.search(r"\b(?:wd|md)\b", context):
+        return "Doubles"
+    return "Singles"
+
 
 
 def infer_from_players(player_home: str, player_away: str) -> tuple[str, str]:
@@ -178,13 +207,12 @@ def classify_row(row: pd.Series) -> tuple[str, str, str]:
     context_cols = ["tournament", "tour_slug", "tournament_slug", "event_level", "match_label", "event", "competition", "category", "league"]
     context_parts = [str(row.get(c, "") or "") for c in context_cols if c in row.index]
     context_text = " | ".join([x for x in context_parts if x.strip()])
-    tour, series = infer_tour_and_series(context_text)
+    tour, series = infer_tour_and_series(context_text, row=row)
     if tour == "UNKNOWN" and series == "UNKNOWN":
         tour, player_series = infer_from_players(str(row.get("player_home", "")), str(row.get("player_away", "")))
         series = player_series if player_series != "Singles" else tour
     if series == "Singles":
         series = tour if tour != "UNKNOWN" else "UNKNOWN"
-    match_type = "Doubles" if "/" in str(row.get("player_home", "")) or "/" in str(row.get("player_away", "")) else "Singles"
     return tour, series, context_text or "<empty>"
 
 
@@ -213,10 +241,7 @@ def to_live_card(df: pd.DataFrame, source_name: str) -> pd.DataFrame:
         out = out[~out.apply(looks_like_non_tennis, axis=1)].copy()
     classified = out.apply(classify_row, axis=1, result_type="expand")
     out[["tour", "_series", "context_used"]] = classified
-    out["match_type"] = out.apply(
-        lambda r: "Doubles" if "/" in str(r.get("player_home", "")) or "/" in str(r.get("player_away", "")) else "Singles",
-        axis=1,
-    )
+    out["match_type"] = out.apply(detect_match_type, axis=1)
     out["pred_confidence"] = out.apply(
         lambda r: "High" if max(pd.to_numeric(r.get("prob_home"), errors="coerce") or 0,
                                  pd.to_numeric(r.get("prob_away"), errors="coerce") or 0) >= 70
