@@ -244,12 +244,28 @@ def forebet_tournament_slug(tournament: str) -> str:
 
 def name_signature(name: str) -> str:
     """
-    Create a canonical anagram key from a player name.
-    Handles reversed order (e.g. 'Sabalenka A.' vs 'A. Sabalenka')
-    by sorting all alphabetic characters alphabetically.
+    Canonical merge key for a player name, used by warehouse.py to align
+    the same player across sources.
+
+    Cross-site player names come in two layouts:
+      - "Firstname Lastname"  (BetClan, PredixSport, ForeTennis)
+      - "Lastname F."         (Forebet, some OddsPortal rows)
+
+    The anagram-of-all-letters approach fails across these because a trailing
+    initial contributes one letter that does not sort to the same place as a
+    full given name (e.g. 'Zizou Bergs' -> 'begiorsuzz' vs 'Bergs Z.' ->
+    'begorssz'). Use the last long word as the surname instead — both
+    layouts agree on the surname. Single-character trailing tokens are
+    treated as initials and dropped.
+
+    Edge case: pure-initial names (rare, e.g. doubles seedings) fall back to
+    a sorted signature so they still produce a stable key.
     """
-    letters = re.sub(r"[^a-zA-Z]", "", name).lower()
-    return "".join(sorted(letters))
+    words = re.findall(r"[a-zA-Z]+", name)
+    long_words = [w for w in words if len(w) > 1]
+    if long_words:
+        return long_words[-1].lower()
+    return "".join(sorted(w.lower() for w in words))
 
 
 class ForebetPredictor:

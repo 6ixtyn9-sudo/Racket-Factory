@@ -1,4 +1,5 @@
 from racketfactory.assay import odds_band, roi_from_bets, score_rows, assay_segment
+from racketfactory.sources.forebet import name_signature
 import pandas as pd
 
 
@@ -62,5 +63,49 @@ def test_assay_segment_prediction_mode_drops_unannotated_rows():
     res = assay_segment(df, bet_side="prediction")
     assert res.n == 1
     assert abs(res.win_rate - 0.0) < 1e-9  # the only annotated row lost
+
+
+def test_name_signature_cross_format():
+    """name_signature must collapse the two common player-name layouts
+    ('Firstname Lastname' vs 'Lastname F.') so that BetClan and Forebet rows
+    for the same player merge in the warehouse build.
+
+    Regression test for the 2026-06-28 red-team finding where 72/78 BetClan
+    archive rows had no odds because the merge key used an anagram-of-all-
+    letters signature that did not match across formats.
+    """
+    cross_pairs = [
+        ("Zizou Bergs", "Bergs Z."),
+        ("Ugo Humbert", "Humbert U."),
+        ("Karolina Muchova", "Muchova K."),
+        ("Naomi Osaka", "Osaka N."),
+        ("Tatjana Maria", "Maria T."),
+        ("Madison Keys", "Keys M."),
+        ("Ethan Quinn", "Quinn E."),
+        ("Katerina Siniakova", "Siniakova K."),
+        ("Alejandro Davidovich Fokina", "Davidovich Fokina A."),
+    ]
+    for betclan, forebet in cross_pairs:
+        assert name_signature(betclan) == name_signature(forebet), (
+            f"name_signature mismatch: {betclan!r} -> {name_signature(betclan)!r}"
+            f" vs {forebet!r} -> {name_signature(forebet)!r}"
+        )
+
+
+def test_name_signature_distinct_players_dont_collide():
+    """Surname-only matching must not merge different players whose surnames
+    happen to share the canonical key.
+    """
+    assert name_signature("Zizou Bergs") != name_signature("Ugo Humbert")
+    assert name_signature("Karolina Muchova") != name_signature("Madison Keys")
+    assert name_signature("Naomi Osaka") != name_signature("Tatjana Maria")
+
+
+def test_name_signature_pure_initial_fallback():
+    """A name with only single-letter tokens should still produce a stable key."""
+    sig_a = name_signature("A. B.")
+    sig_b = name_signature("A. B.")
+    assert sig_a == sig_b
+    assert sig_a  # non-empty
 
 
