@@ -102,3 +102,62 @@ def test_build_upcoming_fallback_card_preserves_grouped_scraped_odds(monkeypatch
     assert card.loc[0, "odds_b"] == 2.45
     assert card.loc[0, "debug_scraped_odds_home"] == 1.55
     assert card.loc[0, "debug_scraped_odds_away"] == 2.45
+
+
+def test_build_upcoming_fallback_card_handles_reversed_source_row(monkeypatch):
+    class EmptyPredictor:
+        def fetch_daily(self):
+            return []
+        def fetch_daily_predictions(self, day):
+            return []
+
+    class BetClanRows:
+        def fetch_daily(self):
+            return [{
+                "match_date": "2026-06-30",
+                "match_time": "13:30",
+                "match_type": "Singles",
+                "player_home": "Ugo Humbert",
+                "player_away": "Zizou Bergs",
+                "tournament": "Wimbledon",
+                "surface": "Grass",
+                "predicted_winner": "1",
+                "prob_home": 78,
+                "prob_away": 22,
+                "odds_home": None,
+                "odds_away": None,
+            }]
+
+    class ForebetRows:
+        def fetch_daily_predictions(self, day):
+            if day != "2026-06-30":
+                return []
+            return [{
+                "match_date": "2026-06-30",
+                "match_time": "13:30",
+                "match_type": "Singles",
+                "player_home": "Zizou Bergs",
+                "player_away": "Ugo Humbert",
+                "tournament": "Wimbledon",
+                "surface": "Grass",
+                "predicted_winner": "2",
+                "prob_home": 22,
+                "prob_away": 78,
+                "odds_home": 2.45,
+                "odds_away": 1.55,
+            }]
+
+    monkeypatch.setattr(mine_edges, "PredixSportPredictor", EmptyPredictor)
+    monkeypatch.setattr(mine_edges, "BetClanPredictor", BetClanRows)
+    monkeypatch.setattr(mine_edges, "ForebetPredictor", ForebetRows)
+    monkeypatch.setattr(mine_edges, "fetch_the_odds_api_rows", lambda target_date: [])
+
+    card = mine_edges.build_upcoming_fallback_card("2026-06-30")
+
+    assert len(card) == 1
+    assert card.loc[0, "_odds_source"] == "ScrapedFallback"
+    assert card.loc[0, "player_a"] == "Ugo Humbert"
+    assert card.loc[0, "odds_a"] == 1.55
+    assert card.loc[0, "odds_b"] == 2.45
+    assert card.loc[0, "debug_scraped_odds_home"] == 1.55
+    assert card.loc[0, "debug_scraped_odds_away"] == 2.45
