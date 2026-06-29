@@ -550,6 +550,156 @@ def write_official_pick_outputs(target_date: str, picks: list[dict]) -> None:
     logger.info("Wrote %d official picks to %s and %s", len(picks), today_path, archive_path)
 
 
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = str(__import__("os").environ.get(name, "")).strip().lower()
+    if not raw:
+        return default
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = str(__import__("os").environ.get(name, "")).strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = str(__import__("os").environ.get(name, "")).strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _is_future_target(target_date: str) -> bool:
+    try:
+        target = datetime.strptime(str(target_date)[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return False
+    return target > datetime.now().date()
+
+
+def _pick_float(pick: dict, key: str) -> float | None:
+    value = pick.get(key)
+    try:
+        if value is None:
+            return None
+        value = float(value)
+        if pd.isna(value):
+            return None
+        return value
+    except (TypeError, ValueError):
+        return None
+
+
+def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
+    """Reduce future fallback ledgers to a priced, positive-EV review list.
+
+    This only applies to future dates. Same-day picks are untouched.
+
+    Forecast rows are inherently weaker than same-day live rows because they can
+    come from sparse fallback source cards. The goal is to avoid dumping every
+    priced prediction into tomorrow's report while keeping the strongest
+    positive-EV items for operator review.
+    """
+    if not _is_future_target(target_date):
+        return picks
+
+    min_conf = _env_float("RACKET_FACTORY_FORECAST_MIN_CONF", 60.0)
+    min_ev = _env_float("RACKET_FACTORY_FORECAST_MIN_EV", 0.05)
+    max_rows = max(1, _env_int("RACKET_FACTORY_FORECAST_MAX_ROWS", 20))
+    include_no_odds = _env_bool("RACKET_FACTORY_FORECAST_INCLUDE_NO_ODDS", False)
+    include_skipped = _env_bool("RACKET_FACTORY_FORECAST_INCLUDE_SKIPPED", False)
+
+    actionable_buckets = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION"}
+    no_odds_buckets = {"WATCHLIST_NO_ODDS", "WATCHLIST_UNKNOWN_CTX"}
+    skipped_buckets = {"SKIPPED_DEAD_EDGE", "SKIPPED_VETO"}
+
+    kept: list[dict] = []
+    dropped = 0
+
+    for pick in picks:
+        bucket = str(pick.get("bucket") or "")
+        ev = _pick_float(pick, "expected_value")
+        conf = _pick_float(pick, "confidence")
+        odds = _pick_float(pick, "odds")
+
+        if conf is not None and 0 < conf <= 1.0:
+            conf *= 100.0
+
+        keep = True
+        reason = ""
+
+        if bucket in skipped_buckets and not include_skipped:
+            keep = False
+            reason = "forecast skipped bucket hidden"
+        elif bucket in no_odds_buckets and not include_no_odds:
+            keep = False
+            reason = "forecast no-odds bucket hidden"
+        elif bucket in actionable_buckets:
+            if odds is None:
+                keep = False
+                reason = "forecast missing odds"
+            elif ev is None:
+                keep = False
+                reason = "forecast missing EV"
+            elif ev < min_ev:
+                keep = False
+                reason = f"forecast EV {ev:.3f} < {min_ev:.3f}"
+            elif conf is None:
+                keep = False
+                reason = "forecast missing confidence"
+            elif conf < min_conf:
+                keep = False
+                reason = f"forecast confidence {conf:.1f}% < {min_conf:.1f}%"
+
+        if keep:
+            pick = dict(pick)
+            pick["ledger_kind"] = "forecast"
+            pick["forecast_hygiene"] = {
+                "min_conf": min_conf,
+                "min_ev": min_ev,
+                "max_rows": max_rows,
+                "include_no_odds": include_no_odds,
+                "include_skipped": include_skipped,
+            }
+            kept.append(pick)
+        else:
+            dropped += 1
+            logger.debug("Forecast hygiene dropped %s -> %s (%s)", pick.get("match"), pick.get("selected_player"), reason)
+
+    kept = sorted(
+        kept,
+        key=lambda p: (
+            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2}.get(str(p.get("bucket")), 9),
+            -float(p.get("expected_value") or 0.0),
+            -float(p.get("confidence") or 0.0),
+            str(p.get("match") or ""),
+        ),
+    )
+
+    if len(kept) > max_rows:
+        dropped += len(kept) - max_rows
+        kept = kept[:max_rows]
+
+    logger.info(
+        "Forecast hygiene for %s: kept %d, dropped %d (min_conf=%.1f, min_ev=%.3f, max_rows=%d)",
+        target_date,
+        len(kept),
+        dropped,
+        min_conf,
+        min_ev,
+        max_rows,
+    )
+    return kept
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Mine the warehouse for automated edges")
     ap.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse")
@@ -951,6 +1101,8 @@ def main() -> int:
             str(p.get("match")),
         )
     )
+
+    picks_to_export = apply_forecast_hygiene(target_date, picks_to_export)
 
     write_official_pick_outputs(target_date, picks_to_export)
     logger.info("Exported %d actionable picks for %s", len(picks_to_export), target_date)
