@@ -130,7 +130,7 @@ def test_build_upcoming_fallback_card_handles_reversed_source_row(monkeypatch):
 
     class ForebetRows:
         def fetch_daily_predictions(self, day):
-            if day != "2026-06-30":
+            if day not in {"2026-06-30", "tomorrow"}:
                 return []
             return [{
                 "match_date": "2026-06-30",

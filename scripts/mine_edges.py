@@ -521,6 +521,8 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
             "_is_live": True,
             "source": ", ".join(sorted(set(map(str, g["source"])))),
             "source_count": source_count,
+            "debug_scraped_odds_home": scraped_odds_home,
+            "debug_scraped_odds_away": scraped_odds_away,
         })
     out_df = pd.DataFrame(grouped_rows).reset_index(drop=True)
     out_df = enrich_fallback_card_with_api_odds(out_df, target_date)
