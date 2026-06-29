@@ -461,7 +461,24 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict]) -> tuple[dic
 
 
 THE_ODDS_API_BASE = "https://api.the-odds-api.com/v4"
-THE_ODDS_API_SPORTS = ("tennis_atp", "tennis_wta")
+DEFAULT_THE_ODDS_API_SPORTS = "tennis_atp_wimbledon,tennis_wta_wimbledon,tennis"
+
+
+def the_odds_api_sports() -> tuple[str, ...]:
+    """Return configured The Odds API sport keys.
+
+    The Odds API does not expose generic `tennis_atp` / `tennis_wta` sport
+    keys. Tennis is tournament-keyed, e.g. `tennis_atp_wimbledon`.
+    We read .env at call time so daily/systemd runs pick up local config.
+    """
+    load_warehouse_env()
+    raw = (
+        os.getenv("THE_ODDS_API_SPORT_KEYS")
+        or os.getenv("THE_ODDS_API_SPORTS")
+        or DEFAULT_THE_ODDS_API_SPORTS
+    )
+    sports = tuple(x.strip() for x in str(raw).split(",") if x.strip())
+    return sports or tuple(DEFAULT_THE_ODDS_API_SPORTS.split(","))
 
 
 def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
@@ -486,7 +503,7 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     bookmakers = os.getenv("THE_ODDS_API_BOOKMAKERS", "").strip()
     rows: list[dict] = []
 
-    for sport in THE_ODDS_API_SPORTS:
+    for sport in the_odds_api_sports():
         params = {
             "apiKey": api_key,
             "regions": regions,
