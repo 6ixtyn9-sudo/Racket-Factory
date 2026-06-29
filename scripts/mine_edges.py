@@ -378,8 +378,11 @@ def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: 
         return None, "missing selected-side odds"
 
     if row_has_live_flag(row):
+        odds_source = str(row.get("_odds_source", "") or "")
+        if odds_source != "TheOddsAPI":
+            return None, "missing The Odds API live odds"
         if not valid_two_way_decimal_pair(row.get("odds_a"), row.get("odds_b")):
-            return None, "incomplete/invalid live odds pair"
+            return None, "incomplete/invalid The Odds API live odds pair"
         side = normalize_side_token(selected_side)
         other_odds = coerce_decimal_odds(row.get("odds_b" if side == "player_a" else "odds_a"))
         if (
@@ -387,7 +390,7 @@ def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: 
             and odds_suspicious_for_probability(probability, odds_val)
             and not odds_suspicious_for_probability(probability, other_odds)
         ):
-            return other_odds, "corrected likely side-inverted live odds"
+            return other_odds, "corrected likely side-inverted The Odds API live odds"
 
     return odds_val, None
 

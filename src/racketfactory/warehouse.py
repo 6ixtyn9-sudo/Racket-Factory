@@ -5,6 +5,8 @@ Handles the merging and deduplication of various tennis data sources.
 import pandas as pd
 from pathlib import Path
 import logging
+import os
+import requests
 from typing import Optional
 from datetime import date, timedelta
 from racketfactory.entities import player_key
@@ -165,11 +167,13 @@ def align_odds_to_probabilities(
     pa = normalize_probability(prob_away)
     home_looks_inverted = (
         ph is not None
+        and ph >= STRONG_PROBABILITY
         and odds_suspicious_for_probability(ph, oh)
         and not odds_suspicious_for_probability(ph, oa)
     )
     away_looks_inverted = (
         pa is not None
+        and pa >= STRONG_PROBABILITY
         and odds_suspicious_for_probability(pa, oa)
         and not odds_suspicious_for_probability(pa, oh)
     )
@@ -421,6 +425,187 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+
+def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict]) -> tuple[dict | None, bool]:
+    """Return matching API odds row and whether it was reversed vs card row."""
+    card_date = str(card_row.get("match_date", "") or "")[:10]
+    home = card_row.get("player_home", "")
+    away = card_row.get("player_away", "")
+    for odds_row in odds_rows:
+        odds_date = str(odds_row.get("match_date", "") or "")[:10]
+        if card_date and odds_date and card_date != odds_date:
+            continue
+        api_home = odds_row.get("player_home", "")
+        api_away = odds_row.get("player_away", "")
+        if names_match(home, api_home) and names_match(away, api_away):
+            return odds_row, False
+        if names_match(home, api_away) and names_match(away, api_home):
+            return odds_row, True
+    return None, False
+
+
+THE_ODDS_API_BASE = "https://api.the-odds-api.com/v4"
+THE_ODDS_API_SPORTS = ("tennis_atp", "tennis_wta")
+
+
+def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
+    """Fetch The Odds API H2H tennis prices for the target date.
+
+    This is the primary live pricing source. Prediction-site scraped prices are
+    kept only as debug/fallback visibility and must not drive live EV.
+    """
+    api_key = os.getenv("THE_ODDS_API_KEY")
+    if not api_key:
+        logger.warning("THE_ODDS_API_KEY missing; live API odds unavailable.")
+        return []
+
+    try:
+        start = date.fromisoformat(str(target_date)[:10])
+    except ValueError:
+        start = date.today()
+    end = start + timedelta(days=1)
+
+    regions = os.getenv("THE_ODDS_API_REGIONS", "eu,uk,us")
+    bookmakers = os.getenv("THE_ODDS_API_BOOKMAKERS", "").strip()
+    rows: list[dict] = []
+
+    for sport in THE_ODDS_API_SPORTS:
+        params = {
+            "apiKey": api_key,
+            "regions": regions,
+            "markets": "h2h",
+            "oddsFormat": "decimal",
+            "dateFormat": "iso",
+            "commenceTimeFrom": f"{start.isoformat()}T00:00:00Z",
+            "commenceTimeTo": f"{end.isoformat()}T00:00:00Z",
+        }
+        if bookmakers:
+            params["bookmakers"] = bookmakers
+            params.pop("regions", None)
+
+        try:
+            resp = requests.get(f"{THE_ODDS_API_BASE}/sports/{sport}/odds/", params=params, timeout=20)
+            if resp.status_code != 200:
+                logger.warning("The Odds API failed for %s: HTTP %s", sport, resp.status_code)
+                continue
+            events = resp.json()
+        except Exception as e:
+            logger.warning("The Odds API request failed for %s: %s", sport, e)
+            continue
+
+        if not isinstance(events, list):
+            continue
+
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            home = str(event.get("home_team") or "").strip()
+            away = str(event.get("away_team") or "").strip()
+            if not home or not away:
+                continue
+
+            best_home = best_away = None
+            best_home_book = best_away_book = ""
+            for book in event.get("bookmakers") or []:
+                if not isinstance(book, dict):
+                    continue
+                book_name = str(book.get("title") or book.get("key") or "")
+                for market in book.get("markets") or []:
+                    if not isinstance(market, dict) or market.get("key") != "h2h":
+                        continue
+                    for outcome in market.get("outcomes") or []:
+                        if not isinstance(outcome, dict):
+                            continue
+                        price = coerce_decimal_odds(outcome.get("price"))
+                        if price is None:
+                            continue
+                        outcome_name = str(outcome.get("name") or "")
+                        if names_match(outcome_name, home):
+                            if best_home is None or price > best_home:
+                                best_home = price
+                                best_home_book = book_name
+                        elif names_match(outcome_name, away):
+                            if best_away is None or price > best_away:
+                                best_away = price
+                                best_away_book = book_name
+
+            if best_home is None or best_away is None:
+                continue
+            if not valid_two_way_decimal_pair(best_home, best_away):
+                continue
+
+            commence = str(event.get("commence_time") or "")
+            rows.append({
+                "match_date": commence.split("T")[0] if "T" in commence else start.isoformat(),
+                "match_time": commence.split("T")[1][:5] if "T" in commence else "",
+                "player_home": home,
+                "player_away": away,
+                "odds_home": best_home,
+                "odds_away": best_away,
+                "bookmaker": best_home_book if best_home_book == best_away_book else "/".join(x for x in [best_home_book, best_away_book] if x),
+                "event_id": event.get("id"),
+                "sport_key": sport,
+                "source": "TheOddsAPI",
+            })
+
+    logger.info("Fetched %d The Odds API tennis rows for %s", len(rows), target_date)
+    return rows
+
+
+def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.DataFrame:
+    """Attach The Odds API prices as the primary live pricing source.
+
+    Scraped BetClan/Forebet prices are preserved as debug columns only. If API
+    odds are unavailable, odds_home/odds_away are left empty so mine_edges puts
+    the row in WATCHLIST_NO_ODDS instead of computing EV from scrape noise.
+    """
+    if card.empty:
+        return card
+
+    out = card.copy()
+    out["scraped_odds_home"] = out.get("odds_home", pd.Series(index=out.index, dtype=object))
+    out["scraped_odds_away"] = out.get("odds_away", pd.Series(index=out.index, dtype=object))
+    out["api_odds_home"] = pd.NA
+    out["api_odds_away"] = pd.NA
+    out["odds_source"] = ""
+    out["odds_bookmaker"] = ""
+    out["odds_home"] = pd.NA
+    out["odds_away"] = pd.NA
+
+    odds_rows = fetch_the_odds_api_rows(target_date)
+    if not odds_rows:
+        logger.info("No The Odds API odds matched live card for %s; rows will remain WATCHLIST_NO_ODDS if selected.", target_date)
+        return out
+
+    matched = 0
+    for idx, row in out.iterrows():
+        odds_row, reversed_order = _match_api_odds_row(row, odds_rows)
+        if odds_row is None:
+            continue
+        if reversed_order:
+            api_home = odds_row.get("odds_away")
+            api_away = odds_row.get("odds_home")
+        else:
+            api_home = odds_row.get("odds_home")
+            api_away = odds_row.get("odds_away")
+
+        api_home, api_away = align_odds_to_probabilities(
+            row.get("prob_home"), row.get("prob_away"), api_home, api_away
+        )
+        if not valid_two_way_decimal_pair(api_home, api_away):
+            continue
+
+        out.at[idx, "api_odds_home"] = api_home
+        out.at[idx, "api_odds_away"] = api_away
+        out.at[idx, "odds_home"] = api_home
+        out.at[idx, "odds_away"] = api_away
+        out.at[idx, "odds_source"] = "TheOddsAPI"
+        out.at[idx, "odds_bookmaker"] = odds_row.get("bookmaker") or "The Odds API"
+        matched += 1
+
+    logger.info("Matched The Odds API odds for %d/%d live card rows", matched, len(out))
+    return out
+
 def build_live_rows() -> pd.DataFrame:
     rows = []
     for source_name, predictor, fetcher in [
@@ -488,6 +673,7 @@ def build_live_rows() -> pd.DataFrame:
     card = collapse_live_card(card)
     if card.empty:
         return card
+    card = enrich_live_card_with_api_odds(card, today_str)
 
     grouped_rows = []
     for _, first in card.iterrows():
@@ -506,6 +692,8 @@ def build_live_rows() -> pd.DataFrame:
         
         odds_h = first.get("odds_home")
         odds_a = first.get("odds_away")
+        odds_source = first.get("odds_source", "")
+        odds_bookmaker = first.get("odds_bookmaker", "")
         
         grouped_rows.append({
             "match_date": first.get("match_date"),
@@ -519,7 +707,7 @@ def build_live_rows() -> pd.DataFrame:
             "score": "",
             "odds_a": odds_h if pd.notna(odds_h) else pd.NA,
             "odds_b": odds_a if pd.notna(odds_a) else pd.NA,
-            "bookmaker": "LiveScraper" if pd.notna(odds_h) else "",
+            "bookmaker": odds_bookmaker if pd.notna(odds_h) else "",
             "source": first.get("source", ""),
             "captured_at": pd.Timestamp.now().isoformat(),
             "oddsportal_url": "",
@@ -530,7 +718,11 @@ def build_live_rows() -> pd.DataFrame:
             "_location": first.get("country", "") if "country" in first.index else "",
             "_winner_rank": pd.NA,
             "_loser_rank": pd.NA,
-            "_odds_source": "LiveScraper" if pd.notna(odds_h) else "",
+            "_odds_source": "TheOddsAPI" if pd.notna(odds_h) else "",
+            "api_odds_a": first.get("api_odds_home", pd.NA),
+            "api_odds_b": first.get("api_odds_away", pd.NA),
+            "debug_scraped_odds_a": first.get("scraped_odds_home", pd.NA),
+            "debug_scraped_odds_b": first.get("scraped_odds_away", pd.NA),
             "live_predicted_winner": selected,
             "live_prediction_prob": prob,
             "live_predicted_source": "live_card",
