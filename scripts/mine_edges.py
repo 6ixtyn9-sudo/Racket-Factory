@@ -23,6 +23,7 @@ from racketfactory.assay import assay_segment
 from racketfactory.warehouse import (
     coerce_decimal_odds,
     fetch_the_odds_api_rows,
+    live_player_key,
     names_match,
     odds_suspicious_for_probability,
     valid_two_way_decimal_pair,
@@ -323,8 +324,9 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
     inferred = card.apply(lambda r: infer_tour_and_series(r.get("context_used", ""), row=r), axis=1)
     card["tour"] = inferred.apply(lambda x: x[0])
     card["_series"] = inferred.apply(lambda x: x[1])
-    card["_surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
-    card.loc[card["_surface"].isin(["", "Nan", "None"]), "_surface"] = "Unknown"
+    card["surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
+    card.loc[card["surface"].isin(["", "Nan", "None"]), "surface"] = ""
+    card["_surface"] = card.apply(lambda r: infer_surface(r.get("context_used", "") or r.get("tournament", ""), r.get("surface", "")), axis=1)
     card["pred_confidence"] = card.apply(
         lambda r: "High" if max(pd.to_numeric(r.get("prob_home"), errors="coerce") or 0,
                                  pd.to_numeric(r.get("prob_away"), errors="coerce") or 0) >= 70
@@ -333,7 +335,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         axis=1,
     )
     card["pair_key"] = card.apply(
-        lambda r: "|".join(sorted([str(r.get("player_home", "")).strip().lower(), str(r.get("player_away", "")).strip().lower()])),
+        lambda r: "|".join(sorted([live_player_key(r.get("player_home", "")), live_player_key(r.get("player_away", ""))])),
         axis=1,
     )
     card = card[card["match_type"] == "Singles"]
@@ -369,6 +371,9 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         max_away = away_probs.max() if not away_probs.empty else None
         probs = [p for p in [max_home, max_away] if pd.notna(p)]
         max_prob = max(probs) if probs else None
+        selected_prob = max_home if selected_pick == "player_a" else max_away
+        if pd.isna(selected_prob):
+            selected_prob = max_prob
         fav_odds_band = prob_to_odds_band(max_prob)
         series_value = first.get("_series")
         if (pd.isna(series_value) or str(series_value).strip() in {"", "ATP", "WTA", "UNKNOWN"}) and str(first.get("context_used", "")).strip():
@@ -389,8 +394,14 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
             "context_used": first.get("context_used"),
             "predicted_winner": selected_pick,
             "predicted_winner_foretennis": selected_pick,
+            "prediction_prob": selected_prob,
+            "prediction_prob_foretennis": selected_prob,
+            "prob_home": max_home,
+            "prob_away": max_away,
             "cross_source_agree": cross_source_agree,
             "pred_confidence": "High" if (max_prob is not None and max_prob >= 70) else ("Medium" if (max_prob is not None and max_prob >= 60) else "Low"),
+            "_comment": "forecast_upcoming_fallback",
+            "_is_live": True,
             "source": ", ".join(sorted(set(map(str, g["source"])))),
             "source_count": source_count,
         })
