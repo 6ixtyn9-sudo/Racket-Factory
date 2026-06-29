@@ -30,6 +30,28 @@ jobs:
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
       CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
+
+      # The Odds API live pricing. Secrets are never printed.
+      # THE_ODDS_API_KEYS supports rotation: key1,key2,key3,key4
+      THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+      THE_ODDS_API_KEYS: ${{ secrets.THE_ODDS_API_KEYS }}
+      THE_ODDS_API_SPORT_KEYS: tennis_atp_wimbledon,tennis_wta_wimbledon
+      THE_ODDS_API_SPORTS: tennis_atp_wimbledon,tennis_wta_wimbledon
+      THE_ODDS_API_REGIONS: uk,eu,us,au
+      THE_ODDS_API_CACHE_TTL_MINUTES: '30'
+      THE_ODDS_API_DISABLE_CACHE: '0'
+
+      # Keep OddsPortal browser scraping opt-in on CI.
+      RACKET_FACTORY_REFRESH_ODDSPORTAL: '0'
+      RACKET_FACTORY_ODDSPORTAL_DELAY: '60'
+
+      # Forecast hygiene defaults.
+      RACKET_FACTORY_FORECAST_MAX_ROWS: '20'
+      RACKET_FACTORY_FORECAST_MIN_EV: '0.05'
+      RACKET_FACTORY_FORECAST_MIN_CONF: '60'
+      RACKET_FACTORY_FORECAST_INCLUDE_NO_ODDS: '0'
+      RACKET_FACTORY_FORECAST_INCLUDE_SKIPPED: '0'
+
       # Keep CI on the operator's wall clock so the morning/intraday split and
       # the same-day pick filter behave exactly like a local run.
       TZ: 'Africa/Johannesburg'
