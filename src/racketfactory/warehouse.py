@@ -2,6 +2,8 @@
 Racket Factory Warehouse
 Handles the merging and deduplication of various tennis data sources.
 """
+import json
+import time
 import pandas as pd
 from pathlib import Path
 import logging
@@ -528,6 +530,90 @@ def _local_date_from_api_time(value: object) -> str:
         return raw.split("T", 1)[0]
     return raw[:10]
 
+
+def _the_odds_api_cache_file(target_date: str) -> Path:
+    root = Path(__file__).resolve().parents[2]
+    cache_dir = root / "localdata"
+    return cache_dir / f"theoddsapi_odds_cache_{str(target_date)[:10]}.json"
+
+
+def _the_odds_api_cache_ttl_seconds() -> int:
+    try:
+        minutes = float(os.getenv("THE_ODDS_API_CACHE_TTL_MINUTES", "30"))
+    except ValueError:
+        minutes = 30.0
+    return max(0, int(minutes * 60))
+
+
+def _the_odds_api_cache_disabled() -> bool:
+    return os.getenv("THE_ODDS_API_DISABLE_CACHE", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _load_the_odds_api_cache(target_date: str, sports: tuple[str, ...], regions: str, bookmakers: str) -> list[dict] | None:
+    """Load cached The Odds API rows for this date/config if fresh.
+
+    The cache stores parsed rows, never API keys. It prevents duplicate quota
+    burn across repeated warehouse builds in one daily run.
+    """
+    if _the_odds_api_cache_disabled():
+        return None
+    ttl = _the_odds_api_cache_ttl_seconds()
+    if ttl <= 0:
+        return None
+
+    path = _the_odds_api_cache_file(target_date)
+    if not path.exists():
+        return None
+
+    try:
+        age = time.time() - path.stat().st_mtime
+        if age > ttl:
+            return None
+
+        payload = json.loads(path.read_text())
+        meta = payload.get("meta", {}) if isinstance(payload, dict) else {}
+
+        if tuple(meta.get("sports", [])) != tuple(sports):
+            return None
+        if str(meta.get("regions", "")) != str(regions):
+            return None
+        if str(meta.get("bookmakers", "")) != str(bookmakers):
+            return None
+
+        rows = payload.get("rows", [])
+        if isinstance(rows, list):
+            logger.info("Loaded %d The Odds API tennis rows for %s from cache %s", len(rows), target_date, path)
+            return rows
+    except Exception as exc:
+        logger.warning("Could not read The Odds API cache %s: %s", path, exc)
+
+    return None
+
+
+def _write_the_odds_api_cache(target_date: str, sports: tuple[str, ...], regions: str, bookmakers: str, rows: list[dict]) -> None:
+    """Persist parsed The Odds API rows without storing secrets."""
+    if _the_odds_api_cache_disabled():
+        return
+
+    try:
+        path = _the_odds_api_cache_file(target_date)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        payload = {
+            "meta": {
+                "target_date": str(target_date)[:10],
+                "sports": list(sports),
+                "regions": str(regions),
+                "bookmakers": str(bookmakers),
+                "cached_at": int(time.time()),
+            },
+            "rows": rows,
+        }
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+        logger.info("Cached %d The Odds API tennis rows for %s to %s", len(rows), target_date, path)
+    except Exception as exc:
+        logger.warning("Could not write The Odds API cache for %s: %s", target_date, exc)
+
 def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     """Fetch The Odds API H2H tennis prices for the target date.
 
@@ -536,10 +622,7 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     visibility and must not drive live EV.
     """
     load_warehouse_env()
-    api_keys = the_odds_api_keys()
-    if not api_keys:
-        logger.warning("THE_ODDS_API_KEY missing; live API odds unavailable.")
-        return []
+    sports = the_odds_api_sports()
 
     try:
         start = date.fromisoformat(str(target_date)[:10])
@@ -549,12 +632,22 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
 
     regions = os.getenv("THE_ODDS_API_REGIONS", "eu,uk,us")
     bookmakers = os.getenv("THE_ODDS_API_BOOKMAKERS", "").strip()
+
+    cached_rows = _load_the_odds_api_cache(str(target_date)[:10], sports, regions, bookmakers)
+    if cached_rows is not None:
+        return cached_rows
+
+    api_keys = the_odds_api_keys()
+    if not api_keys:
+        logger.warning("THE_ODDS_API_KEY missing; live API odds unavailable.")
+        return []
+
     rows: list[dict] = []
 
     key_index = 0
     exhausted_keys: set[int] = set()
 
-    for sport in the_odds_api_sports():
+    for sport in sports:
         params_base = {
             "regions": regions,
             "markets": "h2h",
@@ -694,6 +787,7 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
             key_index = (key_index + 1) % len(api_keys)
 
     logger.info("Fetched %d The Odds API tennis rows for %s", len(rows), target_date)
+    _write_the_odds_api_cache(str(target_date)[:10], sports, regions, bookmakers, rows)
     return rows
 
 def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.DataFrame:
