@@ -22,6 +22,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from racketfactory.assay import assay_segment
 from racketfactory.warehouse import (
     coerce_decimal_odds,
+    fetch_the_odds_api_rows,
+    names_match,
     odds_suspicious_for_probability,
     valid_two_way_decimal_pair,
 )
@@ -219,12 +221,80 @@ def detect_match_type(row: pd.Series) -> str:
     return "Singles"
 
 
+
+def forebet_day_for_target(target_date: str) -> str:
+    """Map a target date to Forebet daily page name."""
+    try:
+        target = datetime.strptime(str(target_date)[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return "today"
+    today = datetime.now().date()
+    if target == today - timedelta(days=1):
+        return "yesterday"
+    if target == today + timedelta(days=1):
+        return "tomorrow"
+    return "today"
+
+
+def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.DataFrame:
+    """Attach The Odds API prices to fallback forecast card rows.
+
+    This makes tomorrow/future forecast rows priceable without needing them to
+    exist as live-injected warehouse rows first.
+    """
+    if card.empty:
+        return card
+
+    odds_rows = fetch_the_odds_api_rows(target_date)
+    if not odds_rows:
+        logger.info("No The Odds API odds available for fallback card %s", target_date)
+        return card
+
+    out = card.copy()
+    matched = 0
+
+    for idx, row in out.iterrows():
+        home = str(row.get("player_home") or row.get("player_a") or "").strip()
+        away = str(row.get("player_away") or row.get("player_b") or "").strip()
+        if not home or not away:
+            continue
+
+        for odds_row in odds_rows:
+            api_home = str(odds_row.get("player_home") or "").strip()
+            api_away = str(odds_row.get("player_away") or "").strip()
+
+            normal = names_match(home, api_home) and names_match(away, api_away)
+            reverse = names_match(home, api_away) and names_match(away, api_home)
+            if not (normal or reverse):
+                continue
+
+            if normal:
+                odds_home = odds_row.get("odds_home")
+                odds_away = odds_row.get("odds_away")
+            else:
+                odds_home = odds_row.get("odds_away")
+                odds_away = odds_row.get("odds_home")
+
+            out.at[idx, "odds_home"] = odds_home
+            out.at[idx, "odds_away"] = odds_away
+            out.at[idx, "odds_a"] = odds_home
+            out.at[idx, "odds_b"] = odds_away
+            out.at[idx, "_odds_source"] = "TheOddsAPI"
+            out.at[idx, "_is_live"] = True
+            out.at[idx, "_comment"] = "forecast_upcoming_api_priced"
+            matched += 1
+            break
+
+    logger.info("Matched The Odds API odds for %d/%d fallback forecast rows on %s", matched, len(out), target_date)
+    return out
+
 def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
     rows = []
+    forebet_day = forebet_day_for_target(target_date)
     for source_name, predictor, fetcher in [
         ("PredixSport", PredixSportPredictor(), lambda p: p.fetch_daily()),
         ("BetClan", BetClanPredictor(), lambda p: p.fetch_daily()),
-        ("Forebet", ForebetPredictor(), lambda p: p.fetch_daily_predictions("today")),
+        ("Forebet", ForebetPredictor(), lambda p: p.fetch_daily_predictions(forebet_day)),
     ]:
         try:
             preds = fetcher(predictor)
@@ -324,7 +394,9 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
             "source": ", ".join(sorted(set(map(str, g["source"])))),
             "source_count": source_count,
         })
-    return pd.DataFrame(grouped_rows).reset_index(drop=True)
+    out_df = pd.DataFrame(grouped_rows).reset_index(drop=True)
+    out_df = enrich_fallback_card_with_api_odds(out_df, target_date)
+    return out_df
 
 
 def classify_bucket(best_pick: dict) -> str:
