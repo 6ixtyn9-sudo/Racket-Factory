@@ -28,6 +28,105 @@ logging.basicConfig(
 )
 logger = logging.getLogger("backfill_foretennis")
 
+
+def _winner_from_actual_result(actual_result: object) -> str | None:
+    """Infer winner side from ForeTennis actual_result like '20', '02', '21', '12', '30', '23'."""
+    text = str(actual_result or "").strip()
+    digits = [int(ch) for ch in text if ch.isdigit()]
+    if len(digits) < 2:
+        return None
+    home_sets, away_sets = digits[0], digits[1]
+    if home_sets == away_sets:
+        return None
+    return "player_a" if home_sets > away_sets else "player_b"
+
+
+def _result_rows_from_foretennis(df):
+    """Build warehouse-compatible settled result rows from ForeTennis daily output."""
+    import pandas as pd
+    from datetime import datetime
+
+    if df.empty or "actual_result" not in df.columns:
+        return pd.DataFrame()
+
+    rows = []
+    for _, r in df.iterrows():
+        side = _winner_from_actual_result(r.get("actual_result"))
+        if side not in {"player_a", "player_b"}:
+            continue
+
+        player_a = str(r.get("player_a") or "").strip()
+        player_b = str(r.get("player_b") or "").strip()
+        if not player_a or not player_b:
+            continue
+
+        tournament = str(r.get("tournament") or "")
+        tour = str(r.get("tour") or "UNKNOWN").strip() or "UNKNOWN"
+        winner = player_a if side == "player_a" else player_b
+
+        rows.append({
+            "match_date": str(r.get("match_date") or "")[:10],
+            "tour": tour,
+            "tournament": tournament,
+            "round": "",
+            "player_a": player_a,
+            "player_b": player_b,
+            "winner": winner,
+            "score": str(r.get("actual_result") or "").strip(),
+            "odds_a": pd.NA,
+            "odds_b": pd.NA,
+            "bookmaker": "",
+            "source": "ForeTennis_results",
+            "captured_at": datetime.now().isoformat(timespec="seconds"),
+            "oddsportal_url": "",
+            "_surface": "",
+            "_court": "",
+            "_series": "",
+            "_comment": "result_from_foretennis_actual_result",
+            "_location": "",
+            "_winner_rank": pd.NA,
+            "_loser_rank": pd.NA,
+            "_odds_source": "",
+            "_is_live": False,
+            "_foretennis_match_id": r.get("match_id"),
+            "_score_perspective": "player_a_sets-player_b_sets",
+        })
+
+    return pd.DataFrame(rows)
+
+
+def _write_result_rows(result_df, output_dir):
+    """Append/dedupe ForeTennis result rows into monthly warehouse-compatible files."""
+    import pandas as pd
+    from pathlib import Path
+
+    if result_df is None or result_df.empty:
+        return []
+
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    result_df = result_df.copy()
+    result_df["match_date"] = result_df["match_date"].astype(str).str[:10]
+
+    written = []
+    for month, group in result_df.groupby(result_df["match_date"].str[:7]):
+        path = out_dir / f"foretennis_results_tennis_{month}.csv.gz"
+        if path.exists():
+            old = pd.read_csv(path, low_memory=False)
+            combined = pd.concat([old, group], ignore_index=True, sort=False)
+        else:
+            combined = group.copy()
+
+        combined = combined.drop_duplicates(
+            subset=["match_date", "tour", "tournament", "player_a", "player_b"],
+            keep="last",
+        )
+        combined.to_csv(path, index=False, compression="gzip")
+        written.append(path)
+
+    return written
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse CSV")
