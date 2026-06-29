@@ -39,6 +39,12 @@ class SettledPick:
     won: bool
     odds: float | None
     pnl: float | None
+    selected_sets_won: int | None = None
+    selected_sets_lost: int | None = None
+    selected_won_any_set: bool | None = None
+    selected_won_set1: bool | None = None
+    selected_won_set2: bool | None = None
+    selected_won_set3: bool | None = None
 
 
 def local_today() -> str:
@@ -175,6 +181,113 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+
+def _parse_int_pair_from_token(token: str) -> tuple[int, int] | None:
+    """Parse set score token like '7-6', '6-7(5)', '10-8'."""
+    nums = re.findall(r"\d+", str(token or ""))
+    if len(nums) < 2:
+        return None
+    try:
+        return int(nums[0]), int(nums[1])
+    except ValueError:
+        return None
+
+
+def _winner_side_from_row_values(winner: str, player_a: str, player_b: str) -> str | None:
+    if names_match(winner, player_a):
+        return "player_a"
+    if names_match(winner, player_b):
+        return "player_b"
+    return None
+
+
+def _set_diagnostics_from_score(
+    score_value: Any,
+    score_perspective: Any,
+    selected_side: str | None,
+    winner_side: str | None,
+) -> dict[str, Any]:
+    """Return set diagnostics for selected side.
+
+    Supported score perspectives:
+      - player_a_games-player_b_games:
+          Ordered set scores like '7-6 3-6 1-6'. Can compute set 1/2/3.
+      - player_a_sets-player_b_sets:
+          Set totals like '20', '02', '21', '12'. Can compute sets won/lost
+          and won_any_set, but not set order.
+
+    These diagnostics are informational. They are not ROI because set-market
+    odds are not captured.
+    """
+    out = {
+        "selected_sets_won": None,
+        "selected_sets_lost": None,
+        "selected_won_any_set": None,
+        "selected_won_set1": None,
+        "selected_won_set2": None,
+        "selected_won_set3": None,
+    }
+    if selected_side not in {"player_a", "player_b"}:
+        return out
+
+    score = clean_text(score_value)
+    perspective = clean_text(score_perspective)
+
+    if not score:
+        return out
+
+    # Forebet ordered set scores: '7-6 3-6 1-6'
+    if perspective == "player_a_games-player_b_games" or "-" in score:
+        set_tokens = [tok for tok in re.split(r"\s+", score.strip()) if tok]
+        selected_set_results: list[bool] = []
+
+        for token in set_tokens:
+            pair = _parse_int_pair_from_token(token)
+            if pair is None:
+                continue
+            a_games, b_games = pair
+            if a_games == b_games:
+                continue
+            set_winner = "player_a" if a_games > b_games else "player_b"
+            selected_set_results.append(set_winner == selected_side)
+
+        if selected_set_results:
+            won = sum(1 for x in selected_set_results if x)
+            lost = len(selected_set_results) - won
+            out["selected_sets_won"] = won
+            out["selected_sets_lost"] = lost
+            out["selected_won_any_set"] = won > 0
+            if len(selected_set_results) >= 1:
+                out["selected_won_set1"] = selected_set_results[0]
+            if len(selected_set_results) >= 2:
+                out["selected_won_set2"] = selected_set_results[1]
+            if len(selected_set_results) >= 3:
+                out["selected_won_set3"] = selected_set_results[2]
+        return out
+
+    # ForeTennis set-total strings: '20', '02', '21', '12'.
+    # Pandas may read '02' as '2', so if only one digit remains, use winner_side.
+    digits = [int(ch) for ch in re.findall(r"\d", score)]
+    if len(digits) >= 2:
+        a_sets, b_sets = digits[0], digits[1]
+    elif len(digits) == 1 and winner_side in {"player_a", "player_b"}:
+        # Interpret single digit as winner set count, loser zero after CSV
+        # coercion stripped leading zero from e.g. '02' -> '2'.
+        if winner_side == "player_a":
+            a_sets, b_sets = digits[0], 0
+        else:
+            a_sets, b_sets = 0, digits[0]
+    else:
+        return out
+
+    selected_sets = a_sets if selected_side == "player_a" else b_sets
+    other_sets = b_sets if selected_side == "player_a" else a_sets
+
+    out["selected_sets_won"] = selected_sets
+    out["selected_sets_lost"] = other_sets
+    out["selected_won_any_set"] = selected_sets > 0
+    return out
+
 def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
     match_date = pick_match_date(pick)
     player_home, player_away = pick_players(pick)
@@ -224,18 +337,23 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
     won = names_match(winner, selected_player)
 
     odds = None
+    selected_side_norm = None
     player_a_val = clean_text(row.get("player_a"))
     player_b_val = clean_text(row.get("player_b"))
 
     if names_match(selected_player, player_a_val):
+        selected_side_norm = "player_a"
         odds = row.get("odds_a")
     elif names_match(selected_player, player_b_val):
+        selected_side_norm = "player_b"
         odds = row.get("odds_b")
     else:
         side = clean_text(pick.get("selected_side"))
         if side in ("player_a", "1"):
+            selected_side_norm = "player_a"
             odds = row.get("odds_a")
         elif side in ("player_b", "2"):
+            selected_side_norm = "player_b"
             odds = row.get("odds_b")
 
     try:
@@ -257,6 +375,14 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
 
     pnl = None if odds is None else (odds - 1.0 if won else -1.0)
 
+    winner_side = _winner_side_from_row_values(winner, player_a_val, player_b_val)
+    set_diag = _set_diagnostics_from_score(
+        row.get("score"),
+        row.get("_score_perspective"),
+        selected_side_norm,
+        winner_side,
+    )
+
     return SettledPick(
         date=match_date,
         tour=str(pick.get("tour") or "UNKNOWN"),
@@ -270,6 +396,12 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
         won=won,
         odds=odds,
         pnl=pnl,
+        selected_sets_won=set_diag.get("selected_sets_won"),
+        selected_sets_lost=set_diag.get("selected_sets_lost"),
+        selected_won_any_set=set_diag.get("selected_won_any_set"),
+        selected_won_set1=set_diag.get("selected_won_set1"),
+        selected_won_set2=set_diag.get("selected_won_set2"),
+        selected_won_set3=set_diag.get("selected_won_set3"),
     )
 
 
@@ -278,12 +410,27 @@ def summarize_scored(rows: list[SettledPick]) -> dict[str, Any]:
     wins = sum(1 for row in rows if row.won)
     with_odds = [row for row in rows if row.pnl is not None]
     pnl_sum = sum(float(row.pnl or 0.0) for row in with_odds)
+
+    set_rows = [row for row in rows if row.selected_won_any_set is not None]
+    set1_rows = [row for row in rows if row.selected_won_set1 is not None]
+    set2_rows = [row for row in rows if row.selected_won_set2 is not None]
+    set3_rows = [row for row in rows if row.selected_won_set3 is not None]
+
     return {
         "settled_picks": settled,
         "wins": wins,
         "hit_rate": round(wins / settled, 6) if settled else None,
         "priced_picks": len(with_odds),
         "roi": round(pnl_sum / len(with_odds), 6) if with_odds else None,
+        "set_diagnostic_picks": len(set_rows),
+        "selected_won_any_set": sum(1 for row in set_rows if row.selected_won_any_set),
+        "selected_won_any_set_rate": round(sum(1 for row in set_rows if row.selected_won_any_set) / len(set_rows), 6) if set_rows else None,
+        "selected_won_set1": sum(1 for row in set1_rows if row.selected_won_set1),
+        "selected_won_set1_rate": round(sum(1 for row in set1_rows if row.selected_won_set1) / len(set1_rows), 6) if set1_rows else None,
+        "selected_won_set2": sum(1 for row in set2_rows if row.selected_won_set2),
+        "selected_won_set2_rate": round(sum(1 for row in set2_rows if row.selected_won_set2) / len(set2_rows), 6) if set2_rows else None,
+        "selected_won_set3": sum(1 for row in set3_rows if row.selected_won_set3),
+        "selected_won_set3_rate": round(sum(1 for row in set3_rows if row.selected_won_set3) / len(set3_rows), 6) if set3_rows else None,
     }
 
 
@@ -342,6 +489,11 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         f"- hit rate: {overall.get('hit_rate')}",
         f"- priced picks: {overall.get('priced_picks', 0)}",
         f"- ROI: {overall.get('roi')}",
+        f"- set diagnostic picks: {overall.get('set_diagnostic_picks', 0)}",
+        f"- selected won any set: {overall.get('selected_won_any_set')} ({overall.get('selected_won_any_set_rate')})",
+        f"- selected won set 1: {overall.get('selected_won_set1')} ({overall.get('selected_won_set1_rate')})",
+        f"- selected won set 2: {overall.get('selected_won_set2')} ({overall.get('selected_won_set2_rate')})",
+        f"- selected won set 3: {overall.get('selected_won_set3')} ({overall.get('selected_won_set3_rate')})",
         "",
         "## Settlement policy",
         "",
