@@ -37,12 +37,17 @@ log "=== RACKET FACTORY DAILY PIPELINE START ==="
 # ---------------------------------------------------------------------------
 # [1/5] OddsPortal capture — current year
 # ---------------------------------------------------------------------------
-step "1/5" "Capturing OddsPortal data for current year..."
-if PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/capture_oddsportal.py" \
-        --all --years "$YEAR" --no-checkpoint --delay "$ODDSPORTAL_DELAY" 2>&1; then
-    log "[1/5] OddsPortal capture complete."
+if [[ "${RACKET_FACTORY_REFRESH_ODDSPORTAL:-}" =~ ^(1|true|yes|on)$ ]]; then
+    step "1/5" "Capturing OddsPortal data for current year..."
+    if PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/capture_oddsportal.py" \
+            --all --years "$YEAR" --no-checkpoint --delay "$ODDSPORTAL_DELAY" 2>&1; then
+        log "[1/5] OddsPortal capture complete."
+    else
+        log "[1/5] WARNING: OddsPortal capture failed or returned 0 rows. Continuing."
+    fi
 else
-    log "[1/5] WARNING: OddsPortal capture failed or returned 0 rows. Continuing."
+    step "1/5" "Skipping OddsPortal capture."
+    log "[1/5] RACKET_FACTORY_REFRESH_ODDSPORTAL not set; using source/TennisData result refresh for daily run."
 fi
 
 # ---------------------------------------------------------------------------

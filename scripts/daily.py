@@ -489,6 +489,7 @@ def run_once(args: argparse.Namespace) -> None:
     child_env.setdefault("RACKET_FACTORY_TZ", DEFAULT_LOCAL_TZ)
     env_prefix = f"RACKET_FACTORY_RUN_AS_OF={shlex.quote(run_as_of)}"
     oddsportal_delay = float(os.getenv("RACKET_FACTORY_ODDSPORTAL_DELAY", "30"))
+    refresh_oddsportal = os.getenv("RACKET_FACTORY_REFRESH_ODDSPORTAL", "").strip().lower() in {"1", "true", "yes", "on"}
 
     print("=== Racket Factory Daily Pipeline (Tennis) ===")
     print(f"    target date : {target}")
@@ -498,11 +499,16 @@ def run_once(args: argparse.Namespace) -> None:
 
     if not args.intraday_only:
         # 1. Official Source Captures (Heavy History)
-        run_soft(
-            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --years {year} --no-checkpoint --delay {oddsportal_delay:g}",
-            f"capture_oddsportal {year}",
-            env=child_env,
-        )
+        if refresh_oddsportal:
+            run_soft(
+                f"{env_prefix} PYTHONPATH=src python3 scripts/capture_"
+                f"oddsportal.py --all --years {year} --no-checkpoint --delay {oddsportal_delay:g}",
+                f"capture_oddsportal {year}",
+                env=child_env,
+            )
+        else:
+            print("\n>>> capture_oddsportal skipped")
+            print("RACKET_FACTORY_REFRESH_ODDSPORTAL not set; using source/TennisData result refresh for daily run.")
         run_soft(
             f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_tennisdata.py --year {year}",
             f"backfill_tennisdata {year}",
@@ -515,11 +521,16 @@ def run_once(args: argparse.Namespace) -> None:
         # checkpoint reset, which is one bulk pass per run and tolerates
         # CF re-challenge gracefully. Failures are non-fatal so an outage
         # in the results pass does not block picks.
-        run_soft(
-            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --years {year} --no-checkpoint --delay {oddsportal_delay:g}",
-            f"settle_yesterday_results {year}",
-            env=child_env,
-        )
+        if refresh_oddsportal:
+            run_soft(
+                f"{env_prefix} PYTHONPATH=src python3 scripts/capture_"
+                f"oddsportal.py --all --years {year} --no-checkpoint --delay {oddsportal_delay:g}",
+                f"settle_yesterday_results {year}",
+                env=child_env,
+            )
+        else:
+            print("\n>>> settle_yesterday_results skipped")
+            print("RACKET_FACTORY_REFRESH_ODDSPORTAL not set; skipping heavy OddsPortal intraday refresh.")
 
     # 2. Daily Prediction Sources
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday today tomorrow --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet", env=child_env)
