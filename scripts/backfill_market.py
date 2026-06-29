@@ -59,7 +59,7 @@ def main():
     out_df = df_valid[out_cols].copy()
     
     # Drop duplicates just in case
-    out_df = out_df.drop_duplicates(subset=["match_date", "tour", "tournament", "player_a", "player_b"])
+    out_df = out_df.drop_duplicates(subset=["match_date", "tour", "tournament", "player_a", "player_b"]) # type: ignore
 
     out_file = ROOT / "localdata/predictions_market_historical.csv.gz"
     out_df.to_csv(out_file, index=False, compression="gzip")

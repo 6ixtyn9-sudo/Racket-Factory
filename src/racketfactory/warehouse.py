@@ -113,7 +113,7 @@ def coerce_decimal_odds(value: object) -> float | None:
     if value is None:
         return None
     try:
-        odd = float(value)
+        odd = float(str(value))
     except (TypeError, ValueError):
         return None
     if pd.isna(odd) or odd < MIN_DECIMAL_ODDS or odd > MAX_DECIMAL_ODDS:
@@ -125,7 +125,7 @@ def normalize_probability(value: object) -> float | None:
     if value is None:
         return None
     try:
-        prob = float(value)
+        prob = float(str(value))
     except (TypeError, ValueError):
         return None
     if pd.isna(prob) or prob <= 0:
@@ -282,9 +282,9 @@ def rows_refer_to_same_match(a: pd.Series, b: pd.Series) -> bool:
     if str(a.get("match_type", "")) != str(b.get("match_type", "")):
         return False
     return (
-        (names_match(a.get("player_home", ""), b.get("player_home", "")) and names_match(a.get("player_away", ""), b.get("player_away", "")))
+        (names_match(str(a.get("player_home") or ""), str(b.get("player_home") or "")) and names_match(str(a.get("player_away") or ""), str(b.get("player_away") or "")))
         or
-        (names_match(a.get("player_home", ""), b.get("player_away", "")) and names_match(a.get("player_away", ""), b.get("player_home", "")))
+        (names_match(str(a.get("player_home") or ""), str(b.get("player_away") or "")) and names_match(str(a.get("player_away") or ""), str(b.get("player_home") or "")))
     )
 
 
@@ -385,7 +385,7 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
     if card.empty:
         return card
     ordered = card.copy()
-    ordered["name_score"] = ordered.get("player_home", "").astype(str).str.len() + ordered.get("player_away", "").astype(str).str.len()
+    ordered["name_score"] = ordered.get("player_home", "").astype(str).str.len() + ordered.get("player_away", "").astype(str).str.len() # type: ignore
     ordered = ordered.sort_values(by=[c for c in ["match_date", "tour", "match_type", "name_score"] if c in ordered.columns], ascending=[True, True, True, False]).reset_index(drop=True)
     rows = []
     used = set()
@@ -406,15 +406,15 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
         g["name_score"] = g.get("player_home", "").astype(str).str.len() + g.get("player_away", "").astype(str).str.len()
         g = g.sort_values("name_score", ascending=False)
         base = g.iloc[0]
-        base_home = canonical_display_name(base.get("player_home", ""))
-        base_away = canonical_display_name(base.get("player_away", ""))
+        base_home = canonical_display_name(str(base.get("player_home") or ""))
+        base_away = canonical_display_name(str(base.get("player_away") or ""))
 
         oriented = [_orient_live_source_row(rr, base_home, base_away) for _, rr in g.iterrows()]
         odds_rows = [rr for rr in oriented if _live_odds_pair_is_usable(rr)]
 
         def _max_numeric(key: str, source_rows: list[dict]) -> object:
             vals = [pd.to_numeric(rr.get(key), errors="coerce") for rr in source_rows]
-            vals = [float(v) for v in vals if pd.notna(v)]
+            vals = [float(v) for v in vals if v is not None and not pd.isna(v)] # type: ignore
             return max(vals) if vals else pd.NA
 
         # Use the best usable price among sources, but only after each source's
@@ -449,14 +449,14 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
 def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict]) -> tuple[dict | None, bool]:
     """Return matching API odds row and whether it was reversed vs card row."""
     card_date = str(card_row.get("match_date", "") or "")[:10]
-    home = card_row.get("player_home", "")
-    away = card_row.get("player_away", "")
+    home = str(card_row.get("player_home") or "")
+    away = str(card_row.get("player_away") or "")
     for odds_row in odds_rows:
         odds_date = str(odds_row.get("match_date", "") or "")[:10]
         if card_date and odds_date and card_date != odds_date:
             continue
-        api_home = odds_row.get("player_home", "")
-        api_away = odds_row.get("player_away", "")
+        api_home = str(odds_row.get("player_home") or "")
+        api_away = str(odds_row.get("player_away") or "")
         if names_match(home, api_home) and names_match(away, api_away):
             return odds_row, False
         if names_match(home, api_away) and names_match(away, api_home):
@@ -753,8 +753,11 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
                         if not isinstance(outcome, dict):
                             continue
                         name = str(outcome.get("name") or "").strip()
+                        price_raw = outcome.get("price")
+                        if price_raw is None:
+                            continue
                         try:
-                            price = float(outcome.get("price"))
+                            price = float(str(price_raw))
                         except (TypeError, ValueError):
                             continue
                         if names_match(name, home):
@@ -793,11 +796,13 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     return rows
 
 def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.DataFrame:
-    """Attach The Odds API prices as the primary live pricing source.
+    """Attach live pricing, preferring The Odds API with guarded scrape fallback.
 
-    Scraped BetClan/Forebet prices are preserved as debug columns only. If API
-    odds are unavailable, odds_home/odds_away are left empty so mine_edges puts
-    the row in WATCHLIST_NO_ODDS instead of computing EV from scrape noise.
+    Scraped BetClan/Forebet prices are preserved in debug columns. If no API
+    match exists for a row, the scraped pair may be promoted only after the same
+    side-alignment and two-way decimal-pair sanity guards used for API prices.
+    Rows promoted this way are explicitly tagged ``ScrapedFallback`` so
+    downstream EV code can distinguish them from The Odds API prices.
     """
     if card.empty:
         return card
@@ -813,13 +818,13 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
     out["odds_away"] = pd.NA
 
     odds_rows = fetch_the_odds_api_rows(target_date)
-    if not odds_rows:
-        logger.info("No The Odds API odds matched live card for %s; rows will remain WATCHLIST_NO_ODDS if selected.", target_date)
-        return out
 
-    matched = 0
+    api_matched = 0
+    if not odds_rows:
+        logger.info("No The Odds API rows available for %s; trying validated scraped fallback odds.", target_date)
+
     for idx, row in out.iterrows():
-        odds_row, reversed_order = _match_api_odds_row(row, odds_rows)
+        odds_row, reversed_order = _match_api_odds_row(row, odds_rows) if odds_rows else (None, False)
         if odds_row is None:
             continue
         if reversed_order:
@@ -841,9 +846,35 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
         out.at[idx, "odds_away"] = api_away
         out.at[idx, "odds_source"] = "TheOddsAPI"
         out.at[idx, "odds_bookmaker"] = odds_row.get("bookmaker") or "The Odds API"
-        matched += 1
+        api_matched += 1
 
-    logger.info("Matched The Odds API odds for %d/%d live card rows", matched, len(out))
+    fallback_matched = 0
+    for idx, row in out.iterrows():
+        if str(row.get("odds_source", "") or "") == "TheOddsAPI":
+            continue
+
+        scraped_home, scraped_away = align_odds_to_probabilities(
+            row.get("prob_home"),
+            row.get("prob_away"),
+            row.get("scraped_odds_home"),
+            row.get("scraped_odds_away"),
+        )
+        if not valid_two_way_decimal_pair(scraped_home, scraped_away):
+            continue
+
+        out.at[idx, "odds_home"] = scraped_home
+        out.at[idx, "odds_away"] = scraped_away
+        out.at[idx, "odds_source"] = "ScrapedFallback"
+        out.at[idx, "odds_bookmaker"] = "Validated scrape"
+        fallback_matched += 1
+
+    logger.info(
+        "Matched live odds for %d/%d rows: %d The Odds API, %d ScrapedFallback",
+        api_matched + fallback_matched,
+        len(out),
+        api_matched,
+        fallback_matched,
+    )
     return out
 
 def build_live_rows() -> pd.DataFrame:
@@ -876,8 +907,8 @@ def build_live_rows() -> pd.DataFrame:
     if card.empty:
         return card
 
-    card["player_home"] = card.get("player_home", "").astype(str).map(canonical_display_name)
-    card["player_away"] = card.get("player_away", "").astype(str).map(canonical_display_name)
+    card["player_home"] = card.get("player_home", "").astype(str).map(canonical_display_name) # type: ignore
+    card["player_away"] = card.get("player_away", "").astype(str).map(canonical_display_name) # type: ignore
     card = card[(card["player_home"] != "") & (card["player_away"] != "")].copy()
     if card.empty:
         return card
@@ -902,7 +933,7 @@ def build_live_rows() -> pd.DataFrame:
     card["tour"] = inferred.apply(lambda x: x[0])
     card["_series"] = inferred.apply(lambda x: x[1])
     
-    card["surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
+    card["surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title() # type: ignore
     card.loc[card["surface"].isin(["", "Nan", "None"]), "surface"] = ""
     card["_surface"] = card.apply(lambda r: infer_surface(r.get("context_used", ""), r.get("surface", "")), axis=1)
 
@@ -945,20 +976,20 @@ def build_live_rows() -> pd.DataFrame:
             "player_b": first.get("player_away"),
             "winner": "",
             "score": "",
-            "odds_a": odds_h if pd.notna(odds_h) else pd.NA,
-            "odds_b": odds_a if pd.notna(odds_a) else pd.NA,
-            "bookmaker": odds_bookmaker if pd.notna(odds_h) else "",
+            "odds_a": odds_h if odds_h is not None and not pd.isna(odds_h) else pd.NA,
+            "odds_b": odds_a if odds_a is not None and not pd.isna(odds_a) else pd.NA,
+            "bookmaker": str(odds_bookmaker) if odds_h is not None and not pd.isna(odds_h) else "",
             "source": first.get("source", ""),
             "captured_at": pd.Timestamp.now().isoformat(),
             "oddsportal_url": "",
-            "_surface": infer_surface(tournament, first.get("surface", "")),
+            "_surface": infer_surface(str(tournament or ""), str(first.get("surface", "") or "")),
             "_court": "",
             "_series": first.get("_series", ""),
             "_comment": "live_upcoming_injected",
             "_location": first.get("country", "") if "country" in first.index else "",
             "_winner_rank": pd.NA,
             "_loser_rank": pd.NA,
-            "_odds_source": "TheOddsAPI" if pd.notna(odds_h) else "",
+            "_odds_source": odds_source if odds_h is not None and not pd.isna(odds_h) and str(odds_source or "").strip() else "",
             "api_odds_a": first.get("api_odds_home", pd.NA),
             "api_odds_b": first.get("api_odds_away", pd.NA),
             "debug_scraped_odds_a": first.get("scraped_odds_home", pd.NA),
@@ -1348,7 +1379,7 @@ def build_warehouse(
                 logger.info("Merging secondary source '%s' (suffix: _%s): %d predictions",
                             src, suffix, len(merged))
                 rename_map = {c: f"{c}_{suffix}" for c in pred_cols if c != "source"}
-                merged_renamed = merged[['_merge_key'] + pred_cols].rename(columns=rename_map)
+                merged_renamed = merged[['_merge_key'] + pred_cols].rename(columns=rename_map) # type: ignore
                 if "source" in merged_renamed.columns:
                     merged_renamed = merged_renamed.drop(columns=["source"])
                 warehouse = warehouse.merge(
@@ -1423,7 +1454,7 @@ def build_warehouse(
     if db_path is not None:
         winner_col = warehouse.get("winner", pd.Series(dtype=object))
         settled_matches = int(
-            (winner_col.notna() & ~winner_col.astype(str).str.strip().isin(["", "nan", "<NA>", "None"])).sum()
+            (winner_col.notna() & ~winner_col.astype(str).str.strip().isin(["", "nan", "<NA>", "None"])).sum() # type: ignore
         ) if len(winner_col) else 0
         market_sides = 0
         if "odds_a" in warehouse.columns:

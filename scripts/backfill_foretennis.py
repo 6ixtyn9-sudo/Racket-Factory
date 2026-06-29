@@ -153,7 +153,7 @@ def main():
     for idx, row in wh.iterrows():
         date_str = row["match_date"]
         # Ensure we don't crash on nan names
-        if pd.isna(row["player_a"]) or pd.isna(row["player_b"]):
+        if str(row["player_a"]).strip() in {"", "nan", "<NA>", "None"} or str(row["player_b"]).strip() in {"", "nan", "<NA>", "None"}:
             continue
             
         pa_sig = name_signature(str(row["player_a"]))

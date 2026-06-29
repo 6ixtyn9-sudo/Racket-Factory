@@ -29,7 +29,7 @@ def resolve_source(archive_file: Path, output_file: Path, wh_df: pd.DataFrame, s
     pred_index = {}
     for idx, row in wh_df.iterrows():
         date_str = row["match_date"]
-        if pd.isna(row["player_a"]) or pd.isna(row["player_b"]): continue
+        if pd.isna(row["player_a"]) or pd.isna(row["player_b"]): continue # type: ignore
         if date_str not in pred_index: pred_index[date_str] = []
         pred_index[date_str].append((idx, str(row["player_a"]), str(row["player_b"]), str(row["tour"]), str(row["tournament"])))
         
@@ -37,7 +37,7 @@ def resolve_source(archive_file: Path, output_file: Path, wh_df: pd.DataFrame, s
     
     for _, p in df_archive.iterrows():
         date_str = p.get("match_date")
-        if not pd.notna(date_str) or date_str not in pred_index: continue
+        if not pd.notna(date_str) or date_str not in pred_index: continue # type: ignore
         
         home = str(p.get("player_home"))
         away = str(p.get("player_away"))

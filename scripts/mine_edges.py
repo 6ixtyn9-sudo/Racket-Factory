@@ -5,6 +5,7 @@ Automated combinatorial discovery of Bankers and Robbers, including prediction s
 
 WARNING: ROI is currently calculated using Market Closing Odds. AI predictions captured early in the day must be evaluated against Opening Odds before live capital is deployed.
 """
+import os
 import pandas as pd
 import argparse
 import logging
@@ -40,11 +41,17 @@ logging.basicConfig(
 logger = logging.getLogger("edge_miner")
 
 
-def get_player_rank_band(rank: float) -> str:
-    if pd.isna(rank): return "Unknown"
-    if rank <= 10: return "Top 10"
-    if rank <= 50: return "11-50"
-    if rank <= 100: return "51-100"
+def get_player_rank_band(rank: float | None) -> str:
+    if rank is None or pd.isna(rank): return "Unknown"
+    try:
+        rank_float = float(rank)
+    except (ValueError, TypeError):
+        return "Unknown"
+        
+    if pd.isna(rank_float): return "Unknown"
+    if rank_float <= 10: return "Top 10"
+    if rank_float <= 50: return "11-50"
+    if rank_float <= 100: return "51-100"
     return "100+"
 
 
@@ -59,17 +66,17 @@ def get_selected_side_rank_band(row: pd.Series, pred_cols: list[str]) -> str:
     pick = None
     for col in pred_cols:
         val = row.get(col)
-        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
+        if str(val).strip() not in {"", "nan", "<NA>", "None"}:
             pick = str(val).strip()
             break
 
-    if pd.notna(pick) and pick in {"player_a", "player_b", "1", "2"}:
+    if pick is not None and pick in {"player_a", "player_b", "1", "2"}:
         rank_col = "rank_a" if pick in {"player_a", "1"} else "rank_b"
         if rank_col in row:
             return get_player_rank_band(row.get(rank_col))
 
     oa, ob = row.get("odds_a"), row.get("odds_b")
-    if pd.notna(oa) and pd.notna(ob):
+    if isinstance(oa, (int, float)) and isinstance(ob, (int, float)) and not pd.isna(oa) and not pd.isna(ob):
         fav_col = "rank_a" if oa <= ob else "rank_b"
         if fav_col in row:
             return get_player_rank_band(row.get(fav_col))
@@ -106,8 +113,8 @@ def get_cross_source_agree(row: pd.Series, pred_cols: list[str]) -> str:
     """
     mkt = row.get("predicted_winner_market")
     ft = row.get("predicted_winner_foretennis")
-    has_mkt = pd.notna(mkt) and str(mkt).strip() not in {"", "nan", "<NA>", "None"}
-    has_ft = pd.notna(ft) and str(ft).strip() not in {"", "nan", "<NA>", "None"}
+    has_mkt = str(mkt).strip() not in {"", "nan", "<NA>", "None"}
+    has_ft = str(ft).strip() not in {"", "nan", "<NA>", "None"}
     if has_mkt and has_ft:
         return "Both" if mkt == ft else "Disagree"
     if has_mkt:
@@ -120,7 +127,7 @@ def get_cross_source_agree(row: pd.Series, pred_cols: list[str]) -> str:
     sources_count = 0
     for col in pred_cols:
         val = row.get(col)
-        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
+        if str(val).strip() not in {"", "nan", "<NA>", "None"}:
             picks.add(str(val).strip())
             sources_count += 1
 
@@ -276,13 +283,13 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
                 odds_home = odds_row.get("odds_away")
                 odds_away = odds_row.get("odds_home")
 
-            out.at[idx, "odds_home"] = odds_home
-            out.at[idx, "odds_away"] = odds_away
-            out.at[idx, "odds_a"] = odds_home
-            out.at[idx, "odds_b"] = odds_away
-            out.at[idx, "_odds_source"] = "TheOddsAPI"
-            out.at[idx, "_is_live"] = True
-            out.at[idx, "_comment"] = "forecast_upcoming_api_priced"
+            out.loc[idx, "odds_home"] = odds_home
+            out.loc[idx, "odds_away"] = odds_away
+            out.loc[idx, "odds_a"] = odds_home
+            out.loc[idx, "odds_b"] = odds_away
+            out.loc[idx, "_odds_source"] = "TheOddsAPI"
+            out.loc[idx, "_is_live"] = True
+            out.loc[idx, "_comment"] = "forecast_upcoming_api_priced"
             matched += 1
             break
 
@@ -324,7 +331,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
     inferred = card.apply(lambda r: infer_tour_and_series(r.get("context_used", ""), row=r), axis=1)
     card["tour"] = inferred.apply(lambda x: x[0])
     card["_series"] = inferred.apply(lambda x: x[1])
-    card["surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
+    card["surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title() # type: ignore
     card.loc[card["surface"].isin(["", "Nan", "None"]), "surface"] = ""
     card["_surface"] = card.apply(lambda r: infer_surface(r.get("context_used", "") or r.get("tournament", ""), r.get("surface", "")), axis=1)
     card["pred_confidence"] = card.apply(
@@ -344,7 +351,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         return card.reset_index(drop=True)
 
     grouped_rows = []
-    for (_, pair_key), g in card.groupby(["match_date", "pair_key"], dropna=False):
+    for (_, pair_key), g in card.groupby(["match_date", "pair_key"], dropna=False): # type: ignore
         first = g.iloc[0]
         winners = []
         for _, rr in g.iterrows():
@@ -367,12 +374,12 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         source_count = int(g["source"].nunique())
         home_probs = pd.to_numeric(g.get("prob_home", pd.Series(dtype=float)), errors="coerce")
         away_probs = pd.to_numeric(g.get("prob_away", pd.Series(dtype=float)), errors="coerce")
-        max_home = home_probs.max() if not home_probs.empty else None
-        max_away = away_probs.max() if not away_probs.empty else None
-        probs = [p for p in [max_home, max_away] if pd.notna(p)]
+        max_home = float(home_probs.max()) if hasattr(home_probs, 'empty') and not home_probs.empty else None # type: ignore
+        max_away = float(away_probs.max()) if hasattr(away_probs, 'empty') and not away_probs.empty else None # type: ignore
+        probs = [p for p in [max_home, max_away] if p is not None and not pd.isna(p)]
         max_prob = max(probs) if probs else None
         selected_prob = max_home if selected_pick == "player_a" else max_away
-        if pd.isna(selected_prob):
+        if selected_prob is None or str(selected_prob).strip() in {"nan", "<NA>", "None"}:
             selected_prob = max_prob
         fav_odds_band = prob_to_odds_band(max_prob)
         series_value = first.get("_series")
@@ -461,10 +468,11 @@ def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: 
 
     if row_has_live_flag(row):
         odds_source = str(row.get("_odds_source", "") or "")
-        if odds_source != "TheOddsAPI":
-            return None, "missing The Odds API live odds"
+        usable_live_sources = {"TheOddsAPI", "ScrapedFallback"}
+        if odds_source not in usable_live_sources:
+            return None, "missing usable live odds"
         if not valid_two_way_decimal_pair(row.get("odds_a"), row.get("odds_b")):
-            return None, "incomplete/invalid The Odds API live odds pair"
+            return None, f"incomplete/invalid {odds_source} live odds pair"
         side = normalize_side_token(selected_side)
         other_odds = coerce_decimal_odds(row.get("odds_b" if side == "player_a" else "odds_a"))
         if (
@@ -472,7 +480,7 @@ def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: 
             and odds_suspicious_for_probability(probability, odds_val)
             and not odds_suspicious_for_probability(probability, other_odds)
         ):
-            return other_odds, "corrected likely side-inverted The Odds API live odds"
+            return other_odds, f"corrected likely side-inverted {odds_source} live odds"
 
     return odds_val, None
 
@@ -487,7 +495,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
     pred_cols = [c for c in row.index if c.startswith("predicted_winner")]
     for col in pred_cols:
         val = row.get(col)
-        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
+        if str(val).strip() not in {"", "nan", "<NA>", "None"}:
             selected_pick = str(val).strip()
             break
 
@@ -497,7 +505,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
         selected_player = home_name if selected_pick == "1" else away_name
     else:
         oa, ob = row.get("odds_a"), row.get("odds_b")
-        if pd.notna(oa) and pd.notna(ob):
+        if isinstance(oa, (int, float)) and isinstance(ob, (int, float)) and not pd.isna(oa) and not pd.isna(ob):
             selected_pick = "player_a" if oa <= ob else "player_b"
             selected_player = home_name if selected_pick == "player_a" else away_name
         else:
@@ -506,15 +514,15 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
 
     source_val = row.get("source", "")
     source_count = row.get("source_count")
-    if pd.isna(source_count) or source_count is None:
-        source_count = len([c for c in pred_cols if pd.notna(row.get(c)) and str(row.get(c)).strip() not in {"", "nan", "<NA>", "None"}])
+    if source_count is None or str(source_count).strip() in {"nan", "<NA>", "None"}:
+        source_count = len([c for c in pred_cols if str(row.get(c)).strip() not in {"", "nan", "<NA>", "None"}])
 
     ctx_val = row.get("context_used")
-    if pd.isna(ctx_val) or str(ctx_val).strip() in {"nan", "<NA>", "None", ""}:
+    if ctx_val is None or str(ctx_val).strip() in {"nan", "<NA>", "None", ""}:
         ctx_val = row.get("tournament", "")
         
     time_val = row.get("match_time")
-    if pd.isna(time_val) or str(time_val).strip() in {"nan", "<NA>", "None", ""}:
+    if time_val is None or str(time_val).strip() in {"nan", "<NA>", "None", ""}:
         time_val = "n/a"
 
     return {
@@ -551,14 +559,14 @@ def write_official_pick_outputs(target_date: str, picks: list[dict]) -> None:
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
-    raw = str(__import__("os").environ.get(name, "")).strip().lower()
+    raw = os.environ.get(name, "").strip().lower()
     if not raw:
         return default
     return raw in {"1", "true", "yes", "on"}
 
 
 def _env_float(name: str, default: float) -> float:
-    raw = str(__import__("os").environ.get(name, "")).strip()
+    raw = os.environ.get(name, "").strip()
     if not raw:
         return default
     try:
@@ -568,7 +576,7 @@ def _env_float(name: str, default: float) -> float:
 
 
 def _env_int(name: str, default: int) -> int:
-    raw = str(__import__("os").environ.get(name, "")).strip()
+    raw = os.environ.get(name, "").strip()
     if not raw:
         return default
     try:
@@ -587,13 +595,13 @@ def _is_future_target(target_date: str) -> bool:
 
 def _pick_float(pick: dict, key: str) -> float | None:
     value = pick.get(key)
+    if value is None:
+        return None
     try:
-        if value is None:
+        result = float(str(value))
+        if pd.isna(result):
             return None
-        value = float(value)
-        if pd.isna(value):
-            return None
-        return value
+        return result
     except (TypeError, ValueError):
         return None
 
@@ -749,10 +757,10 @@ def main() -> int:
 
     def get_fav_odds(r):
         oa, ob = r.get('odds_a'), r.get('odds_b')
-        try: oa = float(oa) if pd.notna(oa) and str(oa).strip() not in {"", "nan", "<NA>", "None"} else None
-        except: oa = None
-        try: ob = float(ob) if pd.notna(ob) and str(ob).strip() not in {"", "nan", "<NA>", "None"} else None
-        except: ob = None
+        try: oa = float(str(oa)) if str(oa).strip() not in {"", "nan", "<NA>", "None"} else None
+        except (TypeError, ValueError, AttributeError): oa = None
+        try: ob = float(str(ob)) if str(ob).strip() not in {"", "nan", "<NA>", "None"} else None
+        except (TypeError, ValueError, AttributeError): ob = None
         if oa is not None and ob is not None: return min(oa, ob)
         if oa is not None: return oa
         if ob is not None: return ob
@@ -768,7 +776,7 @@ def main() -> int:
         max_p = None
         for col in prob_cols:
             p_val = row.get(col)
-            if pd.notna(p_val) and str(p_val).strip() not in {"nan", "<NA>", "None"}:
+            if str(p_val).strip() not in {"nan", "<NA>", "None"}:
                 try:
                     v = float(p_val)
                     if max_p is None or v > max_p: max_p = v
@@ -784,7 +792,7 @@ def main() -> int:
         max_p = None
         for col in prob_cols:
             p_val = row.get(col)
-            if pd.notna(p_val) and str(p_val).strip() not in {"nan", "<NA>", "None"}:
+            if str(p_val).strip() not in {"nan", "<NA>", "None"}:
                 try:
                     v = float(p_val)
                     if max_p is None or v > max_p: max_p = v
@@ -846,7 +854,7 @@ def main() -> int:
     }
 
     for k, v in dimensions.items():
-        dimensions[k] = [x for x in v if pd.notna(x) and x != "Unknown" and x != ""]
+        dimensions[k] = [x for x in v if str(x).strip() not in {"nan", "<NA>", "None", "", "Unknown"}]
 
     logger.info("Mining for Bankers and Robbers across %d dimensions...", len(dimensions))
 
@@ -864,7 +872,7 @@ def main() -> int:
             subset_df = df.copy()
             for d in subset:
                 subset_df = subset_df[~subset_df[d].isin(["Unknown", ""])]
-                subset_df = subset_df.dropna(subset=[d])
+                subset_df = subset_df.dropna(subset=[d]) # type: ignore
 
             if subset_df.empty:
                 continue
@@ -942,7 +950,7 @@ def main() -> int:
     elif today_live.empty:
         today_all = today_hist.copy()
     else:
-        today_all = pd.concat([today_hist, today_live], ignore_index=True, sort=False)
+        today_all = pd.concat([today_hist, today_live], ignore_index=True, sort=False) # type: ignore
 
     today_df = today_all.copy()
     if "winner" in today_df.columns:
@@ -1041,7 +1049,7 @@ def main() -> int:
                 prob = None
                 for col in prob_cols:
                     pval = row.get(col)
-                    if pd.notna(pval) and str(pval).strip() not in {"nan", "<NA>", "None"}:
+                    if str(pval).strip() not in {"nan", "<NA>", "None"}:
                         try:
                             v = float(pval)
                             if v <= 1.0 and v > 0: v *= 100.0

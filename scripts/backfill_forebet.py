@@ -99,7 +99,7 @@ def mode_tournament(args) -> int:
     predictions: list[dict] = []
     matched_count = 0
 
-    for i, (tour, tournament) in enumerate(tournament_list):
+    for i, (tour, tournament) in enumerate(tournament_list): # type: ignore
         group_df = groups.get_group((tour, tournament))
         logger.info(
             "[%3d/%d] %s / %s — %d warehouse matches",
@@ -118,14 +118,14 @@ def mode_tournament(args) -> int:
                 continue
             h = name_signature(p["player_home"])
             a = name_signature(p["player_away"])
-            key = tuple(sorted([h, a]))
+            key = (min(h, a), max(h, a))
             pred_index[(p["match_date"], key)] = p
 
         for _, row in group_df.iterrows():
             match_date = str(row["match_date"])
             sig_a = name_signature(row["player_a"])
             sig_b = name_signature(row["player_b"])
-            key = tuple(sorted([sig_a, sig_b]))
+            key = (min(sig_a, sig_b), max(sig_a, sig_b))
 
             pred = pred_index.get((match_date, key))
             if not pred:
@@ -348,7 +348,7 @@ def mode_daily(args) -> int:
                         "player_a": p["player_home"],
                         "player_b": p["player_away"],
                         "predicted_winner": "player_a" if p.get("predicted_winner") == "1" else "player_b",
-                        "prediction_prob": (p["prob_home"] if p.get("predicted_winner") == "1" else p.get("prob_away")) / 100 if p.get("prob_home") is not None else None,
+                        "prediction_prob": (float(p["prob_home"]) if p.get("predicted_winner") == "1" else float(p["prob_away"])) / 100 if p.get("prob_home") is not None and p.get("prob_away") is not None else None,
                         "odds_a": p.get("odds_home"),
                         "odds_b": p.get("odds_away"),
                         "source": "Forebet",
@@ -366,7 +366,7 @@ def mode_daily(args) -> int:
                     "player_a": p["player_home"],
                     "player_b": p["player_away"],
                     "predicted_winner": "player_a" if p.get("predicted_winner") == "1" else "player_b",
-                    "prediction_prob": (p["prob_home"] if p.get("predicted_winner") == "1" else p.get("prob_away")) / 100 if p.get("prob_home") is not None else None,
+                    "prediction_prob": (float(p["prob_home"]) if p.get("predicted_winner") == "1" else float(p["prob_away"])) / 100 if p.get("prob_home") is not None and p.get("prob_away") is not None else None,
                     "odds_a": p.get("odds_home"),
                     "odds_b": p.get("odds_away"),
                     "source": "Forebet",

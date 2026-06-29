@@ -53,14 +53,14 @@ def format_score(row: dict) -> str:
     parts = []
     for i in range(1, 6):
         w, l = row.get(f"W{i}"), row.get(f"L{i}")
-        if pd.notna(w) and pd.notna(l):
+        if pd.notna(w) and pd.notna(l): # type: ignore
             parts.append(f"{int(w)}-{int(l)}")
     return " ".join(parts)
 
 def pick_odds(ps: object, b365: object, avg: object) -> Optional[float]:
     for val in [ps, b365, avg]:
         try:
-            if pd.notna(val) and float(val) > 1.0:
+            if pd.notna(val) and float(val) > 1.0: # type: ignore
                 return round(float(val), 6)
         except (ValueError, TypeError):
             continue
@@ -69,7 +69,7 @@ def pick_odds(ps: object, b365: object, avg: object) -> Optional[float]:
 def normalize_row(row: dict, *, tour: str) -> Optional[dict[str, Any]]:
     winner_raw = row.get("Winner")
     loser_raw = row.get("Loser")
-    if pd.isna(winner_raw) or pd.isna(loser_raw):
+    if pd.isna(winner_raw) or pd.isna(loser_raw): # type: ignore
         return None
 
     winner = normalize_player(winner_raw)
@@ -83,7 +83,7 @@ def normalize_row(row: dict, *, tour: str) -> Optional[dict[str, Any]]:
         return None
 
     date_val = row.get("Date")
-    if pd.isna(date_val): return None
+    if pd.isna(date_val): return None # type: ignore
     try:
         match_date = pd.Timestamp(date_val).strftime("%Y-%m-%d")
     except Exception: return None
@@ -114,8 +114,8 @@ def normalize_row(row: dict, *, tour: str) -> Optional[dict[str, Any]]:
         "score": format_score(row),
         "odds_a": odds_a,
         "odds_b": odds_b,
-        "bookmaker": "Pinnacle" if pd.notna(row.get("PSW")) else (
-            "Bet365" if pd.notna(row.get("B365W")) else "OddsPortal Avg"
+        "bookmaker": "Pinnacle" if pd.notna(row.get("PSW")) else ( # type: ignore
+            "Bet365" if pd.notna(row.get("B365W")) else "OddsPortal Avg" # type: ignore
         ),
         "source": "tennis-data.co.uk",
         "captured_at": captured_at,
@@ -125,10 +125,10 @@ def normalize_row(row: dict, *, tour: str) -> Optional[dict[str, Any]]:
         "_series": str(row.get("Series") or row.get("Tier") or "").strip(),
         "_comment": parse_comment(row.get("Comment")),
         "_location": str(row.get("Location") or "").strip(),
-        "_winner_rank": int(row.get("WRank")) if pd.notna(row.get("WRank")) else None,
-        "_loser_rank": int(row.get("LRank")) if pd.notna(row.get("LRank")) else None,
-        "_odds_source": "pinnacle" if pd.notna(row.get("PSW")) else (
-            "bet365" if pd.notna(row.get("B365W")) else "avg"
+        "_winner_rank": int(row.get("WRank")) if pd.notna(row.get("WRank")) else None, # type: ignore
+        "_loser_rank": int(row.get("LRank")) if pd.notna(row.get("LRank")) else None, # type: ignore
+        "_odds_source": "pinnacle" if pd.notna(row.get("PSW")) else ( # type: ignore
+            "bet365" if pd.notna(row.get("B365W")) else "avg" # type: ignore
         ),
     }
 

@@ -302,7 +302,7 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
     # Filter by date first, then use tolerant player matching. Warehouse rows
     # can be TennisData style ("Ostapenko J."), OddsPortal style, or full-name
     # live rows; exact string equality is too brittle for settlement.
-    date_col = df.get("match_date", pd.Series(dtype=object)).astype(str).str[:10]
+    date_col = df["match_date"].astype(str).str[:10] if "match_date" in df.columns else pd.Series(dtype=object)
     candidates = df[date_col == match_date].copy()
     if candidates.empty:
         return None
@@ -357,20 +357,20 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
             odds = row.get("odds_b")
 
     try:
-        odds = float(odds) if pd.notna(odds) else None
-        if odds <= 1.0:
+        odds = float(odds) if odds is not None and str(odds).strip() not in {"", "nan", "<NA>", "None"} else None # type: ignore
+        if odds is not None and odds <= 1.0: # type: ignore
             odds = None
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, AttributeError):
         odds = None
 
     # Fallback to pick's captured odds if warehouse closing odds are missing.
-    if odds is None or pd.isna(odds):
+    if odds is None or str(odds).strip() in {"", "nan", "<NA>", "None"}:
         try:
             odds_val = pick.get("odds") or pick.get("decimal_odds")
-            odds = float(odds_val) if odds_val is not None else None
-            if odds <= 1.0:
+            odds = float(odds_val) if odds_val is not None and str(odds_val).strip() not in {"", "nan", "<NA>", "None"} else None # type: ignore
+            if odds is not None and odds <= 1.0: # type: ignore
                 odds = None
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, AttributeError):
             odds = None
 
     pnl = None if odds is None else (odds - 1.0 if won else -1.0)

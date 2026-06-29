@@ -138,9 +138,9 @@ def _parse_lastpredictions_page(html: str) -> list[dict[str, Any]]:
         prediction_correct = None
         if tip_span:
             cls = tip_span.get("class", [])
-            if any("predict_y" in str(c) for c in cls):
+            if any("predict_y" in str(c) for c in (cls or [])):
                 prediction_correct = True
-            elif any("predict_n" in str(c) for c in cls):
+            elif any("predict_n" in str(c) for c in (cls or [])):
                 prediction_correct = False
 
         # --- Predicted set scores ---

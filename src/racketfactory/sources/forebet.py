@@ -546,7 +546,9 @@ class ForebetPredictor:
                     for osp in odd_spans:
                         # Skip score/average-score widgets; they can contain
                         # decimal-looking values that are not two-way prices.
-                        classes = " ".join(osp.get("class", [])).lower() if hasattr(osp, "get") else ""
+                        class_val = osp.get("class", []) if hasattr(osp, "get") else []
+                        if isinstance(class_val, str): class_val = [class_val]
+                        classes = " ".join(class_val or []).lower()
                         if "avg_sc" in classes or "ex_sc" in classes:
                             continue
 

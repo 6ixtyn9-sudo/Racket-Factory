@@ -164,7 +164,8 @@ def collapse_combined_card(combined: pd.DataFrame) -> pd.DataFrame:
     rows = []
     used = set()
     ordered = combined.sort_values(by=[c for c in ["match_date", "name_score"] if c in combined.columns], ascending=[True, False]).reset_index(drop=True)
-    for i, row in ordered.iterrows():
+    for i in range(len(ordered)):
+        row = ordered.iloc[i]
         if i in used:
             continue
         group = [i]
@@ -223,8 +224,8 @@ def to_live_card(df: pd.DataFrame, source_name: str) -> pd.DataFrame:
     out["match_label"] = out.get("match_label", "")
     if "tournament" not in out.columns:
         out["tournament"] = out.get("match_label", "")
-    out["player_home"] = out.get("player_home", "").astype(str).map(canonical_display_name)
-    out["player_away"] = out.get("player_away", "").astype(str).map(canonical_display_name)
+    out["player_home"] = out["player_home"].astype(str).map(canonical_display_name) if "player_home" in out.columns else "" # type: ignore
+    out["player_away"] = out["player_away"].astype(str).map(canonical_display_name) if "player_away" in out.columns else "" # type: ignore
     if source_name == "Forebet":
         bad_terms = {"fc", "united", "city", "vaasa", "gnistan", "uzbekistan", "congo"}
         def looks_like_non_tennis(r: pd.Series) -> bool:

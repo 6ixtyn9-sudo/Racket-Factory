@@ -117,11 +117,11 @@ def _pick_side(row: pd.Series, bet_side: str) -> Optional[str]:
     if bet_side == "favorite":
         oa, ob = row.get('odds_a'), row.get('odds_b')
         try:
-            oa = float(oa) if pd.notna(oa) else None
+            oa = float(oa) if pd.notna(oa) else None # type: ignore
         except (TypeError, ValueError):
             oa = None
         try:
-            ob = float(ob) if pd.notna(ob) else None
+            ob = float(ob) if pd.notna(ob) else None # type: ignore
         except (TypeError, ValueError):
             ob = None
         if oa is None or ob is None:
@@ -131,7 +131,7 @@ def _pick_side(row: pd.Series, bet_side: str) -> Optional[str]:
     if bet_side == "prediction":
         for col in [c for c in row.index if c.startswith("predicted_winner")]:
             val = row.get(col)
-            if pd.isna(val):
+            if pd.isna(val): # type: ignore
                 continue
             s = str(val).strip()
             if s in ("", "nan", "<NA>", "None"):
@@ -174,7 +174,7 @@ def assay_segment(df: pd.DataFrame, break_even: Optional[float] = None, bet_side
     df = df.copy()
     df['fav'] = df.apply(lambda r: _pick_side(r, bet_side), axis=1)
     df = df.dropna(subset=['fav'])
-    df = df[df['fav'].isin(['a', 'b'])]
+    df = df[df['fav'].isin(['a', 'b'])] # type: ignore
 
     n = len(df)
     if n == 0:

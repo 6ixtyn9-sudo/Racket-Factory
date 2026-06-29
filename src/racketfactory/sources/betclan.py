@@ -226,18 +226,19 @@ class BetClanPredictor:
                     winner_tag = s.find(lambda tag: tag.name == "h4" and "winner" in tag.text.lower())
                     if not winner_tag:
                         continue
-                    winner_name = winner_tag.find_next_sibling("h5").text.strip()
+                    next_sib = winner_tag.find_next_sibling("h5")
+                    winner_name = next_sib.text.strip() if next_sib else ""
 
                     vote_container = s.find('div', class_='cell__section vote__team js-vote-stats-bar')
                     x_container = s.find('div', class_='cell__section vote__x js-vote-stats-bar')
 
                     prob1, prob2 = None, None
                     if vote_container and 'width' in vote_container.get('style', ''):
-                        m = re.search(r"width:\s*(\d+)%", vote_container.get('style'))
+                        m = re.search(r"width:\s*(\d+)%", str(vote_container.get('style', '')))
                         if m:
                             prob1 = int(m.group(1))
                     if x_container and 'width' in x_container.get('style', ''):
-                        m = re.search(r"width:\s*(\d+)%", x_container.get('style'))
+                        m = re.search(r"width:\s*(\d+)%", str(x_container.get('style', '')))
                         if m:
                             prob2 = int(m.group(1))
 
