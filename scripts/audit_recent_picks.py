@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
+import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -39,6 +42,15 @@ class SettledPick:
 
 
 def local_today() -> str:
+    run_as_of = str(os.environ.get("RACKET_FACTORY_RUN_AS_OF") or "").strip()
+    if run_as_of:
+        try:
+            dt = datetime.fromisoformat(run_as_of.replace("Z", "+00:00"))
+            if dt.tzinfo is not None:
+                return dt.astimezone(ZoneInfo(DEFAULT_LOCAL_TZ)).date().isoformat()
+            return dt.date().isoformat()
+        except Exception:
+            pass
     try:
         return datetime.now(ZoneInfo(DEFAULT_LOCAL_TZ)).date().isoformat()
     except Exception:
@@ -51,6 +63,83 @@ def daterange(start: str, end: str):
     while d <= e:
         yield d.isoformat()
         d += timedelta(days=1)
+
+
+
+
+def clean_text(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if text.lower() in {"", "nan", "none", "<na>", "nat"}:
+        return ""
+    return text
+
+
+def normalize_name(value: Any) -> str:
+    text = clean_text(value)
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = re.sub(r"[^a-zA-Z0-9/\s'-]", " ", text).lower()
+    text = re.sub(r"\s+", " ", text).strip()
+    parts = [p for p in text.replace("-", " ").replace("'", " ").split() if p]
+    if len(parts) >= 2 and len(parts[0]) == 1:
+        parts = parts[1:]
+    return " ".join(parts)
+
+
+def name_tokens(value: Any) -> set[str]:
+    return {t for t in normalize_name(value).split() if t and t != "/"}
+
+
+def surname_tail(value: Any) -> tuple[str, ...]:
+    toks = [t for t in normalize_name(value).split() if t and t != "/"]
+    if not toks:
+        return tuple()
+    return tuple(toks[-2:]) if len(toks) >= 2 else (toks[-1],)
+
+
+def names_match(a: Any, b: Any) -> bool:
+    na = normalize_name(a)
+    nb = normalize_name(b)
+    if not na or not nb:
+        return False
+    if na == nb:
+        return True
+    if surname_tail(a) and surname_tail(a) == surname_tail(b):
+        return True
+    ta = name_tokens(a)
+    tb = name_tokens(b)
+    if not ta or not tb:
+        return False
+    overlap = ta & tb
+    return bool(overlap) and len(overlap) >= min(len(ta), len(tb))
+
+
+def pick_match_date(pick: dict[str, Any]) -> str:
+    for key in ("match_date", "date", "kickoff", "match_time", "time", "start_time", "ko"):
+        val = pick.get(key)
+        text = clean_text(val)
+        if len(text) >= 10:
+            m = re.search(r"(\d{4}-\d{2}-\d{2})", text)
+            if m:
+                return m.group(1)
+    return ""
+
+
+def pick_players(pick: dict[str, Any]) -> tuple[str, str]:
+    home = clean_text(pick.get("player_home") or pick.get("player_a"))
+    away = clean_text(pick.get("player_away") or pick.get("player_b"))
+    if home and away:
+        return home, away
+    match = clean_text(pick.get("match"))
+    if match:
+        parts = re.split(r"\s+v(?:s\.)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
+        if len(parts) == 2:
+            return clean_text(parts[0]), clean_text(parts[1])
+    return home, away
 
 
 def archived_picks_path(day: str) -> Path:
@@ -87,10 +176,9 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
 
 
 def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
-    match_date = str(pick.get("date") or "")[:10]
-    player_home = str(pick.get("player_home") or "").strip()
-    player_away = str(pick.get("player_away") or "").strip()
-    selected_player = str(pick.get("selected_player") or "").strip()
+    match_date = pick_match_date(pick)
+    player_home, player_away = pick_players(pick)
+    selected_player = clean_text(pick.get("selected_player") or pick.get("selection") or pick.get("pick_player"))
 
     if not match_date or not player_home or not player_away or not selected_player:
         return None
@@ -98,45 +186,53 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
     if df.empty:
         return None
 
-    # Filter by date
-    candidates = df[df.get("match_date", pd.Series(dtype=object)).astype(str) == match_date].copy()
+    # Filter by date first, then use tolerant player matching. Warehouse rows
+    # can be TennisData style ("Ostapenko J."), OddsPortal style, or full-name
+    # live rows; exact string equality is too brittle for settlement.
+    date_col = df.get("match_date", pd.Series(dtype=object)).astype(str).str[:10]
+    candidates = df[date_col == match_date].copy()
     if candidates.empty:
         return None
 
-    # Match player_a / player_b (normal order)
-    subset = candidates[
-        (candidates.get("player_a", pd.Series(dtype=object)).astype(str) == player_home)
-        & (candidates.get("player_b", pd.Series(dtype=object)).astype(str) == player_away)
-    ]
-    if subset.empty:
-        # Match player_a / player_b (reverse order)
-        subset = candidates[
-            (candidates.get("player_a", pd.Series(dtype=object)).astype(str) == player_away)
-            & (candidates.get("player_b", pd.Series(dtype=object)).astype(str) == player_home)
-        ]
+    def row_is_match(row: pd.Series) -> bool:
+        a = row.get("player_a", "")
+        b = row.get("player_b", "")
+        normal = names_match(a, player_home) and names_match(b, player_away)
+        reverse = names_match(a, player_away) and names_match(b, player_home)
+        return bool(normal or reverse)
 
+    subset = candidates[candidates.apply(row_is_match, axis=1)]
     if subset.empty or "winner" not in subset.columns:
         return None
 
-    settled_rows = subset[subset["winner"].notna() & (subset["winner"].astype(str).str.strip() != "")]
+    settled_rows = subset[subset["winner"].notna() & (~subset["winner"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))]
     if settled_rows.empty:
         return None
 
+    # Prefer rows with usable odds for ROI; otherwise any settled result can
+    # still score hit-rate and use captured pick odds as fallback.
+    if {"odds_a", "odds_b"}.issubset(set(settled_rows.columns)):
+        priced = settled_rows[
+            pd.to_numeric(settled_rows["odds_a"], errors="coerce").notna()
+            | pd.to_numeric(settled_rows["odds_b"], errors="coerce").notna()
+        ]
+        if not priced.empty:
+            settled_rows = priced
+
     row = settled_rows.iloc[0]
-    winner = str(row.get("winner") or "").strip()
-    won = winner == selected_player
+    winner = clean_text(row.get("winner"))
+    won = names_match(winner, selected_player)
 
-    # Correctly identify odds based on actual player string or fallback to side/captured odds
     odds = None
-    player_a_val = str(row.get("player_a", "")).strip()
-    player_b_val = str(row.get("player_b", "")).strip()
+    player_a_val = clean_text(row.get("player_a"))
+    player_b_val = clean_text(row.get("player_b"))
 
-    if selected_player == player_a_val:
+    if names_match(selected_player, player_a_val):
         odds = row.get("odds_a")
-    elif selected_player == player_b_val:
+    elif names_match(selected_player, player_b_val):
         odds = row.get("odds_b")
     else:
-        side = str(pick.get("selected_side", ""))
+        side = clean_text(pick.get("selected_side"))
         if side in ("player_a", "1"):
             odds = row.get("odds_a")
         elif side in ("player_b", "2"):
@@ -144,14 +240,18 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
 
     try:
         odds = float(odds) if pd.notna(odds) else None
+        if odds <= 1.0:
+            odds = None
     except (TypeError, ValueError):
         odds = None
 
-    # Fallback to pick's captured odds if warehouse closing odds are missing
+    # Fallback to pick's captured odds if warehouse closing odds are missing.
     if odds is None or pd.isna(odds):
         try:
-            odds_val = pick.get("odds")
+            odds_val = pick.get("odds") or pick.get("decimal_odds")
             odds = float(odds_val) if odds_val is not None else None
+            if odds <= 1.0:
+                odds = None
         except (TypeError, ValueError):
             odds = None
 
