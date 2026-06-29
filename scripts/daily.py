@@ -415,7 +415,7 @@ def run_future_planner(
     for offset in range(1, days):
         target = (start + timedelta(days=offset)).isoformat()
         output = run_capture(
-            f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --date {target}",
+            f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --bet-side prediction --date {target}",
             f"future planner: mine_edges {target}",
             env=child_env,
         )
@@ -559,7 +559,7 @@ def run_once(args: argparse.Namespace) -> None:
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz", "build_warehouse_final", env=child_env)
 
     # 4. Mine Edges
-    run(f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --date {target}", "mine_edges", env=child_env)
+    run(f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --bet-side prediction --date {target}", "mine_edges", env=child_env)
 
     # 5. Archive by Kickoff & Lock the morning baseline
     picks_today = LOCALDATA / "picks_today.json"
