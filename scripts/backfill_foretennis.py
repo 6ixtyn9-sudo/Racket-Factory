@@ -188,6 +188,8 @@ def main():
                         "prediction_prob": mapped.get("prediction_prob"),
                         "source": "ForeTennis",
                         "match_id": idx,  # Keep for deduplication
+                        "actual_result": p.get("actual_result"),
+                        "prediction_correct": p.get("prediction_correct"),
                     })
                     break
 
@@ -219,6 +221,8 @@ def main():
                             "prediction_prob": mapped.get("prediction_prob"),
                             "source": "ForeTennis",
                             "match_id": idx,
+                            "actual_result": p.get("actual_result"),
+                            "prediction_correct": p.get("prediction_correct"),
                         })
                         break
 
@@ -243,6 +247,14 @@ def main():
     out_file = out_dir / filename
     df_preds.to_csv(out_file, index=False, compression="gzip")
     logger.info(f"Saved {len(df_preds)} matched predictions to {out_file}")
+
+    # ForeTennis daily/lastpredictions carries actual_result values such as
+    # "20", "02", "21", "12", "30", "23". Convert those into settled,
+    # warehouse-compatible result rows so audit can settle from source results.
+    result_df = _result_rows_from_foretennis(df_preds)
+    written_results = _write_result_rows(result_df, out_dir)
+    for result_path in written_results:
+        logger.info("Saved %d ForeTennis result rows to %s", len(result_df), result_path)
 
 if __name__ == "__main__":
     main()
