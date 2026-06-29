@@ -1,76 +1,154 @@
-Racket Factory
+# Racket Factory
+
 Odds-first tennis research lab.
 
-Racket Factory does not start with tipsters. It starts with tennis market history and results, then audits whether any market segment has exploitable behavior. Prediction sources come later.
+Racket Factory starts with tennis market history and results, then audits whether any market segment has exploitable behaviour. Prediction sources are supporting signals, not automatic truth.
 
-Current state
-As of 2026-06-27, the repo now supports a fuller same-day live exploration path without adding extra helper scripts or one-off tooling:
+## Current state
 
-same-day live/upcoming rows are injected directly into the warehouse during build_warehouse.py
-live injection now pulls from:
-PredixSport
-BetClan
-Forebet
-Forebet adapter parsing was fixed to stop leaking football/soccer rows into tennis
-broader tour exploration is now supported in the live path for:
-ATP
-WTA
-CHALLENGER
-ITF-M
-ITF-W
-UTR
-live injection is no longer singles-only; doubles can also enter the warehouse
-scripts/predict_upcoming.py was upgraded into a lean live-card diagnostic that merges cross-source rows more cleanly, including abbreviated vs full-name variants
-warehouse live-row injection now also attempts to prefer fuller display names when multiple sources describe the same matchup
-Important: this does not mean the system will always emit picks. A result like 0 actionable picks can now be a legitimate model outcome on a sparse slate rather than a broken pipeline.
+As of 2026-06-29, the daily pipeline has been tightened around three operational principles:
 
-Quickstart
-Bash
+1. **Daily runs should not scrape OddsPortal by default.** OddsPortal remains the market-history/backfill source, but browser-backed bulk capture is now opt-in because of Cloudflare risk.
+2. **Live pricing should come from The Odds API when available.** Prediction-site scraped prices are not trusted as the primary live EV price.
+3. **Recent audit settlement should come from source-settled result rows.** ForeTennis and Forebet now emit warehouse-compatible settled rows where their pages expose actual results.
 
+## What works now
+
+- Same-day live/upcoming rows are injected directly into `localdata/warehouse.csv.gz` during `build_warehouse.py`.
+- Live injection pulls from:
+  - PredixSport
+  - BetClan
+  - Forebet
+- Broader live exploration is supported for:
+  - ATP
+  - WTA
+  - CHALLENGER
+  - ITF-M
+  - ITF-W
+  - UTR
+- Live injection is no longer singles-only; doubles can enter the warehouse.
+- The Odds API H2H prices are matched onto live rows and used for live EV pricing when present.
+- The Odds API sport keys are configurable via `.env`; tennis uses tournament-specific keys such as:
+  - `tennis_atp_wimbledon`
+  - `tennis_wta_wimbledon`
+- The Odds API supports multiple keys via:
+  - `THE_ODDS_API_KEYS=key1,key2,key3`
+  - plus legacy `THE_ODDS_API_KEY=key1`
+- `scripts/daily.py` and `scripts/daily_pipeline.sh` load `.env` automatically without printing secrets.
+- ForeTennis `actual_result` values are converted into settled result rows:
+  - `localdata/foretennis_results_tennis_YYYY-MM.csv.gz`
+- Forebet finished rows are parsed for actual set scores and converted into settled result rows:
+  - `localdata/forebet_results_tennis_YYYY-MM.csv.gz`
+- Audit can settle picks from these generated source-result files once the warehouse is rebuilt.
+
+## Important caveats
+
+- OddsPortal capture is still valuable for historical market research, but daily browser scraping is opt-in:
+
+```bash
+RACKET_FACTORY_REFRESH_ODDSPORTAL=1 RACKET_FACTORY_ODDSPORTAL_DELAY=60 PYTHONPATH=src python3 scripts/daily.py
+```
+
+- Without that env flag, daily runs use source/TennisData refreshes and skip heavy OddsPortal capture.
+- The Odds API has a quota; avoid repeated manual warehouse rebuilds unless needed.
+- ForeTennis result strings are set totals such as `20`, `02`, `21`, `12`; they can confirm match winner and sets won, but not set order.
+- Forebet result strings can include ordered set scores such as `7-6 3-6 1-6`, so those can support per-set diagnostics.
+- Per-set diagnostics are not betting ROI unless matching set-market odds are also captured.
+- A result like zero actionable picks can be a legitimate model outcome on a sparse slate.
+
+## Quickstart
+
+```bash
 pip install -r requirements.txt
-PYTHONPATH=src pytest -q
+PYTHONPATH=src python3 -m pytest -q
+```
+
 Normalize exported OddsPortal-like CSV:
 
-Bash
-
+```bash
 PYTHONPATH=src python3 scripts/capture_oddsportal.py --input-csv data.csv
 PYTHONPATH=src python3 scripts/build_warehouse.py
 PYTHONPATH=src python3 scripts/audit_market.py
-Useful live commands
+```
+
+Run daily pipeline without heavy OddsPortal capture:
+
+```bash
+PYTHONPATH=src python3 scripts/daily.py
+```
+
+Run daily pipeline with explicit OddsPortal refresh:
+
+```bash
+RACKET_FACTORY_REFRESH_ODDSPORTAL=1 RACKET_FACTORY_ODDSPORTAL_DELAY=60 PYTHONPATH=src python3 scripts/daily.py
+```
+
+## Useful live commands
+
 Inspect upcoming/live prediction surfaces:
 
-Bash
-
+```bash
 PYTHONPATH=src python3 scripts/predict_upcoming.py
+```
+
 Rebuild warehouse with same-day injected live rows:
 
-Bash
+```bash
+PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz
+```
 
-PYTHONPATH=src python3 scripts/build_warehouse.py
 Run edge mining on the rebuilt warehouse:
 
-Bash
+```bash
+PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --date 2026-06-29
+```
 
-PYTHONPATH=src python3 scripts/mine_edges.py
+Generate the human-readable report after mining:
+
+```bash
+PYTHONPATH=src python3 - <<'PY'
+from scripts.daily import generate_daily_report
+generate_daily_report("2026-06-29")
+PY
+```
+
+Audit recent picks:
+
+```bash
+PYTHONPATH=src python3 scripts/audit_recent_picks.py --end 2026-06-29 --days 30 --warehouse localdata/warehouse.csv.gz
+```
+
 Quick check of injected same-day live rows:
 
-Bash
-
+```bash
 PYTHONPATH=src python3 - <<'PY'
 import pandas as pd
 
-df = pd.read_csv("localdata/warehouse.csv.gz", low_memory=False)
+df = pd.read_csv("localdata/warehouse.csv.gz")
 today = pd.Timestamp.today().date().isoformat()
 x = df[(df["match_date"].astype(str) == today) & (df["_comment"].fillna("") == "live_upcoming_injected")].copy()
 cols = [c for c in [
     "match_date", "player_a", "player_b", "tour", "_series", "_surface",
-    "predicted_winner", "prediction_prob", "predicted_source", "source", "_comment",
+    "predicted_winner", "prediction_prob", "predicted_source", "odds_a", "odds_b", "_odds_source", "source", "_comment",
 ] if c in x.columns]
 print("today injected rows:", len(x))
 print(x[cols].to_string(index=False) if len(x) else "(none)")
 PY
-Notes
-This is still an odds/results-first project.
-Prediction sources are support signals, not automatic truth.
-No certified betting edges are claimed.
-A couple of real-world winners on a given day are encouraging, but they are not validation by themselves; the repo still relies on historical slice quality and walk-forward discipline.
+```
+
+## `.env` essentials
+
+Example only — never commit real keys:
+
+```bash
+THE_ODDS_API_KEY=primary_key_here
+THE_ODDS_API_KEYS=primary_key_here,backup_key_2,backup_key_3
+THE_ODDS_API_SPORT_KEYS=tennis_atp_wimbledon,tennis_wta_wimbledon
+THE_ODDS_API_SPORTS=tennis_atp_wimbledon,tennis_wta_wimbledon
+THE_ODDS_API_REGIONS=uk,eu,us,au
+RACKET_FACTORY_ODDSPORTAL_DELAY=60
+```
+
+## Notes
+
+This is still an odds/results-first project. No certified betting edge is claimed without ROI and settlement. A couple of real-world winners on a given day are encouraging, but they are not validation by themselves; the repo still relies on historical slice quality, proper settlement, and walk-forward discipline.
