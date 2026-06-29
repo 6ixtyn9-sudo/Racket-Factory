@@ -481,15 +481,63 @@ def the_odds_api_sports() -> tuple[str, ...]:
     return sports or tuple(DEFAULT_THE_ODDS_API_SPORTS.split(","))
 
 
+
+def the_odds_api_keys() -> tuple[str, ...]:
+    """Return configured The Odds API keys without printing secrets.
+
+    Supports:
+      THE_ODDS_API_KEYS=key1,key2,key3
+      THE_ODDS_API_KEY=key1
+    """
+    load_warehouse_env()
+    keys: list[str] = []
+
+    multi = os.getenv("THE_ODDS_API_KEYS", "")
+    if multi:
+        keys.extend(k.strip() for k in multi.split(",") if k.strip())
+
+    single = os.getenv("THE_ODDS_API_KEY", "")
+    if single and single.strip():
+        keys.append(single.strip())
+
+    # De-dupe while preserving order.
+    seen = set()
+    out = []
+    for key in keys:
+        if key and key not in seen:
+            seen.add(key)
+            out.append(key)
+    return tuple(out)
+
+
+def _redacted_key_label(index: int, total: int) -> str:
+    return f"key {index + 1}/{total}"
+
+
+def _local_date_from_api_time(value: object) -> str:
+    """Extract YYYY-MM-DD from The Odds API ISO commence_time.
+
+    Keep this deliberately simple: The Odds API returns ISO UTC strings such
+    as 2026-06-29T10:00:00Z. For tennis schedule matching we only need the
+    date part, and we never print secrets here.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    if "T" in raw:
+        return raw.split("T", 1)[0]
+    return raw[:10]
+
 def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     """Fetch The Odds API H2H tennis prices for the target date.
 
-    This is the primary live pricing source. Prediction-site scraped prices are
-    kept only as debug/fallback visibility and must not drive live EV.
+    Rotates across THE_ODDS_API_KEYS / THE_ODDS_API_KEY without printing
+    secrets. Prediction-site scraped prices are kept only as debug/fallback
+    visibility and must not drive live EV.
     """
     load_warehouse_env()
-    api_key = os.getenv("THE_ODDS_API_KEY")
-    if not api_key:
+    api_keys = the_odds_api_keys()
+    if not api_keys:
         logger.warning("THE_ODDS_API_KEY missing; live API odds unavailable.")
         return []
 
@@ -503,9 +551,11 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     bookmakers = os.getenv("THE_ODDS_API_BOOKMAKERS", "").strip()
     rows: list[dict] = []
 
+    key_index = 0
+    exhausted_keys: set[int] = set()
+
     for sport in the_odds_api_sports():
-        params = {
-            "apiKey": api_key,
+        params_base = {
             "regions": regions,
             "markets": "h2h",
             "oddsFormat": "decimal",
@@ -514,18 +564,75 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
             "commenceTimeTo": f"{end.isoformat()}T00:00:00Z",
         }
         if bookmakers:
-            params["bookmakers"] = bookmakers
-            params.pop("regions", None)
+            params_base["bookmakers"] = bookmakers
+            params_base.pop("regions", None)
 
-        try:
-            resp = requests.get(f"{THE_ODDS_API_BASE}/sports/{sport}/odds/", params=params, timeout=20)
-            if resp.status_code != 200:
+        resp = None
+        events = None
+
+        for _attempt in range(len(api_keys)):
+            if len(exhausted_keys) >= len(api_keys):
+                logger.warning("The Odds API: all configured keys exhausted/unavailable.")
+                break
+
+            # Advance to a non-exhausted key.
+            while key_index in exhausted_keys:
+                key_index = (key_index + 1) % len(api_keys)
+
+            params = dict(params_base)
+            params["apiKey"] = api_keys[key_index]
+            key_label = _redacted_key_label(key_index, len(api_keys))
+
+            try:
+                resp = requests.get(
+                    f"{THE_ODDS_API_BASE}/sports/{sport}/odds/",
+                    params=params,
+                    timeout=20,
+                )
+
+                remaining_raw = resp.headers.get("x-requests-remaining")
+                used_raw = resp.headers.get("x-requests-used")
+                last_raw = resp.headers.get("x-requests-last")
+
+                if resp.status_code == 200:
+                    try:
+                        remaining = int(remaining_raw) if remaining_raw is not None else None
+                    except ValueError:
+                        remaining = None
+
+                    if remaining is not None and remaining <= 0:
+                        exhausted_keys.add(key_index)
+
+                    logger.info(
+                        "The Odds API %s %s: remaining=%s used=%s last=%s",
+                        sport,
+                        key_label,
+                        remaining_raw,
+                        used_raw,
+                        last_raw,
+                    )
+                    events = resp.json()
+                    break
+
+                if resp.status_code in {401, 403, 429}:
+                    logger.warning(
+                        "The Odds API %s failed with %s on %s; rotating key.",
+                        sport,
+                        resp.status_code,
+                        key_label,
+                    )
+                    exhausted_keys.add(key_index)
+                    key_index = (key_index + 1) % len(api_keys)
+                    continue
+
                 logger.warning("The Odds API failed for %s: HTTP %s", sport, resp.status_code)
+                break
+
+            except Exception as e:
+                logger.warning("The Odds API request failed for %s on %s: %s", sport, key_label, e)
+                exhausted_keys.add(key_index)
+                key_index = (key_index + 1) % len(api_keys)
                 continue
-            events = resp.json()
-        except Exception as e:
-            logger.warning("The Odds API request failed for %s: %s", sport, e)
-            continue
 
         if not isinstance(events, list):
             continue
@@ -550,41 +657,44 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
                     for outcome in market.get("outcomes") or []:
                         if not isinstance(outcome, dict):
                             continue
-                        price = coerce_decimal_odds(outcome.get("price"))
-                        if price is None:
+                        name = str(outcome.get("name") or "").strip()
+                        try:
+                            price = float(outcome.get("price"))
+                        except (TypeError, ValueError):
                             continue
-                        outcome_name = str(outcome.get("name") or "")
-                        if names_match(outcome_name, home):
+                        if names_match(name, home):
                             if best_home is None or price > best_home:
                                 best_home = price
                                 best_home_book = book_name
-                        elif names_match(outcome_name, away):
+                        elif names_match(name, away):
                             if best_away is None or price > best_away:
                                 best_away = price
                                 best_away_book = book_name
 
-            if best_home is None or best_away is None:
-                continue
-            if not valid_two_way_decimal_pair(best_home, best_away):
+            if best_home is None and best_away is None:
                 continue
 
-            commence = str(event.get("commence_time") or "")
             rows.append({
-                "match_date": commence.split("T")[0] if "T" in commence else start.isoformat(),
-                "match_time": commence.split("T")[1][:5] if "T" in commence else "",
+                "match_date": _local_date_from_api_time(event.get("commence_time")) or str(target_date)[:10],
+                "match_time": str(event.get("commence_time") or "")[11:16],
                 "player_home": home,
                 "player_away": away,
                 "odds_home": best_home,
                 "odds_away": best_away,
-                "bookmaker": best_home_book if best_home_book == best_away_book else "/".join(x for x in [best_home_book, best_away_book] if x),
-                "event_id": event.get("id"),
-                "sport_key": sport,
+                "odds_home_bookmaker": best_home_book,
+                "odds_away_bookmaker": best_away_book,
                 "source": "TheOddsAPI",
+                "sport_key": sport,
+                "event_id": event.get("id"),
             })
+
+        # Move to next non-exhausted key for the next sport to spread usage
+        # when multiple keys are configured.
+        if api_keys:
+            key_index = (key_index + 1) % len(api_keys)
 
     logger.info("Fetched %d The Odds API tennis rows for %s", len(rows), target_date)
     return rows
-
 
 def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.DataFrame:
     """Attach The Odds API prices as the primary live pricing source.
