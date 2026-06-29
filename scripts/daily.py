@@ -488,6 +488,7 @@ def run_once(args: argparse.Namespace) -> None:
     child_env["RACKET_FACTORY_RUN_AS_OF"] = run_as_of
     child_env.setdefault("RACKET_FACTORY_TZ", DEFAULT_LOCAL_TZ)
     env_prefix = f"RACKET_FACTORY_RUN_AS_OF={shlex.quote(run_as_of)}"
+    oddsportal_delay = float(os.getenv("RACKET_FACTORY_ODDSPORTAL_DELAY", "30"))
 
     print("=== Racket Factory Daily Pipeline (Tennis) ===")
     print(f"    target date : {target}")
@@ -498,7 +499,7 @@ def run_once(args: argparse.Namespace) -> None:
     if not args.intraday_only:
         # 1. Official Source Captures (Heavy History)
         run_soft(
-            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --year {year} --no-checkpoint --delay 8",
+            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --years {year} --no-checkpoint --delay {oddsportal_delay:g}",
             f"capture_oddsportal {year}",
             env=child_env,
         )
@@ -515,7 +516,7 @@ def run_once(args: argparse.Namespace) -> None:
         # CF re-challenge gracefully. Failures are non-fatal so an outage
         # in the results pass does not block picks.
         run_soft(
-            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --year {year} --no-checkpoint --delay 8",
+            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --years {year} --no-checkpoint --delay {oddsportal_delay:g}",
             f"settle_yesterday_results {year}",
             env=child_env,
         )

@@ -11,6 +11,7 @@ ROOT="$(dirname "$SCRIPT_DIR")"
 LOCALDATA="$ROOT/localdata"
 LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')]"
 YEAR=$(date '+%Y')
+ODDSPORTAL_DELAY="${RACKET_FACTORY_ODDSPORTAL_DELAY:-30}"
 
 # Load repo-local secrets for non-interactive systemd/cron runs. Values are not printed.
 # Python entry points also load .env themselves; this keeps the legacy shell
@@ -38,7 +39,7 @@ log "=== RACKET FACTORY DAILY PIPELINE START ==="
 # ---------------------------------------------------------------------------
 step "1/5" "Capturing OddsPortal data for current year..."
 if PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/capture_oddsportal.py" \
-        --all --year "$YEAR" --no-checkpoint --delay 8 2>&1; then
+        --all --years "$YEAR" --no-checkpoint --delay "$ODDSPORTAL_DELAY" 2>&1; then
     log "[1/5] OddsPortal capture complete."
 else
     log "[1/5] WARNING: OddsPortal capture failed or returned 0 rows. Continuing."
