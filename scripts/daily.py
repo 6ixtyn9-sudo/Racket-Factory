@@ -337,9 +337,23 @@ def generate_daily_report(
                     f"  [{label}] {match:42s} KO {kickoff:5s} -> "
                     f"{pick_str:5s}  conf {conf:.0f}% {odds}{ev_str}"
                 )
+                edge_bits = []
+                if p.get("edge_verdict"):
+                    edge_bits.append(f"edge={p.get('edge_verdict')}")
+                if p.get("edge_tier"):
+                    edge_bits.append(f"tier={p.get('edge_tier')}")
+                if p.get("edge_grade"):
+                    edge_bits.append(f"grade={p.get('edge_grade')}")
+                if p.get("edge_n"):
+                    edge_bits.append(f"n={p.get('edge_n')}")
+                if p.get("roi_estimate"):
+                    edge_bits.append(f"roi={p.get('roi_estimate')}")
+                edge_str = "  " + "  ".join(edge_bits) if edge_bits else ""
+
                 lines.append(
                     f"     bucket={b}  "
                     f"tour={p.get('tour', 'UNKNOWN')}  series={p.get('series', 'UNKNOWN')}  surface={p.get('surface', 'UNKNOWN')}  source={p.get('source', 'UNKNOWN')}"
+                    f"{edge_str}"
                 )
 
         lines.append("")
