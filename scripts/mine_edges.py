@@ -5,7 +5,6 @@ Automated combinatorial discovery of Bankers and Robbers, including prediction s
 
 WARNING: ROI is currently calculated using Market Closing Odds. AI predictions captured early in the day must be evaluated against Opening Odds before live capital is deployed.
 """
-import os
 import pandas as pd
 import argparse
 import logging
@@ -22,6 +21,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from racketfactory.assay import assay_segment
 from racketfactory.warehouse import (
+    align_odds_to_probabilities,
     coerce_decimal_odds,
     fetch_the_odds_api_rows,
     live_player_key,
@@ -41,17 +41,11 @@ logging.basicConfig(
 logger = logging.getLogger("edge_miner")
 
 
-def get_player_rank_band(rank: float | None) -> str:
-    if rank is None or pd.isna(rank): return "Unknown"
-    try:
-        rank_float = float(rank)
-    except (ValueError, TypeError):
-        return "Unknown"
-        
-    if pd.isna(rank_float): return "Unknown"
-    if rank_float <= 10: return "Top 10"
-    if rank_float <= 50: return "11-50"
-    if rank_float <= 100: return "51-100"
+def get_player_rank_band(rank: float) -> str:
+    if pd.isna(rank): return "Unknown"
+    if rank <= 10: return "Top 10"
+    if rank <= 50: return "11-50"
+    if rank <= 100: return "51-100"
     return "100+"
 
 
@@ -66,17 +60,17 @@ def get_selected_side_rank_band(row: pd.Series, pred_cols: list[str]) -> str:
     pick = None
     for col in pred_cols:
         val = row.get(col)
-        if str(val).strip() not in {"", "nan", "<NA>", "None"}:
+        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
             pick = str(val).strip()
             break
 
-    if pick is not None and pick in {"player_a", "player_b", "1", "2"}:
+    if pd.notna(pick) and pick in {"player_a", "player_b", "1", "2"}:
         rank_col = "rank_a" if pick in {"player_a", "1"} else "rank_b"
         if rank_col in row:
             return get_player_rank_band(row.get(rank_col))
 
     oa, ob = row.get("odds_a"), row.get("odds_b")
-    if isinstance(oa, (int, float)) and isinstance(ob, (int, float)) and not pd.isna(oa) and not pd.isna(ob):
+    if pd.notna(oa) and pd.notna(ob):
         fav_col = "rank_a" if oa <= ob else "rank_b"
         if fav_col in row:
             return get_player_rank_band(row.get(fav_col))
@@ -113,8 +107,8 @@ def get_cross_source_agree(row: pd.Series, pred_cols: list[str]) -> str:
     """
     mkt = row.get("predicted_winner_market")
     ft = row.get("predicted_winner_foretennis")
-    has_mkt = str(mkt).strip() not in {"", "nan", "<NA>", "None"}
-    has_ft = str(ft).strip() not in {"", "nan", "<NA>", "None"}
+    has_mkt = pd.notna(mkt) and str(mkt).strip() not in {"", "nan", "<NA>", "None"}
+    has_ft = pd.notna(ft) and str(ft).strip() not in {"", "nan", "<NA>", "None"}
     if has_mkt and has_ft:
         return "Both" if mkt == ft else "Disagree"
     if has_mkt:
@@ -127,7 +121,7 @@ def get_cross_source_agree(row: pd.Series, pred_cols: list[str]) -> str:
     sources_count = 0
     for col in pred_cols:
         val = row.get(col)
-        if str(val).strip() not in {"", "nan", "<NA>", "None"}:
+        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
             picks.add(str(val).strip())
             sources_count += 1
 
@@ -245,26 +239,40 @@ def forebet_day_for_target(target_date: str) -> str:
 
 
 def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.DataFrame:
-    """Attach The Odds API prices to fallback forecast card rows.
+    """Attach forecast-card prices, preferring API with guarded scrape fallback.
 
-    This makes tomorrow/future forecast rows priceable without needing them to
-    exist as live-injected warehouse rows first.
+    Tomorrow/future cards are built directly from prediction sources rather than
+    warehouse live injection.  Keep The Odds API as first choice, but when API
+    coverage is missing promote the source scrape pair only if it passes the
+    same side-alignment and two-way sanity checks used for same-day live rows.
     """
     if card.empty:
         return card
 
+    out = card.copy()
+    out["debug_scraped_odds_home"] = out.get("odds_home", pd.Series(index=out.index, dtype=object))
+    out["debug_scraped_odds_away"] = out.get("odds_away", pd.Series(index=out.index, dtype=object))
+    if "odds_home" not in out.columns:
+        out["odds_home"] = pd.NA
+    if "odds_away" not in out.columns:
+        out["odds_away"] = pd.NA
+    if "odds_a" not in out.columns:
+        out["odds_a"] = pd.NA
+    if "odds_b" not in out.columns:
+        out["odds_b"] = pd.NA
+    if "_odds_source" not in out.columns:
+        out["_odds_source"] = ""
+
     odds_rows = fetch_the_odds_api_rows(target_date)
     if not odds_rows:
-        logger.info("No The Odds API odds available for fallback card %s", target_date)
-        return card
+        logger.info("No The Odds API odds available for fallback card %s; trying validated scraped fallback odds.", target_date)
 
-    out = card.copy()
-    matched = 0
+    api_matched = 0
 
     for idx, row in out.iterrows():
         home = str(row.get("player_home") or row.get("player_a") or "").strip()
         away = str(row.get("player_away") or row.get("player_b") or "").strip()
-        if not home or not away:
+        if not home or not away or not odds_rows:
             continue
 
         for odds_row in odds_rows:
@@ -283,17 +291,53 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
                 odds_home = odds_row.get("odds_away")
                 odds_away = odds_row.get("odds_home")
 
-            out.loc[idx, "odds_home"] = odds_home
-            out.loc[idx, "odds_away"] = odds_away
-            out.loc[idx, "odds_a"] = odds_home
-            out.loc[idx, "odds_b"] = odds_away
-            out.loc[idx, "_odds_source"] = "TheOddsAPI"
-            out.loc[idx, "_is_live"] = True
-            out.loc[idx, "_comment"] = "forecast_upcoming_api_priced"
-            matched += 1
+            odds_home, odds_away = align_odds_to_probabilities(
+                row.get("prob_home"), row.get("prob_away"), odds_home, odds_away
+            )
+            if not valid_two_way_decimal_pair(odds_home, odds_away):
+                continue
+
+            out.at[idx, "odds_home"] = odds_home
+            out.at[idx, "odds_away"] = odds_away
+            out.at[idx, "odds_a"] = odds_home
+            out.at[idx, "odds_b"] = odds_away
+            out.at[idx, "_odds_source"] = "TheOddsAPI"
+            out.at[idx, "_is_live"] = True
+            out.at[idx, "_comment"] = "forecast_upcoming_api_priced"
+            api_matched += 1
             break
 
-    logger.info("Matched The Odds API odds for %d/%d fallback forecast rows on %s", matched, len(out), target_date)
+    fallback_matched = 0
+    for idx, row in out.iterrows():
+        if str(row.get("_odds_source", "") or "") == "TheOddsAPI":
+            continue
+
+        scraped_home, scraped_away = align_odds_to_probabilities(
+            row.get("prob_home"),
+            row.get("prob_away"),
+            row.get("debug_scraped_odds_home"),
+            row.get("debug_scraped_odds_away"),
+        )
+        if not valid_two_way_decimal_pair(scraped_home, scraped_away):
+            continue
+
+        out.at[idx, "odds_home"] = scraped_home
+        out.at[idx, "odds_away"] = scraped_away
+        out.at[idx, "odds_a"] = scraped_home
+        out.at[idx, "odds_b"] = scraped_away
+        out.at[idx, "_odds_source"] = "ScrapedFallback"
+        out.at[idx, "_is_live"] = True
+        out.at[idx, "_comment"] = "forecast_upcoming_scraped_fallback_priced"
+        fallback_matched += 1
+
+    logger.info(
+        "Matched fallback forecast odds for %d/%d rows on %s: %d The Odds API, %d ScrapedFallback",
+        api_matched + fallback_matched,
+        len(out),
+        target_date,
+        api_matched,
+        fallback_matched,
+    )
     return out
 
 def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
@@ -331,7 +375,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
     inferred = card.apply(lambda r: infer_tour_and_series(r.get("context_used", ""), row=r), axis=1)
     card["tour"] = inferred.apply(lambda x: x[0])
     card["_series"] = inferred.apply(lambda x: x[1])
-    card["surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title() # type: ignore
+    card["surface"] = card.get("surface", pd.Series(index=card.index, dtype=object)).astype(str).str.strip().str.title()
     card.loc[card["surface"].isin(["", "Nan", "None"]), "surface"] = ""
     card["_surface"] = card.apply(lambda r: infer_surface(r.get("context_used", "") or r.get("tournament", ""), r.get("surface", "")), axis=1)
     card["pred_confidence"] = card.apply(
@@ -351,15 +395,59 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         return card.reset_index(drop=True)
 
     grouped_rows = []
-    for (_, pair_key), g in card.groupby(["match_date", "pair_key"], dropna=False): # type: ignore
+    for (_, pair_key), g in card.groupby(["match_date", "pair_key"], dropna=False):
         first = g.iloc[0]
-        winners = []
+        base_home = str(first.get("player_home", "") or "").strip()
+        base_away = str(first.get("player_away", "") or "").strip()
+
+        oriented_rows = []
         for _, rr in g.iterrows():
-            pick = str(rr.get("predicted_winner", "") or "")
-            if pick == "1":
-                winners.append("player_a")
-            elif pick == "2":
-                winners.append("player_b")
+            row_home = str(rr.get("player_home", "") or "").strip()
+            row_away = str(rr.get("player_away", "") or "").strip()
+            normal = names_match(row_home, base_home) and names_match(row_away, base_away)
+            reverse = names_match(row_home, base_away) and names_match(row_away, base_home)
+            swapped = reverse and not normal
+
+            if swapped:
+                prob_home = rr.get("prob_away")
+                prob_away = rr.get("prob_home")
+                odds_home = rr.get("odds_away")
+                odds_away = rr.get("odds_home")
+                raw_pick = str(rr.get("predicted_winner", "") or "").strip()
+                if raw_pick in {"1", "player_a"}:
+                    pick = "player_b"
+                elif raw_pick in {"2", "player_b"}:
+                    pick = "player_a"
+                else:
+                    pick = ""
+            else:
+                prob_home = rr.get("prob_home")
+                prob_away = rr.get("prob_away")
+                odds_home = rr.get("odds_home")
+                odds_away = rr.get("odds_away")
+                raw_pick = str(rr.get("predicted_winner", "") or "").strip()
+                if raw_pick in {"1", "player_a"}:
+                    pick = "player_a"
+                elif raw_pick in {"2", "player_b"}:
+                    pick = "player_b"
+                else:
+                    pick = ""
+
+            prob_home_num = pd.to_numeric(prob_home, errors="coerce")
+            prob_away_num = pd.to_numeric(prob_away, errors="coerce")
+            odds_home_num, odds_away_num = align_odds_to_probabilities(
+                prob_home_num, prob_away_num, odds_home, odds_away
+            )
+            oriented_rows.append({
+                "source": rr.get("source"),
+                "pick": pick,
+                "prob_home": prob_home_num,
+                "prob_away": prob_away_num,
+                "odds_home": odds_home_num,
+                "odds_away": odds_away_num,
+            })
+
+        winners = [rr["pick"] for rr in oriented_rows if rr.get("pick")]
         unique_winners = sorted(set(winners))
         if len(unique_winners) > 1:
             cross_source_agree = "Disagree"
@@ -370,17 +458,35 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         else:
             cross_source_agree = "Unknown"
 
-        selected_pick = unique_winners[0] if unique_winners else ("player_a" if str(first.get("predicted_winner", "")) == "1" else "player_b")
+        raw_first_pick = str(first.get("predicted_winner", "") or "").strip()
+        selected_pick = unique_winners[0] if unique_winners else ("player_a" if raw_first_pick in {"1", "player_a"} else "player_b")
         source_count = int(g["source"].nunique())
-        home_probs = pd.to_numeric(g.get("prob_home", pd.Series(dtype=float)), errors="coerce")
-        away_probs = pd.to_numeric(g.get("prob_away", pd.Series(dtype=float)), errors="coerce")
-        max_home = float(home_probs.max()) if hasattr(home_probs, 'empty') and not home_probs.empty else None # type: ignore
-        max_away = float(away_probs.max()) if hasattr(away_probs, 'empty') and not away_probs.empty else None # type: ignore
-        probs = [p for p in [max_home, max_away] if p is not None and not pd.isna(p)]
+        home_probs = pd.Series([rr.get("prob_home") for rr in oriented_rows], dtype="float64")
+        away_probs = pd.Series([rr.get("prob_away") for rr in oriented_rows], dtype="float64")
+        max_home = home_probs.max() if not home_probs.empty else None
+        max_away = away_probs.max() if not away_probs.empty else None
+        probs = [p for p in [max_home, max_away] if pd.notna(p)]
         max_prob = max(probs) if probs else None
         selected_prob = max_home if selected_pick == "player_a" else max_away
-        if selected_prob is None or str(selected_prob).strip() in {"nan", "<NA>", "None"}:
+        if pd.isna(selected_prob):
             selected_prob = max_prob
+
+        usable_odds_rows = [
+            rr for rr in oriented_rows
+            if valid_two_way_decimal_pair(rr.get("odds_home"), rr.get("odds_away"))
+        ]
+        if usable_odds_rows:
+            selected_odds_key = "odds_home" if selected_pick == "player_a" else "odds_away"
+            best_odds_row = max(
+                usable_odds_rows,
+                key=lambda rr: coerce_decimal_odds(rr.get(selected_odds_key)) or 0.0,
+            )
+            scraped_odds_home = best_odds_row.get("odds_home")
+            scraped_odds_away = best_odds_row.get("odds_away")
+        else:
+            scraped_odds_home = pd.NA
+            scraped_odds_away = pd.NA
+
         fav_odds_band = prob_to_odds_band(max_prob)
         series_value = first.get("_series")
         if (pd.isna(series_value) or str(series_value).strip() in {"", "ATP", "WTA", "UNKNOWN"}) and str(first.get("context_used", "")).strip():
@@ -405,6 +511,10 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
             "prediction_prob_foretennis": selected_prob,
             "prob_home": max_home,
             "prob_away": max_away,
+            "odds_home": scraped_odds_home,
+            "odds_away": scraped_odds_away,
+            "odds_a": scraped_odds_home,
+            "odds_b": scraped_odds_away,
             "cross_source_agree": cross_source_agree,
             "pred_confidence": "High" if (max_prob is not None and max_prob >= 70) else ("Medium" if (max_prob is not None and max_prob >= 60) else "Low"),
             "_comment": "forecast_upcoming_fallback",
@@ -495,7 +605,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
     pred_cols = [c for c in row.index if c.startswith("predicted_winner")]
     for col in pred_cols:
         val = row.get(col)
-        if str(val).strip() not in {"", "nan", "<NA>", "None"}:
+        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
             selected_pick = str(val).strip()
             break
 
@@ -505,7 +615,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
         selected_player = home_name if selected_pick == "1" else away_name
     else:
         oa, ob = row.get("odds_a"), row.get("odds_b")
-        if isinstance(oa, (int, float)) and isinstance(ob, (int, float)) and not pd.isna(oa) and not pd.isna(ob):
+        if pd.notna(oa) and pd.notna(ob):
             selected_pick = "player_a" if oa <= ob else "player_b"
             selected_player = home_name if selected_pick == "player_a" else away_name
         else:
@@ -514,15 +624,15 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
 
     source_val = row.get("source", "")
     source_count = row.get("source_count")
-    if source_count is None or str(source_count).strip() in {"nan", "<NA>", "None"}:
-        source_count = len([c for c in pred_cols if str(row.get(c)).strip() not in {"", "nan", "<NA>", "None"}])
+    if pd.isna(source_count) or source_count is None:
+        source_count = len([c for c in pred_cols if pd.notna(row.get(c)) and str(row.get(c)).strip() not in {"", "nan", "<NA>", "None"}])
 
     ctx_val = row.get("context_used")
-    if ctx_val is None or str(ctx_val).strip() in {"nan", "<NA>", "None", ""}:
+    if pd.isna(ctx_val) or str(ctx_val).strip() in {"nan", "<NA>", "None", ""}:
         ctx_val = row.get("tournament", "")
         
     time_val = row.get("match_time")
-    if time_val is None or str(time_val).strip() in {"nan", "<NA>", "None", ""}:
+    if pd.isna(time_val) or str(time_val).strip() in {"nan", "<NA>", "None", ""}:
         time_val = "n/a"
 
     return {
@@ -554,19 +664,31 @@ def write_official_pick_outputs(target_date: str, picks: list[dict]) -> None:
     payload = json.dumps(picks, indent=2)
     today_path.write_text(payload)
     archive_path.write_text(payload)
-    logger.info("Wrote %d official picks to %s and %s", len(picks), today_path, archive_path)
+    bucket_counts = {}
+    for pick in picks:
+        bucket = str(pick.get("bucket") or "UNKNOWN")
+        bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
+    bettable_count = sum(bucket_counts.get(bucket, 0) for bucket in ("CERTIFIED_CLEAN", "WATCHLIST", "CAUTION"))
+    logger.info(
+        "Wrote %d pick rows (%d bettable/review rows) to %s and %s; buckets=%s",
+        len(picks),
+        bettable_count,
+        today_path,
+        archive_path,
+        bucket_counts,
+    )
 
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
-    raw = os.environ.get(name, "").strip().lower()
+    raw = str(__import__("os").environ.get(name, "")).strip().lower()
     if not raw:
         return default
     return raw in {"1", "true", "yes", "on"}
 
 
 def _env_float(name: str, default: float) -> float:
-    raw = os.environ.get(name, "").strip()
+    raw = str(__import__("os").environ.get(name, "")).strip()
     if not raw:
         return default
     try:
@@ -576,7 +698,7 @@ def _env_float(name: str, default: float) -> float:
 
 
 def _env_int(name: str, default: int) -> int:
-    raw = os.environ.get(name, "").strip()
+    raw = str(__import__("os").environ.get(name, "")).strip()
     if not raw:
         return default
     try:
@@ -595,13 +717,13 @@ def _is_future_target(target_date: str) -> bool:
 
 def _pick_float(pick: dict, key: str) -> float | None:
     value = pick.get(key)
-    if value is None:
-        return None
     try:
-        result = float(str(value))
-        if pd.isna(result):
+        if value is None:
             return None
-        return result
+        value = float(value)
+        if pd.isna(value):
+            return None
+        return value
     except (TypeError, ValueError):
         return None
 
@@ -757,10 +879,10 @@ def main() -> int:
 
     def get_fav_odds(r):
         oa, ob = r.get('odds_a'), r.get('odds_b')
-        try: oa = float(str(oa)) if str(oa).strip() not in {"", "nan", "<NA>", "None"} else None
-        except (TypeError, ValueError, AttributeError): oa = None
-        try: ob = float(str(ob)) if str(ob).strip() not in {"", "nan", "<NA>", "None"} else None
-        except (TypeError, ValueError, AttributeError): ob = None
+        try: oa = float(oa) if pd.notna(oa) and str(oa).strip() not in {"", "nan", "<NA>", "None"} else None
+        except: oa = None
+        try: ob = float(ob) if pd.notna(ob) and str(ob).strip() not in {"", "nan", "<NA>", "None"} else None
+        except: ob = None
         if oa is not None and ob is not None: return min(oa, ob)
         if oa is not None: return oa
         if ob is not None: return ob
@@ -776,7 +898,7 @@ def main() -> int:
         max_p = None
         for col in prob_cols:
             p_val = row.get(col)
-            if str(p_val).strip() not in {"nan", "<NA>", "None"}:
+            if pd.notna(p_val) and str(p_val).strip() not in {"nan", "<NA>", "None"}:
                 try:
                     v = float(p_val)
                     if max_p is None or v > max_p: max_p = v
@@ -792,7 +914,7 @@ def main() -> int:
         max_p = None
         for col in prob_cols:
             p_val = row.get(col)
-            if str(p_val).strip() not in {"nan", "<NA>", "None"}:
+            if pd.notna(p_val) and str(p_val).strip() not in {"nan", "<NA>", "None"}:
                 try:
                     v = float(p_val)
                     if max_p is None or v > max_p: max_p = v
@@ -854,7 +976,7 @@ def main() -> int:
     }
 
     for k, v in dimensions.items():
-        dimensions[k] = [x for x in v if str(x).strip() not in {"nan", "<NA>", "None", "", "Unknown"}]
+        dimensions[k] = [x for x in v if pd.notna(x) and x != "Unknown" and x != ""]
 
     logger.info("Mining for Bankers and Robbers across %d dimensions...", len(dimensions))
 
@@ -872,7 +994,7 @@ def main() -> int:
             subset_df = df.copy()
             for d in subset:
                 subset_df = subset_df[~subset_df[d].isin(["Unknown", ""])]
-                subset_df = subset_df.dropna(subset=[d]) # type: ignore
+                subset_df = subset_df.dropna(subset=[d])
 
             if subset_df.empty:
                 continue
@@ -950,7 +1072,7 @@ def main() -> int:
     elif today_live.empty:
         today_all = today_hist.copy()
     else:
-        today_all = pd.concat([today_hist, today_live], ignore_index=True, sort=False) # type: ignore
+        today_all = pd.concat([today_hist, today_live], ignore_index=True, sort=False)
 
     today_df = today_all.copy()
     if "winner" in today_df.columns:
@@ -1049,7 +1171,7 @@ def main() -> int:
                 prob = None
                 for col in prob_cols:
                     pval = row.get(col)
-                    if str(pval).strip() not in {"nan", "<NA>", "None"}:
+                    if pd.notna(pval) and str(pval).strip() not in {"nan", "<NA>", "None"}:
                         try:
                             v = float(pval)
                             if v <= 1.0 and v > 0: v *= 100.0
@@ -1119,7 +1241,7 @@ def main() -> int:
     picks_to_export = apply_forecast_hygiene(target_date, picks_to_export)
 
     write_official_pick_outputs(target_date, picks_to_export)
-    logger.info("Exported %d actionable picks for %s", len(picks_to_export), target_date)
+    logger.info("Exported %d post-hygiene pick rows for %s", len(picks_to_export), target_date)
     return 0
 
 
