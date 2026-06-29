@@ -418,12 +418,11 @@ def classify_bucket(best_pick: dict) -> str:
         return "WATCHLIST"
     # REDTEAM Finding #1: ROBBER/FADE verdicts must NEVER be exported as a
     # pick. The old mapping ("FADE THIS SIGNAL" -> "CAUTION") was the root
-    # cause of the 2026-06-28 run shipping 48 negatively-biased picks. We now
-    # route them to the SKIPPED_DEAD_EDGE bucket so they are visible in the
-    # archive JSON for transparency, but never reach the actionable set.
+    # cause of the 2026-06-28 run shipping 48 negatively-biased picks.
     if verdict == "FADE THIS SIGNAL":
         return "SKIPPED_DEAD_EDGE"
-    return "WATCHLIST"
+    # NO STAT SIG / NEUTRAL / unknown verdicts are not actionable.
+    return "WATCHLIST_UNKNOWN_CTX"
 
 
 def normalize_side_token(value: object) -> str | None:
@@ -999,6 +998,13 @@ def main() -> int:
                 # be the basis of an actionable bet.
                 if not res.get("Exportable", False):
                     continue
+
+                # Only historically actionable verdicts may become picks.
+                # Exportable neutral slices are useful for diagnostics, but
+                # NO STAT SIG / NEUTRAL must never become WATCHLIST rows.
+                if str(res.get("Verdict", "")).strip() not in {"EDGE CONFIRMED", "WATCHLIST"}:
+                    continue
+
                 combo = res["Combo_Dict"]
                 match_all = True
                 for dim_name, dim_val in combo.items():
