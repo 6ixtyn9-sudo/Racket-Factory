@@ -11,3 +11,4 @@ playwright
 curl_cffi
 tenacity
 supabase
+requests
