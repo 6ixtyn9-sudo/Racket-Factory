@@ -9,6 +9,8 @@ from pathlib import Path
 import logging
 import os
 import requests
+from bs4 import BeautifulSoup
+import re
 from typing import Optional
 from datetime import date, timedelta
 from racketfactory.entities import player_key
@@ -976,6 +978,243 @@ def build_live_rows() -> pd.DataFrame:
     return df
 
 
+
+_WTA_DRAWS_CACHE: dict[tuple[str, str], list[dict]] = {}
+
+
+def _clean_wta_team_part(text: object) -> str:
+    part = str(text or "").replace("/", " ").strip()
+    part = re.sub(r"\([^)]*\)", "", part).strip()
+    return " ".join(part.split())
+
+
+def _wta_team_from_row(tr) -> str:
+    parts = []
+    for a in tr.select("a"):
+        part = _clean_wta_team_part(a.get_text(" ", strip=True))
+        if part:
+            parts.append(part)
+
+    # Preserve order but remove duplicates caused by responsive markup.
+    unique = []
+    for part in parts:
+        if part not in unique:
+            unique.append(part)
+    return " / ".join(unique)
+
+
+def _wta_numeric_scores_from_row(tr) -> list[int]:
+    scores = []
+    for td in tr.select("td.match-table__score-cell"):
+        clone = BeautifulSoup(str(td), "html.parser")
+
+        # WTA embeds tie-break points as nested superscript elements, e.g.
+        # 7<sup>7</sup>. Remove them so the game score remains 7, not 77.
+        for tb in clone.select(".match-table__tie-break"):
+            tb.extract()
+
+        txt = clone.get_text("", strip=True)
+        if not txt or txt in {".", "-"}:
+            continue
+
+        m = re.search(r"\d+", txt)
+        if m:
+            try:
+                scores.append(int(m.group(0)))
+            except ValueError:
+                pass
+
+    return scores
+
+
+def _parse_wta_draw_results(html: str, *, tour: str, tournament: str, source_url: str) -> list[dict]:
+    """Parse completed WTA draw results from an official WTA draw page."""
+    soup = BeautifulSoup(html, "html.parser")
+    rows = []
+
+    for match in soup.select("div.tennis-match[data-status='F']"):
+        trs = match.select("tr.match-table__row")
+        if len(trs) < 2:
+            continue
+
+        team_a = _wta_team_from_row(trs[0])
+        team_b = _wta_team_from_row(trs[1])
+        if not team_a or not team_b:
+            continue
+
+        score_a = _wta_numeric_scores_from_row(trs[0])
+        score_b = _wta_numeric_scores_from_row(trs[1])
+        score = " ".join(f"{a}-{b}" for a, b in zip(score_a, score_b) if a != b)
+
+        a_winner = "is-winner" in (trs[0].get("class") or [])
+        b_winner = "is-winner" in (trs[1].get("class") or [])
+        if a_winner == b_winner:
+            continue
+
+        winner = team_a if a_winner else team_b
+
+        rows.append({
+            "tour": tour,
+            "tournament": tournament,
+            "player_a": team_a,
+            "player_b": team_b,
+            "winner": winner,
+            "score": score,
+            "source_url": source_url,
+        })
+
+    return rows
+
+
+def _fetch_wta_draw_results(tournament_slug: str, year: str) -> list[dict]:
+    """Fetch WTA official draw results for supported tournaments.
+
+    This is intentionally narrow and lives in the existing warehouse
+    source-result path. It settles verified WTA official results without
+    manual overlays or new scripts. Extend WTA_TOURNAMENTS only after a
+    stable official page is verified.
+    """
+    WTA_TOURNAMENTS = {
+        "eastbourne": {"id": "710", "title": "Eastbourne"},
+    }
+
+    slug = str(tournament_slug or "").lower()
+    info = WTA_TOURNAMENTS.get(slug)
+    if not info:
+        return []
+
+    key = (slug, str(year))
+    if key in _WTA_DRAWS_CACHE:
+        return _WTA_DRAWS_CACHE[key]
+
+    url = f"https://www.wtatennis.com/tournaments/{info['id']}/{slug}/{year}/draws"
+
+    try:
+        resp = requests.get(url, timeout=20, headers={"User-Agent": "RacketFactory/1.0"})
+        if resp.status_code != 200:
+            logger.warning("WTA official draws returned HTTP %s for %s", resp.status_code, url)
+            _WTA_DRAWS_CACHE[key] = []
+            return []
+
+        rows = _parse_wta_draw_results(
+            resp.text,
+            tour="WTA",
+            tournament=str(info["title"]),
+            source_url=url,
+        )
+        logger.info("Parsed %d WTA official result rows from %s", len(rows), url)
+        _WTA_DRAWS_CACHE[key] = rows
+        return rows
+
+    except Exception as exc:
+        logger.warning("WTA official draw fetch failed for %s: %s", url, exc)
+        _WTA_DRAWS_CACHE[key] = []
+        return []
+
+
+def build_wta_official_result_rows(data_path: Path) -> pd.DataFrame:
+    """Build settled rows from WTA official draws for archived source picks.
+
+    Uses existing archived source rows, currently BetClan, as the discovery
+    surface. This keeps settlement source-driven and avoids manual overlays.
+    """
+    archive = data_path / "archive_betclan.csv"
+    if not archive.exists():
+        return pd.DataFrame()
+
+    try:
+        df = pd.read_csv(archive, low_memory=False)
+    except Exception as exc:
+        logger.warning("Could not read %s for WTA result discovery: %s", archive, exc)
+        return pd.DataFrame()
+
+    if df.empty:
+        return pd.DataFrame()
+
+    out = []
+
+    for _, row in df.iterrows():
+        context = " | ".join(
+            str(row.get(c, "") or "")
+            for c in ["tournament", "event_text", "category", "source_url"]
+        ).lower()
+
+        # Verified official result source currently supports Eastbourne.
+        if "wta" not in context or "eastbourne" not in context:
+            continue
+
+        match_date = str(row.get("match_date") or "")[:10]
+        if not match_date:
+            continue
+
+        year = match_date[:4]
+        official_rows = _fetch_wta_draw_results("eastbourne", year)
+
+        home = str(row.get("player_home") or "").strip()
+        away = str(row.get("player_away") or "").strip()
+        if not home or not away:
+            continue
+
+        for official in official_rows:
+            normal = names_match(home, official["player_a"]) and names_match(away, official["player_b"])
+            reverse = names_match(home, official["player_b"]) and names_match(away, official["player_a"])
+            if not (normal or reverse):
+                continue
+
+            player_a, player_b = home, away
+
+            if normal:
+                winner = player_a if names_match(official["winner"], official["player_a"]) else player_b
+                score = official.get("score", "")
+            else:
+                winner = player_a if names_match(official["winner"], official["player_b"]) else player_b
+
+                # Reverse score perspective if official row is opposite archive order.
+                score_parts = []
+                for token in str(official.get("score", "")).split():
+                    if "-" in token:
+                        a, b = token.split("-", 1)
+                        score_parts.append(f"{b}-{a}")
+                score = " ".join(score_parts)
+
+            out.append({
+                "match_date": match_date,
+                "tour": "WTA",
+                "tournament": official.get("tournament") or row.get("tournament") or "Eastbourne",
+                "round": "",
+                "player_a": player_a,
+                "player_b": player_b,
+                "winner": winner,
+                "score": score,
+                "odds_a": pd.NA,
+                "odds_b": pd.NA,
+                "bookmaker": "",
+                "source": "WTA_official_results",
+                "captured_at": pd.Timestamp.now().isoformat(),
+                "oddsportal_url": official.get("source_url", ""),
+                "_surface": "Grass",
+                "_court": "",
+                "_series": "WTA500",
+                "_comment": "result_from_wta_official_draw",
+                "_location": "Eastbourne",
+                "_winner_rank": pd.NA,
+                "_loser_rank": pd.NA,
+                "_odds_source": "",
+                "_is_live": False,
+                "_score_perspective": "player_a_games-player_b_games",
+            })
+            break
+
+    if not out:
+        return pd.DataFrame()
+
+    result_df = pd.DataFrame(out).drop_duplicates(
+        subset=["match_date", "tour", "tournament", "player_a", "player_b"],
+        keep="last",
+    )
+    logger.info("Built %d WTA official result rows from archived source rows", len(result_df))
+    return result_df
+
 def build_warehouse(
     data_dir: str = "localdata",
     output_file: str = "warehouse.csv.gz",
@@ -1009,6 +1248,11 @@ def build_warehouse(
         return None
     
     warehouse = pd.concat(dfs, ignore_index=True)
+
+    wta_official_rows = build_wta_official_result_rows(data_path)
+    if not wta_official_rows.empty:
+        logger.info("Injecting %d WTA official result rows into warehouse before dedupe...", len(wta_official_rows))
+        warehouse = pd.concat([warehouse, wta_official_rows], ignore_index=True, sort=False)
 
     # Mark every historical row as not live-injected. Downstream consumers
     # (mine_edges.py) use this column to keep live rows out of historical
