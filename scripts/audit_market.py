@@ -28,8 +28,10 @@ def _clean(value: object) -> str:
 
 
 def _to_odds(value: object) -> float | None:
+    if value is None:
+        return None
     try:
-        odds = float(value)
+        odds = float(str(value).strip())
     except (TypeError, ValueError):
         return None
     return odds if odds > 1.0 else None
@@ -51,7 +53,7 @@ def market_sides_from_warehouse(warehouse_path: Path) -> list[dict]:
     for row in df.to_dict("records"):
         winner = _clean(row.get("winner"))
         if winner.lower() in EMPTY_WINNER:
-            continue  # unsettled / live-injected / abandoned -- not auditable
+            continue  # unsettled / live-injected / abandoned — not auditable
         player_a = _clean(row.get("player_a"))
         player_b = _clean(row.get("player_b"))
         odds_a = _to_odds(row.get("odds_a"))
