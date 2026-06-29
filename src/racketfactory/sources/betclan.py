@@ -195,7 +195,7 @@ class BetClanPredictor:
     def fetch_daily(self) -> list[dict[str, Any]]:
         results = []
         # Fetch today and tomorrow
-        for day_offset, endpoint in [(0, "todays-tennis-predictions"), (1, "tomorrows-tennis-predictions")]:
+        for day_offset, endpoint in [(-1, "yesterdays-tennis-predictions"), (0, "todays-tennis-predictions"), (1, "tomorrows-tennis-predictions")]:
             target_date = (date.today() + timedelta(days=day_offset)).strftime("%Y-%m-%d")
             url = f"{self.base_url}/{endpoint}/"
             try:
@@ -302,7 +302,8 @@ class BetClanPredictor:
                             "surface": surface,
                             "event_text": event_text or tournament,
                             "category": category_text,
-                            "source": "BetClan"
+                            "source": "BetClan",
+                            "source_url": match_url,
                         })
                 except Exception as e:
                     logger.warning(f"Error parsing BetClan match {match_url}: {e}")
