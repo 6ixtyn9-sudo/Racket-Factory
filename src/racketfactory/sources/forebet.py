@@ -14,6 +14,43 @@ from racketfactory.entities import normalize_player, player_key
 
 logger = logging.getLogger(__name__)
 
+
+def _forebet_price_to_decimal(value: object) -> float | None:
+    """Parse Forebet decimal or American price text into decimal odds."""
+    text = str(value or "").strip().replace("−", "-")
+    if not text:
+        return None
+
+    try:
+        # American odds, e.g. +160 or -227.
+        if re.fullmatch(r"[+-]?\d+", text):
+            american = int(text)
+            if american > 0:
+                return round(1.0 + american / 100.0, 6)
+            if american < 0:
+                return round(1.0 + 100.0 / abs(american), 6)
+            return None
+
+        # Decimal odds, e.g. 1.36 or 2.88.
+        if re.fullmatch(r"\d+(?:\.\d+)?", text):
+            val = float(text)
+            return val if val > 1.0 else None
+
+    except Exception:
+        return None
+
+    return None
+
+
+def _forebet_prices_from_text(text: object) -> list[float]:
+    """Extract decimal/American odds from a small odds-only text fragment."""
+    out: list[float] = []
+    for token in re.findall(r"(?<!\w)([+-]?\d+(?:\.\d+)?)(?!\w)", str(text or "")):
+        price = _forebet_price_to_decimal(token)
+        if price is not None:
+            out.append(price)
+    return out
+
 # ---------------------------------------------------------------------------
 # Tournament name -> Forebet slug mapping
 # ---------------------------------------------------------------------------
@@ -493,23 +530,41 @@ class ForebetPredictor:
                         txt = pred_div.get_text(strip=True)
                         if txt in ("1", "2"): predicted_winner = txt
 
-                # Robustly check odds containers across all possible tags and classes
-                odd_spans = row.find_all(["span", "div", "button", "a"], class_=re.compile(r"odd|pOdd|avg_odd|bot_odd|lrg_odd|price|val|bet", re.I))
-                for osp in odd_spans:
-                    txt = osp.get_text(strip=True)
-                    matches = re.findall(r"\b([1-9]\.\d{1,3})\b", txt)
-                    if len(matches) >= 2:
-                        odds_home, odds_away = float(matches[0]), float(matches[1])
-                        break
-                    elif len(matches) == 1:
-                        if odds_home is None: odds_home = float(matches[0])
-                        elif odds_away is None: odds_away = float(matches[0])
+                # Prefer Forebet's hidden two-way odds container. The visible
+                # selected-price cell and nearby avg_score values can otherwise
+                # pollute side mapping (e.g. 9.3 being read as home odds).
+                haodd = row.find("div", class_="haodd")
+                if haodd:
+                    prices = _forebet_prices_from_text(haodd.get_text(" ", strip=True))
+                    if len(prices) >= 2:
+                        odds_home, odds_away = prices[0], prices[1]
+
+                # Robustly check odds containers across possible tags/classes
+                # only if the explicit two-way container was unavailable.
+                if odds_home is None or odds_away is None:
+                    odd_spans = row.find_all(["span", "div", "button", "a"], class_=re.compile(r"odd|pOdd|avg_odd|bot_odd|lrg_odd|price|val|bet", re.I))
+                    for osp in odd_spans:
+                        # Skip score/average-score widgets; they can contain
+                        # decimal-looking values that are not two-way prices.
+                        classes = " ".join(osp.get("class", [])).lower() if hasattr(osp, "get") else ""
+                        if "avg_sc" in classes or "ex_sc" in classes:
+                            continue
+
+                        txt = osp.get_text(" ", strip=True)
+                        prices = _forebet_prices_from_text(txt)
+                        if len(prices) >= 2:
+                            odds_home, odds_away = prices[0], prices[1]
+                            break
 
                 if odds_home is None or odds_away is None:
-                    txt = row.get_text(" ", strip=True)
-                    matches = re.findall(r"\b([1-9]\.\d{1,3})\b", txt)
-                    if len(matches) >= 2:
-                        odds_home, odds_away = float(matches[0]), float(matches[1])
+                    # Final fallback: use only the explicit hidden odds text if
+                    # present; do not scan the whole row because score widgets
+                    # and ranking/probability values create false prices.
+                    haodd = row.find("div", class_="haodd")
+                    if haodd:
+                        prices = _forebet_prices_from_text(haodd.get_text(" ", strip=True))
+                        if len(prices) >= 2:
+                            odds_home, odds_away = prices[0], prices[1]
 
                 result_info = _parse_forebet_result_from_row(row)
                 if result_info.get("result_winner") == "1":
