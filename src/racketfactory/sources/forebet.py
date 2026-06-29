@@ -268,6 +268,86 @@ def name_signature(name: str) -> str:
     return "".join(sorted(w.lower() for w in words))
 
 
+
+def _span_direct_text(span) -> str:
+    """Return only the direct text of a score span, ignoring tie-break child spans."""
+    if span is None:
+        return ""
+    for child in span.children:
+        if isinstance(child, str):
+            txt = child.strip()
+            if txt:
+                return txt
+    return span.get_text(strip=True)
+
+
+def _parse_forebet_result_from_row(row) -> dict:
+    """Extract finished result and set scores from a Forebet tennis row.
+
+    Forebet's yesterday page embeds actual score in a .predQ set grid. Each
+    set column has two spans: home score and away score. Bold marks the set
+    winner, but we infer winner from numeric set scores to avoid relying on
+    CSS/markup.
+    """
+    out = {
+        "result_status": None,
+        "result_score": None,
+        "result_winner": None,       # "1" or "2" in Forebet home/away orientation
+        "result_winner_name": None,
+        "result_sets_home": None,
+        "result_sets_away": None,
+    }
+    if row is None:
+        return out
+
+    text = row.get_text(" ", strip=True)
+    if re.search(r"\bFT\b", text):
+        out["result_status"] = "FT"
+
+    pred_q = row.find("div", class_="predQ")
+    if not pred_q:
+        return out
+
+    set_scores = []
+    home_sets = 0
+    away_sets = 0
+
+    for col in pred_q.find_all("div", class_="fj_column"):
+        spans = col.find_all("span", recursive=False)
+        if len(spans) < 2:
+            continue
+
+        h_txt = _span_direct_text(spans[0])
+        a_txt = _span_direct_text(spans[1])
+        if not h_txt or not a_txt:
+            continue
+
+        try:
+            h_val = int(re.sub(r"\D+", "", h_txt))
+            a_val = int(re.sub(r"\D+", "", a_txt))
+        except ValueError:
+            continue
+
+        set_scores.append(f"{h_val}-{a_val}")
+        if h_val > a_val:
+            home_sets += 1
+        elif a_val > h_val:
+            away_sets += 1
+
+    if not set_scores:
+        return out
+
+    out["result_score"] = " ".join(set_scores)
+    out["result_sets_home"] = home_sets
+    out["result_sets_away"] = away_sets
+
+    if home_sets > away_sets:
+        out["result_winner"] = "1"
+    elif away_sets > home_sets:
+        out["result_winner"] = "2"
+
+    return out
+
 class ForebetPredictor:
     """
     Handles extraction of pre-match predictions from Forebet.
@@ -382,6 +462,7 @@ class ForebetPredictor:
             predicted_winner = None
             odds_home = None
             odds_away = None
+            result_info = {}
 
             row = row_container
             if row:
@@ -440,6 +521,12 @@ class ForebetPredictor:
                 "tournament": tournament_name,
                 "tour_slug": tour_slug,
                 "tournament_slug": tournament_slug,
+                "result_status": result_info.get("result_status"),
+                "result_score": result_info.get("result_score"),
+                "result_winner": result_info.get("result_winner"),
+                "result_winner_name": result_info.get("result_winner_name"),
+                "result_sets_home": result_info.get("result_sets_home"),
+                "result_sets_away": result_info.get("result_sets_away"),
                 "source": "Forebet",
             })
 
