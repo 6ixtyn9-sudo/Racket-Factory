@@ -377,6 +377,10 @@ def mode_daily(args) -> int:
         time.sleep(args.delay)
 
     _write_predictions(predictions, args.output_dir)
+
+    written_results = _write_forebet_result_rows(predictions, Path(args.output_dir))
+    for result_path in written_results:
+        logger.info("Wrote Forebet result rows to %s", result_path)
     return 0
 
 

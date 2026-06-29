@@ -270,15 +270,18 @@ def name_signature(name: str) -> str:
 
 
 def _span_direct_text(span) -> str:
-    """Return only the direct text of a score span, ignoring tie-break child spans."""
+    """Return main score text from a Forebet score span.
+
+    Tie-break points are nested in .tntbrk spans, e.g. 7<span>7</span>.
+    We remove those child spans before reading the game score so 7(7)
+    does not become 77.
+    """
     if span is None:
         return ""
-    for child in span.children:
-        if isinstance(child, str):
-            txt = child.strip()
-            if txt:
-                return txt
-    return span.get_text(strip=True)
+    clone = BeautifulSoup(str(span), "html.parser")
+    for tb in clone.find_all(class_="tntbrk"):
+        tb.extract()
+    return clone.get_text("", strip=True)
 
 
 def _parse_forebet_result_from_row(row) -> dict:
@@ -507,6 +510,12 @@ class ForebetPredictor:
                     matches = re.findall(r"\b([1-9]\.\d{1,3})\b", txt)
                     if len(matches) >= 2:
                         odds_home, odds_away = float(matches[0]), float(matches[1])
+
+                result_info = _parse_forebet_result_from_row(row)
+                if result_info.get("result_winner") == "1":
+                    result_info["result_winner_name"] = home
+                elif result_info.get("result_winner") == "2":
+                    result_info["result_winner_name"] = away
 
             results.append({
                 "match_date": match_date,
