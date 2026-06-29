@@ -41,6 +41,21 @@ DEFAULT_LOCAL_TZ = "Africa/Johannesburg"
 LOCALDATA = ROOT / "localdata"
 
 
+def load_daily_env() -> None:
+    """Load repo-local environment secrets for every daily run.
+
+    Existing process env wins. Secrets are never printed.
+    """
+    try:
+        from dotenv import load_dotenv
+    except Exception:
+        return
+
+    for env_path in (ROOT / ".env", LOCALDATA / ".env"):
+        if env_path.exists():
+            load_dotenv(env_path, override=False)
+
+
 def local_tz() -> ZoneInfo:
     return ZoneInfo(DEFAULT_LOCAL_TZ)
 
@@ -468,6 +483,7 @@ def run_once(args: argparse.Namespace) -> None:
     year = target[:4]
 
     run_as_of = make_run_as_of()
+    load_daily_env()
     child_env = os.environ.copy()
     child_env["RACKET_FACTORY_RUN_AS_OF"] = run_as_of
     child_env.setdefault("RACKET_FACTORY_TZ", DEFAULT_LOCAL_TZ)
@@ -482,7 +498,7 @@ def run_once(args: argparse.Namespace) -> None:
     if not args.intraday_only:
         # 1. Official Source Captures (Heavy History)
         run_soft(
-            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --year {year} --skip-exists --delay 8",
+            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py --all --year {year} --no-checkpoint --delay 8",
             f"capture_oddsportal {year}",
             env=child_env,
         )

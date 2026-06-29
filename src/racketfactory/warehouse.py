@@ -17,6 +17,22 @@ from racketfactory.sources.forebet import ForebetPredictor, name_signature
 logger = logging.getLogger(__name__)
 
 
+def load_warehouse_env() -> None:
+    """Load repo-local .env files before live odds/API enrichment.
+
+    Existing process env wins. Secrets are never printed.
+    """
+    try:
+        from dotenv import load_dotenv
+    except Exception:
+        return
+
+    root = Path(__file__).resolve().parents[2]
+    for env_path in (root / ".env", root / "localdata" / ".env"):
+        if env_path.exists():
+            load_dotenv(env_path, override=False)
+
+
 def infer_tour_and_series(text: str, row: pd.Series | None = None) -> tuple[str, str]:
     lower = str(text or "").lower()
     
@@ -454,6 +470,7 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     This is the primary live pricing source. Prediction-site scraped prices are
     kept only as debug/fallback visibility and must not drive live EV.
     """
+    load_warehouse_env()
     api_key = os.getenv("THE_ODDS_API_KEY")
     if not api_key:
         logger.warning("THE_ODDS_API_KEY missing; live API odds unavailable.")
