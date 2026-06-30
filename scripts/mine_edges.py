@@ -797,6 +797,106 @@ def apply_same_day_source_hygiene(target_date: str, picks: list[dict]) -> list[d
     return kept
 
 
+def _pick_players_for_dedupe(pick: dict) -> tuple[str, str]:
+    home = str(pick.get("player_home") or pick.get("player_a") or "").strip()
+    away = str(pick.get("player_away") or pick.get("player_b") or "").strip()
+    if home and away:
+        return home, away
+
+    match = str(pick.get("match") or "").strip()
+    parts = re.split(r"\s+v(?:s\.)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
+    if len(parts) == 2:
+        return parts[0].strip(), parts[1].strip()
+
+    return home, away
+
+
+def _dedupe_name_tokens(name: str) -> list[str]:
+    cleaned = re.sub(r"[^a-z0-9/]+", " ", str(name or "").lower())
+    return [tok for tok in cleaned.split() if tok and tok != "/"]
+
+
+def _dedupe_names_match(a: str, b: str) -> bool:
+    if names_match(a, b):
+        return True
+
+    ta = _dedupe_name_tokens(a)
+    tb = _dedupe_name_tokens(b)
+    if not ta or not tb or ta[-1] != tb[-1]:
+        return False
+
+    pre_a = ta[:-1]
+    pre_b = tb[:-1]
+
+    # Full pre-surname token overlap handles "A. De Minaur" vs "Alex de Minaur".
+    if {x for x in pre_a if len(x) > 1} & {x for x in pre_b if len(x) > 1}:
+        return True
+
+    initials_a = [x for x in pre_a if len(x) == 1]
+    initials_b = [x for x in pre_b if len(x) == 1]
+
+    # Initials handle "R. A. Burruchaga" vs "Roman Andres Burruchaga".
+    if initials_a and all(any(y.startswith(x) for y in pre_b) for x in initials_a):
+        return True
+    if initials_b and all(any(y.startswith(x) for y in pre_a) for x in initials_b):
+        return True
+
+    return False
+
+
+def _same_pick_match(a: dict, b: dict) -> bool:
+    ah, aa = _pick_players_for_dedupe(a)
+    bh, ba = _pick_players_for_dedupe(b)
+    if not ah or not aa or not bh or not ba:
+        return False
+
+    return (
+        _dedupe_names_match(ah, bh) and _dedupe_names_match(aa, ba)
+    ) or (
+        _dedupe_names_match(ah, ba) and _dedupe_names_match(aa, bh)
+    )
+
+
+def _same_selected_player(a: dict, b: dict) -> bool:
+    ap = str(a.get("selected_player") or "").strip()
+    bp = str(b.get("selected_player") or "").strip()
+    return bool(ap and bp and _dedupe_names_match(ap, bp))
+
+
+def dedupe_same_match_picks(picks: list[dict]) -> list[dict]:
+    """Drop duplicate rows for the same match and same selected side.
+
+    The input list is already sorted by bucket, EV, source_count, and match, so
+    the first row kept is the preferred/export row. Opposing-side conflicts are
+    deliberately not merged or hidden.
+    """
+    kept: list[dict] = []
+    dropped = 0
+
+    for pick in picks:
+        is_duplicate = False
+        for existing in kept:
+            if _same_pick_match(existing, pick) and _same_selected_player(existing, pick):
+                dropped += 1
+                is_duplicate = True
+                logger.info(
+                    "Deduped same-match pick row: kept %s -> %s; dropped %s -> %s",
+                    existing.get("match"),
+                    existing.get("selected_player"),
+                    pick.get("match"),
+                    pick.get("selected_player"),
+                )
+                break
+
+        if not is_duplicate:
+            kept.append(pick)
+
+    if dropped:
+        logger.info("Same-match pick dedupe: kept %d, dropped %d", len(kept), dropped)
+
+    return kept
+
+
 def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
     """Reduce future fallback ledgers to a priced, positive-EV review list.
 
@@ -1308,7 +1408,9 @@ def main() -> int:
     )
 
     picks_to_export = apply_same_day_source_hygiene(target_date, picks_to_export)
+    picks_to_export = dedupe_same_match_picks(picks_to_export)
     picks_to_export = apply_forecast_hygiene(target_date, picks_to_export)
+    picks_to_export = dedupe_same_match_picks(picks_to_export)
 
     write_official_pick_outputs(target_date, picks_to_export)
     logger.info("Exported %d post-hygiene pick rows for %s", len(picks_to_export), target_date)
