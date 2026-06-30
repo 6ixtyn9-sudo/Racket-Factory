@@ -116,10 +116,38 @@ def names_match(a: Any, b: Any) -> bool:
         return True
     if surname_tail(a) and surname_tail(a) == surname_tail(b):
         return True
-    ta = name_tokens(a)
-    tb = name_tokens(b)
-    if not ta or not tb:
+
+    ta_list = [t for t in na.split() if t and t != "/"]
+    tb_list = [t for t in nb.split() if t and t != "/"]
+    if not ta_list or not tb_list:
         return False
+
+    # Initial-aware matching for source aliases:
+    #   "J. M. Cerundolo"  <-> "Juan Manuel Cerundolo"
+    #   "A. Davidovich Fokina" <-> "Alejandro Davidovich Fokina"
+    #
+    # Require the final surname token to agree, then allow preceding initials
+    # to match full forenames/middle names by first letter.  This is deliberately
+    # narrower than pure surname matching to avoid merging different players
+    # who share a common surname.
+    if ta_list[-1] == tb_list[-1]:
+        pre_a = ta_list[:-1]
+        pre_b = tb_list[:-1]
+
+        full_overlap = {x for x in pre_a if len(x) > 1} & {x for x in pre_b if len(x) > 1}
+        if full_overlap:
+            return True
+
+        initials_a = [x for x in pre_a if len(x) == 1]
+        initials_b = [x for x in pre_b if len(x) == 1]
+
+        if initials_a and all(any(y.startswith(x) for y in pre_b) for x in initials_a):
+            return True
+        if initials_b and all(any(y.startswith(x) for y in pre_a) for x in initials_b):
+            return True
+
+    ta = set(ta_list)
+    tb = set(tb_list)
     overlap = ta & tb
     return bool(overlap) and len(overlap) >= min(len(ta), len(tb))
 
