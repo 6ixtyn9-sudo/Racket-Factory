@@ -303,3 +303,65 @@ After rebasing polluted local pick/audit files and rerunning the daily pipeline,
 
 Monitoring plan:
 Freeze logic unless something clearly breaks. Monitor clean operation for one full week, preferably 2026-07-01 through 2026-07-07, then evaluate performance. Keep prediction accuracy, bettable ROI, dead-edge veto quality, forecast quality, no-odds rows, unsettled rows, retirements/walkovers, and settlement quality separate. Do not judge by raw win rate alone. ROI is mandatory before any betting claim.
+
+2026-06-30 - Agent operating workflow / preferred collaboration style:
+The preferred maintenance workflow is the one used successfully during the 2026-06-30 daily hygiene session. Preserve this process for future agent work.
+
+Working style:
+- Keep changes minimal, safe, and copy-pasteable.
+- Prefer small targeted patches over broad rewrites.
+- Do not create new helper scripts, validators, reports, or docs unless explicitly asked.
+- Use temporary shell one-liners for diagnostics instead of committing one-off tooling.
+- Explain what each patch is expected to fix before asking the operator to run it.
+- Do not run full daily pipelines or load large ignored `localdata` from the agent environment unless the operator explicitly agrees.
+- The operator runs local commands; the agent reads pasted terminal output and provides the next safe step.
+- Never print or request secrets. If secrets appear in chat, tell the operator to revoke them and move keys to ignored `.env` files.
+
+Patch workflow:
+1. Inspect the relevant source narrowly.
+2. Provide an exact bash block the operator can paste.
+3. Include a syntax check, usually:
+   `python3 -m py_compile <changed_python_file>`
+4. Include a narrow sanity test that does not burn API quota or rerun the full pipeline unless necessary.
+5. Review the operator's pasted output before suggesting commit/push.
+6. Only commit after:
+   - syntax check passes,
+   - targeted sanity check passes,
+   - diff is reviewed,
+   - no unrelated files are included.
+7. Use clear, small commit messages describing the actual fix.
+8. After push, verify GitHub remote.
+
+Remote verification:
+- Prefer checking remote state after each important push.
+- If a local agent clone is stale or dirty, verify GitHub directly with:
+  `git ls-remote https://github.com/6ixtyn9-sudo/Racket-Factory.git refs/heads/main`
+- Confirm the remote SHA matches the operator's pushed commit.
+- For workflow/config changes, verify remote file contents by inspecting `origin/main` or the GitHub remote, not only local state.
+
+Sanity-check pattern:
+- For source hygiene, use focused JSON diagnostics against existing ledgers.
+- For duplicate pick exports, test the dedupe function directly against existing `localdata/picks_YYYY-MM-DD.json` files instead of rerunning the daily pipeline.
+- For CI/cache changes, use `grep` against `.github/workflows/daily.yml` to confirm old keys are gone and new keys are present.
+- For prediction/betting claims, separate:
+  - actionable picks,
+  - dead-edge skipped rows,
+  - no-odds rows,
+  - forecast rows,
+  - unsettled rows,
+  - settlement quality,
+  - ROI.
+- Do not judge the system by raw win rate alone.
+
+Daily-operation decision rules:
+- If the ledger has only `SKIPPED_DEAD_EDGE`, the correct interpretation is "no bet", not "many suggestions".
+- Tomorrow forecast rows are preliminary watchlist items only. They must be confirmed by the next same-day run.
+- Freeze logic during monitoring windows unless a concrete defect appears.
+- Patch only for clear issues such as duplicate rows, unsafe no-odds leakage, false settlement, quota burn, CI/cache regression, or broken report generation.
+
+Communication preference:
+- Be direct and practical.
+- Give the next command to run.
+- Avoid long speculative rewrites.
+- Do not repeatedly restate warnings once acted on.
+- Keep the operator in control of local execution.
