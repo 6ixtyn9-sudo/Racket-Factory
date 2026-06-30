@@ -302,8 +302,23 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
     # Filter by date first, then use tolerant player matching. Warehouse rows
     # can be TennisData style ("Ostapenko J."), OddsPortal style, or full-name
     # live rows; exact string equality is too brittle for settlement.
+    #
+    # Source publish dates and warehouse match dates can differ by one day
+    # around overnight / timezone boundaries.  This is common for early
+    # PredixSport rows and Grand Slam order-of-play timing.  Prefer exact-date
+    # matches, but allow +/- 1 day so those picks settle once results land.
     date_col = df["match_date"].astype(str).str[:10] if "match_date" in df.columns else pd.Series(dtype=object)
-    candidates = df[date_col == match_date].copy()
+    try:
+        base_match_date = datetime.strptime(match_date, "%Y-%m-%d").date()
+        candidate_date_rank = {
+            base_match_date.isoformat(): 0,
+            (base_match_date + timedelta(days=1)).isoformat(): 1,
+            (base_match_date - timedelta(days=1)).isoformat(): 1,
+        }
+    except ValueError:
+        candidate_date_rank = {match_date: 0}
+
+    candidates = df[date_col.isin(candidate_date_rank.keys())].copy()
     if candidates.empty:
         return None
 
@@ -317,6 +332,13 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
     subset = candidates[candidates.apply(row_is_match, axis=1)]
     if subset.empty or "winner" not in subset.columns:
         return None
+
+    if "match_date" in subset.columns:
+        subset = subset.copy()
+        subset["_settlement_date_rank"] = (
+            subset["match_date"].astype(str).str[:10].map(candidate_date_rank).fillna(99)
+        )
+        subset = subset.sort_values("_settlement_date_rank")
 
     settled_rows = subset[subset["winner"].notna() & (~subset["winner"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))]
     if settled_rows.empty:
@@ -500,6 +522,7 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         f"- include same-day picks: {report.get('include_same_day')}",
         f"- same-day cutoff date: {report.get('same_day_cutoff')}",
         f"- same-day rows excluded: {report.get('same_day_excluded', 0)}",
+        "- settlement date tolerance: exact pick date preferred, warehouse match_date +/- 1 day allowed",
         "",
         "## By Tour",
         "",
