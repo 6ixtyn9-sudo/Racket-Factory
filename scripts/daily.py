@@ -551,7 +551,11 @@ def run_once(args: argparse.Namespace) -> None:
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_foretennis.py --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_foretennis", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_predixsport.py --output-dir localdata", "capture_predixsport", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_betclan.py --output-dir localdata", "capture_betclan", env=child_env)
-    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_theoddsapi_scores.py --days-from 3 --output-dir localdata", "capture_theoddsapi_scores", env=child_env)
+    if os.getenv("RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES", "").strip().lower() in {"1", "true", "yes", "on"}:
+        print("\n>>> capture_theoddsapi_scores skipped")
+        print("RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES is set; avoiding The Odds API score quota burn.")
+    else:
+        run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_theoddsapi_scores.py --days-from 3 --output-dir localdata", "capture_theoddsapi_scores", env=child_env)
 
     # 3. Warehouse Resolution & Assembly
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz", "build_warehouse_initial", env=child_env)

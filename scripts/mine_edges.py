@@ -730,6 +730,73 @@ def _pick_float(pick: dict, key: str) -> float | None:
         return None
 
 
+def _is_same_day_target(target_date: str) -> bool:
+    try:
+        target = datetime.strptime(str(target_date)[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return False
+    return target == datetime.now().date()
+
+
+def _pick_sources(pick: dict) -> set[str]:
+    raw = str(pick.get("source") or "")
+    return {part.strip() for part in raw.split(",") if part.strip()}
+
+
+def _pick_has_missing_kickoff(pick: dict) -> bool:
+    for key in ("kickoff", "match_time", "time", "start_time", "ko"):
+        value = str(pick.get(key) or "").strip().lower()
+        if value and value not in {"n/a", "na", "nan", "<na>", "none", "null"}:
+            return False
+    return True
+
+
+def apply_same_day_source_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
+    """Drop same-day rows whose source date is not trustworthy enough.
+
+    PredixSport tennis exposes prediction slate/tournament dates, not confirmed
+    actual play dates.  If a row is PredixSport-only, has no selected-side odds,
+    and has no kickoff time, it is an early/unconfirmed prediction rather than
+    an actionable same-day pick.
+    """
+    if not _is_same_day_target(target_date):
+        return picks
+
+    kept: list[dict] = []
+    dropped = 0
+
+    for pick in picks:
+        bucket = str(pick.get("bucket") or "")
+        sources = _pick_sources(pick)
+        odds = _pick_float(pick, "odds")
+        date_confidence = str(pick.get("date_confidence") or "").upper()
+        schedule_source = str(pick.get("scheduled_date_source") or "")
+
+        unsafe_predix_only = (
+            sources == {"PredixSport"}
+            and bucket in {"WATCHLIST_NO_ODDS", "WATCHLIST_UNKNOWN_CTX"}
+            and odds is None
+            and _pick_has_missing_kickoff(pick)
+            and (date_confidence in {"", "LOW"} or schedule_source.startswith("PredixSport"))
+        )
+
+        if unsafe_predix_only:
+            dropped += 1
+            logger.info(
+                "Same-day hygiene dropped PredixSport-only date-uncertain row: %s -> %s",
+                pick.get("match"),
+                pick.get("selected_player"),
+            )
+            continue
+
+        kept.append(pick)
+
+    if dropped:
+        logger.info("Same-day source hygiene for %s: kept %d, dropped %d", target_date, len(kept), dropped)
+
+    return kept
+
+
 def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
     """Reduce future fallback ledgers to a priced, positive-EV review list.
 
@@ -1240,6 +1307,7 @@ def main() -> int:
         )
     )
 
+    picks_to_export = apply_same_day_source_hygiene(target_date, picks_to_export)
     picks_to_export = apply_forecast_hygiene(target_date, picks_to_export)
 
     write_official_pick_outputs(target_date, picks_to_export)

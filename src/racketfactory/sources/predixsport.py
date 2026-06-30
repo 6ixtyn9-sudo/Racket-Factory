@@ -93,7 +93,17 @@ class PredixSportPredictor:
                     winner = p1 if prob1 >= prob2 else p2
                     if not any(r["player_home"] == p1 for r in results):
                         results.append({
-                        "match_date": match_url.split("_")[-2][:4] + date.today().strftime("-%m-%d"),
+                        # PredixSport tennis dates are not reliable actual play dates.
+                        # The public/API tennis date behaves like a generated/tournament
+                        # slate date, not a confirmed scheduled match day.  Keep this
+                        # generated date for compatibility, but mark it LOW confidence so
+                        # downstream pick hygiene does not treat PredixSport-only rows as
+                        # actionable same-day fixtures.
+                        "match_date": date.today().isoformat(),
+                        "predix_generated_date": date.today().isoformat(),
+                        "date_confidence": "LOW",
+                        "scheduled_date_source": "PredixSportGeneratedDate",
+                        "date_warning": "PredixSport tennis date is not confirmed actual play date",
                         "match_time": "",
                         "player_home": p1,
                         "player_away": p2,

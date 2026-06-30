@@ -2,10 +2,10 @@ name: Autonomous Racket Factory 3-Hour Service
 
 on:
   schedule:
-    # Wake every 3 hours (00,03,06,09,12,15,18,21 UTC). The first wake of the
-    # local day runs the full morning heavy pipeline; later wakes accumulate
-    # the late slate without disturbing the locked morning baseline.
-    - cron: '0 0,3,6,9,12,15,18,21 * * *'
+    # Quota-safe cadence: twice daily.  The Odds API tennis odds/scores quota
+    # is limited; 3-hour autoruns burn calls quickly during active tournaments.
+    # 05:00/17:00 UTC = 07:00/19:00 Africa/Johannesburg.
+    - cron: '0 5,17 * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -40,6 +40,9 @@ jobs:
       THE_ODDS_API_REGIONS: uk,eu,us,au
       THE_ODDS_API_CACHE_TTL_MINUTES: '30'
       THE_ODDS_API_DISABLE_CACHE: '0'
+      # Scores endpoint costs quota on every run. CI focuses on pick generation;
+      # score/result refresh can be run manually/local when needed.
+      RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES: '1'
 
       # Keep OddsPortal browser scraping opt-in on CI.
       RACKET_FACTORY_REFRESH_ODDSPORTAL: '0'
@@ -98,13 +101,13 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$MODE" ] && [ "$MODE" != "auto" ]; then
             echo ">>> Manual mode: $MODE"
             if [ "$MODE" = "official_morning" ]; then
-              PYTHONPATH=src python3 scripts/daily.py --force-repick
+              PYTHONPATH=src python3 scripts/daily.py --force-repick --future-days 1
             elif [ "$MODE" = "intraday_only" ]; then
-              PYTHONPATH=src python3 scripts/daily.py --intraday-only
+              PYTHONPATH=src python3 scripts/daily.py --intraday-only --future-days 1
             fi
           else
             # Exactly one autonomous iteration of the smart accumulating ledger.
-            PYTHONPATH=src python3 scripts/daily.py --auto-once
+            PYTHONPATH=src python3 scripts/daily.py --auto-once --future-days 1
           fi
 
       - name: Persist localdata state (cache)
