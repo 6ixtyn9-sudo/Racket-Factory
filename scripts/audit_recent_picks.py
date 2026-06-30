@@ -385,15 +385,24 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
     except (TypeError, ValueError, AttributeError):
         odds = None
 
-    # Fallback to pick's captured odds if warehouse closing odds are missing.
-    if odds is None or str(odds).strip() in {"", "nan", "<NA>", "None"}:
-        try:
-            odds_val = pick.get("odds") or pick.get("decimal_odds")
-            odds = float(odds_val) if odds_val is not None and str(odds_val).strip() not in {"", "nan", "<NA>", "None"} else None # type: ignore
-            if odds is not None and odds <= 1.0: # type: ignore
-                odds = None
-        except (TypeError, ValueError, AttributeError):
-            odds = None
+    # ROI must use the archived pick price, not an arbitrary warehouse side.
+    # Warehouse odds can be closing prices from another source, or side-misaligned
+    # after tolerant name matching.  They are only a last-resort fallback for
+    # genuinely priced picks.  NO_ODDS buckets must remain unpriced.
+    bucket_text = str(pick.get("bucket") or "")
+    pick_odds = None
+    try:
+        odds_val = pick.get("odds") or pick.get("decimal_odds")
+        pick_odds = float(odds_val) if odds_val is not None and str(odds_val).strip() not in {"", "nan", "<NA>", "None"} else None # type: ignore
+        if pick_odds is not None and pick_odds <= 1.0: # type: ignore
+            pick_odds = None
+    except (TypeError, ValueError, AttributeError):
+        pick_odds = None
+
+    if "NO_ODDS" in bucket_text.upper():
+        odds = None
+    elif pick_odds is not None:
+        odds = pick_odds
 
     pnl = None if odds is None else (odds - 1.0 if won else -1.0)
 
