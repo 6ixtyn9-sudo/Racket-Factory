@@ -279,3 +279,27 @@ Operational note for sparse slates: what remains intentionally unchanged is the 
 
 Set diagnostics note:
 Forebet settled rows can include ordered set scores such as `7-6 3-6 1-6`, so audit reports can show whether the selected player won any set or a specific set. ForeTennis settled rows provide set totals such as `20` or `12`, so they support match/set-count diagnostics but not set order. Set diagnostics are not betting ROI unless set-market odds are captured.
+2026-06-30 - v0.6.1 daily hygiene / monitoring freeze:
+Daily operation was hardened after a live Wimbledon same-day/forecast audit. Key fixes are now on `main`:
+- `a62baf6` recent-picks audit can settle one-day date shifts.
+- `f8c7bf9` recent-picks ROI uses archived pick odds, not arbitrary warehouse side odds.
+- `945c76f` settlement rejects non-final/live/to-finish rows; avoids false losses from incomplete matches.
+- `3886702` audit name matching is initial-aware, e.g. `A. Davidovich Fokina` ↔ `Alejandro Davidovich Fokina`, while avoiding broad same-surname merges.
+- `26b4861` PredixSport date uncertainty guarded and API autorun burn reduced.
+- `a9f5580` GitHub Actions `localdata` cache namespace reset to `localdata-v2-main-` so stale polluted cached ledgers do not resurrect.
+- `2be917c` same-match pick export dedupes abbreviated/full-name duplicates when selected side is the same, e.g. `Alex de Minaur vs Roman Andres Burruchaga` and `A. De Minaur vs R. A. Burruchaga`.
+
+PredixSport tennis date caveat:
+PredixSport tennis `date` is not a reliable actual match day. It behaves like a generated/tournament slate date. Treat it as LOW confidence and never as a standalone same-day schedule source. Same-day hygiene now drops PredixSport-only rows when they are no-odds/no-kickoff and in `WATCHLIST_NO_ODDS` or `WATCHLIST_UNKNOWN_CTX`. PredixSport remains useful for prediction probabilities/tournament context, but not for actual play date, kickoff, or settlement.
+
+CI / quota posture:
+GitHub Actions daily workflow now runs only twice per day instead of every 3 hours, invokes `scripts/daily.py` with `--future-days 1`, disables The Odds API score capture in CI via `RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES=1`, and uses the `localdata-v2-main-` cache namespace. Local runs may still capture scores unless the same env flag is set. Do not print secrets; keep keys in ignored `.env` / `localdata/.env`.
+
+Same-day versus forecast interpretation:
+The same-day ledger is the official daily slate. It can show diagnostic `SKIPPED_DEAD_EDGE` rows, which are not suggestions to bet; they mean the model may like a player but the price/EV is bad. The future planner / tomorrow forecast is only a preliminary watchlist. Forecast hygiene intentionally hides most dead-edge/no-odds/skipped rows and keeps only priced positive-EV review candidates. A tomorrow `WATCHLIST` must be re-confirmed by the next same-day run before being treated as actionable.
+
+Fresh 2026-06-30 validation:
+After rebasing polluted local pick/audit files and rerunning the daily pipeline, same-day `picks_2026-06-30` contained only `SKIPPED_DEAD_EDGE` rows and zero bettable/review rows. PredixSport-only no-odds/no-KO leak check returned zero bad rows. Duplicate diagnostic found one same-match duplicate, de Minaur/Burruchaga, and export dedupe was patched/tested to reduce `2026-06-30` JSON rows from 20 to 19 while leaving `2026-07-01` forecast rows at 3.
+
+Monitoring plan:
+Freeze logic unless something clearly breaks. Monitor clean operation for one full week, preferably 2026-07-01 through 2026-07-07, then evaluate performance. Keep prediction accuracy, bettable ROI, dead-edge veto quality, forecast quality, no-odds rows, unsettled rows, retirements/walkovers, and settlement quality separate. Do not judge by raw win rate alone. ROI is mandatory before any betting claim.
