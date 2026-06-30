@@ -201,6 +201,106 @@ def _winner_side_from_row_values(winner: str, player_a: str, player_b: str) -> s
     return None
 
 
+def _result_row_is_final(row: pd.Series) -> bool:
+    """Return False for live/suspended/to-finish rows masquerading as results.
+
+    Settlement must only count final outcomes.  Some source rows can contain a
+    winner-like value while the score/status still says the match is live,
+    suspended, or "to finish" the next day.
+    """
+    winner = clean_text(row.get("winner"))
+    if not winner:
+        return False
+
+    status_parts = []
+    for key in ("score", "status", "match_status", "state", "_comment"):
+        val = clean_text(row.get(key))
+        if val:
+            status_parts.append(val)
+
+    status_text = " ".join(status_parts).lower()
+
+    if any(
+        token in status_text
+        for token in (
+            "to finish",
+            "leads",
+            "live",
+            "in progress",
+            "suspended",
+            "interrupted",
+            "not started",
+            "postponed",
+        )
+    ):
+        return False
+
+    completed = clean_text(row.get("completed")).lower()
+    if completed in {"false", "0", "no"}:
+        return False
+
+    score = clean_text(row.get("score")).lower()
+    if score:
+        compact_score = score.replace("—", "-").replace("–", "-").strip()
+        if compact_score in {"-", "(l)", "- (l)", "(live)", "- (live)"}:
+            return False
+
+        # Ordered game-score rows must not include a live point score such as
+        # "40-30" after completed sets.  Example bad row:
+        # "6-3 7-6 40-30" = match in progress, not final.
+        if re.search(r"\b(?:0|15|30|40|ad)-(?:0|15|30|40|ad)\b", score):
+            return False
+
+        score_perspective = clean_text(row.get("_score_perspective") or row.get("score_perspective"))
+        if score_perspective == "player_a_sets-player_b_sets":
+            digits = [int(ch) for ch in re.findall(r"\d", score)]
+            if not digits:
+                return False
+
+            player_a = clean_text(row.get("player_a"))
+            player_b = clean_text(row.get("player_b"))
+            winner_side = _winner_side_from_row_values(winner, player_a, player_b)
+            if winner_side not in {"player_a", "player_b"}:
+                return False
+
+            if len(digits) >= 2:
+                a_sets, b_sets = digits[0], digits[1]
+            else:
+                # CSV coercion can strip a leading zero, e.g. "02" -> "2".
+                # That can be valid for best-of-3, but not for ATP Grand Slam
+                # men's singles where the winner must reach 3 sets.
+                if winner_side == "player_a":
+                    a_sets, b_sets = digits[0], 0
+                else:
+                    a_sets, b_sets = 0, digits[0]
+
+            if a_sets == b_sets:
+                return False
+
+            winner_sets = a_sets if winner_side == "player_a" else b_sets
+            match_text = " ".join(
+                clean_text(row.get(k))
+                for k in ("tour", "tournament", "series", "_series")
+            ).lower()
+
+            if winner_sets < 2:
+                return False
+
+            if (
+                "atp" in match_text
+                and any(x in match_text for x in ("grand slam", "wimbledon", "french open", "australian open", "us open"))
+                and winner_sets < 3
+            ):
+                return False
+
+        has_digit = bool(re.search(r"\d", score))
+        has_final_marker = bool(re.search(r"\b(w/o|wo|walkover|ret\.?|retired|default)\b", score))
+        if not has_digit and not has_final_marker:
+            return False
+
+    return True
+
+
 def _set_diagnostics_from_score(
     score_value: Any,
     score_perspective: Any,
@@ -341,6 +441,12 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
         subset = subset.sort_values("_settlement_date_rank")
 
     settled_rows = subset[subset["winner"].notna() & (~subset["winner"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))]
+    if settled_rows.empty:
+        return None
+
+    # Do not settle live/suspended/to-finish rows.  A winner-like field is not
+    # enough if the score/status still shows the match was not final.
+    settled_rows = settled_rows[settled_rows.apply(_result_row_is_final, axis=1)]
     if settled_rows.empty:
         return None
 
@@ -532,6 +638,7 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         f"- same-day cutoff date: {report.get('same_day_cutoff')}",
         f"- same-day rows excluded: {report.get('same_day_excluded', 0)}",
         "- settlement date tolerance: exact pick date preferred, warehouse match_date +/- 1 day allowed",
+        "- settlement finality guard: live/suspended/to-finish rows are rejected",
         "",
         "## By Tour",
         "",
