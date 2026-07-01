@@ -1,4 +1,3 @@
-```markdown
 Racket Factory — Handover
 Date: 2026-06-26
 Repo purpose: odds-first tennis research lab.
@@ -365,3 +364,17 @@ Communication preference:
 - Avoid long speculative rewrites.
 - Do not repeatedly restate warnings once acted on.
 - Keep the operator in control of local execution.
+
+2026-07-01 - v0.6.2 forecast ledger separation and automated doubles odds fallback:
+Same-day official ledgers and forecast ledgers are now intentionally separate to avoid tomorrow forecast rows overwriting or being mistaken for tomorrow official rows. Official same-day outputs remain `localdata/picks_YYYY-MM-DD.json` and `localdata/picks_YYYY-MM-DD.txt`. Forecast outputs are `localdata/picks_forecast_YYYY-MM-DD.json` and `localdata/picks_forecast_YYYY-MM-DD.txt`; last forecast run wins, with no timestamp snapshots and no `latest` file. The future planner may temporarily write a future `picks_YYYY-MM-DD.json` while mining, but `daily.py` removes that future official placeholder after writing the forecast ledger and restores `picks_today.json` to the current same-day slate.
+
+Forecast audits are supported by the existing `scripts/audit_recent_picks.py` via `--ledger-kind forecast`. To audit tomorrow's forecast, pass the forecast date explicitly with `--end YYYY-MM-DD`; otherwise the audit defaults to today's date and will not include tomorrow's forecast. Forecast audit outputs are `localdata/picks_audit_forecast_rolling.json` and `localdata/picks_audit_forecast_YYYY-MM-DD.md`. Same-day official audit remains the default and uses `localdata/picks_audit_rolling.json` plus `localdata/picks_audit_YYYY-MM-DD.md`.
+
+ATP Wimbledon doubles missing odds were resolved without manual odds ingestion. The Odds API Wimbledon sport keys currently expose singles only, while BetClan exposes doubles predictions but not decimal odds. OddsPortal ATP Wimbledon Doubles live page (`https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon-doubles/`) captures doubles prices via the existing `scripts/capture_oddsportal.py` render-DOM path into `localdata/oddsportal_tennis_YYYY-MM.csv.gz`. `scripts/mine_edges.py` can use those local OddsPortal rows as an automated fallback for selected-side odds when live/API odds are missing, with conservative doubles name matching that drops trailing initials and refuses opponent mismatches. `scripts/daily.py` can refresh this targeted doubles odds source when `RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS=1` is set. Do not add manual odds CSVs or manual odds overlays for this problem.
+
+If a future competition again produces `WATCHLIST_NO_ODDS`, treat it as non-actionable, not as a bet. First verify whether The Odds API has a sport key for that competition and whether an OddsPortal tournament URL exists and captures rows with the existing `capture_oddsportal.py`. If an automated compatible source is available, wire or run that source; if the available market row has different opponents, leave the pick as `WATCHLIST_NO_ODDS`. Do not force fuzzy matches across different opponents. For a new competition, prefer an exact single-URL OddsPortal capture command over new scripts, and only then consider a minimal route/config/source patch if repeated daily automation is needed.
+
+Normal local operating command after this change:
+
+```bash
+cd ~/Desktop/Racket-Factory && RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS=1 PYTHONPATH=src python3 scripts/daily.py --future-days 2 && PYTHONPATH=src python3 scripts/audit_recent_picks.py --ledger-kind forecast --end "$(python3 -c 'from datetime import date,timedelta; print(date.today()+timedelta(days=1))')"

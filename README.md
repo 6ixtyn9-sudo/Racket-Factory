@@ -6,44 +6,42 @@ Current state
 
 As of 2026-06-29, the daily pipeline has been tightened around three operational principles:
 
-1. **Daily runs should not scrape OddsPortal by default.** OddsPortal remains the market-history/backfill source, but browser-backed bulk capture is now opt-in because of Cloudflare risk.
-2. **Live pricing should come from The Odds API when available.** Prediction-site scraped prices are not trusted as the primary live EV price.
-3. **Recent audit settlement should come from source-settled result rows.** ForeTennis and Forebet now emit warehouse-compatible settled rows where their pages expose actual results.
-
+Daily runs should not scrape OddsPortal by default. OddsPortal remains the market-history/backfill source, but browser-backed bulk capture is now opt-in because of Cloudflare risk.
+Live pricing should come from The Odds API when available. Prediction-site scraped prices are not trusted as the primary live EV price.
+Recent audit settlement should come from source-settled result rows. ForeTennis and Forebet now emit warehouse-compatible settled rows where their pages expose actual results.
 What works now
 
-- Same-day live/upcoming rows are injected directly into `localdata/warehouse.csv.gz` during `build_warehouse.py`.
-- Live injection pulls from:
-  - PredixSport
-  - BetClan
-  - Forebet
-- Broader live exploration is supported for:
-  - ATP
-  - WTA
-  - CHALLENGER
-  - ITF-M
-  - ITF-W
-  - UTR
-- Live injection is no longer singles-only; doubles can enter the warehouse.
-- The Odds API H2H prices are matched onto live rows and used for live EV pricing when present.
-- The Odds API sport keys are configurable via `.env`; tennis uses tournament-specific keys such as:
-  - `tennis_atp_wimbledon`
-  - `tennis_wta_wimbledon`
-- The Odds API supports multiple keys via:
-  - `THE_ODDS_API_KEYS=key1,key2,key3`
-  - plus legacy `THE_ODDS_API_KEY=key1`
-- `scripts/daily.py` and `scripts/daily_pipeline.sh` load `.env` automatically without printing secrets.
-- ForeTennis `actual_result` values are converted into settled result rows:
-  - `localdata/foretennis_results_tennis_YYYY-MM.csv.gz`
-- Forebet finished rows are parsed for actual set scores and converted into settled result rows:
-  - `localdata/forebet_results_tennis_YYYY-MM.csv.gz`
-- Audit can settle picks from these generated source-result files once the warehouse is rebuilt.
-
+Same-day live/upcoming rows are injected directly into localdata/warehouse.csv.gz during build_warehouse.py.
+Live injection pulls from:
+PredixSport
+BetClan
+Forebet
+Broader live exploration is supported for:
+ATP
+WTA
+CHALLENGER
+ITF-M
+ITF-W
+UTR
+Live injection is no longer singles-only; doubles can enter the warehouse.
+The Odds API H2H prices are matched onto live rows and used for live EV pricing when present.
+The Odds API sport keys are configurable via .env; tennis uses tournament-specific keys such as:
+tennis_atp_wimbledon
+tennis_wta_wimbledon
+The Odds API supports multiple keys via:
+THE_ODDS_API_KEYS=key1,key2,key3
+plus legacy THE_ODDS_API_KEY=key1
+scripts/daily.py and scripts/daily_pipeline.sh load .env automatically without printing secrets.
+ForeTennis actual_result values are converted into settled result rows:
+localdata/foretennis_results_tennis_YYYY-MM.csv.gz
+Forebet finished rows are parsed for actual set scores and converted into settled result rows:
+localdata/forebet_results_tennis_YYYY-MM.csv.gz
+Audit can settle picks from these generated source-result files once the warehouse is rebuilt.
 Important caveats
 
-- OddsPortal capture is still valuable for historical market research, but daily browser scraping is opt-in:
+OddsPortal capture is still valuable for historical market research, but daily browser scraping is opt-in:
+Bash
 
-```bash
 RACKET_FACTORY_REFRESH_ODDSPORTAL=1 RACKET_FACTORY_ODDSPORTAL_DELAY=60 PYTHONPATH=src python3 scripts/daily.py
 Without that env flag, daily runs use source/TennisData refreshes and skip heavy OddsPortal capture.
 The Odds API has a quota; avoid repeated manual warehouse rebuilds unless needed.
@@ -164,3 +162,31 @@ Set diagnostics are informational and are not betting ROI unless set-market odds
 
 Notes
 This is still an odds/results-first project. No certified betting edge is claimed without ROI and settlement. A couple of real-world winners on a given day are encouraging, but they are not validation by themselves; the repo still relies on historical slice quality, proper settlement, and walk-forward discipline.
+
+Daily operation command
+
+Use one command for the normal local run:
+
+```bash
+cd ~/Desktop/Racket-Factory && RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS=1 PYTHONPATH=src python3 scripts/daily.py --future-days 2 && PYTHONPATH=src python3 scripts/audit_recent_picks.py --ledger-kind forecast --end "$(python3 -c 'from datetime import date,timedelta; print(date.today()+timedelta(days=1))')"
+This runs the official same-day pipeline, refreshes the targeted automated ATP Wimbledon doubles OddsPortal fallback when needed, writes tomorrow's forecast ledger, runs the official audit inside daily.py, and then runs the forecast audit for tomorrow. The && chain prevents the forecast audit from running if the main pipeline fails.
+
+Ledger files
+
+Official same-day picks:
+localdata/picks_YYYY-MM-DD.json
+localdata/picks_YYYY-MM-DD.txt
+Forecast picks:
+localdata/picks_forecast_YYYY-MM-DD.json
+localdata/picks_forecast_YYYY-MM-DD.txt
+Official rolling audit:
+localdata/picks_audit_rolling.json
+localdata/picks_audit_YYYY-MM-DD.md
+Forecast rolling audit:
+localdata/picks_audit_forecast_rolling.json
+localdata/picks_audit_forecast_YYYY-MM-DD.md
+Forecast files are preliminary watchlists only. They must be re-confirmed by the next same-day run before being treated as actionable. The future planner removes accidental future official placeholders after writing forecast files.
+
+Missing odds policy
+
+No matched odds means no actionable bet. The row stays in WATCHLIST_NO_ODDS or is hidden by forecast hygiene. For doubles or another competition, use automated compatible sources only: The Odds API when it exposes the sport key, or OddsPortal via the existing scripts/capture_oddsportal.py path when a tournament URL exposes prices. Do not add manual odds CSVs or force fuzzy matches when the opponents differ.
