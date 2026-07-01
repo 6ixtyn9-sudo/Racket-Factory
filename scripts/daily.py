@@ -463,8 +463,10 @@ def run_future_planner(
             print(f"  {target}: no future picks found")
 
         # Ensure the forecast ledger is tagged to the day it was mined for.
+        # Do NOT persist it back to picks_YYYY-MM-DD.json; that filename is
+        # reserved for official same-day ledgers. Forecast persistence happens
+        # below via picks_forecast_YYYY-MM-DD.json/txt.
         day_picks = tag_picks(day_picks, target)
-        forecast_file.write_text(json.dumps(day_picks, indent=2, sort_keys=True))
 
         all_picks = merge_picks(all_picks, day_picks)
         day_specific = [p for p in all_picks if pick_date(p, "9999-99-99") == target]
@@ -475,6 +477,18 @@ def run_future_planner(
             metadata_lines=[f"Snapshot as of: {run_as_of}", "Ledger kind: forecast"],
         )
         save_forecast_outputs(target, day_specific, run_as_of)
+
+        # mine_edges.py writes picks_YYYY-MM-DD.json as its standard output.
+        # During future planning that file is only an intermediate. Remove it
+        # so picks_YYYY-MM-DD.* remains reserved for official same-day ledgers.
+        for stale_path in (archived_picks_file(target), LOCALDATA / f"picks_{target}.txt"):
+            try:
+                if stale_path.exists():
+                    stale_path.unlink()
+                    print(f"Removed future official placeholder: {stale_path}")
+            except Exception as exc:
+                print(f"WARNING: could not remove future official placeholder {stale_path}: {exc}")
+
         print(f"  {target}: forecast rows {len(day_specific)}")
 
     all_picks.sort(
