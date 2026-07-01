@@ -597,6 +597,129 @@ def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: 
     return odds_val, None
 
 
+LOCAL_ODDSPORTAL_ODDS_CACHE: dict[str, list[dict]] = {}
+
+
+def _split_match_text_for_odds(match: object) -> tuple[str, str]:
+    text = str(match or "").strip()
+    parts = re.split(r"\s+v(?:s\.)?\s+", text, maxsplit=1, flags=re.IGNORECASE)
+    if len(parts) == 2:
+        return parts[0].strip(), parts[1].strip()
+    return "", ""
+
+
+def load_local_oddsportal_odds(target_date: str) -> list[dict]:
+    """Load locally captured OddsPortal odds for a target date.
+
+    This is an automated odds source, not manual ingestion. It reads the
+    existing normalized OddsPortal monthly CSV produced by capture_oddsportal.py.
+
+    Useful for doubles where The Odds API has no coverage but OddsPortal has
+    fixture prices.
+    """
+    target = str(target_date)[:10]
+    if target in LOCAL_ODDSPORTAL_ODDS_CACHE:
+        return LOCAL_ODDSPORTAL_ODDS_CACHE[target]
+
+    path = ROOT / "localdata" / f"oddsportal_tennis_{target[:7]}.csv.gz"
+    if not path.exists():
+        LOCAL_ODDSPORTAL_ODDS_CACHE[target] = []
+        return []
+
+    try:
+        df = pd.read_csv(path, low_memory=False)
+    except Exception as exc:
+        logger.warning("Could not read local OddsPortal odds %s: %s", path, exc)
+        LOCAL_ODDSPORTAL_ODDS_CACHE[target] = []
+        return []
+
+    required = {"match_date", "player_a", "player_b", "odds_a", "odds_b"}
+    if df.empty or not required.issubset(set(df.columns)):
+        LOCAL_ODDSPORTAL_ODDS_CACHE[target] = []
+        return []
+
+    df = df[df["match_date"].astype(str).str[:10] == target].copy()
+
+    rows: list[dict] = []
+    for _, r in df.iterrows():
+        odds_a = coerce_decimal_odds(r.get("odds_a"))
+        odds_b = coerce_decimal_odds(r.get("odds_b"))
+        if not valid_two_way_decimal_pair(odds_a, odds_b):
+            continue
+
+        a = str(r.get("player_a") or "").strip()
+        b = str(r.get("player_b") or "").strip()
+        if not a or not b:
+            continue
+
+        rows.append({
+            "player_a": a,
+            "player_b": b,
+            "odds_a": odds_a,
+            "odds_b": odds_b,
+            "bookmaker": str(r.get("bookmaker") or "OddsPortal").strip() or "OddsPortal",
+            "source": str(r.get("source") or "OddsPortal").strip() or "OddsPortal",
+        })
+
+    LOCAL_ODDSPORTAL_ODDS_CACHE[target] = rows
+    if rows:
+        logger.info("Loaded %d local OddsPortal odds rows for %s from %s", len(rows), target, path)
+    return rows
+
+
+def lookup_local_oddsportal_selected_odds(target_date: str, pick: dict) -> dict | None:
+    """Find selected-side odds from locally captured OddsPortal rows."""
+    rows = load_local_oddsportal_odds(target_date)
+    if not rows:
+        return None
+
+    home = str(pick.get("player_home") or pick.get("player_a") or "").strip()
+    away = str(pick.get("player_away") or pick.get("player_b") or "").strip()
+    if not home or not away:
+        home, away = _split_match_text_for_odds(pick.get("match"))
+
+    selected = str(pick.get("selected_player") or "").strip()
+
+    if not home or not away or not selected:
+        return None
+
+    for row in rows:
+        op_a = str(row.get("player_a") or "").strip()
+        op_b = str(row.get("player_b") or "").strip()
+
+        normal = names_match(home, op_a) and names_match(away, op_b)
+        reverse = names_match(home, op_b) and names_match(away, op_a)
+
+        if not (normal or reverse):
+            continue
+
+        if normal:
+            side_a_name, side_b_name = op_a, op_b
+            side_a_odds, side_b_odds = row.get("odds_a"), row.get("odds_b")
+        else:
+            side_a_name, side_b_name = op_b, op_a
+            side_a_odds, side_b_odds = row.get("odds_b"), row.get("odds_a")
+
+        if names_match(selected, side_a_name):
+            return {
+                "odds": side_a_odds,
+                "bookmaker": row.get("bookmaker") or "OddsPortal",
+                "source": row.get("source") or "OddsPortal",
+                "matched_market": f"{op_a} vs {op_b}",
+            }
+
+        if names_match(selected, side_b_name):
+            return {
+                "odds": side_b_odds,
+                "bookmaker": row.get("bookmaker") or "OddsPortal",
+                "source": row.get("source") or "OddsPortal",
+                "matched_market": f"{op_a} vs {op_b}",
+            }
+
+    return None
+
+
+
 def select_player_from_row(row: pd.Series, target_date: str) -> dict:
     home_name = row.get("player_a", row.get("player_home", "A"))
     away_name = row.get("player_b", row.get("player_away", "B"))
@@ -1356,6 +1479,22 @@ def main() -> int:
                     row, base.get("selected_side"), prob
                 )
 
+                odds_source = str(row.get("_odds_source") or row.get("odds_source") or "").strip()
+                odds_bookmaker = str(row.get("bookmaker") or row.get("odds_bookmaker") or "").strip()
+                oddsportal_match = ""
+
+                # Automated fallback: use locally captured OddsPortal odds when
+                # live/API odds are missing. This solves doubles markets where
+                # bookies/OddsPortal have prices but The Odds API returns singles only.
+                if odds_val is None:
+                    local_op = lookup_local_oddsportal_selected_odds(target_date, base)
+                    if local_op is not None:
+                        odds_val = local_op.get("odds")
+                        odds_reject_reason = None
+                        odds_source = "OddsPortal"
+                        odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
+                        oddsportal_match = str(local_op.get("matched_market") or "")
+
                 # REDTEAM Finding #4: compute per-bet expected value and drop
                 # non-positive-EV rows from the actionable set. EV is computed
                 # on the decimal odds captured at scrape time, so live picks
@@ -1370,6 +1509,9 @@ def main() -> int:
                     "bucket": classify_bucket(best_pick),
                     "pick": best_pick["Verdict"],
                     "odds": odds_val,
+                    "odds_source": odds_source,
+                    "odds_bookmaker": odds_bookmaker,
+                    "oddsportal_matched_market": oddsportal_match,
                     "odds_reject_reason": odds_reject_reason,
                     "confidence": prob,
                     "expected_value": ev,

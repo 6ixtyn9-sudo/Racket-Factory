@@ -240,6 +240,17 @@ def surname_tokens(name: str) -> tuple[str, ...]:
     parts = [p for p in normalize_person_name(name).split() if p != "/"]
     if not parts:
         return tuple()
+
+    # OddsPortal often renders names as "Surname I.", e.g.
+    # "Arevalo M.", "Pavic M.", "Roger-Vasselin E.".
+    # After normalization those become "arevalo m", "pavic m",
+    # "roger vasselin e". The final one-letter token is an initial,
+    # not part of the surname. Drop it for cross-source matching.
+    if len(parts) >= 2 and len(parts[-1]) == 1:
+        parts = parts[:-1]
+
+    if not parts:
+        return tuple()
     if len(parts) == 1:
         return (parts[-1],)
     return tuple(parts[-2:])
