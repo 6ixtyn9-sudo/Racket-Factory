@@ -246,7 +246,7 @@ def surname_tokens(name: str) -> tuple[str, ...]:
     # After normalization those become "arevalo m", "pavic m",
     # "roger vasselin e". The final one-letter token is an initial,
     # not part of the surname. Drop it for cross-source matching.
-    if len(parts) >= 2 and len(parts[-1]) == 1:
+    while len(parts) >= 2 and len(parts[-1]) == 1:
         parts = parts[:-1]
 
     if not parts:
