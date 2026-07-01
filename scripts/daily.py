@@ -598,7 +598,25 @@ def run_once(args: argparse.Namespace) -> None:
             print("\n>>> settle_yesterday_results skipped")
             print("RACKET_FACTORY_REFRESH_ODDSPORTAL not set; skipping heavy OddsPortal intraday refresh.")
 
-    # 2. Daily Prediction Sources
+    # 2. Targeted live odds capture for known API coverage gaps.
+    #
+    # The Odds API Wimbledon keys currently return singles only. OddsPortal has
+    # live ATP Wimbledon Doubles fixture odds, so capture just that page when
+    # enabled instead of running fragile full OddsPortal bulk capture.
+    refresh_live_doubles_odds = os.getenv("RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS", "").strip().lower() in {"1", "true", "yes", "on"}
+    if refresh_live_doubles_odds:
+        run_soft(
+            f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py "
+            f"--url https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon-doubles/ "
+            f"--tour ATP --tournament 'Wimbledon Doubles' --date {target} --pages 1",
+            "capture_oddsportal live ATP Wimbledon doubles",
+            env=child_env,
+        )
+    else:
+        print("\n>>> capture_oddsportal live doubles skipped")
+        print("RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS not set; skipping targeted OddsPortal doubles odds capture.")
+
+    # 3. Daily Prediction Sources
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday today tomorrow --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_foretennis.py --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_foretennis", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_predixsport.py --output-dir localdata", "capture_predixsport", env=child_env)
@@ -609,15 +627,15 @@ def run_once(args: argparse.Namespace) -> None:
     else:
         run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_theoddsapi_scores.py --days-from 3 --output-dir localdata", "capture_theoddsapi_scores", env=child_env)
 
-    # 3. Warehouse Resolution & Assembly
+    # 4. Warehouse Resolution & Assembly
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz", "build_warehouse_initial", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/resolve_pending.py --warehouse localdata/warehouse.csv.gz --data-dir localdata", "resolve_pending", env=child_env)
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz", "build_warehouse_final", env=child_env)
 
-    # 4. Mine Edges
+    # 5. Mine Edges
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --bet-side prediction --date {target}", "mine_edges", env=child_env)
 
-    # 5. Archive by Kickoff & Lock the morning baseline
+    # 6. Archive by Kickoff & Lock the morning baseline
     picks_today = LOCALDATA / "picks_today.json"
     if picks_today.exists():
         try:
@@ -640,7 +658,7 @@ def run_once(args: argparse.Namespace) -> None:
         if archive.exists():
             save_morning_baseline(target, archive.read_text(), overwrite=args.force_repick)
 
-    # 6. Generate human friendly TXT report + inline next-day planner (Edge-Factory parity)
+    # 7. Generate human friendly TXT report + inline next-day planner (Edge-Factory parity)
     target_archive = archived_picks_file(target)
     if target_archive.exists():
         target_picks_text = target_archive.read_text()
@@ -655,17 +673,17 @@ def run_once(args: argparse.Namespace) -> None:
     run_future_planner(target, args.future_days, target_picks, run_as_of, env_prefix, child_env)
     restore_picks_today(target_picks_text)
 
-    # 7. Run Audit
+    # 8. Run Audit
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_recent_picks.py --end {target} --days 30 --warehouse localdata/warehouse.csv.gz", "audit_recent_picks", env=child_env)
 
-    # 8. Supabase Live Dashboard Sync (Optional)
+    # 9. Supabase Live Dashboard Sync (Optional)
     sync_script = ROOT / "scripts" / "sync_supabase.py"
     if sync_script.exists() and (os.getenv("SUPABASE_URL") or args.force_sync):
         run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/sync_supabase.py --picks {archived_picks_file(target)} --target-date {target} --replace-date", "sync_supabase", env=child_env)
 
     print(f"\n=== Pipeline Complete — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===")
 
-    # 9. Optional WhatsApp heads-up
+    # 10. Optional WhatsApp heads-up
     archive = archived_picks_file(target)
     if not args.skip_notify and os.getenv("CALLMEBOT_APIKEY") and os.getenv("CALLMEBOT_PHONE"):
         run_soft(
