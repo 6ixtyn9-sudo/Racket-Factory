@@ -258,6 +258,32 @@ def names_match(name_a: str, name_b: str) -> bool:
     norm_b = normalize_person_name(name_b)
     if not norm_a or not norm_b:
         return False
+
+    # Handle Doubles Teams
+    if "/" in norm_a or "/" in norm_b:
+        parts_a = [p.strip() for p in norm_a.split("/") if p.strip()]
+        parts_b = [p.strip() for p in norm_b.split("/") if p.strip()]
+        
+        if len(parts_a) != len(parts_b):
+            return False
+        
+        # Check if players match in either order (A/B vs A/B or A/B vs B/A)
+        # We use a simplified match for members to avoid infinite recursion
+        def member_match(m1, m2):
+            if m1 == m2: return True
+            # Check surname overlap for members
+            t1 = surname_tokens(m1)
+            t2 = surname_tokens(m2)
+            return t1 == t2 if t1 and t2 else False
+
+        # Try normal order
+        if all(member_match(a, b) for a, b in zip(parts_a, parts_b)):
+            return True
+        # Try reversed order
+        if all(member_match(a, b) for a, b in zip(parts_a, reversed(parts_b))):
+            return True
+        return False
+
     if norm_a == norm_b:
         return True
     if surname_tokens(name_a) == surname_tokens(name_b):
