@@ -120,6 +120,42 @@ def archived_picks_file(target_date: str) -> Path:
     return LOCALDATA / f"picks_{target_date}.json"
 
 
+def forecast_picks_file(target_date: str) -> Path:
+    return LOCALDATA / f"picks_forecast_{target_date}.json"
+
+
+def forecast_report_file(target_date: str) -> Path:
+    return LOCALDATA / f"picks_forecast_{target_date}.txt"
+
+
+def save_forecast_outputs(
+    target_date: str,
+    picks: list[dict[str, Any]],
+    run_as_of: str,
+) -> None:
+    """Save the forecast ledger for a target date.
+
+    Low-bloat policy:
+      - one forecast JSON per target date
+      - one forecast TXT per target date
+      - last forecast run wins
+
+    Official same-day ledgers remain separate:
+      localdata/picks_YYYY-MM-DD.json/txt
+    """
+    LOCALDATA.mkdir(parents=True, exist_ok=True)
+
+    tagged: list[dict[str, Any]] = []
+    for row in picks:
+        p = dict(row)
+        p["ledger_kind"] = "forecast"
+        p["forecast_for"] = target_date
+        p["forecast_as_of"] = run_as_of
+        tagged.append(p)
+
+    forecast_picks_file(target_date).write_text(json.dumps(tagged, indent=2, sort_keys=True))
+    print(f"Forecast ledger written: {forecast_picks_file(target_date)}")
+
 def morning_baseline_file(target_date: str) -> Path:
     return LOCALDATA / f"picks_morning_{target_date}.json"
 
@@ -434,9 +470,11 @@ def run_future_planner(
         day_specific = [p for p in all_picks if pick_date(p, "9999-99-99") == target]
         generate_daily_report(
             target,
+            output_path=forecast_report_file(target),
             source_picks=day_specific,
             metadata_lines=[f"Snapshot as of: {run_as_of}", "Ledger kind: forecast"],
         )
+        save_forecast_outputs(target, day_specific, run_as_of)
         print(f"  {target}: forecast rows {len(day_specific)}")
 
     all_picks.sort(

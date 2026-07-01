@@ -45,6 +45,7 @@ class SettledPick:
     selected_won_set1: bool | None = None
     selected_won_set2: bool | None = None
     selected_won_set3: bool | None = None
+    ledger_kind: str = "official"
 
 
 def local_today() -> str:
@@ -180,23 +181,55 @@ def archived_picks_path(day: str) -> Path:
     return LOCALDATA / f"picks_{day}.json"
 
 
-def load_archived_picks(start: str, end: str) -> list[dict[str, Any]]:
+def forecast_picks_path(day: str) -> Path:
+    return LOCALDATA / f"picks_forecast_{day}.json"
+
+
+def _load_pick_rows_from_path(path: Path, day: str, ledger_kind: str) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        return []
+    if not isinstance(data, list):
+        return []
+
     out: list[dict[str, Any]] = []
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        r = dict(row)
+        r.setdefault("date", day)
+        r["ledger_kind"] = ledger_kind
+        out.append(r)
+    return out
+
+
+def load_archived_picks(start: str, end: str, *, ledger_kind: str = "official") -> list[dict[str, Any]]:
+    """Load official same-day ledgers or forecast ledgers through one audit path.
+
+    official:
+      localdata/picks_YYYY-MM-DD.json
+
+    forecast:
+      localdata/picks_forecast_YYYY-MM-DD.json
+    """
+    out: list[dict[str, Any]] = []
+
     for day in daterange(start, end):
-        path = archived_picks_path(day)
-        if not path.exists():
-            continue
-        try:
-            data = json.loads(path.read_text())
-        except Exception:
-            continue
-        if not isinstance(data, list):
-            continue
-        for row in data:
-            if isinstance(row, dict):
-                row = dict(row)
-                row.setdefault("date", day)
+        if ledger_kind in {"official", "both"}:
+            for row in _load_pick_rows_from_path(archived_picks_path(day), day, "official"):
+                # Defensive: if an older run wrote forecast rows into the official
+                # date archive, do not count them as official.
+                if str(row.get("ledger_kind") or "").lower() == "forecast":
+                    continue
+                row["ledger_kind"] = "official"
                 out.append(row)
+
+        if ledger_kind in {"forecast", "both"}:
+            out.extend(_load_pick_rows_from_path(forecast_picks_path(day), day, "forecast"))
+
     return out
 
 
@@ -567,6 +600,7 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
         selected_won_set1=set_diag.get("selected_won_set1"),
         selected_won_set2=set_diag.get("selected_won_set2"),
         selected_won_set3=set_diag.get("selected_won_set3"),
+        ledger_kind=str(pick.get("ledger_kind") or "official"),
     )
 
 
@@ -606,8 +640,15 @@ def summarize_by(rows: list[SettledPick], attr: str) -> dict[str, dict[str, Any]
     return {name: summarize_scored(group_rows) for name, group_rows in sorted(grouped.items())}
 
 
-def build_report(start: str, end: str, warehouse_path: Path, *, include_same_day: bool = False) -> dict[str, Any]:
-    picks = load_archived_picks(start, end)
+def build_report(
+    start: str,
+    end: str,
+    warehouse_path: Path,
+    *,
+    include_same_day: bool = False,
+    ledger_kind: str = "official",
+) -> dict[str, Any]:
+    picks = load_archived_picks(start, end, ledger_kind=ledger_kind)
     df = load_warehouse_df(warehouse_path)
     settled_rows: list[SettledPick] = []
     archived_dates = sorted({str(p.get("date") or "")[:10] for p in picks if p.get("date")})
@@ -631,7 +672,9 @@ def build_report(start: str, end: str, warehouse_path: Path, *, include_same_day
         "same_day_excluded": same_day_excluded,
         "same_day_cutoff": today_local,
         "include_same_day": include_same_day,
+        "ledger_kind": ledger_kind,
         "overall": summarize_scored(settled_rows),
+        "by_ledger_kind": summarize_by(settled_rows, "ledger_kind"),
         "by_tour": summarize_by(settled_rows, "tour"),
         "by_series": summarize_by(settled_rows, "series"),
         "by_surface": summarize_by(settled_rows, "surface"),
@@ -662,6 +705,7 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         "",
         "## Settlement policy",
         "",
+        f"- ledger kind: {report.get('ledger_kind')}",
         f"- include same-day picks: {report.get('include_same_day')}",
         f"- same-day cutoff date: {report.get('same_day_cutoff')}",
         f"- same-day rows excluded: {report.get('same_day_excluded', 0)}",
@@ -724,6 +768,12 @@ def main() -> int:
     ap.add_argument("--days", type=int, default=30, help="Rolling window length in days (default: 30).")
     ap.add_argument("--warehouse", default=str(WAREHOUSE), help="Path to warehouse.csv.gz")
     ap.add_argument(
+        "--ledger-kind",
+        choices=["official", "forecast", "both"],
+        default="official",
+        help="Which ledger to audit. Default: official same-day picks.",
+    )
+    ap.add_argument(
         "--include-same-day",
         action="store_true",
         help="Allow same-day archived picks to count as settled. Default is OFF to avoid live/in-progress false settlements.",
@@ -732,11 +782,18 @@ def main() -> int:
 
     end = datetime.strptime(args.end, "%Y-%m-%d").date()
     start = (end - timedelta(days=max(0, args.days - 1))).isoformat()
-    report = build_report(start, end.isoformat(), Path(args.warehouse), include_same_day=args.include_same_day)
+    report = build_report(
+        start,
+        end.isoformat(),
+        Path(args.warehouse),
+        include_same_day=args.include_same_day,
+        ledger_kind=args.ledger_kind,
+    )
 
     LOCALDATA.mkdir(parents=True, exist_ok=True)
-    json_path = LOCALDATA / "picks_audit_rolling.json"
-    md_path = LOCALDATA / f"picks_audit_{end.isoformat()}.md"
+    suffix = "" if args.ledger_kind == "official" else f"_{args.ledger_kind}"
+    json_path = LOCALDATA / f"picks_audit{suffix}_rolling.json"
+    md_path = LOCALDATA / f"picks_audit{suffix}_{end.isoformat()}.md"
     json_path.write_text(json.dumps(report, indent=2, sort_keys=True))
     write_markdown(md_path, report)
 
@@ -744,6 +801,7 @@ def main() -> int:
     print(f"Recent picks audit — {start} to {end.isoformat()}")
     print(f" archived pick rows: {report.get('archived_pick_rows', 0)}")
     print(f" archived pick dates: {len(report.get('archived_pick_dates', []))}")
+    print(f" ledger kind: {report.get('ledger_kind')}")
     print(f" same-day rows excluded: {report.get('same_day_excluded', 0)}")
     print(f" settled picks: {overall.get('settled_picks', 0)}")
     print(f" hit rate: {overall.get('hit_rate')}")
