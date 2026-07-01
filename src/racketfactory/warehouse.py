@@ -203,7 +203,29 @@ def align_odds_to_probabilities(
 
 
 def normalize_person_name(name: str) -> str:
-    name = " ".join(str(name or "").replace(".", " ").replace("-", " ").replace("/", " / ").split()).strip().lower()
+    """Normalize a player or team name for matching across sources.
+
+    Doubles team separators from different sources:
+      - BetClan: "Player1 / Player2"
+      - The Odds API / bookmakers: "Player1 & Player2" or "Player1 and Player2"
+      - Some scrapers: "Player1, Player2"
+
+    All are normalized to " / " so that downstream splitting on "/" works
+    regardless of the source's separator convention.
+    """
+    raw = str(name or "").strip()
+    if not raw:
+        return ""
+
+    # Normalize all common doubles team separators to " / "
+    # Order matters: replace multi-char separators first to avoid partial matches.
+    for sep in (" and ", " & ", ", "):
+        # Only replace if the separator appears between two alphabetic tokens
+        # (avoid replacing " & " inside a single name like "S&Opel" — unlikely
+        # in tennis but defensive).
+        raw = re.sub(r"(?<=[a-zA-Z])" + re.escape(sep) + r"(?=[a-zA-Z])", " / ", raw)
+
+    name = " ".join(raw.replace(".", " ").replace("-", " ").replace("/", " / ").split()).strip().lower()
     if not name:
         return ""
     parts = name.split()
@@ -268,13 +290,20 @@ def names_match(name_a: str, name_b: str) -> bool:
             return False
         
         # Check if players match in either order (A/B vs A/B or A/B vs B/A)
-        # We use a simplified match for members to avoid infinite recursion
+        # Use last-token (surname) matching for members, matching the logic
+        # the singles path uses. Different sources provide different name
+        # formats: "Arevalo" vs "Marcelo Arevalo" should still match.
         def member_match(m1, m2):
-            if m1 == m2: return True
-            # Check surname overlap for members
+            if m1 == m2:
+                return True
+            # Compare surnames (last token of each member string)
             t1 = surname_tokens(m1)
             t2 = surname_tokens(m2)
-            return t1 == t2 if t1 and t2 else False
+            # If both have multiple tokens, require full tuple match
+            if len(t1) > 1 and len(t2) > 1:
+                return t1 == t2
+            # If one or both are single-token (surname only), compare last token
+            return t1[-1] == t2[-1] if t1 and t2 else False
 
         # Try normal order
         if all(member_match(a, b) for a, b in zip(parts_a, parts_b)):
@@ -487,6 +516,21 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict]) -> tuple[dic
             return odds_row, False
         if names_match(home, api_away) and names_match(away, api_home):
             return odds_row, True
+    # Diagnostic: log near-misses for doubles teams where date and sport
+    # match but name matching failed. This helps the operator identify
+    # new separator or naming conventions from The Odds API.
+    if "/" in home or "/" in away or "&" in home or "&" in away:
+        for odds_row in odds_rows:
+            odds_date = str(odds_row.get("match_date", "") or "")[:10]
+            if card_date and odds_date and card_date != odds_date:
+                continue
+            api_home = str(odds_row.get("player_home") or "")
+            api_away = str(odds_row.get("player_away") or "")
+            logger.debug(
+                "Doubles odds match miss: card=%r vs %r (api=%r vs %r)",
+                home, away, api_home, api_away,
+            )
+            break  # Only log the first near-miss to avoid spam
     return None, False
 
 
@@ -816,6 +860,17 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
         # when multiple keys are configured.
         if api_keys:
             key_index = (key_index + 1) % len(api_keys)
+
+    # Diagnostic: log any doubles-likely team names so the operator can verify
+    # separator handling if odds matching fails for doubles.
+    doubles_like = [r for r in rows if "/" in str(r.get("player_home") or "") or "/" in str(r.get("player_away") or "")
+                    or "&" in str(r.get("player_home") or "") or "&" in str(r.get("player_away") or "")]
+    if doubles_like:
+        for dr in doubles_like[:5]:
+            logger.info(
+                "The Odds API doubles-like row: home=%r away=%r sport_key=%s",
+                dr.get("player_home"), dr.get("player_away"), dr.get("sport_key"),
+            )
 
     logger.info("Fetched %d The Odds API tennis rows for %s", len(rows), target_date)
     _write_the_odds_api_cache(str(target_date)[:10], sports, regions, bookmakers, rows)
