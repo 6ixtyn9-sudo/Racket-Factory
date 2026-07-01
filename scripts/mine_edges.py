@@ -389,7 +389,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         lambda r: "|".join(sorted([live_player_key(r.get("player_home", "")), live_player_key(r.get("player_away", ""))])),
         axis=1,
     )
-    card = card[card["match_type"] == "Singles"]
+    # Removed Singles-only filter to enable pricing for Doubles matches
     card = card[card["tour"].isin(["ATP", "WTA", "CHALLENGER", "ITF-M", "ITF-W", "UTR"])]
     if card.empty:
         return card.reset_index(drop=True)
