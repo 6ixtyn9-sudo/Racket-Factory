@@ -109,6 +109,17 @@ def surname_tail(value: Any) -> tuple[str, ...]:
 
 
 def names_match(a: Any, b: Any) -> bool:
+    # Handle doubles pairs (slash-separated)
+    str_a, str_b = str(a), str(b)
+    if "/" in str_a and "/" in str_b:
+        parts_a = [p.strip() for p in str_a.split("/")]
+        parts_b = [p.strip() for p in str_b.split("/")]
+        if len(parts_a) == len(parts_b):
+            if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
+                return True
+            # Try reversed order
+            if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
+                return True
     na = normalize_name(a)
     nb = normalize_name(b)
     if not na or not nb:
