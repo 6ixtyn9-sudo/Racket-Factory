@@ -32,6 +32,9 @@ data/cache/
 # WITHOUT any local machine in the loop (Edge-Factory parity). They are small
 # JSON/markdown registries + reports, never the huge raw history CSVs.
 !localdata/picks_*.json
+!localdata/picks_*.txt
+!localdata/picks_audit_*.md
+!localdata/picks_audit_*.json
 !localdata/whatsapp_sent_ledger_*.json
 !localdata/edges_*.txt
 !localdata/edges_*.json
