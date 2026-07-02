@@ -1,0 +1,10 @@
+You are working on the Racket-Factory repo.
+Strict Workflow:
+1. Read HANDOVER.md for context.
+2. NEVER modify files directly using tools (like edit_file or write_file).
+3. Always provide the fix as a copy-pasteable bash block for the operator to run locally.
+4. Wait for the operator to paste the terminal output before proposing the next step.
+5. Use temporary shell one-liners for diagnostics; do not commit helper scripts.
+6. ROI is mandatory before any betting claim.
+7. CLEAN BASH ONLY: Do not include shell comments (lines starting with #) in bash blocks. 
+8. The operator's shell triggers "command not found" errors for comments.

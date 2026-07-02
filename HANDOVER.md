@@ -16,6 +16,91 @@ Audit market behavior by tour, tournament, odds band, favorite/underdog, and clo
 Only after the market/results warehouse works, add prediction/consensus sources.
 Current status: v0.6.0 — Daily operation hardened: OddsPortal is opt-in for daily runs, live pricing uses The Odds API with configurable tennis sport keys and key rotation, and source-settled result rows are now emitted from ForeTennis and Forebet for audit settlement. Historical OddsPortal capture remains available for market-history maintenance. v0.5.2 notes: Cookie export wired + 404-skip fix. ODDSPORTAL_COOKIES env var loads Netscape cookies.txt into curl_cffi + all Playwright contexts; valid cf_clearance cookies make curl_cffi page_id resolution instant (no 120s Playwright wait). 404-skip: curl_cffi records dead URLs; Playwright is skipped for them, saving ~120s per dead URL. Both fixes verified live: ATP Finals bulk run went from ~19 min (v0.5.1) to ~72s (v0.5.2). ATP Finals 2020 (london): 15 rows, 2021 (turin): 16 rows, 2022 (turin): 15 rows, 2024 (turin): 5 rows captured via single-URL mode. WTA Finals historical backfill complete (2021–2024 captured via single-URL mode, 2020 cancelled). Grand Slam historical backfill is officially complete across all four majors for 2020–2026. Single-URL validation successfully captured the final 2020 COVID season tournament, ATP Paris 2020 (26 rows, 4bWBQ1qE). The historical backfill for all active Grand Slam, Year-End Final, and ATP/WTA Masters 1000 events (2020–2026) is officially 100% complete. Strategic Pivot: Bulk mode (--route) opens 3+ Playwright instances per URL; rapid sequential browser opens trigger stubborn Cloudflare challenge blocks even with valid cookies. Bulk mode is officially deprecated for stubborn/backfill routes in favor of single-URL mode (--url) with brief pauses between executions. Exhaustive single-URL testing for ATP/WTA Canada 2024 returned 404 across all variants, confirming those specific slugs are dead on OddsPortal. Davis Cup and BJK Cup 2024 primary and alternate /world/ and /international/ slugs returned 404, indicating OddsPortal uses an elusive host country or qualifier slug structure. ATP Masters 1000 URL slugs corrected in v0.5.1; 6,787 odds rows captured, 6,575 settled matches, warehouse built. Market audit: favorite ROI -4.4% (n=6575, hit 68.8%, avg odds 1.43), underdog ROI -13.4% (avg odds 3.66).
 
+
+2026-06-30 - Agent operating workflow / preferred collaboration style:
+The preferred maintenance workflow is the one used successfully during the 2026-06-30 daily hygiene session. Preserve this process for future agent work.
+
+Working style:
+- Keep changes minimal, safe, and copy-pasteable.
+- Prefer small targeted patches over broad rewrites.
+- Do not create new helper scripts, validators, reports, or docs unless explicitly asked.
+- Use temporary shell one-liners for diagnostics instead of committing one-off tooling.
+- Explain what each patch is expected to fix before asking the operator to run it.
+- Do not run full daily pipelines or load large ignored `localdata` from the agent environment unless the operator explicitly agrees.
+- The operator runs local commands; the agent reads pasted terminal output and provides the next safe step.
+- Never print or request secrets. If secrets appear in chat, tell the operator to revoke them and move keys to ignored `.env` files.
+
+Patch workflow:
+1. Inspect the relevant source narrowly.
+2. Provide an exact bash block the operator can paste.
+3. Include a syntax check, usually:
+   `python3 -m py_compile <changed_python_file>`
+4. Include a narrow sanity test that does not burn API quota or rerun the full pipeline unless necessary.
+5. Review the operator's pasted output before suggesting commit/push.
+6. Only commit after:
+   - syntax check passes,
+   - targeted sanity check passes,
+   - diff is reviewed,
+   - no unrelated files are included.
+7. Use clear, small commit messages describing the actual fix.
+8. After push, verify GitHub remote.
+
+Remote verification:
+- Prefer checking remote state after each important push.
+- If a local agent clone is stale or dirty, verify GitHub directly with:
+  `git ls-remote https://github.com/6ixtyn9-sudo/Racket-Factory.git refs/heads/main`
+- Confirm the remote SHA matches the operator's pushed commit.
+- For workflow/config changes, verify remote file contents by inspecting `origin/main` or the GitHub remote, not only local state.
+
+Sanity-check pattern:
+- For source hygiene, use focused JSON diagnostics against existing ledgers.
+- For duplicate pick exports, test the dedupe function directly against existing `localdata/picks_YYYY-MM-DD.json` files instead of rerunning the daily pipeline.
+- For CI/cache changes, use `grep` against `.github/workflows/daily.yml` to confirm old keys are gone and new keys are present.
+- For prediction/betting claims, separate:
+  - actionable picks,
+  - dead-edge skipped rows,
+  - no-odds rows,
+  - forecast rows,
+  - unsettled rows,
+  - settlement quality,
+  - ROI.
+- Do not judge the system by raw win rate alone.
+
+Daily-operation decision rules:
+- If the ledger has only `SKIPPED_DEAD_EDGE`, the correct interpretation is "no bet", not "many suggestions".
+- Tomorrow forecast rows are preliminary watchlist items only. They must be confirmed by the next same-day run.
+- Freeze logic during monitoring windows unless a concrete defect appears.
+- Patch only for clear issues such as duplicate rows, unsafe no-odds leakage, false settlement, quota burn, CI/cache regression, or broken report generation.
+
+Communication preference:
+- Be direct and practical.
+- Give the next command to run.
+- Avoid long speculative rewrites.
+- Do not repeatedly restate warnings once acted on.
+- Keep the operator in control of local execution.
+
+2026-07-01 - v0.6.2 forecast ledger separation and automated doubles odds fallback:
+Same-day official ledgers and forecast ledgers are now intentionally separate to avoid tomorrow forecast rows overwriting or being mistaken for tomorrow official rows. Official same-day outputs remain `localdata/picks_YYYY-MM-DD.json` and `localdata/picks_YYYY-MM-DD.txt`. Forecast outputs are `localdata/picks_forecast_YYYY-MM-DD.json` and `localdata/picks_forecast_YYYY-MM-DD.txt`; last forecast run wins, with no timestamp snapshots and no `latest` file. The future planner may temporarily write a future `picks_YYYY-MM-DD.json` while mining, but `daily.py` removes that future official placeholder after writing the forecast ledger and restores `picks_today.json` to the current same-day slate.
+
+Forecast audits are supported by the existing `scripts/audit_recent_picks.py` via `--ledger-kind forecast`. To audit tomorrow's forecast, pass the forecast date explicitly with `--end YYYY-MM-DD`; otherwise the audit defaults to today's date and will not include tomorrow's forecast. Forecast audit outputs are `localdata/picks_audit_forecast_rolling.json` and `localdata/picks_audit_forecast_YYYY-MM-DD.md`. Same-day official audit remains the default and uses `localdata/picks_audit_rolling.json` plus `localdata/picks_audit_YYYY-MM-DD.md`.
+
+ATP Wimbledon doubles missing odds were resolved without manual odds ingestion. The Odds API Wimbledon sport keys currently expose singles only, while BetClan exposes doubles predictions but not decimal odds. OddsPortal ATP Wimbledon Doubles live page (`https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon-doubles/`) captures doubles prices via the existing `scripts/capture_oddsportal.py` render-DOM path into `localdata/oddsportal_tennis_YYYY-MM.csv.gz`. `scripts/mine_edges.py` can use those local OddsPortal rows as an automated fallback for selected-side odds when live/API odds are missing, with conservative doubles name matching that drops trailing initials and refuses opponent mismatches. `scripts/daily.py` can refresh this targeted doubles odds source when `RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS=1` is set. Do not add manual odds CSVs or manual odds overlays for this problem.
+
+If a future competition again produces `WATCHLIST_NO_ODDS`, treat it as non-actionable, not as a bet. First verify whether The Odds API has a sport key for that competition and whether an OddsPortal tournament URL exists and captures rows with the existing `capture_oddsportal.py`. If an automated compatible source is available, wire or run that source; if the available market row has different opponents, leave the pick as `WATCHLIST_NO_ODDS`. Do not force fuzzy matches across different opponents. For a new competition, prefer an exact single-URL OddsPortal capture command over new scripts, and only then consider a minimal route/config/source patch if repeated daily automation is needed.
+
+Normal local operating command after this change:
+
+```bash
+cd ~/Desktop/Racket-Factory && RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS=1 PYTHONPATH=src python3 scripts/daily.py --future-days 2 && PYTHONPATH=src python3 scripts/audit_recent_picks.py --ledger-kind forecast --end "$(python3 -c 'from datetime import date,timedelta; print(date.today()+timedelta(days=1))')"
+
+
+### ⚠️ STRICT OPERATIONAL RULE
+**DO NOT use `edit_file` or `write_file` to modify code.**
+**You are a consultant, not the executor.** You must provide **exact bash blocks** for the operator to run. The operator is the only one with write-access to the production environment.
+- **CLEAN BASH ONLY**: Do not include shell comments (lines starting with `#`) in bash blocks to avoid shell errors.
+
+
+
 Golden rules
 Odds/results first. Prediction sources later.
 ROI is mandatory before any betting claim.
@@ -302,79 +387,3 @@ After rebasing polluted local pick/audit files and rerunning the daily pipeline,
 
 Monitoring plan:
 Freeze logic unless something clearly breaks. Monitor clean operation for one full week, preferably 2026-07-01 through 2026-07-07, then evaluate performance. Keep prediction accuracy, bettable ROI, dead-edge veto quality, forecast quality, no-odds rows, unsettled rows, retirements/walkovers, and settlement quality separate. Do not judge by raw win rate alone. ROI is mandatory before any betting claim.
-
-2026-06-30 - Agent operating workflow / preferred collaboration style:
-The preferred maintenance workflow is the one used successfully during the 2026-06-30 daily hygiene session. Preserve this process for future agent work.
-
-Working style:
-- Keep changes minimal, safe, and copy-pasteable.
-- Prefer small targeted patches over broad rewrites.
-- Do not create new helper scripts, validators, reports, or docs unless explicitly asked.
-- Use temporary shell one-liners for diagnostics instead of committing one-off tooling.
-- Explain what each patch is expected to fix before asking the operator to run it.
-- Do not run full daily pipelines or load large ignored `localdata` from the agent environment unless the operator explicitly agrees.
-- The operator runs local commands; the agent reads pasted terminal output and provides the next safe step.
-- Never print or request secrets. If secrets appear in chat, tell the operator to revoke them and move keys to ignored `.env` files.
-
-Patch workflow:
-1. Inspect the relevant source narrowly.
-2. Provide an exact bash block the operator can paste.
-3. Include a syntax check, usually:
-   `python3 -m py_compile <changed_python_file>`
-4. Include a narrow sanity test that does not burn API quota or rerun the full pipeline unless necessary.
-5. Review the operator's pasted output before suggesting commit/push.
-6. Only commit after:
-   - syntax check passes,
-   - targeted sanity check passes,
-   - diff is reviewed,
-   - no unrelated files are included.
-7. Use clear, small commit messages describing the actual fix.
-8. After push, verify GitHub remote.
-
-Remote verification:
-- Prefer checking remote state after each important push.
-- If a local agent clone is stale or dirty, verify GitHub directly with:
-  `git ls-remote https://github.com/6ixtyn9-sudo/Racket-Factory.git refs/heads/main`
-- Confirm the remote SHA matches the operator's pushed commit.
-- For workflow/config changes, verify remote file contents by inspecting `origin/main` or the GitHub remote, not only local state.
-
-Sanity-check pattern:
-- For source hygiene, use focused JSON diagnostics against existing ledgers.
-- For duplicate pick exports, test the dedupe function directly against existing `localdata/picks_YYYY-MM-DD.json` files instead of rerunning the daily pipeline.
-- For CI/cache changes, use `grep` against `.github/workflows/daily.yml` to confirm old keys are gone and new keys are present.
-- For prediction/betting claims, separate:
-  - actionable picks,
-  - dead-edge skipped rows,
-  - no-odds rows,
-  - forecast rows,
-  - unsettled rows,
-  - settlement quality,
-  - ROI.
-- Do not judge the system by raw win rate alone.
-
-Daily-operation decision rules:
-- If the ledger has only `SKIPPED_DEAD_EDGE`, the correct interpretation is "no bet", not "many suggestions".
-- Tomorrow forecast rows are preliminary watchlist items only. They must be confirmed by the next same-day run.
-- Freeze logic during monitoring windows unless a concrete defect appears.
-- Patch only for clear issues such as duplicate rows, unsafe no-odds leakage, false settlement, quota burn, CI/cache regression, or broken report generation.
-
-Communication preference:
-- Be direct and practical.
-- Give the next command to run.
-- Avoid long speculative rewrites.
-- Do not repeatedly restate warnings once acted on.
-- Keep the operator in control of local execution.
-
-2026-07-01 - v0.6.2 forecast ledger separation and automated doubles odds fallback:
-Same-day official ledgers and forecast ledgers are now intentionally separate to avoid tomorrow forecast rows overwriting or being mistaken for tomorrow official rows. Official same-day outputs remain `localdata/picks_YYYY-MM-DD.json` and `localdata/picks_YYYY-MM-DD.txt`. Forecast outputs are `localdata/picks_forecast_YYYY-MM-DD.json` and `localdata/picks_forecast_YYYY-MM-DD.txt`; last forecast run wins, with no timestamp snapshots and no `latest` file. The future planner may temporarily write a future `picks_YYYY-MM-DD.json` while mining, but `daily.py` removes that future official placeholder after writing the forecast ledger and restores `picks_today.json` to the current same-day slate.
-
-Forecast audits are supported by the existing `scripts/audit_recent_picks.py` via `--ledger-kind forecast`. To audit tomorrow's forecast, pass the forecast date explicitly with `--end YYYY-MM-DD`; otherwise the audit defaults to today's date and will not include tomorrow's forecast. Forecast audit outputs are `localdata/picks_audit_forecast_rolling.json` and `localdata/picks_audit_forecast_YYYY-MM-DD.md`. Same-day official audit remains the default and uses `localdata/picks_audit_rolling.json` plus `localdata/picks_audit_YYYY-MM-DD.md`.
-
-ATP Wimbledon doubles missing odds were resolved without manual odds ingestion. The Odds API Wimbledon sport keys currently expose singles only, while BetClan exposes doubles predictions but not decimal odds. OddsPortal ATP Wimbledon Doubles live page (`https://www.oddsportal.com/tennis/united-kingdom/atp-wimbledon-doubles/`) captures doubles prices via the existing `scripts/capture_oddsportal.py` render-DOM path into `localdata/oddsportal_tennis_YYYY-MM.csv.gz`. `scripts/mine_edges.py` can use those local OddsPortal rows as an automated fallback for selected-side odds when live/API odds are missing, with conservative doubles name matching that drops trailing initials and refuses opponent mismatches. `scripts/daily.py` can refresh this targeted doubles odds source when `RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS=1` is set. Do not add manual odds CSVs or manual odds overlays for this problem.
-
-If a future competition again produces `WATCHLIST_NO_ODDS`, treat it as non-actionable, not as a bet. First verify whether The Odds API has a sport key for that competition and whether an OddsPortal tournament URL exists and captures rows with the existing `capture_oddsportal.py`. If an automated compatible source is available, wire or run that source; if the available market row has different opponents, leave the pick as `WATCHLIST_NO_ODDS`. Do not force fuzzy matches across different opponents. For a new competition, prefer an exact single-URL OddsPortal capture command over new scripts, and only then consider a minimal route/config/source patch if repeated daily automation is needed.
-
-Normal local operating command after this change:
-
-```bash
-cd ~/Desktop/Racket-Factory && RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS=1 PYTHONPATH=src python3 scripts/daily.py --future-days 2 && PYTHONPATH=src python3 scripts/audit_recent_picks.py --ledger-kind forecast --end "$(python3 -c 'from datetime import date,timedelta; print(date.today()+timedelta(days=1))')"
