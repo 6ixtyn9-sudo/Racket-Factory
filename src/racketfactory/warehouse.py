@@ -292,50 +292,41 @@ def names_match(name_a: str, name_b: str) -> bool:
     if not norm_a or not norm_b:
         return False
 
-    # Handle Doubles Teams
+    if norm_a == norm_b:
+        return True
+
     if "/" in norm_a or "/" in norm_b:
         parts_a = [p.strip() for p in norm_a.split("/") if p.strip()]
         parts_b = [p.strip() for p in norm_b.split("/") if p.strip()]
-        
         if len(parts_a) != len(parts_b):
             return False
         
-        # Check if players match in either order (A/B vs A/B or A/B vs B/A)
-        # Use last-token (surname) matching for members, matching the logic
-        # the singles path uses. Different sources provide different name
-        # formats: "Arevalo" vs "Marcelo Arevalo" should still match.
         def member_match(m1, m2):
-            if m1 == m2:
-                return True
-            # Compare surnames (last token of each member string)
-            t1 = surname_tokens(m1)
-            t2 = surname_tokens(m2)
-            # If both have multiple tokens, require full tuple match
-            if len(t1) > 1 and len(t2) > 1:
-                return t1 == t2
-            # If one or both are single-token (surname only), compare last token
-            return t1[-1] == t2[-1] if t1 and t2 else False
-
-        # Try normal order
+            if not m1 or not m2: return False
+            if m1 == m2: return True
+            t1, t2 = surname_tokens(m1), surname_tokens(m2)
+            if t1 and t2 and t1[-1] == t2[-1]: return True
+            if len(m1) > 3 and len(m2) > 3:
+                if m1.startswith(m2) or m2.startswith(m1): return True
+            return False
+        
         if all(member_match(a, b) for a, b in zip(parts_a, parts_b)):
             return True
-        # Try reversed order
         if all(member_match(a, b) for a, b in zip(parts_a, reversed(parts_b))):
             return True
         return False
 
-    if norm_a == norm_b:
-        return True
     if surname_tokens(name_a) == surname_tokens(name_b):
         return True
+    
     toks_a = tuple(p for p in norm_a.split() if p != "/")
     toks_b = tuple(p for p in norm_b.split() if p != "/")
     if len(toks_a) == len(toks_b):
         shared = sum(1 for x, y in zip(toks_a, toks_b) if x == y)
         if shared >= max(1, len(toks_a) - 1):
             return True
-    set_a = set(toks_a)
-    set_b = set(toks_b)
+    
+    set_a, set_b = set(toks_a), set(toks_b)
     overlap = set_a & set_b
     return len(overlap) >= min(len(set_a), len(set_b)) and len(overlap) >= 1
 
