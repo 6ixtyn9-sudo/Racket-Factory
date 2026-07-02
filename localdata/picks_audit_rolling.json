@@ -4,7 +4,7 @@
     "2026-07-01",
     "2026-07-02"
   ],
-  "archived_pick_rows": 72,
+  "archived_pick_rows": 70,
   "by_bucket": {
     "SKIPPED_DEAD_EDGE": {
       "hit_rate": 0.947368,
@@ -277,6 +277,6 @@
     "wins": 23
   },
   "same_day_cutoff": "2026-07-02",
-  "same_day_excluded": 34,
+  "same_day_excluded": 32,
   "start": "2026-06-03"
 }
