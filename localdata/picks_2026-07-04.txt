@@ -1,0 +1,60 @@
+Racket Factory Picks — 2026-07-04
+============================================================
+Generated at: 2026-07-04 22:47:22
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Gille / Verbeek vs Granollers / Zeballos   KO 11:00 -> GRANOLLERS / ZEBALLOS  conf 83% @1.26  EV +0.05u
+     bucket=WATCHLIST  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Arribage / Olivetti vs Ho / Jebens         KO 11:00 -> ARRIBAGE / OLIVETTI  conf 80% @1.28  EV +0.02u
+     bucket=WATCHLIST  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Bolelli / Vavassori vs De Jong / Royer     KO 11:00 -> BOLELLI / VAVASSORI  conf 89% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Vavassori / Errani vs Stevenson / Burrage  KO 14:00 -> VAVASSORI / ERRANI  conf 88% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Chong / Tikhonova vs Siegemund / Zvonareva KO 11:00 -> SIEGEMUND / ZVONAREVA  conf 87% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Danilina / Krunic vs Kalinina / Yastremska KO 15:30 -> DANILINA / KRUNIC  conf 87% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Siniakova / Townsend vs Bouzkova / Sorribe KO 14:00 -> SINIAKOVA / TOWNSEND  conf 87% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Dolehide / Parks vs Dabrowski / Stefani    KO 12:30 -> DABROWSKI / STEFANI  conf 85% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Doumbia / Reboul vs Kopriva / Pieczonka    KO 14:00 -> DOUMBIA / REBOUL  conf 83% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Harris / Christie vs Skupski / Krawczyk    KO 15:30 -> SKUPSKI / KRAWCZYK  conf 81% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  (none)
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Marcos Giron vs Alexander Zverev           KO 14:30 -> ALEXANDER ZVEREV  conf 83% @1.04  EV -0.14u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan, Forebet, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam] Jiri Lehecka vs Jaume Munar                KO 12:30 -> JIRI LEHECKA  conf 69% @1.28  EV -0.12u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan, Forebet, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam] Taylor Fritz vs Lorenzo Sonego             KO 15:30 -> TAYLOR FRITZ  conf 68% @1.11  EV -0.25u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan, Forebet, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam] Alex de Minaur vs Zachary Svajda           KO 11:00 -> ALEX DE MINAUR  conf 62% @1.14  EV -0.29u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan, Forebet, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.

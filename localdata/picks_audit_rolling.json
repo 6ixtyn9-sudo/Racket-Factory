@@ -3,25 +3,26 @@
     "2026-06-30",
     "2026-07-01",
     "2026-07-02",
-    "2026-07-03"
+    "2026-07-03",
+    "2026-07-04"
   ],
-  "archived_pick_rows": 93,
+  "archived_pick_rows": 107,
   "by_bucket": {
     "SKIPPED_DEAD_EDGE": {
-      "hit_rate": 0.833333,
-      "priced_picks": 30,
-      "roi": -0.036667,
-      "selected_won_any_set": 29,
-      "selected_won_any_set_rate": 0.966667,
+      "hit_rate": 0.8,
+      "priced_picks": 40,
+      "roi": -0.0735,
+      "selected_won_any_set": 37,
+      "selected_won_any_set_rate": 0.925,
       "selected_won_set1": 5,
       "selected_won_set1_rate": 0.833333,
       "selected_won_set2": 2,
       "selected_won_set2_rate": 0.4,
       "selected_won_set3": 4,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 30,
-      "settled_picks": 30,
-      "wins": 25
+      "set_diagnostic_picks": 40,
+      "settled_picks": 40,
+      "wins": 32
     },
     "WATCHLIST": {
       "hit_rate": 0.666667,
@@ -58,20 +59,20 @@
   },
   "by_ledger_kind": {
     "official": {
-      "hit_rate": 0.767442,
-      "priced_picks": 33,
-      "roi": -0.042727,
-      "selected_won_any_set": 38,
-      "selected_won_any_set_rate": 0.883721,
+      "hit_rate": 0.754717,
+      "priced_picks": 43,
+      "roi": -0.075581,
+      "selected_won_any_set": 46,
+      "selected_won_any_set_rate": 0.867925,
       "selected_won_set1": 8,
       "selected_won_set1_rate": 0.8,
       "selected_won_set2": 3,
       "selected_won_set2_rate": 0.5,
       "selected_won_set3": 5,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 43,
-      "settled_picks": 43,
-      "wins": 33
+      "set_diagnostic_picks": 53,
+      "settled_picks": 53,
+      "wins": 40
     }
   },
   "by_series": {
@@ -92,44 +93,44 @@
       "wins": 1
     },
     "Grand Slam": {
-      "hit_rate": 0.761905,
-      "priced_picks": 32,
-      "roi": -0.055312,
-      "selected_won_any_set": 37,
-      "selected_won_any_set_rate": 0.880952,
+      "hit_rate": 0.75,
+      "priced_picks": 42,
+      "roi": -0.085952,
+      "selected_won_any_set": 45,
+      "selected_won_any_set_rate": 0.865385,
       "selected_won_set1": 7,
       "selected_won_set1_rate": 0.777778,
       "selected_won_set2": 3,
       "selected_won_set2_rate": 0.6,
       "selected_won_set3": 4,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 42,
-      "settled_picks": 42,
-      "wins": 32
+      "set_diagnostic_picks": 52,
+      "settled_picks": 52,
+      "wins": 39
     }
   },
   "by_source": {
     "BetClan": {
-      "hit_rate": 0.6,
-      "priced_picks": 5,
-      "roi": -0.216,
-      "selected_won_any_set": 4,
-      "selected_won_any_set_rate": 0.8,
+      "hit_rate": 0.666667,
+      "priced_picks": 6,
+      "roi": -0.13,
+      "selected_won_any_set": 5,
+      "selected_won_any_set_rate": 0.833333,
       "selected_won_set1": 3,
       "selected_won_set1_rate": 0.75,
       "selected_won_set2": 0,
       "selected_won_set2_rate": null,
       "selected_won_set3": 0,
       "selected_won_set3_rate": null,
-      "set_diagnostic_picks": 5,
-      "settled_picks": 5,
-      "wins": 3
+      "set_diagnostic_picks": 6,
+      "settled_picks": 6,
+      "wins": 4
     },
     "BetClan, Forebet": {
-      "hit_rate": 0.888889,
-      "priced_picks": 9,
-      "roi": -0.004444,
-      "selected_won_any_set": 9,
+      "hit_rate": 0.916667,
+      "priced_picks": 12,
+      "roi": 0.041667,
+      "selected_won_any_set": 12,
       "selected_won_any_set_rate": 1.0,
       "selected_won_set1": 1,
       "selected_won_set1_rate": 1.0,
@@ -137,25 +138,25 @@
       "selected_won_set2_rate": 0.0,
       "selected_won_set3": 1,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 9,
-      "settled_picks": 9,
-      "wins": 8
+      "set_diagnostic_picks": 12,
+      "settled_picks": 12,
+      "wins": 11
     },
     "BetClan, Forebet, PredixSport": {
-      "hit_rate": 0.846154,
-      "priced_picks": 13,
-      "roi": -0.017692,
-      "selected_won_any_set": 12,
-      "selected_won_any_set_rate": 0.923077,
+      "hit_rate": 0.777778,
+      "priced_picks": 18,
+      "roi": -0.106111,
+      "selected_won_any_set": 16,
+      "selected_won_any_set_rate": 0.888889,
       "selected_won_set1": 1,
       "selected_won_set1_rate": 0.5,
       "selected_won_set2": 1,
       "selected_won_set2_rate": 0.5,
       "selected_won_set3": 2,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 13,
-      "settled_picks": 13,
-      "wins": 11
+      "set_diagnostic_picks": 18,
+      "settled_picks": 18,
+      "wins": 14
     },
     "BetClan, PredixSport": {
       "hit_rate": 0.636364,
@@ -174,19 +175,19 @@
       "wins": 7
     },
     "Forebet": {
-      "hit_rate": 0.666667,
-      "priced_picks": 3,
-      "roi": -0.12,
+      "hit_rate": 0.5,
+      "priced_picks": 4,
+      "roi": -0.34,
       "selected_won_any_set": 3,
-      "selected_won_any_set_rate": 1.0,
+      "selected_won_any_set_rate": 0.75,
       "selected_won_set1": 2,
       "selected_won_set1_rate": 1.0,
       "selected_won_set2": 1,
       "selected_won_set2_rate": 0.5,
       "selected_won_set3": 1,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 3,
-      "settled_picks": 3,
+      "set_diagnostic_picks": 4,
+      "settled_picks": 4,
       "wins": 2
     },
     "Forebet, PredixSport": {
@@ -208,20 +209,20 @@
   },
   "by_surface": {
     "Grass": {
-      "hit_rate": 0.761905,
-      "priced_picks": 32,
-      "roi": -0.055312,
-      "selected_won_any_set": 37,
-      "selected_won_any_set_rate": 0.880952,
+      "hit_rate": 0.75,
+      "priced_picks": 42,
+      "roi": -0.085952,
+      "selected_won_any_set": 45,
+      "selected_won_any_set_rate": 0.865385,
       "selected_won_set1": 7,
       "selected_won_set1_rate": 0.777778,
       "selected_won_set2": 3,
       "selected_won_set2_rate": 0.6,
       "selected_won_set3": 4,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 42,
-      "settled_picks": 42,
-      "wins": 32
+      "set_diagnostic_picks": 52,
+      "settled_picks": 52,
+      "wins": 39
     },
     "Hard": {
       "hit_rate": 1.0,
@@ -242,20 +243,20 @@
   },
   "by_tour": {
     "ATP": {
-      "hit_rate": 0.727273,
-      "priced_picks": 23,
-      "roi": -0.077826,
-      "selected_won_any_set": 28,
-      "selected_won_any_set_rate": 0.848485,
+      "hit_rate": 0.7,
+      "priced_picks": 30,
+      "roi": -0.139,
+      "selected_won_any_set": 33,
+      "selected_won_any_set_rate": 0.825,
       "selected_won_set1": 5,
       "selected_won_set1_rate": 0.714286,
       "selected_won_set2": 2,
       "selected_won_set2_rate": 0.666667,
       "selected_won_set3": 3,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 33,
-      "settled_picks": 33,
-      "wins": 24
+      "set_diagnostic_picks": 40,
+      "settled_picks": 40,
+      "wins": 28
     },
     "CHALLENGER": {
       "hit_rate": 1.0,
@@ -274,10 +275,10 @@
       "wins": 1
     },
     "WTA": {
-      "hit_rate": 0.888889,
-      "priced_picks": 9,
-      "roi": 0.002222,
-      "selected_won_any_set": 9,
+      "hit_rate": 0.916667,
+      "priced_picks": 12,
+      "roi": 0.046667,
+      "selected_won_any_set": 12,
       "selected_won_any_set_rate": 1.0,
       "selected_won_set1": 2,
       "selected_won_set1_rate": 1.0,
@@ -285,31 +286,31 @@
       "selected_won_set2_rate": 0.5,
       "selected_won_set3": 1,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 9,
-      "settled_picks": 9,
-      "wins": 8
+      "set_diagnostic_picks": 12,
+      "settled_picks": 12,
+      "wins": 11
     }
   },
-  "end": "2026-07-03",
+  "end": "2026-07-04",
   "include_same_day": false,
   "ledger_kind": "official",
   "overall": {
-    "hit_rate": 0.767442,
-    "priced_picks": 33,
-    "roi": -0.042727,
-    "selected_won_any_set": 38,
-    "selected_won_any_set_rate": 0.883721,
+    "hit_rate": 0.754717,
+    "priced_picks": 43,
+    "roi": -0.075581,
+    "selected_won_any_set": 46,
+    "selected_won_any_set_rate": 0.867925,
     "selected_won_set1": 8,
     "selected_won_set1_rate": 0.8,
     "selected_won_set2": 3,
     "selected_won_set2_rate": 0.5,
     "selected_won_set3": 5,
     "selected_won_set3_rate": 1.0,
-    "set_diagnostic_picks": 43,
-    "settled_picks": 43,
-    "wins": 33
+    "set_diagnostic_picks": 53,
+    "settled_picks": 53,
+    "wins": 40
   },
-  "same_day_cutoff": "2026-07-03",
-  "same_day_excluded": 26,
-  "start": "2026-06-04"
+  "same_day_cutoff": "2026-07-04",
+  "same_day_excluded": 14,
+  "start": "2026-06-05"
 }
