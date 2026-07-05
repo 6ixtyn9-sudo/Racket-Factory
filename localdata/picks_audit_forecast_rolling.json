@@ -128,7 +128,7 @@
       "wins": 3
     }
   },
-  "end": "2026-07-05",
+  "end": "2026-07-06",
   "include_same_day": false,
   "ledger_kind": "forecast",
   "overall": {
@@ -147,7 +147,7 @@
     "settled_picks": 6,
     "wins": 3
   },
-  "same_day_cutoff": "2026-07-04",
+  "same_day_cutoff": "2026-07-05",
   "same_day_excluded": 0,
-  "start": "2026-06-06"
+  "start": "2026-06-07"
 }
