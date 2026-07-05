@@ -2,7 +2,7 @@
 
 ## Overall
 
-- archived pick rows: 118
+- archived pick rows: 116
 - archived pick dates: 6
 - settled picks: 57
 - wins: 44
@@ -20,7 +20,7 @@
 - ledger kind: official
 - include same-day picks: False
 - same-day cutoff date: 2026-07-05
-- same-day rows excluded: 11
+- same-day rows excluded: 9
 - settlement date tolerance: exact pick date preferred, warehouse match_date +/- 1 day allowed
 - settlement finality guard: live/suspended/to-finish rows are rejected
 
