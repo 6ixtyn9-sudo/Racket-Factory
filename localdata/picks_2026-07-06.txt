@@ -1,0 +1,53 @@
+Racket Factory Picks — 2026-07-06
+============================================================
+Generated at: 2026-07-06 07:25:38
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  (none)
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Danilina / Krunic vs Neel / Olmos          KO 12:30 -> DANILINA / KRUNIC  conf 84% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Guo / Mladenovic vs Detiuc / Khromacheva   KO 11:00 -> GUO / MLADENOVIC  conf 81% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam | pred_confidence:High] Arevalo / Pavic vs Rojer / Winegar         KO 13:00 -> AREVALO / PAVIC  conf 77% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  (none)
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:MarketOnly] G. Kravchenko vs G. Crivellaro             KO 10:00 -> G. KRAVCHENKO  conf 77% @1.04  EV -0.20u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=4745  roi=0.18%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:MarketOnly] E. Dalla Valle vs I. Carou                 KO 11:30 -> E. DALLA VALLE  conf 68% @1.01  EV -0.31u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=4745  roi=0.18%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:MarketOnly] G. Villanueva vs L. Bocchi                 KO 10:00 -> G. VILLANUEVA  conf 66% @1.28  EV -0.16u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=4745  roi=0.18%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:MarketOnly] T. Seyboth Wild vs V. Marysko              KO 11:30 -> T. SEYBOTH WILD  conf 65% @1.08  EV -0.30u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=4745  roi=0.18%
+  [tour:ATP | fav_odds_band:1.1-1.3 | _series:Grand Slam] Felix Auger-Aliassime vs Alejandro Davidov KO n/a   -> FELIX AUGER-ALIASSIME  conf 63% @1.10  EV -0.31u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Grand Slam  surface=Grass  source=PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=2891  roi=0.09%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:MarketOnly] J. Opitz vs M. Petkovic                    KO 13:00 -> M. PETKOVIC  conf 57% @1.28  EV -0.27u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=4745  roi=0.18%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:MarketOnly] D. Kuzmanov vs R. Strombachs               KO 13:00 -> D. KUZMANOV  conf 56% @1.28  EV -0.28u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=4745  roi=0.18%
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.
