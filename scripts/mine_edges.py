@@ -1408,6 +1408,62 @@ def main() -> int:
         logger.info("Today candidate rows after live filtering: %d", len(today_df))
 
     picks_to_export = []
+    # Fallback for live-only mode (no historical edges after cache eviction)
+    # If we have today candidates but no certified edges, export them as WATCHLIST
+    # using their own prediction confidence — allows factory to recover and
+    # generate auto_tickets even before full history backfill.
+    if not results and not today_df.empty:
+        logger.warning("No historical edges found — live-only fallback: exporting today candidates as WATCHLIST")
+        for _, row in today_df.iterrows():
+            base = select_player_from_row(row, target_date)
+            prob = None
+            for col in prob_cols:
+                pval = row.get(col)
+                if pd.notna(pval) and str(pval).strip() not in {"nan", "<NA>", "None"}:
+                    try:
+                        v = float(pval)
+                        if v <= 1.0 and v > 0:
+                            v *= 100.0
+                        if prob is None or v > prob:
+                            prob = v
+                    except (TypeError, ValueError):
+                        pass
+            odds_val, odds_reject_reason = selected_odds_is_usable(row, base.get("selected_side"), prob)
+            odds_source = str(row.get("_odds_source") or row.get("odds_source") or "").strip()
+            odds_bookmaker = str(row.get("bookmaker") or row.get("odds_bookmaker") or "").strip()
+            if odds_val is None:
+                local_op = lookup_local_oddsportal_selected_odds(target_date, base)
+                if local_op is not None:
+                    odds_val = local_op.get("odds")
+                    odds_reject_reason = None
+                    odds_source = "OddsPortal"
+                    odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
+            ev = None
+            if prob is not None and odds_val is not None and odds_val > 1.0:
+                p_dec = max(0.0, min(1.0, prob / 100.0))
+                ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
+            base.update({
+                "bucket": "WATCHLIST" if odds_val is not None else "WATCHLIST_NO_ODDS",
+                "pick": "WATCHLIST",
+                "odds": odds_val,
+                "odds_source": odds_source,
+                "odds_bookmaker": odds_bookmaker,
+                "odds_reject_reason": odds_reject_reason,
+                "confidence": prob,
+                "expected_value": ev,
+                "slice_matched": "live_only_fallback",
+                "edge_dims": 0,
+                "edge_n": 0,
+                "edge_grade": "SILVER",
+                "edge_tier": "BANKER",
+                "edge_verdict": "WATCHLIST",
+                "roi_estimate": "live_only",
+            })
+            if ev is not None and ev < args.min_ev:
+                base["bucket"] = "SKIPPED_DEAD_EDGE"
+                base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
+            picks_to_export.append(base)
+
     if not today_df.empty and results:
         for _, row in today_df.iterrows():
             best_pick = None

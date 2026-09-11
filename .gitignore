@@ -33,8 +33,17 @@ data/cache/
 # JSON/markdown registries + reports, never the huge raw history CSVs.
 !localdata/picks_*.json
 !localdata/picks_*.txt
-!localdata/picks_audit_*.md
+!localdata/picks_today.json
+!localdata/picks_morning_*.json
+!localdata/picks_next_*.json
+!localdata/picks_forecast_*.json
+!localdata/picks_forecast_*.txt
 !localdata/picks_audit_*.json
+!localdata/picks_audit_*.md
+!localdata/picks_audit_forecast_*.json
+!localdata/picks_audit_forecast_*.md
+!localdata/picks_audit_rolling.json
+!localdata/picks_audit_forecast_rolling.json
 !localdata/whatsapp_sent_ledger_*.json
 !localdata/edges_*.txt
 !localdata/edges_*.json
@@ -43,10 +52,13 @@ data/cache/
 !localdata/auto_tickets_state.json
 !localdata/auto_tickets_performance.json
 !localdata/auto_tickets_today.json
+!localdata/auto_tickets_today.txt
 !localdata/.keepalive
 
 # NOTE on the BIG history data: warehouse.csv.gz, oddsportal_*.csv, etc.
 # stay IGNORED. They are too large to live in normal commits.
+# Explicitly keep them ignored even though we unignore many small files above.
+# (localdata/* already ignores them)
 
 # Stray data files accidentally created in repo root (no extension)
 # Date-named files like "2026-06-14" should not be committed
