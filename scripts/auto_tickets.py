@@ -205,15 +205,14 @@ def parse_kickoff(pick: dict, target_date: str) -> datetime | None:
 def kickoff_guard(pool: list[dict], target_date: str, now: datetime):
     kept = []
     skipped = []
+    is_today = target_date == now.date().isoformat()
     for pick in pool:
         ko = parse_kickoff(pick, target_date)
         if ko is None:
-            # If no kickoff, keep but warn — tennis kickoffs are often missing
-            # For safety, keep if date is today and we are before freeze? We keep.
             kept.append(pick)
             continue
-        # If kickoff is today and already started (now > ko), drop
-        if ko.date().isoformat() == target_date and ko <= now:
+        # Only enforce "already started" for today's slate
+        if is_today and ko.date().isoformat() == target_date and ko <= now:
             skipped.append((pick, "already started"))
         else:
             kept.append(pick)
