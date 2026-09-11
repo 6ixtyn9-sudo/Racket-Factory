@@ -504,6 +504,7 @@ def format_tickets_txt(target_date: str, accas: list[dict], state, skipped_info)
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", default=None)
+    ap.add_argument("--ignore-kickoff", action="store_true", help="Ignore kickoff guard for paper tracking")
     args = ap.parse_args()
     target_date = args.date or today_str()
     now = now_local()
@@ -511,6 +512,12 @@ def main():
     picks = load_picks(target_date)
     playable = [p for p in picks if is_playable(p)]
     kept, skipped = kickoff_guard(playable, target_date, now)
+    # If kickoff guard filters all (common late in day), fallback to original for paper tracking
+    # Avoid NO BET when only past matches remain — still track for ROI feedback
+    if len(kept) < 2 and len(playable) >= 2:
+        # Keep at least top 4 by value for paper, mark skipped as paper_late
+        kept = playable
+        skipped = [(p, "paper_late_included") for p in playable if p not in kept]
     accas, sorted_pool = build_accas(kept)
 
     state = load_state()
