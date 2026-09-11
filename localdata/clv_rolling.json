@@ -1,0 +1,42 @@
+{
+  "audit_roi_by_source": {},
+  "audit_roi_by_surface": {},
+  "audit_roi_by_tour": {},
+  "calibration_by_confidence": {
+    "Low (<60%)": {
+      "calibration_error": -0.5,
+      "expected": 0.5,
+      "hit_rate": 0.0,
+      "n": 1,
+      "wilson_lb": 0.0,
+      "wins": 0
+    },
+    "Medium (60-70%)": {
+      "calibration_error": -0.6,
+      "expected": 0.6,
+      "hit_rate": 0.0,
+      "n": 2,
+      "wilson_lb": 0.0,
+      "wins": 0
+    }
+  },
+  "calibration_by_source": {
+    "market": {
+      "expected": null,
+      "hit_rate": 0.0,
+      "n": 3,
+      "wilson_lb": 0.0,
+      "wins": 0
+    }
+  },
+  "calibration_by_tour": {
+    "WTA": {
+      "expected": null,
+      "hit_rate": 0.0,
+      "n": 3,
+      "wilson_lb": 0.0,
+      "wins": 0
+    }
+  },
+  "total_settled": 3801
+}
