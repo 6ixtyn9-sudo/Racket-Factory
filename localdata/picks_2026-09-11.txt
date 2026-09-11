@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-11
 ============================================================
-Generated at: 2026-09-11 14:08:30
+Generated at: 2026-09-11 15:03:14
 
 
 CERTIFIED CLEAN PICKS
@@ -13,7 +13,7 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] Alexander Zverev vs Karen Khachanov        KO 20:00 -> ALEXANDER ZVEREV  conf 85% @1.23  EV +0.05u
+  [live_only_fallback] Alexander Zverev vs Karen Khachanov        KO 20:00 -> ALEXANDER ZVEREV  conf 85% @1.24  EV +0.05u
      bucket=WATCHLIST  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
 
 WATCHLIST — NO MATCHED ODDS
