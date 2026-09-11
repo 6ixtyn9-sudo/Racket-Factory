@@ -17,6 +17,8 @@ from racketfactory.entities import player_key
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.forebet import ForebetPredictor, name_signature
+from racketfactory.sources.foretennis import ForeTennisPredictor
+from racketfactory.sources.bzzoiro import BzzoiroPredictor
 
 logger = logging.getLogger(__name__)
 
@@ -984,6 +986,7 @@ def build_live_rows() -> pd.DataFrame:
         ("PredixSport", PredixSportPredictor(), lambda p: p.fetch_daily()),
         ("BetClan", BetClanPredictor(), lambda p: p.fetch_daily()),
         ("Forebet", ForebetPredictor(), lambda p: p.fetch_daily_predictions("today")),
+        ("Bzzoiro", BzzoiroPredictor(), lambda p: p.fetch_daily()),
     ]:
         try:
             preds = fetcher(predictor)
