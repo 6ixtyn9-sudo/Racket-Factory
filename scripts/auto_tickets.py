@@ -62,6 +62,11 @@ MAX_ACCAS = 2
 LEGS_PER_ACCA = 2
 MAX_LEGS = MAX_ACCAS * LEGS_PER_ACCA
 PLAYABLE_BUCKETS = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION"}
+<<<<<<< HEAD
+=======
+# Since odds tough for Challenger/ITF, allow NO_ODDS with high ML strength
+PLAYABLE_BUCKETS_WITH_ML = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "WATCHLIST_NO_ODDS"}
+>>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
 TAKE_PROFIT_GAIN = 1.0  # +100% per cycle
 
 # files
@@ -164,23 +169,67 @@ def load_picks(target_date: str) -> list[dict]:
 
 def is_playable(pick: dict) -> bool:
     bucket = str(pick.get("bucket","")).upper()
+<<<<<<< HEAD
     if bucket not in PLAYABLE_BUCKETS:
+=======
+    # Allow NO_ODDS if ML strength high (strengths-focused since odds tough)
+    is_no_odds = "NO_ODDS" in bucket
+    if bucket not in PLAYABLE_BUCKETS and not (is_no_odds and bucket in PLAYABLE_BUCKETS_WITH_ML):
+>>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
         return False
     odds = pick.get("odds")
     try:
         o = float(odds)
         if o <= 1.0:
+<<<<<<< HEAD
             return False
     except Exception:
         return False
+=======
+            # If NO_ODDS but high ML strength, allow with estimated odds
+            if is_no_odds and _ML_AVAILABLE:
+                try:
+                    audit = load_audit_rolling()
+                    registry = build_context_registry(audit)
+                    weights = source_weights_from_audit(audit)
+                    scoring = score_pick_strengths(pick, registry, weights)
+                    if scoring.get("strength_score", 0) >= 0.4 and scoring.get("w_score", 0) >= 0.6:
+                        pass  # Allow NO_ODDS with high strength
+                    else:
+                        return False
+                except Exception:
+                    return False
+            else:
+                return False
+    except Exception:
+        # No odds
+        if is_no_odds and _ML_AVAILABLE:
+            try:
+                audit = load_audit_rolling()
+                registry = build_context_registry(audit)
+                weights = source_weights_from_audit(audit)
+                scoring = score_pick_strengths(pick, registry, weights)
+                # Require BOOST and high strength for NO_ODDS to be playable
+                if scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.4:
+                    pass
+                else:
+                    return False
+            except Exception:
+                return False
+        else:
+            return False
+>>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
     # must have selected player and match
     if not clean_text(pick.get("selected_player")):
         return False
     if not clean_text(pick.get("match")):
         return False
+<<<<<<< HEAD
     # skip if odds_source indicates no odds
     if "NO_ODDS" in bucket:
         return False
+=======
+>>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
     # ML strengths feedback: veto if context ROI negative
     if _ML_AVAILABLE:
         try:
@@ -189,7 +238,10 @@ def is_playable(pick: dict) -> bool:
             weights = source_weights_from_audit(audit)
             scoring = score_pick_strengths(pick, registry, weights)
             if scoring.get("should_veto") and scoring.get("strength_score", 0) < -0.3:
+<<<<<<< HEAD
                 # Strong veto from ROI feedback
+=======
+>>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
                 return False
         except Exception:
             pass
@@ -241,6 +293,24 @@ def kickoff_guard(pool: list[dict], target_date: str, now: datetime):
             kept.append(pick)
     return kept, skipped
 
+<<<<<<< HEAD
+=======
+def estimate_odds_from_confidence(pick: dict) -> float:
+    """Estimate odds from confidence when real odds missing (strengths-focused)."""
+    conf = pick.get("confidence") or 60
+    try:
+        conf_f = float(conf)
+        if conf_f <= 1.0:
+            conf_f *= 100
+    except Exception:
+        conf_f = 60
+    # Convert prob to odds with margin: odds = 1/prob * 0.95 (book margin)
+    prob = max(0.35, min(0.85, conf_f/100.0))
+    est = round(1.0 / prob * 0.92, 2)  # 8% margin
+    # Clamp to reasonable tennis odds
+    return max(1.15, min(3.5, est))
+
+>>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
 def build_accas(pool: list[dict]):
     # Sort: ML strength desc, confidence desc, EV desc, odds asc (strengths-focused since odds tough)
     audit = {}
@@ -262,6 +332,15 @@ def build_accas(pool: list[dict]):
                 ml_score = scoring.get("strength_score", 0)
             except Exception:
                 ml_score = 0
+<<<<<<< HEAD
+=======
+        # Also use ml_strength_score directly from pick if present
+        if p.get("ml_strength_score") is not None:
+            try:
+                ml_score = max(ml_score, float(p.get("ml_strength_score")))
+            except Exception:
+                pass
+>>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
         conf = p.get("confidence") or 0
         try:
             conf_f = float(conf)
@@ -274,7 +353,13 @@ def build_accas(pool: list[dict]):
             ev_f = float(ev)
         except Exception:
             ev_f = 0
+<<<<<<< HEAD
         odds = p.get("odds") or 999
+=======
+        odds = p.get("odds")
+        if odds is None:
+            odds = estimate_odds_from_confidence(p)
+>>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
         try:
             odds_f = float(odds)
         except Exception:
@@ -288,11 +373,25 @@ def build_accas(pool: list[dict]):
         chunk = top[i:i+LEGS_PER_ACCA]
         if len(chunk) < LEGS_PER_ACCA:
             break
+<<<<<<< HEAD
         # compute acca odds
         prod = 1.0
         for leg in chunk:
             try:
                 prod *= float(leg.get("odds") or 1.0)
+=======
+        # compute acca odds — use estimated if real missing (strengths-focused)
+        prod = 1.0
+        for leg in chunk:
+            odds_val = leg.get("odds")
+            if odds_val is None:
+                odds_val = estimate_odds_from_confidence(leg)
+                leg["odds"] = odds_val
+                leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+                leg["odds_bookmaker"] = leg.get("odds_bookmaker") or "ML_Estimated"
+            try:
+                prod *= float(odds_val)
+>>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
             except Exception:
                 prod *= 1.0
         accas.append({
