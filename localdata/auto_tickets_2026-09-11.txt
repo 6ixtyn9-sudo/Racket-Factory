@@ -1,9 +1,8 @@
 AUTO TICKETS (TENNIS) — 2026-09-11
 ============================================================
-Generated: 2026-09-11 13:12:25 SAST
+Generated: 2026-09-11 14:03:15 SAST
 PERFORMANCE: total bank 100.0% of capital (x1.00) = free bank 100.0% + committed 0.0% · next take-profit at 200.0%
 
 NO BET — not enough playable legs or all filtered by kickoff guard
-Skipped 2 legs (kickoff guard)
 
 ⚠️  Flat stakes only. Bet only what you can afford to lose.

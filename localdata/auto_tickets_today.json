@@ -3,17 +3,8 @@
   "bank_pct": 100.0,
   "date": "2026-09-11",
   "frozen": true,
-  "generated_at": "2026-09-11T13:12:25.877355+02:00",
-  "skipped": [
-    {
-      "match": "V. Ryser vs M. Hontama",
-      "reason": "already started"
-    },
-    {
-      "match": "M. Lajal vs Y. Bu",
-      "reason": "already started"
-    }
-  ],
+  "generated_at": "2026-09-11T14:03:15+02:00",
+  "skipped": [],
   "stake_per_acca_pct": 0,
   "staked_pct": 0
 }
