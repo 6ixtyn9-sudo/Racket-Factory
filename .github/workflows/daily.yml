@@ -51,7 +51,7 @@ jobs:
       RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES: '1'
 
       # Keep OddsPortal browser scraping opt-in on CI.
-      RACKET_FACTORY_REFRESH_ODDSPORTAL: '0'
+      RACKET_FACTORY_REFRESH_ODDSPORTAL: '1'
       RACKET_FACTORY_ODDSPORTAL_DELAY: '60'
 
       # Forecast hygiene defaults.
