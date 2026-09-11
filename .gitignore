@@ -7,30 +7,32 @@ __pycache__/
 .mypy_cache/
 .venv/
 
+# Data - broad ignores first, specific negations below (Edge parity)
+*.csv
+*.csv.gz
+*.duckdb
+*.duckdb.wal
+*.parquet
+
 # Local/env
 .env
 localdata/*
-*.duckdb
-*.duckdb.wal
-
-# OS/editor
-.DS_Store
-.vscode/
-.idea/
-
-# Required missing entries
 *.log
 *.zip
 .env.*
 !.env.example
 data/raw/
 data/cache/
-*.parquet
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
 
 # --- Negations: small regenerated artifacts that ARE committed -----------------
 # These survive GitHub Actions cache eviction so CI certifies autonomously
-# WITHOUT any local machine in the loop (Edge-Factory parity). They are small
-# JSON/markdown registries + reports, never the huge raw history CSVs.
+# WITHOUT any local machine in the loop (Edge-Factory parity).
+# Picks / audit / forecast / tickets
 !localdata/picks_*.json
 !localdata/picks_*.txt
 !localdata/picks_today.json
@@ -55,10 +57,16 @@ data/cache/
 !localdata/auto_tickets_today.txt
 !localdata/.keepalive
 
-# NOTE on the BIG history data: warehouse.csv.gz, oddsportal_*.csv, etc.
-# stay IGNORED. They are too large to live in normal commits.
-# Explicitly keep them ignored even though we unignore many small files above.
-# (localdata/* already ignores them)
+# Core history for autonomous certification (Edge parity)
+# These are immutable or slowly growing, committed so warehouse can rebuild after cache eviction
+!localdata/tennisdata_*.csv.gz
+!localdata/oddsportal_*.csv.gz
+!localdata/predictions_*.csv.gz
+!localdata/theoddsapi_*.csv.gz
+!localdata/betexplorer_*.csv.gz
+!localdata/forebet.csv.gz
+!localdata/foretennis.csv.gz
+!localdata/settled_results.json
 
 # Stray data files accidentally created in repo root (no extension)
 # Date-named files like "2026-06-14" should not be committed
