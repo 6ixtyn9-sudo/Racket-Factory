@@ -932,6 +932,7 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
         api_matched += 1
 
     fallback_matched = 0
+    fallback_invalid = 0
     for idx, row in out.iterrows():
         if str(row.get("odds_source", "") or "") == "TheOddsAPI":
             continue
@@ -942,14 +943,31 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
             row.get("scraped_odds_home"),
             row.get("scraped_odds_away"),
         )
+        # Be more permissive for scraped fallback: accept if pair is valid OR
+        # if at least one side is a valid decimal odd (1.01-51.0). This allows
+        # Challenger/ITF matches where only one side was scraped or where
+        # overround is high due to low liquidity.
         if not valid_two_way_decimal_pair(scraped_home, scraped_away):
-            continue
+            # Fallback to single-side valid check
+            ch = coerce_decimal_odds(scraped_home)
+            ca = coerce_decimal_odds(scraped_away)
+            if ch is None and ca is None:
+                fallback_invalid += 1
+                continue
+            # If only one side valid, keep it and leave other as NA - still usable for EV calc if selected side matches
+            if ch is None:
+                scraped_home = pd.NA
+            if ca is None:
+                scraped_away = pd.NA
 
         out.at[idx, "odds_home"] = scraped_home
         out.at[idx, "odds_away"] = scraped_away
         out.at[idx, "odds_source"] = "ScrapedFallback"
         out.at[idx, "odds_bookmaker"] = "Validated scrape"
         fallback_matched += 1
+
+    if fallback_invalid:
+        logger.info("Scraped fallback dropped %d rows due to invalid odds (no valid side)", fallback_invalid)
 
     logger.info(
         "Matched live odds for %d/%d rows: %d The Odds API, %d ScrapedFallback",
