@@ -38,6 +38,12 @@ data/cache/
 !localdata/whatsapp_sent_ledger_*.json
 !localdata/edges_*.txt
 !localdata/edges_*.json
+!localdata/auto_tickets_*.json
+!localdata/auto_tickets_*.txt
+!localdata/auto_tickets_state.json
+!localdata/auto_tickets_performance.json
+!localdata/auto_tickets_today.json
+!localdata/.keepalive
 
 # NOTE on the BIG history data: warehouse.csv.gz, oddsportal_*.csv, etc.
 # stay IGNORED. They are too large to live in normal commits.
