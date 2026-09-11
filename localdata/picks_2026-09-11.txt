@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-11
 ============================================================
-Generated at: 2026-09-11 16:41:57
+Generated at: 2026-09-11 17:41:00
 
 
 CERTIFIED CLEAN PICKS
@@ -38,6 +38,8 @@ WATCHLIST — NO MATCHED ODDS
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Mika Brunold vs Gustavo Heide              KO 11:00 -> GUSTAVO HEIDE  conf 69% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Elsa Jacquemot vs Anna Blinkova            KO 23:30 -> ANNA BLINKOVA  conf 69% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Aurora Zantedeschi vs Alevtina Ibragimova  KO 13:30 -> ALEVTINA IBRAGIMOVA  conf 66% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Facundo Diaz Acosta vs Sebastian Ofner     KO 17:00 -> FACUNDO DIAZ ACOSTA  conf 66% @n/a
@@ -52,6 +54,8 @@ WATCHLIST — NO MATCHED ODDS
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Simona Waltert vs Dalma Galfi              KO 17:00 -> SIMONA WALTERT  conf 65% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Leolia Jeanjean vs Claire Liu              KO 22:00 -> CLAIRE LIU  conf 63% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Bhosale / Kulambayeva vs Ibragimova / Zayt KO 15:00 -> BHOSALE / KULAMBAYEVA  conf 61% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Anastasiia Sobolieva vs Noma Noha Akugue   KO 11:00 -> ANASTASIIA SOBOLIEVA  conf 60% @n/a
@@ -62,6 +66,8 @@ WATCHLIST — NO MATCHED ODDS
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Pavel Kotov vs Alexis Galarneau            KO 09:30 -> ALEXIS GALARNEAU  conf 57% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Cavalle-Reimers / Salden vs Hewitt / Smith KO 21:00 -> HEWITT / SMITH  conf 57% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Ilya Ivashka vs Yi Zhou                    KO 08:00 -> ILYA IVASHKA  conf 55% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Alicia Herrero Linana vs Eva Bennemann     KO 17:00 -> ALICIA HERRERO LINANA  conf 54% @n/a

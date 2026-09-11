@@ -2,7 +2,7 @@
   "archived_pick_dates": [
     "2026-09-11"
   ],
-  "archived_pick_rows": 27,
+  "archived_pick_rows": 30,
   "by_bucket": {},
   "by_ledger_kind": {},
   "by_series": {},
@@ -29,6 +29,6 @@
     "wins": 0
   },
   "same_day_cutoff": "2026-09-11",
-  "same_day_excluded": 27,
+  "same_day_excluded": 30,
   "start": "2026-08-13"
 }
