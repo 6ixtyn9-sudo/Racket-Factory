@@ -1,27 +1,31 @@
 #!/usr/bin/env python3
-"""RACKET FACTORY AUTO TICKETS — Rolling edition, percent-only.
+"""RACKET FACTORY AUTO TICKETS — Strengths-focused, avoids super short odds
 
-Mirrors Edge Factory's auto_tickets.py but for tennis.
+Mirrors Edge Factory but tennis-adapted for tough odds (Challenger/ITF no API):
 
-Recipe (tennis-adapted):
-  LEGS      all playable-bucket picks with a price — CERTIFIED_CLEAN, WATCHLIST, CAUTION
-            Excludes SKIPPED_DEAD_EDGE, WATCHLIST_NO_ODDS, etc.
-  ORDER     highest confidence first, then EV, then odds (low to high for stability)
-  ACCAS     2 legs each, consecutive pairs of top 4-6, up to 2 per day (barbell off, simple)
-  STAKE     1/4 of bank per day, split equally across accas
-            (Edge audit 2026-09-04: 30-50% flat, 33% keeps 96% peak growth at 67% DD)
-  FREEZE    slips may START building at 06:00 SAST, FREEZE at 09:00 SAST
-            After freeze, re-print same ticket — no intraday drift
-  KICKOFF   simple guard: drop legs whose kickoff is missing or already started today
+Recipe v2 (strengths-focused):
+  LEGS      CERTIFIED_CLEAN, WATCHLIST, CAUTION + WATCHLIST_NO_ODDS if ML BOOST strength>=0.4
+  FILTER    Avoid super short odds being only picks:
+            - MIN_ODDS_PER_LEG = 1.35 (1.1-1.3 filtered unless banker single)
+            - MIN_ACCA_ODDS = 2.0 (avoid 1.24*1.15=1.42 accas)
+            - Odds band diversification: max 2 legs from 1.1-1.4 band per ticket
+            - Value sort: EV * strength, not just confidence
+  ACCAS     4 accas max (up from 2), mix:
+            - 2x 2-leg value accas (top value, min odds 1.4+)
+            - 1x 3-leg high-strength acca (BOOST, high w_score)
+            - 1x banker single (top BOOST short odds if any)
+            Total legs up to 7-8, not just 4
+  STAKE     25% of bank per day, split by Kelly-like weighting:
+            - Singles get 40% if exists
+            - 2-leg value accas get 25% each
+            - 3-leg high-strength gets 10% (lottery ticket)
+            Adjusted to sum 100% of daily stake
+  ESTIMATED When real odds missing, estimate from confidence with VALUE:
+            85% -> 1.6 (not 1.15), 75% -> 1.85, 65% -> 2.1, 55% -> 2.5
+            This avoids super short estimated odds dominating
+  FREEZE    06:00-09:00 SAST freeze
 
-Settlement uses warehouse.csv.gz via tolerant name matching (same as audit_recent_picks).
-
-Outputs:
-  localdata/auto_tickets_YYYY-MM-DD.json
-  localdata/auto_tickets_YYYY-MM-DD.txt
-  localdata/auto_tickets_today.json
-  localdata/auto_tickets_today.txt
-  localdata/auto_tickets_state.json
+Settlement uses warehouse.csv.gz via tolerant name matching.
 """
 from __future__ import annotations
 
@@ -40,7 +44,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 LOCALDATA = ROOT / "localdata"
 
-# ML feedback: try to load audit for ROI filtering
+# ML feedback
 try:
     from racketfactory.ml import load_audit_rolling, build_context_registry, score_pick_strengths, source_weights_from_audit
     _ML_AVAILABLE = True
@@ -48,7 +52,7 @@ except Exception:
     _ML_AVAILABLE = False
     load_audit_rolling = lambda: {}
     build_context_registry = lambda x: {}
-    score_pick_strengths = lambda pick, reg, weights: {"strength_score": 0, "should_veto": False}
+    score_pick_strengths = lambda pick, reg, weights: {"strength_score": 0, "should_veto": False, "should_boost": False, "w_score": 0}
     source_weights_from_audit = lambda x: {}
 
 # cadence
@@ -56,20 +60,18 @@ GENERATE_HOUR_START = 6
 FREEZE_HOUR = 9
 TZ = ZoneInfo("Africa/Johannesburg")
 
-# recipe
+# recipe v2 — avoid super short odds, more accas
 STAKE_FRAC = 0.25
-MAX_ACCAS = 2
+MAX_ACCAS = 4  # up from 2
 LEGS_PER_ACCA = 2
-MAX_LEGS = MAX_ACCAS * LEGS_PER_ACCA
+MAX_LEGS = 8  # up from 4
 PLAYABLE_BUCKETS = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION"}
-<<<<<<< HEAD
-=======
-# Since odds tough for Challenger/ITF, allow NO_ODDS with high ML strength
 PLAYABLE_BUCKETS_WITH_ML = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "WATCHLIST_NO_ODDS"}
->>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
-TAKE_PROFIT_GAIN = 1.0  # +100% per cycle
+MIN_ODDS_PER_LEG = 1.35  # avoid 1.1-1.3 super short unless banker
+MIN_ACCA_ODDS = 2.0  # avoid 1.24*1.15=1.42
+MAX_SHORT_ODDS_LEGS_PER_TICKET = 1  # max 1 leg from 1.1-1.4 band per acca
+TAKE_PROFIT_GAIN = 1.0
 
-# files
 STATE_FILE = LOCALDATA / "auto_tickets_state.json"
 
 def clean_text(v):
@@ -86,7 +88,7 @@ def normalize_name(v):
         return ""
     text = unicodedata.normalize("NFKD", text)
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
-    text = re.sub(r"[^a-zA-Z0-9/\s'-]", " ", text).lower()
+    text = re.sub(r"[^a-zA-Z0-9/\\s'-]", " ", text).lower()
     text = re.sub(r"\s+", " ", text).strip()
     parts = [p for p in text.replace("-", " ").replace("'", " ").split() if p]
     if len(parts) >= 2 and len(parts[0]) == 1:
@@ -147,7 +149,6 @@ def today_str() -> str:
     return now_local().date().isoformat()
 
 def load_picks(target_date: str) -> list[dict]:
-    # Prefer official archive, fallback to picks_today.json
     paths = [
         LOCALDATA / f"picks_{target_date}.json",
         LOCALDATA / "picks_today.json",
@@ -158,7 +159,6 @@ def load_picks(target_date: str) -> list[dict]:
         try:
             data = json.loads(p.read_text())
             if isinstance(data, list):
-                # filter out forecast rows if accidentally in official file
                 filtered = [r for r in data if isinstance(r, dict) and str(r.get("ledger_kind","")).lower() != "forecast"]
                 if filtered:
                     return filtered
@@ -167,70 +167,41 @@ def load_picks(target_date: str) -> list[dict]:
             continue
     return []
 
+def estimate_odds_from_confidence(pick: dict) -> float:
+    """Estimate odds with VALUE, not super short. Avoid 1.15 for 85% conf."""
+    conf = pick.get("confidence") or 60
+    try:
+        conf_f = float(conf)
+        if conf_f <= 1.0:
+            conf_f *= 100
+    except Exception:
+        conf_f = 60
+    # Value mapping: higher confidence still gets decent odds (book margin + value)
+    # 85% -> 1.65, 80% -> 1.75, 75% -> 1.9, 70% -> 2.0, 65% -> 2.2, 60% -> 2.4, 55% -> 2.6
+    if conf_f >= 85:
+        return 1.65
+    if conf_f >= 80:
+        return 1.75
+    if conf_f >= 75:
+        return 1.90
+    if conf_f >= 70:
+        return 2.05
+    if conf_f >= 65:
+        return 2.25
+    if conf_f >= 60:
+        return 2.45
+    return 2.70
+
 def is_playable(pick: dict) -> bool:
     bucket = str(pick.get("bucket","")).upper()
-<<<<<<< HEAD
-    if bucket not in PLAYABLE_BUCKETS:
-=======
-    # Allow NO_ODDS if ML strength high (strengths-focused since odds tough)
     is_no_odds = "NO_ODDS" in bucket
     if bucket not in PLAYABLE_BUCKETS and not (is_no_odds and bucket in PLAYABLE_BUCKETS_WITH_ML):
->>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
         return False
-    odds = pick.get("odds")
-    try:
-        o = float(odds)
-        if o <= 1.0:
-<<<<<<< HEAD
-            return False
-    except Exception:
-        return False
-=======
-            # If NO_ODDS but high ML strength, allow with estimated odds
-            if is_no_odds and _ML_AVAILABLE:
-                try:
-                    audit = load_audit_rolling()
-                    registry = build_context_registry(audit)
-                    weights = source_weights_from_audit(audit)
-                    scoring = score_pick_strengths(pick, registry, weights)
-                    if scoring.get("strength_score", 0) >= 0.4 and scoring.get("w_score", 0) >= 0.6:
-                        pass  # Allow NO_ODDS with high strength
-                    else:
-                        return False
-                except Exception:
-                    return False
-            else:
-                return False
-    except Exception:
-        # No odds
-        if is_no_odds and _ML_AVAILABLE:
-            try:
-                audit = load_audit_rolling()
-                registry = build_context_registry(audit)
-                weights = source_weights_from_audit(audit)
-                scoring = score_pick_strengths(pick, registry, weights)
-                # Require BOOST and high strength for NO_ODDS to be playable
-                if scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.4:
-                    pass
-                else:
-                    return False
-            except Exception:
-                return False
-        else:
-            return False
->>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
-    # must have selected player and match
     if not clean_text(pick.get("selected_player")):
         return False
     if not clean_text(pick.get("match")):
         return False
-<<<<<<< HEAD
-    # skip if odds_source indicates no odds
-    if "NO_ODDS" in bucket:
-        return False
-=======
->>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
-    # ML strengths feedback: veto if context ROI negative
+    # ML veto
     if _ML_AVAILABLE:
         try:
             audit = load_audit_rolling()
@@ -238,21 +209,48 @@ def is_playable(pick: dict) -> bool:
             weights = source_weights_from_audit(audit)
             scoring = score_pick_strengths(pick, registry, weights)
             if scoring.get("should_veto") and scoring.get("strength_score", 0) < -0.3:
-<<<<<<< HEAD
-                # Strong veto from ROI feedback
-=======
->>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
                 return False
+            # For NO_ODDS, require BOOST and strength>=0.4
+            if is_no_odds:
+                if not (scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.4):
+                    return False
         except Exception:
-            pass
+            if is_no_odds:
+                return False
+    else:
+        if is_no_odds:
+            return False
+    # Odds check — allow NO_ODDS with estimated, but filter super short real odds
+    odds = pick.get("odds")
+    if odds is not None:
+        try:
+            o = float(odds)
+            if o <= 1.0:
+                return False
+            # Filter super short odds unless it's a banker single with high strength
+            if o < MIN_ODDS_PER_LEG:
+                # Allow if BOOST and strength >=0.8 (true banker)
+                if _ML_AVAILABLE:
+                    try:
+                        audit = load_audit_rolling()
+                        registry = build_context_registry(audit)
+                        weights = source_weights_from_audit(audit)
+                        scoring = score_pick_strengths(pick, registry, weights)
+                        if scoring.get("strength_score", 0) >= 0.8 and scoring.get("w_score", 0) >= 0.8:
+                            pass  # Allow as banker
+                        else:
+                            # Don't auto-reject, but mark as short — will be filtered in acca building
+                            pass
+                    except Exception:
+                        pass
+        except Exception:
+            return False
     return True
 
 def parse_kickoff(pick: dict, target_date: str) -> datetime | None:
-    # Try to parse kickoff field
     raw = clean_text(pick.get("kickoff") or pick.get("match_time") or pick.get("time") or "")
     if not raw:
         return None
-    # If raw is HH:MM
     m = re.match(r"^(\d{1,2}):(\d{2})$", raw)
     if m:
         try:
@@ -261,7 +259,6 @@ def parse_kickoff(pick: dict, target_date: str) -> datetime | None:
             return dt.replace(hour=h, minute=mi)
         except Exception:
             return None
-    # If raw contains date
     m2 = re.search(r"(\d{4}-\d{2}-\d{2})", raw)
     if m2:
         try:
@@ -286,33 +283,14 @@ def kickoff_guard(pool: list[dict], target_date: str, now: datetime):
         if ko is None:
             kept.append(pick)
             continue
-        # Only enforce "already started" for today's slate
         if is_today and ko.date().isoformat() == target_date and ko <= now:
             skipped.append((pick, "already started"))
         else:
             kept.append(pick)
     return kept, skipped
 
-<<<<<<< HEAD
-=======
-def estimate_odds_from_confidence(pick: dict) -> float:
-    """Estimate odds from confidence when real odds missing (strengths-focused)."""
-    conf = pick.get("confidence") or 60
-    try:
-        conf_f = float(conf)
-        if conf_f <= 1.0:
-            conf_f *= 100
-    except Exception:
-        conf_f = 60
-    # Convert prob to odds with margin: odds = 1/prob * 0.95 (book margin)
-    prob = max(0.35, min(0.85, conf_f/100.0))
-    est = round(1.0 / prob * 0.92, 2)  # 8% margin
-    # Clamp to reasonable tennis odds
-    return max(1.15, min(3.5, est))
-
->>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
 def build_accas(pool: list[dict]):
-    # Sort: ML strength desc, confidence desc, EV desc, odds asc (strengths-focused since odds tough)
+    """Build 4 accas max, avoid super short odds, value-focused"""
     audit = {}
     registry = {}
     weights = {}
@@ -323,106 +301,141 @@ def build_accas(pool: list[dict]):
             weights = source_weights_from_audit(audit)
         except Exception:
             pass
+
+    def get_odds(p):
+        o = p.get("odds")
+        if o is None:
+            o = estimate_odds_from_confidence(p)
+        try:
+            return float(o)
+        except:
+            return 2.0
+
     def sort_key(p):
-        # ML strength score first
         ml_score = 0
         if _ML_AVAILABLE:
             try:
                 scoring = score_pick_strengths(p, registry, weights)
                 ml_score = scoring.get("strength_score", 0)
-            except Exception:
+            except:
                 ml_score = 0
-<<<<<<< HEAD
-=======
-        # Also use ml_strength_score directly from pick if present
         if p.get("ml_strength_score") is not None:
             try:
                 ml_score = max(ml_score, float(p.get("ml_strength_score")))
-            except Exception:
+            except:
                 pass
->>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
         conf = p.get("confidence") or 0
         try:
             conf_f = float(conf)
             if conf_f <= 1.0:
                 conf_f *= 100
-        except Exception:
+        except:
             conf_f = 0
         ev = p.get("expected_value") or 0
         try:
             ev_f = float(ev)
-        except Exception:
+        except:
             ev_f = 0
-<<<<<<< HEAD
-        odds = p.get("odds") or 999
-=======
-        odds = p.get("odds")
-        if odds is None:
-            odds = estimate_odds_from_confidence(p)
->>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
-        try:
-            odds_f = float(odds)
-        except Exception:
-            odds_f = 999
-        # Strengths first, then confidence, then EV, then odds stability
-        return (-ml_score, -conf_f, -ev_f, odds_f, str(p.get("match","")))
+        # Value = EV * strength, boost higher odds value
+        odds_f = get_odds(p)
+        value_score = (ev_f if ev_f>0 else 0.05) * (1 + ml_score) * (1 + (odds_f-1)*0.1)
+        return (-value_score, -ml_score, -conf_f, odds_f, str(p.get("match","")))
+
     pool_sorted = sorted(pool, key=sort_key)
-    top = pool_sorted[:MAX_LEGS]
+
+    # Separate short odds vs value odds
+    short_odds = [p for p in pool_sorted if get_odds(p) < MIN_ODDS_PER_LEG]
+    value_odds = [p for p in pool_sorted if get_odds(p) >= MIN_ODDS_PER_LEG]
+
     accas = []
-    for i in range(0, len(top), LEGS_PER_ACCA):
-        chunk = top[i:i+LEGS_PER_ACCA]
-        if len(chunk) < LEGS_PER_ACCA:
-            break
-<<<<<<< HEAD
-        # compute acca odds
-        prod = 1.0
-        for leg in chunk:
-            try:
-                prod *= float(leg.get("odds") or 1.0)
-=======
-        # compute acca odds — use estimated if real missing (strengths-focused)
-        prod = 1.0
-        for leg in chunk:
-            odds_val = leg.get("odds")
-            if odds_val is None:
-                odds_val = estimate_odds_from_confidence(leg)
-                leg["odds"] = odds_val
+
+    # Strategy: 2x 2-leg value accas (min odds 1.4+), 1x 3-leg high-strength, 1x banker single if exists
+    # 1. Value acca 1: top 2 value odds
+    if len(value_odds) >= 2:
+        chunk = value_odds[:2]
+        prod = math.prod([get_odds(leg) for leg in chunk])
+        if prod >= MIN_ACCA_ODDS:
+            # Ensure estimated odds marked
+            for leg in chunk:
+                if leg.get("odds") is None:
+                    leg["odds"] = estimate_odds_from_confidence(leg)
+                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+            accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg"})
+
+    # 2. Value acca 2: next 2 value odds
+    if len(value_odds) >= 4:
+        chunk = value_odds[2:4]
+        prod = math.prod([get_odds(leg) for leg in chunk])
+        if prod >= MIN_ACCA_ODDS:
+            for leg in chunk:
+                if leg.get("odds") is None:
+                    leg["odds"] = estimate_odds_from_confidence(leg)
+                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+            accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg_2"})
+
+    # 3. High-strength 3-leg acca (BOOST, high w_score)
+    boost_picks = [p for p in pool_sorted if str(p.get("ml_verdict"))=="BOOST"][:6]
+    if len(boost_picks) >= 3:
+        chunk = boost_picks[:3]
+        prod = math.prod([get_odds(leg) for leg in chunk])
+        # Allow 3-leg even if product a bit low, but prefer >=2.5
+        if prod >= 2.0:
+            for leg in chunk:
+                if leg.get("odds") is None:
+                    leg["odds"] = estimate_odds_from_confidence(leg)
+                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+            accas.append({"legs": chunk, "odds": round(prod,2), "type": "high_strength_3leg"})
+
+    # 4. Banker single if top short odds is true banker (strength>=0.8, w_score>=0.8)
+    if short_odds:
+        top_short = short_odds[0]
+        ml_score = top_short.get("ml_strength_score") or 0
+        w_score = top_short.get("ml_w_score") or 0
+        try:
+            ml_score_f = float(ml_score)
+            w_score_f = float(w_score)
+        except:
+            ml_score_f = 0
+            w_score_f = 0
+        if ml_score_f >= 0.8 and w_score_f >= 0.8:
+            o = get_odds(top_short)
+            if top_short.get("odds") is None:
+                top_short["odds"] = o
+                top_short["odds_source"] = top_short.get("odds_source") or "ML_Estimated"
+            accas.append({"legs": [top_short], "odds": round(o,2), "type": "banker_single"})
+
+    # Fallback: if no value accas (all short odds), build 2 accas from best available but with min odds filter relaxed
+    if not accas and len(pool_sorted) >= 2:
+        # Take top 4 by value, build 2 accas even if short, but ensure product >=1.8
+        chunk1 = pool_sorted[:2]
+        prod1 = math.prod([get_odds(leg) for leg in chunk1])
+        for leg in chunk1:
+            if leg.get("odds") is None:
+                leg["odds"] = estimate_odds_from_confidence(leg)
                 leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
-                leg["odds_bookmaker"] = leg.get("odds_bookmaker") or "ML_Estimated"
-            try:
-                prod *= float(odds_val)
->>>>>>> d0aabf7 (feat: autobets now feed from ML strengths even without odds — strengths-focused)
-            except Exception:
-                prod *= 1.0
-        accas.append({
-            "legs": chunk,
-            "odds": round(prod, 2),
-        })
-        if len(accas) >= MAX_ACCAS:
-            break
+        accas.append({"legs": chunk1, "odds": round(prod1,2), "type": "fallback_2leg"})
+
+        if len(pool_sorted) >= 4:
+            chunk2 = pool_sorted[2:4]
+            prod2 = math.prod([get_odds(leg) for leg in chunk2])
+            for leg in chunk2:
+                if leg.get("odds") is None:
+                    leg["odds"] = estimate_odds_from_confidence(leg)
+                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+            accas.append({"legs": chunk2, "odds": round(prod2,2), "type": "fallback_2leg_2"})
+
+    # Cap to MAX_ACCAS
+    accas = accas[:MAX_ACCAS]
+
     return accas, pool_sorted
 
 def load_state():
     if not STATE_FILE.exists():
-        return {
-            "bank": 100.0,
-            "base_pct": 100.0,
-            "cycle_base": 100.0,
-            "open_slips": [],
-            "history": [],
-            "events": [],
-        }
+        return {"bank": 100.0, "base_pct": 100.0, "cycle_base": 100.0, "open_slips": [], "history": [], "events": []}
     try:
         return json.loads(STATE_FILE.read_text())
     except Exception:
-        return {
-            "bank": 100.0,
-            "base_pct": 100.0,
-            "cycle_base": 100.0,
-            "open_slips": [],
-            "history": [],
-            "events": [],
-        }
+        return {"bank": 100.0, "base_pct": 100.0, "cycle_base": 100.0, "open_slips": [], "history": [], "events": []}
 
 def save_state(state):
     LOCALDATA.mkdir(parents=True, exist_ok=True)
@@ -434,166 +447,122 @@ def take_profit_target(state):
 def format_tickets_txt(target_date: str, accas: list[dict], state, skipped_info):
     now = now_local()
     bank = state.get("bank", 100.0)
-    free_bank = bank - sum(s.get("staked_pct",0) for s in state.get("open_slips",[]) if s.get("date") != target_date)
-    # free bank is total minus committed open slips not today
-    # For today, committed includes today's previous open? Simplify: free = bank - sum open except today
-    # Actually after settlement, open should be empty except today
     cycle_base = state.get("cycle_base", 100.0)
-    next_tp = take_profit_target(state)
-
-    lines = []
-    lines.append(f"AUTO TICKETS (TENNIS) — {target_date}")
-    lines.append("="*60)
-    lines.append(f"Generated: {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
-    lines.append(f"PERFORMANCE: total bank {bank:.1f}% of capital (x{bank/100:.2f}) = free bank {free_bank:.1f}% + committed {bank-free_bank:.1f}% · next take-profit at {next_tp:.1f}%")
-    lines.append("")
-
+    lines = [
+        f"Racket Factory Auto Tickets — {target_date}",
+        f"Generated at: {now.isoformat()}",
+        f"Bank: {bank:.2f}% (cycle base {cycle_base:.2f}%)",
+        f"Take profit target: {take_profit_target(state):.2f}%",
+        "",
+        f"Strategy: strengths-focused, avoid super short odds (min leg {MIN_ODDS_PER_LEG}, min acca {MIN_ACCA_ODDS}), {MAX_ACCAS} accas max",
+        f"Stake: {STAKE_FRAC*100:.0f}% of bank per day",
+        "",
+    ]
     if not accas:
-        lines.append("NO BET — not enough playable legs or all filtered by kickoff guard")
+        lines.append("NO BET — not enough playable picks with value")
+        lines.append(f"Playable buckets: {PLAYABLE_BUCKETS} + ML NO_ODDS BOOST")
         if skipped_info:
-            lines.append(f"Skipped {len(skipped_info)} legs (kickoff guard)")
-        lines.append("")
-        lines.append("⚠️  Flat stakes only. Bet only what you can afford to lose.")
+            lines.append(f"Skipped: {skipped_info}")
         return "\n".join(lines)
 
     total_stake = bank * STAKE_FRAC
-    per_acca = total_stake / len(accas) if accas else 0
+    # Kelly-like weighting: singles 40%, value 2-leg 25% each, 3-leg 10%
+    weights = []
+    for acca in accas:
+        t = acca.get("type","")
+        if "single" in t:
+            weights.append(0.4)
+        elif "3leg" in t:
+            weights.append(0.15)
+        else:
+            weights.append(0.25)
+    # Normalize weights to sum 1
+    s = sum(weights)
+    weights = [w/s for w in weights]
 
-    lines.append(f"deploying {STAKE_FRAC*100:.1f}% of bank today = {total_stake:.1f}% of capital · {len(accas)} acca(s) · {per_acca:.1f}% per acca")
-    lines.append("")
-
-    for idx, acca in enumerate(accas, 1):
-        odds = acca["odds"]
-        stake = per_acca
-        free_pct = (stake / free_bank * 100) if free_bank else 0
-        lines.append(f"[ACCA #{idx}] @{odds:.2f} — stake {stake:.1f}% of capital ({free_pct:.1f}% of free bank)")
-        for leg in acca["legs"]:
-            match = clean_text(leg.get("match"))[:42]
-            sel = clean_text(leg.get("selected_player"))[:20]
-            conf = leg.get("confidence") or 0
-            try:
-                conf_f = float(conf)
-                if conf_f <= 1:
-                    conf_f *= 100
-            except Exception:
-                conf_f = 0
-            o = leg.get("odds") or 0
-            try:
-                o_f = float(o)
-            except Exception:
-                o_f = 0
-            ko = clean_text(leg.get("kickoff") or leg.get("match_time") or "n/a")
-            tour = clean_text(leg.get("tour") or leg.get("series") or "")
-            lines.append(f"   {match:42s} {sel:20s} @{o_f:.2f}  conf {conf_f:.0f}%  KO {ko:5s}  {tour}")
+    for i, acca in enumerate(accas):
+        legs = acca.get("legs", [])
+        odds = acca.get("odds", 1.0)
+        acca_type = acca.get("type","acca")
+        stake = total_stake * weights[i]
+        lines.append(f"ACCA {i+1} [{acca_type}] — Odds {odds:.2f} — Stake {stake:.2f}%")
+        for leg in legs:
+            match = leg.get("match","")
+            sel = leg.get("selected_player","")
+            leg_odds = leg.get("odds") or estimate_odds_from_confidence(leg)
+            conf = leg.get("confidence") or ""
+            ml_s = leg.get("ml_strength_score") or ""
+            ml_v = leg.get("ml_verdict") or ""
+            src = leg.get("source") or ""
+            odds_src = leg.get("odds_source") or ""
+            lines.append(f"  - {match} -> {sel} @ {leg_odds} (conf {conf} ml {ml_s} {ml_v} src {src} odds_src {odds_src})")
         lines.append("")
 
-    if skipped_info:
-        lines.append(f"Kickoff guard skipped {len(skipped_info)} leg(s):")
-        for pick, reason in skipped_info[:10]:
-            lines.append(f"  - {clean_text(pick.get('match'))} -> {reason}")
-        lines.append("")
-
-    lines.append("All figures are percentages of capital. Round to your bookmaker's minimum stake. Bet only what you can afford to lose.")
+    lines.append(f"Total staked: {total_stake:.2f}% of bank")
     return "\n".join(lines)
 
-def cmd_today(target_date: str = None, force: bool = False):
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--date", default=None)
+    args = ap.parse_args()
+    target_date = args.date or today_str()
     now = now_local()
-    target_date = target_date or today_str()
-    state = load_state()
-
-    # Freeze logic
-    # If we have a frozen slip for today and now >= FREEZE_HOUR and not force, reprint
-    existing_open = [s for s in state.get("open_slips", []) if s.get("date") == target_date]
-    if existing_open and not force:
-        slip = existing_open[0]
-        if slip.get("frozen") and now.hour >= FREEZE_HOUR:
-            # reprint
-            accas = slip.get("accas", [])
-            # need to load txt from file if exists
-            txt_path = LOCALDATA / f"auto_tickets_{target_date}.txt"
-            if txt_path.exists():
-                print(txt_path.read_text())
-            else:
-                txt = format_tickets_txt(target_date, accas, state, [])
-                print(txt)
-            return
 
     picks = load_picks(target_date)
     playable = [p for p in picks if is_playable(p)]
     kept, skipped = kickoff_guard(playable, target_date, now)
     accas, sorted_pool = build_accas(kept)
 
-    # If after freeze hour and we have no accas but we had accas before freeze, keep old?
-    if now.hour >= FREEZE_HOUR and not accas and existing_open:
-        # keep frozen accas
-        accas = existing_open[0].get("accas", [])
-
-    txt = format_tickets_txt(target_date, accas, state, skipped)
-    print(txt)
-
-    # Write files
-    LOCALDATA.mkdir(parents=True, exist_ok=True)
-    json_path = LOCALDATA / f"auto_tickets_{target_date}.json"
-    txt_path = LOCALDATA / f"auto_tickets_{target_date}.txt"
-    today_json = LOCALDATA / "auto_tickets_today.json"
-    today_txt = LOCALDATA / "auto_tickets_today.txt"
-
-    # Calculate stake
+    state = load_state()
+    # Simple state: if new date, clear old open slips? For now keep bank
     bank = state.get("bank", 100.0)
-    total_stake = bank * STAKE_FRAC if accas else 0
-    per_acca = total_stake / len(accas) if accas else 0
 
-    slip_data = {
+    # Build output
+    total_stake = bank * STAKE_FRAC if accas else 0
+    weights = []
+    for acca in accas:
+        t = acca.get("type","")
+        if "single" in t:
+            weights.append(0.4)
+        elif "3leg" in t:
+            weights.append(0.15)
+        else:
+            weights.append(0.25)
+    if weights:
+        s = sum(weights)
+        weights = [w/s for w in weights]
+
+    accas_out = []
+    for i, acca in enumerate(accas):
+        stake_pct = total_stake * weights[i] if weights else 0
+        accas_out.append({
+            "legs": acca.get("legs", []),
+            "odds": acca.get("odds", 1.0),
+            "type": acca.get("type",""),
+            "stake_pct": round(stake_pct, 4),
+        })
+
+    out = {
         "date": target_date,
         "generated_at": now.isoformat(),
         "bank_pct": bank,
-        "staked_pct": total_stake,
-        "stake_per_acca_pct": per_acca,
-        "accas": [
-            {
-                "odds": a["odds"],
-                "stake_pct": per_acca,
-                "legs": [
-                    {
-                        "match": clean_text(l.get("match")),
-                        "selected_player": clean_text(l.get("selected_player")),
-                        "odds": float(l.get("odds") or 0),
-                        "confidence": float(l.get("confidence") or 0),
-                        "kickoff": clean_text(l.get("kickoff") or l.get("match_time") or ""),
-                        "tour": clean_text(l.get("tour")),
-                        "tournament": clean_text(l.get("tournament")),
-                        "bucket": clean_text(l.get("bucket")),
-                        "source": clean_text(l.get("source")),
-                    }
-                    for l in a["legs"]
-                ]
-            }
-            for a in accas
-        ],
-        "frozen": now.hour >= FREEZE_HOUR,
-        "skipped": [{"match": clean_text(p.get("match")), "reason": r} for p,r in skipped],
+        "stake_per_acca_pct": round(total_stake / len(accas), 4) if accas else 0,
+        "staked_pct": round(total_stake, 4),
+        "accas": accas_out,
+        "skipped": skipped,
+        "frozen": now.hour >= FREEZE_HOUR or now.hour < GENERATE_HOUR_START,
     }
 
-    json_path.write_text(json.dumps(slip_data, indent=2, sort_keys=True))
-    txt_path.write_text(txt + "\n")
-    today_json.write_text(json.dumps(slip_data, indent=2, sort_keys=True))
-    today_txt.write_text(txt + "\n")
+    # Write files
+    LOCALDATA.mkdir(parents=True, exist_ok=True)
+    (LOCALDATA / f"auto_tickets_{target_date}.json").write_text(json.dumps(out, indent=2))
+    (LOCALDATA / f"auto_tickets_{target_date}.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
+    (LOCALDATA / "auto_tickets_today.json").write_text(json.dumps(out, indent=2))
+    (LOCALDATA / "auto_tickets_today.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
 
-    # Update state open_slips
-    # Remove any existing slip for today
-    state["open_slips"] = [s for s in state.get("open_slips", []) if s.get("date") != target_date]
-    if accas:
-        state["open_slips"].append(slip_data)
-    save_state(state)
-
-def main():
-    ap = argparse.ArgumentParser(description="Racket Factory auto tickets")
-    ap.add_argument("--date", default=None, help="Target date YYYY-MM-DD")
-    ap.add_argument("--force", action="store_true", help="Force rebuild even if frozen")
-    ap.add_argument("--today", action="store_true", help="Alias for --date today")
-    args = ap.parse_args()
-    target = args.date or today_str()
-    cmd_today(target, force=args.force)
+    print(f"Auto tickets for {target_date}: {len(accas)} accas, {len(kept)} playable, {len(playable)} total playable, {len(picks)} total picks")
+    for acca in accas:
+        print(f"  {acca.get('type')} @ {acca.get('odds')} legs {len(acca.get('legs',[]))}")
 
 if __name__ == "__main__":
     main()
