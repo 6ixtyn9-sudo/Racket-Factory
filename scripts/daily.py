@@ -676,6 +676,10 @@ def run_once(args: argparse.Namespace) -> None:
     # 8. Run Audit
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_recent_picks.py --end {target} --days 30 --warehouse localdata/warehouse.csv.gz", "audit_recent_picks", env=child_env)
 
+    # 8b. Auto Tickets (Edge-Factory parity) — tennis accas from playable picks
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets.py --date {target}", "auto_tickets (generate/freeze)", env=child_env)
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets_grade.py", "auto_tickets_grade (settle past slips)", env=child_env)
+
     # 9. Supabase Live Dashboard Sync (Optional)
     sync_script = ROOT / "scripts" / "sync_supabase.py"
     if sync_script.exists() and (os.getenv("SUPABASE_URL") or args.force_sync):
