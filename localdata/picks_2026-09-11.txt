@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-11
 ============================================================
-Generated at: 2026-09-11 15:03:14
+Generated at: 2026-09-11 15:33:19
 
 
 CERTIFIED CLEAN PICKS
@@ -79,7 +79,7 @@ SKIPPED — VETO CONTEXT
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
-  [live_only_fallback] Frances Tiafoe vs Ben Shelton              KO n/a   -> BEN SHELTON  conf 64% @1.38  EV -0.12u
+  [live_only_fallback] Frances Tiafoe vs Ben Shelton              KO n/a   -> BEN SHELTON  conf 64% @1.37  EV -0.12u
      bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Grand Slam  surface=Hard  source=PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
 
 ⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
