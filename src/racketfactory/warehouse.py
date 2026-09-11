@@ -1358,10 +1358,10 @@ def build_warehouse(
                 logger.error("Failed to load %s: %s", f.name, e)
     
     if not dfs:
-        logger.error("No valid match data files found.")
-        return None
-    
-    warehouse = pd.concat(dfs, ignore_index=True)
+        logger.warning("No valid match data files found — starting from empty warehouse (live-only mode).")
+        warehouse = pd.DataFrame()
+    else:
+        warehouse = pd.concat(dfs, ignore_index=True)
 
     wta_official_rows = build_wta_official_result_rows(data_path)
     if not wta_official_rows.empty:
