@@ -40,6 +40,17 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 LOCALDATA = ROOT / "localdata"
 
+# ML feedback: try to load audit for ROI filtering
+try:
+    from racketfactory.ml import load_audit_rolling, build_context_registry, score_pick_strengths, source_weights_from_audit
+    _ML_AVAILABLE = True
+except Exception:
+    _ML_AVAILABLE = False
+    load_audit_rolling = lambda: {}
+    build_context_registry = lambda x: {}
+    score_pick_strengths = lambda pick, reg, weights: {"strength_score": 0, "should_veto": False}
+    source_weights_from_audit = lambda x: {}
+
 # cadence
 GENERATE_HOUR_START = 6
 FREEZE_HOUR = 9
@@ -170,6 +181,18 @@ def is_playable(pick: dict) -> bool:
     # skip if odds_source indicates no odds
     if "NO_ODDS" in bucket:
         return False
+    # ML strengths feedback: veto if context ROI negative
+    if _ML_AVAILABLE:
+        try:
+            audit = load_audit_rolling()
+            registry = build_context_registry(audit)
+            weights = source_weights_from_audit(audit)
+            scoring = score_pick_strengths(pick, registry, weights)
+            if scoring.get("should_veto") and scoring.get("strength_score", 0) < -0.3:
+                # Strong veto from ROI feedback
+                return False
+        except Exception:
+            pass
     return True
 
 def parse_kickoff(pick: dict, target_date: str) -> datetime | None:
@@ -219,8 +242,26 @@ def kickoff_guard(pool: list[dict], target_date: str, now: datetime):
     return kept, skipped
 
 def build_accas(pool: list[dict]):
-    # Sort: confidence desc, EV desc, odds asc
+    # Sort: ML strength desc, confidence desc, EV desc, odds asc (strengths-focused since odds tough)
+    audit = {}
+    registry = {}
+    weights = {}
+    if _ML_AVAILABLE:
+        try:
+            audit = load_audit_rolling()
+            registry = build_context_registry(audit)
+            weights = source_weights_from_audit(audit)
+        except Exception:
+            pass
     def sort_key(p):
+        # ML strength score first
+        ml_score = 0
+        if _ML_AVAILABLE:
+            try:
+                scoring = score_pick_strengths(p, registry, weights)
+                ml_score = scoring.get("strength_score", 0)
+            except Exception:
+                ml_score = 0
         conf = p.get("confidence") or 0
         try:
             conf_f = float(conf)
@@ -238,7 +279,8 @@ def build_accas(pool: list[dict]):
             odds_f = float(odds)
         except Exception:
             odds_f = 999
-        return (-conf_f, -ev_f, odds_f, str(p.get("match","")))
+        # Strengths first, then confidence, then EV, then odds stability
+        return (-ml_score, -conf_f, -ev_f, odds_f, str(p.get("match","")))
     pool_sorted = sorted(pool, key=sort_key)
     top = pool_sorted[:MAX_LEGS]
     accas = []

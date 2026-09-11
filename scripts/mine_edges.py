@@ -32,6 +32,7 @@ from racketfactory.warehouse import (
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.forebet import ForebetPredictor
+from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice
 
 logging.basicConfig(
     level=logging.INFO,
@@ -1291,12 +1292,26 @@ def main() -> int:
             if subset_df.empty:
                 continue
 
+            # ROI feedback: load registry once per outer loop (cached)
+            try:
+                _audit = load_audit_rolling()
+                _registry = build_context_registry(_audit)
+            except Exception:
+                _registry = {}
             for combo, slice_df in subset_df.groupby(subset):
                 if not isinstance(combo, tuple):
                     combo = (combo,)
                 if len(slice_df) < args.min_n:
                     continue
-
+                # ROI feedback veto for historical slices
+                combo_dict_tmp = dict(zip(subset, combo))
+                try:
+                    veto, reason = should_veto_slice(combo_dict_tmp, _registry)
+                    if veto:
+                        logger.debug("Slice vetoed by ROI feedback: %s (%s)", combo_dict_tmp, reason)
+                        continue
+                except Exception:
+                    pass
                 res = assay_segment(slice_df, bet_side=args.bet_side)
                 # REDTEAM Finding #1: ROBBER/FADE slices are still mined (so
                 # they can be shown in the slice report) but they cannot
@@ -1609,6 +1624,19 @@ def main() -> int:
     picks_to_export = dedupe_same_match_picks(picks_to_export)
     picks_to_export = apply_forecast_hygiene(target_date, picks_to_export)
     picks_to_export = dedupe_same_match_picks(picks_to_export)
+
+    # === ML strengths feedback loop (ROI/CLV) — Edge parity ===
+    # Since odds tough for Challenger/ITF, focus on strengths, not just price.
+    # Reads picks_audit_rolling.json (from previous runs) and vetoes/boosts picks
+    # based on historical ROI by tour/surface/series/source.
+    try:
+        picks_to_export, ml_summary = ml_filter_picks(picks_to_export)
+        logger.info("ML feedback: total=%d vetoed=%d boosted=%d registry=%s weights=%s",
+                    ml_summary.get("total"), ml_summary.get("vetoed"), ml_summary.get("boosted"),
+                    ml_summary.get("registry_dims"), ml_summary.get("source_weights"))
+    except Exception as e:
+        logger.warning("ML feedback loop failed: %s", e)
+        ml_summary = {}
 
     write_official_pick_outputs(target_date, picks_to_export)
     logger.info("Exported %d post-hygiene pick rows for %s", len(picks_to_export), target_date)
