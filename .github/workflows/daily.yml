@@ -2,9 +2,6 @@ name: Autonomous Racket Factory 3-Hour Service
 
 on:
   schedule:
-    # Quota-safe cadence: twice daily.  The Odds API tennis odds/scores quota
-    # is limited; 3-hour autoruns burn calls quickly during active tournaments.
-    # 05:00/17:00 UTC = 07:00/19:00 Africa/Johannesburg.
     - cron: '0 5,17 * * *'
   workflow_dispatch:
     inputs:
@@ -14,9 +11,9 @@ on:
         default: 'auto'
         type: choice
         options:
-          - auto             # smart schedule: morning heavy OR intraday discovery
-          - official_morning # force a full morning re-pick (overwrites baseline)
-          - intraday_only    # re-mine + emit picks without heavy historical capture
+          - auto
+          - official_morning
+          - intraday_only
 
 permissions:
   contents: write
@@ -28,41 +25,26 @@ jobs:
     timeout-minutes: 30
 
     env:
-      # Optional — pipeline degrades gracefully if any are unset.
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
       CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
-
-      # The Odds API live pricing. Secrets are never printed.
-      # THE_ODDS_API_KEYS supports rotation: key1,key2,key3,key4
       THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
       THE_ODDS_API_KEYS: ${{ secrets.THE_ODDS_API_KEYS }}
-      # Expanded to cover all Slams + tennis aggregate (was only US Open + Wimbledon)
-      # tennis = ATP+WTA aggregate, still only Grand Slams/1000/500 per API docs, but better than 2 tourneys
       THE_ODDS_API_SPORT_KEYS: tennis,tennis_atp_us_open,tennis_wta_us_open,tennis_atp_french_open,tennis_wta_french_open,tennis_atp_australian_open,tennis_wta_australian_open,tennis_atp_wimbledon,tennis_wta_wimbledon
       THE_ODDS_API_SPORTS: tennis,tennis_atp_us_open,tennis_wta_us_open,tennis_atp_french_open,tennis_wta_french_open,tennis_atp_australian_open,tennis_wta_australian_open,tennis_atp_wimbledon,tennis_wta_wimbledon
       THE_ODDS_API_REGIONS: uk,eu,us,au
       THE_ODDS_API_CACHE_TTL_MINUTES: '30'
       THE_ODDS_API_DISABLE_CACHE: '0'
-      # Scores endpoint costs quota on every run. CI focuses on pick generation;
-      # score/result refresh can be run manually/local when needed.
       RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES: '1'
-
-      # Keep OddsPortal browser scraping opt-in on CI.
       RACKET_FACTORY_REFRESH_ODDSPORTAL: '1'
       RACKET_FACTORY_ODDSPORTAL_DELAY: '60'
-
-      # Forecast hygiene defaults.
       RACKET_FACTORY_FORECAST_MAX_ROWS: '20'
       RACKET_FACTORY_FORECAST_MIN_EV: '0.05'
       RACKET_FACTORY_FORECAST_MIN_CONF: '60'
       RACKET_FACTORY_FORECAST_INCLUDE_NO_ODDS: '0'
       RACKET_FACTORY_FORECAST_INCLUDE_SKIPPED: '0'
-
-      # Keep CI on the operator's wall clock so the morning/intraday split and
-      # the same-day pick filter behave exactly like a local run.
       TZ: 'Africa/Johannesburg'
 
     steps:
@@ -90,10 +72,6 @@ jobs:
             localdata-v2-main-
 
       - name: Restore committed data (override stale cache)
-        # Committed files under localdata/ (registries + committed history)
-        # survive cache eviction, but actions/cache/restore unpacks localdata/
-        # AFTER checkout and can overwrite them with stale copies. Re-check out
-        # every git-tracked localdata file from HEAD so live versions win.
         run: |
           set -e
           mkdir -p localdata
@@ -107,13 +85,12 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$MODE" ] && [ "$MODE" != "auto" ]; then
             echo ">>> Manual mode: $MODE"
             if [ "$MODE" = "official_morning" ]; then
-              PYTHONPATH=src python3 scripts/daily.py --force-repick --future-days 1
+              PYTHONPATH=src python3 scripts/daily.py --force-repick --future-days 2
             elif [ "$MODE" = "intraday_only" ]; then
-              PYTHONPATH=src python3 scripts/daily.py --intraday-only --future-days 1
+              PYTHONPATH=src python3 scripts/daily.py --intraday-only --future-days 2
             fi
           else
-            # Exactly one autonomous iteration of the smart accumulating ledger.
-            PYTHONPATH=src python3 scripts/daily.py --auto-once --future-days 1
+            PYTHONPATH=src python3 scripts/daily.py --auto-once --future-days 2
           fi
 
       - name: Persist localdata state (cache)
@@ -130,7 +107,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A localdata/picks_*.json localdata/picks_*.txt localdata/picks_today.json localdata/picks_morning_*.json localdata/picks_next_*.json localdata/picks_forecast_*.json localdata/picks_forecast_*.txt localdata/picks_audit_*.json localdata/picks_audit_*.md localdata/auto_tickets_*.json localdata/auto_tickets_*.txt localdata/auto_tickets_state.json localdata/auto_tickets_performance.json localdata/auto_tickets_today.json localdata/auto_tickets_today.txt localdata/.keepalive 2>/dev/null || true
-          # Fallback: also add any other unignored localdata files (Edge parity - rely on .gitignore)
           git add -A localdata/ 2>/dev/null || true
           git diff --cached --quiet && echo "no changes" && exit 0
           git commit -m "feat: autonomous picks + auto_tickets $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
