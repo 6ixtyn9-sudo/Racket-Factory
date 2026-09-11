@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-11
 ============================================================
-Generated at: 2026-09-11 18:35:29
+Generated at: 2026-09-11 21:30:49
 
 
 CERTIFIED CLEAN PICKS
@@ -13,13 +13,14 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] Alexander Zverev vs Karen Khachanov        KO 20:00 -> ALEXANDER ZVEREV  conf 85% @1.24  EV +0.05u
-     bucket=WATCHLIST  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  (none)
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
   [live_only_fallback] Coco Gauff vs Elena Rybakina               KO 01:30 -> ELENA RYBAKINA  conf 100% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=Grand Slam  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Alexander Zverev vs Karen Khachanov        KO 20:00 -> ALEXANDER ZVEREV  conf 85% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Siniakova / Townsend vs Montgomery / Krueg KO 17:00 -> SINIAKOVA / TOWNSEND  conf 85% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Joao Lucas Reis da Silva vs Lukas Neumayer KO 13:45 -> LUKAS NEUMAYER  conf 80% @n/a
