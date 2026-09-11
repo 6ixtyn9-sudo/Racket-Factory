@@ -980,13 +980,13 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
     )
     return out
 
-def build_live_rows() -> pd.DataFrame:
+def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
     rows = []
     for source_name, predictor, fetcher in [
         ("PredixSport", PredixSportPredictor(), lambda p: p.fetch_daily()),
         ("BetClan", BetClanPredictor(), lambda p: p.fetch_daily()),
-        ("Forebet", ForebetPredictor(), lambda p: p.fetch_daily_predictions("today")),
-        ("Bzzoiro", BzzoiroPredictor(), lambda p: p.fetch_daily()),
+        ("Forebet", ForebetPredictor(), lambda p: p.fetch_daily_predictions("today") + (p.fetch_daily_predictions("tomorrow") if include_tomorrow else [])),
+        ("Bzzoiro", BzzoiroPredictor(), lambda p: p.fetch_daily(include_tomorrow=include_tomorrow)),
     ]:
         try:
             preds = fetcher(predictor)

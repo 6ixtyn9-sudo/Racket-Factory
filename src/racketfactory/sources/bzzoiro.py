@@ -55,9 +55,18 @@ class BzzoiroPredictor:
         logger.info(f"Fetched {len(all_results)} predictions from Bzzoiro")
         return all_results
 
-    def fetch_daily(self) -> list[dict[str, Any]]:
+    def fetch_daily(self, include_tomorrow: bool = False) -> list[dict[str, Any]]:
+        from datetime import timedelta
         today = date.today().isoformat()
+        if include_tomorrow:
+            tomorrow = (date.today() + timedelta(days=1)).isoformat()
+            return self.fetch_historical_predictions(date_from=today, date_to=tomorrow)
         return self.fetch_historical_predictions(date_from=today, date_to=today)
+
+    def fetch_tomorrow(self) -> list[dict[str, Any]]:
+        from datetime import timedelta
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        return self.fetch_historical_predictions(date_from=tomorrow, date_to=tomorrow)
 
     def map_prediction_to_player(self, pred: dict[str, Any], player_a: str, player_b: str) -> Optional[dict[str, Any]]:
         if not pred.get("player_home") or not pred.get("player_away"):
