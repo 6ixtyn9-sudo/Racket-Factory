@@ -1,1 +1,8 @@
-bank 100.00% paper 100.00% - clean slate 2026-09-12
+AUTO-TICKETS (TENNIS) PERFORMANCE — percentages of capital only
+==============================================================
+generated 2026-09-12T19:32:10
+bank 100.0% of capital (x1.00) · cycle baseline 100.0% · next take-profit at 200.0% (+100% per cycle)
+bet-days 0 · no settled REAL accas yet
+open slips 0 · 0 take-profit notification(s)
+
+--- bet-days (most recent first) ---

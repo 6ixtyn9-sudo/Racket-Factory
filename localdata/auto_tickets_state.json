@@ -1,13 +1,14 @@
 {
+  "_reset_20260912_clean_slate": {
+    "note": "All previous accas moved to paper history, bank reset to 100%",
+    "previous_bank": 102.285712,
+    "reason": "user requested clean slate - old accas had thumb suck odds (fabricated), rebase and start anew",
+    "reset_at": "2026-09-12T17:16:43.587676"
+  },
   "bank": 100.0,
   "base_pct": 100.0,
   "cycle_base": 100.0,
   "events": [],
   "history": [],
-  "_reset_20260912_clean_slate": {
-    "reason": "user requested clean slate - old accas had thumb suck odds (fabricated), rebase and start anew",
-    "previous_bank": 102.285712,
-    "reset_at": "2026-09-12T17:16:43.587676",
-    "note": "All previous accas moved to paper history, bank reset to 100%"
-  }
+  "open_slips": []
 }
