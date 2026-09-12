@@ -1,11 +1,12 @@
 {
+  "_reset_20260912_clean_slate_v2": {
+    "reason": "delete autotickets and all picks before today per user request - rebase clean",
+    "reset_at": "2026-09-12T19:45:00+02:00"
+  },
   "bank": 100.0,
   "base_pct": 100.0,
   "cycle_base": 100.0,
   "events": [],
   "history": [],
-  "_reset_20260912_clean_slate_v2": {
-    "reason": "delete autotickets and all picks before today per user request - rebase clean",
-    "reset_at": "2026-09-12T19:45:00+02:00"
-  }
+  "open_slips": []
 }

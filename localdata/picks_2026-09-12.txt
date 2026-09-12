@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-12
 ============================================================
-Generated at: 2026-09-12 19:29:47
+Generated at: 2026-09-12 20:58:00
 
 
 CERTIFIED CLEAN PICKS
@@ -13,61 +13,11 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] R. Dencheva vs I. Burillo Escorihuela      KO 12:10 -> R. DENCHEVA  conf 74% @1.36  EV +0.01u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] M. Kasnikowski vs J. D. Hara Friend        KO 11:45 -> J. D. HARA FRIEND  conf 65% @1.83  EV +0.19u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] E. Jacquemot vs A. Blinkova                KO 01:00 -> A. BLINKOVA  conf 62% @2.60  EV +0.61u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Vitaliy Sachko vs Mika Brunold             KO 10:00 -> MIKA BRUNOLD  conf 60% @1.91  EV +0.15u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] D. Galfi vs F. Ferro                       KO 16:55 -> F. FERRO  conf 59% @2.30  EV +0.36u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Ibragimova vs A. Herrero Linana         KO 14:55 -> A. IBRAGIMOVA  conf 57% @2.38  EV +0.36u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Jaume Munar vs Facundo Diaz Acosta         KO 18:00 -> FACUNDO DIAZ ACOSTA  conf 57% @1.80  EV +0.03u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Pavel Kotov vs Marat Sharipov              KO 11:30 -> PAVEL KOTOV  conf 57% @1.80  EV +0.03u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] C. Liu vs A. Blinkova                      KO 23:30 -> C. LIU  conf 54% @2.10  EV +0.13u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Weber vs Y. Shimizu                     KO 05:10 -> Y. SHIMIZU  conf 52% @2.25  EV +0.17u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  (none)
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  [live_only_fallback] Luca Castelnuovo vs Ilya Ivashka           KO 10:00 -> ILYA IVASHKA  conf 80% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Rositsa Dencheva vs Irene Burillo          KO 11:00 -> ROSITSA DENCHEVA  conf 77% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] I. Shymanovich vs A. S. Sanchez            KO 21:00 -> I. SHYMANOVICH  conf 71% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Cengiz / Oz vs Kucmova / Laboutkova        KO 15:00 -> KUCMOVA / LABOUTKOVA  conf 69% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Max Alcala Gurri vs Dusan Lajovic          KO 19:30 -> DUSAN LAJOVIC  conf 69% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] V. Lepchenko vs N. Melichar-Martinez       KO 18:05 -> V. LEPCHENKO  conf 62% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Harrison / Skupski vs Krawietz / Puetz     KO 17:00 -> HARRISON / SKUPSKI  conf 60% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Frances Tiafoe vs Ben Shelton              KO 00:00 -> BEN SHELTON  conf 59% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Hard  source=BetClan, Forebet, PredixSport  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] McAdoo / Rogers vs Hewitt / Smith          KO 20:30 -> HEWITT / SMITH  conf 57% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] L. Ma vs K. Zavatska                       KO 21:00 -> K. ZAVATSKA  conf 57% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] S. Bielinska vs N. Hibino                  KO 18:10 -> N. HIBINO  conf 57% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Fossa Huergo / Havlickova vs Cascino / Fen KO 11:00 -> FOSSA HUERGO / HAVLICKOVA  conf 54% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Noma Noha Akugue vs Guiomar Maristany Zule KO 13:30 -> NOMA NOHA AKUGUE  conf 54% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Panova vs K. Scott                      KO 18:05 -> A. PANOVA  conf 54% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] I. Simakin vs M. Purcell                   KO 05:10 -> I. SIMAKIN  conf 54% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] M. Xu vs C. Dolehide                       KO 19:30 -> C. DOLEHIDE  conf 53% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  (none)
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -79,26 +29,7 @@ SKIPPED — VETO CONTEXT
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
-  [live_only_fallback] S. Sorribes Tormo vs E. Koike              KO 19:30 -> S. SORRIBES TORMO  conf 76% @1.25  EV -0.05u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] C. Monnet vs J. Garcia                     KO 19:30 -> C. MONNET  conf 71% @1.40  EV -0.01u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Joao Lucas Reis da Silva vs Alex Barrena   KO 12:45 -> JOAO LUCAS REIS DA SILVA  conf 63% @1.57  EV -0.01u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] L. Djere vs P. Martinez                    KO 18:25 -> L. DJERE  conf 60% @1.50  EV -0.10u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] T. Droguet vs N. Budkov Kjaer              KO 14:10 -> T. DROGUET  conf 60% @1.50  EV -0.10u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] M. Lajal vs D. Masur                       KO 11:40 -> M. LAJAL  conf 58% @1.17  EV -0.32u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Aryna Sabalenka vs Elena Rybakina          KO 21:00 -> ARYNA SABALENKA  conf 57% @1.67  EV -0.05u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=Grand Slam  surface=Hard  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] H. Mayot vs M. Basing                      KO 10:10 -> M. BASING  conf 56% @1.40  EV -0.22u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] N. Noha Akugue vs G. Maristany             KO 14:45 -> G. MARISTANY  conf 54% @1.85  EV -0.00u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] T. Seyboth Wild vs M. Dodig                KO 20:00 -> M. DODIG  conf 52% @1.73  EV -0.10u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  (none)
 
 ⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
 ⚠️  Bet only what you can afford to lose.
