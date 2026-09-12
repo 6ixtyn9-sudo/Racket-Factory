@@ -1,112 +1,21 @@
 {
-  "generated_at": "2026-09-12T14:01:56",
+  "generated_at": "2026-09-12T16:01:29",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
-  "bank_pct": 102.285712,
-  "multiple": 1.02285712,
+  "bank_pct": 118.716184,
+  "multiple": 1.18716184,
   "cycle_base_pct": 100.0,
   "next_take_profit_pct": 200.0,
-  "bet_days": 1,
+  "bet_days": 2,
   "accas": {
-    "wins": 1,
+    "wins": 2,
     "losses": 0
   },
   "open_slips": [
     {
+      "date": "2026-09-12",
+      "generated_at": "2026-09-12T08:51:19+02:00",
       "accas": [
-        {
-          "legs": [
-            {
-              "bucket": "WATCHLIST_NO_ODDS",
-              "confidence": 77.0,
-              "context_used": "WTA Antalya Prediction",
-              "cross_source_agree": "Both",
-              "date": "2026-09-12",
-              "edge_dims": 0,
-              "edge_grade": "SILVER",
-              "edge_n": 0,
-              "edge_tier": "BANKER",
-              "edge_verdict": "WATCHLIST",
-              "expected_value": null,
-              "kickoff": "11:00",
-              "match": "Rositsa Dencheva vs Irene Burillo",
-              "match_time": "11:00",
-              "ml_boost_reasons": [
-                "Both sources agree",
-                "High conf 77%",
-                "NO_ODDS but strong strengths"
-              ],
-              "ml_strength_score": 0.55,
-              "ml_verdict": "BOOST",
-              "ml_veto_reasons": [],
-              "ml_w_score": 1.0,
-              "odds": 1.9,
-              "odds_bookmaker": "nan",
-              "odds_reject_reason": "missing selected-side odds",
-              "odds_source": "nan",
-              "pick": "WATCHLIST",
-              "player_away": "Irene Burillo",
-              "player_home": "Rositsa Dencheva",
-              "pred_confidence": "High",
-              "roi_estimate": "live_only",
-              "selected_player": "Rositsa Dencheva",
-              "selected_side": "player_a",
-              "series": "International",
-              "slice_matched": "live_only_fallback",
-              "source": "BetClan",
-              "source_count": 2,
-              "surface": "Hard",
-              "tour": "WTA",
-              "tournament": "WTA Antalya Prediction"
-            },
-            {
-              "bucket": "WATCHLIST_NO_ODDS",
-              "confidence": 80.0,
-              "context_used": "Challenger Shanghai Prediction",
-              "cross_source_agree": "Both",
-              "date": "2026-09-12",
-              "edge_dims": 0,
-              "edge_grade": "SILVER",
-              "edge_n": 0,
-              "edge_tier": "BANKER",
-              "edge_verdict": "WATCHLIST",
-              "expected_value": null,
-              "kickoff": "10:00",
-              "match": "Luca Castelnuovo vs Ilya Ivashka",
-              "match_time": "10:00",
-              "ml_boost_reasons": [
-                "Both sources agree",
-                "High conf 80%",
-                "NO_ODDS but strong strengths"
-              ],
-              "ml_strength_score": 0.55,
-              "ml_verdict": "BOOST",
-              "ml_veto_reasons": [],
-              "ml_w_score": 1.0,
-              "odds": 1.75,
-              "odds_bookmaker": "nan",
-              "odds_reject_reason": "missing selected-side odds",
-              "odds_source": "nan",
-              "pick": "WATCHLIST",
-              "player_away": "Ilya Ivashka",
-              "player_home": "Luca Castelnuovo",
-              "pred_confidence": "High",
-              "roi_estimate": "live_only",
-              "selected_player": "Ilya Ivashka",
-              "selected_side": "player_b",
-              "series": "Challenger",
-              "slice_matched": "live_only_fallback",
-              "source": "BetClan",
-              "source_count": 2,
-              "surface": "Grass",
-              "tour": "CHALLENGER",
-              "tournament": "Challenger Shanghai Prediction"
-            }
-          ],
-          "odds": 3.32,
-          "stake_pct": 7.0821,
-          "type": "value_2leg"
-        },
         {
           "legs": [
             {
@@ -425,10 +334,8 @@
           "type": "value_2leg_3"
         }
       ],
-      "date": "2026-09-12",
-      "generated_at": "2026-09-12T08:51:19+02:00",
-      "stake_per_acca_pct": 6.25,
-      "staked_pct": 25.0
+      "staked_pct": 17.918,
+      "stake_per_acca_pct": 6.25
     },
     {
       "accas": [
@@ -822,6 +729,111 @@
       "pnl_pct": 2.285712,
       "return_pct": 11.809512,
       "staked_pct": 9.5238
+    },
+    {
+      "date": "2026-09-12",
+      "staked_pct": 7.0821,
+      "return_pct": 23.512572,
+      "pnl_pct": 16.430471999999998,
+      "bank_pct": 118.716184,
+      "accas": [
+        {
+          "odds": 3.32,
+          "won": true,
+          "stake_pct": 7.0821,
+          "type": "value_2leg",
+          "legs": [
+            {
+              "bucket": "WATCHLIST_NO_ODDS",
+              "confidence": 77.0,
+              "context_used": "WTA Antalya Prediction",
+              "cross_source_agree": "Both",
+              "date": "2026-09-12",
+              "edge_dims": 0,
+              "edge_grade": "SILVER",
+              "edge_n": 0,
+              "edge_tier": "BANKER",
+              "edge_verdict": "WATCHLIST",
+              "expected_value": null,
+              "kickoff": "11:00",
+              "match": "Rositsa Dencheva vs Irene Burillo",
+              "match_time": "11:00",
+              "ml_boost_reasons": [
+                "Both sources agree",
+                "High conf 77%",
+                "NO_ODDS but strong strengths"
+              ],
+              "ml_strength_score": 0.55,
+              "ml_verdict": "BOOST",
+              "ml_veto_reasons": [],
+              "ml_w_score": 1.0,
+              "odds": 1.9,
+              "odds_bookmaker": "nan",
+              "odds_reject_reason": "missing selected-side odds",
+              "odds_source": "nan",
+              "pick": "WATCHLIST",
+              "player_away": "Irene Burillo",
+              "player_home": "Rositsa Dencheva",
+              "pred_confidence": "High",
+              "roi_estimate": "live_only",
+              "selected_player": "Rositsa Dencheva",
+              "selected_side": "player_a",
+              "series": "International",
+              "slice_matched": "live_only_fallback",
+              "source": "BetClan",
+              "source_count": 2,
+              "surface": "Hard",
+              "tour": "WTA",
+              "tournament": "WTA Antalya Prediction"
+            },
+            {
+              "bucket": "WATCHLIST_NO_ODDS",
+              "confidence": 80.0,
+              "context_used": "Challenger Shanghai Prediction",
+              "cross_source_agree": "Both",
+              "date": "2026-09-12",
+              "edge_dims": 0,
+              "edge_grade": "SILVER",
+              "edge_n": 0,
+              "edge_tier": "BANKER",
+              "edge_verdict": "WATCHLIST",
+              "expected_value": null,
+              "kickoff": "10:00",
+              "match": "Luca Castelnuovo vs Ilya Ivashka",
+              "match_time": "10:00",
+              "ml_boost_reasons": [
+                "Both sources agree",
+                "High conf 80%",
+                "NO_ODDS but strong strengths"
+              ],
+              "ml_strength_score": 0.55,
+              "ml_verdict": "BOOST",
+              "ml_veto_reasons": [],
+              "ml_w_score": 1.0,
+              "odds": 1.75,
+              "odds_bookmaker": "nan",
+              "odds_reject_reason": "missing selected-side odds",
+              "odds_source": "nan",
+              "pick": "WATCHLIST",
+              "player_away": "Ilya Ivashka",
+              "player_home": "Luca Castelnuovo",
+              "pred_confidence": "High",
+              "roi_estimate": "live_only",
+              "selected_player": "Ilya Ivashka",
+              "selected_side": "player_b",
+              "series": "Challenger",
+              "slice_matched": "live_only_fallback",
+              "source": "BetClan",
+              "source_count": 2,
+              "surface": "Grass",
+              "tour": "CHALLENGER",
+              "tournament": "Challenger Shanghai Prediction"
+            }
+          ]
+        }
+      ],
+      "partial": true,
+      "pending_accas": 3
     }
   ]
 }

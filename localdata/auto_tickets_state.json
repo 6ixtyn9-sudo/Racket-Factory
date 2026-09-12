@@ -1,5 +1,5 @@
 {
-  "bank": 102.285712,
+  "bank": 118.716184,
   "base_pct": 100.0,
   "cycle_base": 100.0,
   "events": [],
@@ -66,9 +66,7 @@
       "pnl_pct": 2.285712,
       "return_pct": 11.809512,
       "staked_pct": 9.5238
-    }
-  ],
-  "open_slips": [
+    },
     {
       "accas": [
         {
@@ -162,8 +160,22 @@
           ],
           "odds": 3.32,
           "stake_pct": 7.0821,
-          "type": "value_2leg"
-        },
+          "type": "value_2leg",
+          "won": true
+        }
+      ],
+      "bank_pct": 118.716184,
+      "date": "2026-09-12",
+      "partial": true,
+      "pending_accas": 3,
+      "pnl_pct": 16.430471999999998,
+      "return_pct": 23.512572,
+      "staked_pct": 7.0821
+    }
+  ],
+  "open_slips": [
+    {
+      "accas": [
         {
           "legs": [
             {
@@ -485,7 +497,7 @@
       "date": "2026-09-12",
       "generated_at": "2026-09-12T08:51:19+02:00",
       "stake_per_acca_pct": 6.25,
-      "staked_pct": 25.0
+      "staked_pct": 17.918
     },
     {
       "accas": [
