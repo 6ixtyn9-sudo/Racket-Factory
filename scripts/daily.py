@@ -554,8 +554,16 @@ def run_once(args: argparse.Namespace) -> None:
     child_env["RACKET_FACTORY_RUN_AS_OF"] = run_as_of
     child_env.setdefault("RACKET_FACTORY_TZ", DEFAULT_LOCAL_TZ)
     env_prefix = f"RACKET_FACTORY_RUN_AS_OF={shlex.quote(run_as_of)}"
-    oddsportal_delay = float(os.getenv("RACKET_FACTORY_ODDSPORTAL_DELAY", "30"))
-    refresh_oddsportal = os.getenv("RACKET_FACTORY_REFRESH_ODDSPORTAL", "").strip().lower() in {"1", "true", "yes", "on"}
+    oddsportal_delay = float(os.getenv("RACKET_FACTORY_ODDSPORTAL_DELAY", "5"))
+    # FIX: Enable OddsPortal by default — pre-era had tennisdata odds, current regime needs OddsPortal for recent months
+    # Only disable if explicitly set RACKET_FACTORY_DISABLE_ODDSPORTAL=1
+    disable_oddsportal = os.getenv("RACKET_FACTORY_DISABLE_ODDSPORTAL", "").strip().lower() in {"1", "true", "yes", "on"}
+    refresh_oddsportal_env = os.getenv("RACKET_FACTORY_REFRESH_ODDSPORTAL", "").strip().lower()
+    # Default enabled unless disabled, or if REFRESH explicitly set, respect it
+    if refresh_oddsportal_env:
+        refresh_oddsportal = refresh_oddsportal_env in {"1", "true", "yes", "on"}
+    else:
+        refresh_oddsportal = not disable_oddsportal
 
     print("=== Racket Factory Daily Pipeline (Tennis) ===")
     print(f"    target date : {target}")
@@ -587,7 +595,9 @@ def run_once(args: argparse.Namespace) -> None:
         # checkpoint reset, which is one bulk pass per run and tolerates
         # CF re-challenge gracefully. Failures are non-fatal so an outage
         # in the results pass does not block picks.
+        # FIX: Also try lightweight current-month odds capture for recent dates (pre-era had tennisdata, now need OddsPortal)
         if refresh_oddsportal:
+            # Try current year bulk capture with checkpoint (soft fail)
             run_soft(
                 f"{env_prefix} PYTHONPATH=src python3 scripts/capture_"
                 f"oddsportal.py --all --years {year} --no-checkpoint --delay {oddsportal_delay:g}",
@@ -595,14 +605,13 @@ def run_once(args: argparse.Namespace) -> None:
                 env=child_env,
             )
         else:
-            print("\n>>> settle_yesterday_results skipped")
-            print("RACKET_FACTORY_REFRESH_ODDSPORTAL not set; skipping heavy OddsPortal intraday refresh.")
+            print("\n>>> settle_yesterday_results skipped (OddsPortal disabled via env)")
+            print("RACKET_FACTORY_DISABLE_ODDSPORTAL is set; skipping OddsPortal refresh.")
 
-    # 2. Targeted live odds capture for known API coverage gaps.
-    #
-    # The Odds API Wimbledon keys currently return singles only. OddsPortal has
-    # live ATP Wimbledon Doubles fixture odds, so capture just that page when
-    # enabled instead of running fragile full OddsPortal bulk capture.
+    # 2. Targeted live odds capture for known API coverage gaps + always-on current odds.
+    # FIX: Pre-era had tennisdata odds Jan-Jun, current regime Sep has NaN odds because tennisdata stopped and OddsPortal was disabled.
+    # Now we always try to fetch current odds for ATP/WTA/Challenger via OddsPortal (soft fail, uses curl_cffi to bypass CF)
+    # The Odds API only covers Slams/1000/500, not Challenger/ITF, so OddsPortal is critical.
     refresh_live_doubles_odds = os.getenv("RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS", "").strip().lower() in {"1", "true", "yes", "on"}
     if refresh_live_doubles_odds:
         run_soft(
@@ -613,8 +622,24 @@ def run_once(args: argparse.Namespace) -> None:
             env=child_env,
         )
     else:
-        print("\n>>> capture_oddsportal live doubles skipped")
-        print("RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS not set; skipping targeted OddsPortal doubles odds capture.")
+        print("\n>>> capture_oddsportal live doubles skipped (optional)")
+
+    # Always-on: try to fetch current ATP/WTA/Challenger odds for target date via OddsPortal live pages (soft fail)
+    # This ensures we get odds even when TheOddsAPI has no Challenger coverage
+    if not disable_oddsportal:
+        for tour_url, tour_name in [
+            ("https://www.oddsportal.com/tennis/atp/", "ATP"),
+            ("https://www.oddsportal.com/tennis/wta/", "WTA"),
+            ("https://www.oddsportal.com/tennis/challenger/", "CHALLENGER"),
+        ]:
+            run_soft(
+                f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py "
+                f"--url {tour_url} --tour {tour_name} --tournament '{tour_name} Live' --date {target} --pages 2",
+                f"capture_oddsportal live {tour_name} current odds",
+                env=child_env,
+            )
+    else:
+        print("\n>>> capture_oddsportal live current odds skipped (disabled)")
 
     # 3. Daily Prediction Sources
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday today tomorrow --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet", env=child_env)

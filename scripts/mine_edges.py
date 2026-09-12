@@ -668,6 +668,77 @@ def load_local_oddsportal_odds(target_date: str) -> list[dict]:
     return rows
 
 
+def lookup_bzzoiro_selected_odds(target_date: str, pick: dict) -> dict | None:
+    """Try Bzzoiro odds best API for selected side — Challenger/ITF coverage."""
+    try:
+        import os, requests
+        token = os.getenv("BZZOIRO_TOKEN")
+        if not token:
+            return None
+        # Use Bzzoiro v2 odds best endpoint for target date
+        url = f"https://sports.bzzoiro.com/tennis/api/v2/odds/best/?date_from={target_date}&date_to={target_date}&limit=100"
+        headers = {"Authorization": f"Token {token}"}
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        results = data.get("results", []) if isinstance(data, dict) else []
+        home = str(pick.get("player_home") or "").strip()
+        away = str(pick.get("player_away") or "").strip()
+        selected = str(pick.get("selected_player") or "").strip()
+        if not home or not away or not selected:
+            return None
+        for item in results:
+            match = item.get("match", {}) or {}
+            p1 = match.get("player1", {}).get("name", "")
+            p2 = match.get("player2", {}).get("name", "")
+            if not p1 or not p2:
+                continue
+            # Name matching
+            from racketfactory.sources.forebet import name_signature
+            def sig(s): return name_signature(s)
+            home_sig, away_sig = sig(home), sig(away)
+            p1_sig, p2_sig = sig(p1), sig(p2)
+            normal = (home_sig == p1_sig and away_sig == p2_sig)
+            reverse = (home_sig == p2_sig and away_sig == p1_sig)
+            if not (normal or reverse):
+                continue
+            # Find best odds for 1x2 market
+            best_odds = item.get("best_odds", []) or []
+            for bo in best_odds:
+                market = str(bo.get("market") or "").lower()
+                if "1x2" not in market and "h2h" not in market:
+                    continue
+                outcomes = bo.get("outcomes", []) or []
+                for oc in outcomes:
+                    outcome_name = str(oc.get("outcome") or oc.get("name") or "").strip()
+                    # Bzzoiro outcome 1 = player1, 2 = player2
+                    if outcome_name == "1" and sig(selected) == p1_sig:
+                        odds = oc.get("odd") or oc.get("odds")
+                        try:
+                            odds_f = float(odds)
+                            if odds_f > 1.01:
+                                return {"odds": odds_f, "bookmaker": str(bo.get("bookmaker") or "Bzzoiro"), "source": "Bzzoiro", "matched_market": f"{p1} vs {p2}"}
+                        except:
+                            pass
+                    if outcome_name == "2" and sig(selected) == p2_sig:
+                        odds = oc.get("odd") or oc.get("odds")
+                        try:
+                            odds_f = float(odds)
+                            if odds_f > 1.01:
+                                return {"odds": odds_f, "bookmaker": str(bo.get("bookmaker") or "Bzzoiro"), "source": "Bzzoiro", "matched_market": f"{p1} vs {p2}"}
+                        except:
+                            pass
+        return None
+    except Exception as e:
+        # Soft fail
+        try:
+            import logging
+            logging.getLogger(__name__).debug(f"Bzzoiro odds lookup failed: {e}")
+        except:
+            pass
+        return None
+
 def lookup_local_oddsportal_selected_odds(target_date: str, pick: dict) -> dict | None:
     """Find selected-side odds from locally captured OddsPortal rows."""
     rows = load_local_oddsportal_odds(target_date)
@@ -1447,12 +1518,20 @@ def main() -> int:
             odds_source = str(row.get("_odds_source") or row.get("odds_source") or "").strip()
             odds_bookmaker = str(row.get("bookmaker") or row.get("odds_bookmaker") or "").strip()
             if odds_val is None:
+                # FIX: Try OddsPortal first (covers ATP/WTA/Challenger live), then Bzzoiro (Challenger/ITF)
                 local_op = lookup_local_oddsportal_selected_odds(target_date, base)
                 if local_op is not None:
                     odds_val = local_op.get("odds")
                     odds_reject_reason = None
                     odds_source = "OddsPortal"
                     odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
+                else:
+                    bzzoiro_op = lookup_bzzoiro_selected_odds(target_date, base)
+                    if bzzoiro_op is not None:
+                        odds_val = bzzoiro_op.get("odds")
+                        odds_reject_reason = None
+                        odds_source = "Bzzoiro"
+                        odds_bookmaker = str(bzzoiro_op.get("bookmaker") or "Bzzoiro")
             ev = None
             if prob is not None and odds_val is not None and odds_val > 1.0:
                 p_dec = max(0.0, min(1.0, prob / 100.0))
@@ -1557,6 +1636,7 @@ def main() -> int:
                 # Automated fallback: use locally captured OddsPortal odds when
                 # live/API odds are missing. This solves doubles markets where
                 # bookies/OddsPortal have prices but The Odds API returns singles only.
+                # FIX: Also try Bzzoiro odds best for Challenger/ITF coverage (pre-era had tennisdata odds, now need OddsPortal+Bzzoiro)
                 if odds_val is None:
                     local_op = lookup_local_oddsportal_selected_odds(target_date, base)
                     if local_op is not None:
@@ -1565,6 +1645,14 @@ def main() -> int:
                         odds_source = "OddsPortal"
                         odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
                         oddsportal_match = str(local_op.get("matched_market") or "")
+                    else:
+                        bzzoiro_op = lookup_bzzoiro_selected_odds(target_date, base)
+                        if bzzoiro_op is not None:
+                            odds_val = bzzoiro_op.get("odds")
+                            odds_reject_reason = None
+                            odds_source = "Bzzoiro"
+                            odds_bookmaker = str(bzzoiro_op.get("bookmaker") or "Bzzoiro")
+                            oddsportal_match = str(bzzoiro_op.get("matched_market") or "")
 
                 # REDTEAM Finding #4: compute per-bet expected value and drop
                 # non-positive-EV rows from the actionable set. EV is computed
