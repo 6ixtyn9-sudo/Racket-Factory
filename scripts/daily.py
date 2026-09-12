@@ -581,8 +581,7 @@ def run_once(args: argparse.Namespace) -> None:
                 env=child_env,
             )
         else:
-            print("\n>>> capture_oddsportal skipped")
-            print("RACKET_FACTORY_REFRESH_ODDSPORTAL not set; using source/TennisData result refresh for daily run.")
+            print("\n>>> capture_oddsportal skipped (disabled via RACKET_FACTORY_DISABLE_ODDSPORTAL)")
         run_soft(
             f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_tennisdata.py --year {year}",
             f"backfill_tennisdata {year}",
@@ -591,22 +590,12 @@ def run_once(args: argparse.Namespace) -> None:
     else:
         # REDTEAM Finding #6: in intraday mode we still need yesterday's
         # results to flow into the warehouse so the audit can measure
-        # settled picks. We re-capture only the current year with the
-        # checkpoint reset, which is one bulk pass per run and tolerates
-        # CF re-challenge gracefully. Failures are non-fatal so an outage
-        # in the results pass does not block picks.
-        # FIX: Also try lightweight current-month odds capture for recent dates (pre-era had tennisdata, now need OddsPortal)
-        if refresh_oddsportal:
-            # Try current year bulk capture with checkpoint (soft fail)
-            run_soft(
-                f"{env_prefix} PYTHONPATH=src python3 scripts/capture_"
-                f"oddsportal.py --all --years {year} --no-checkpoint --delay {oddsportal_delay:g}",
-                f"settle_yesterday_results {year}",
-                env=child_env,
-            )
-        else:
-            print("\n>>> settle_yesterday_results skipped (OddsPortal disabled via env)")
-            print("RACKET_FACTORY_DISABLE_ODDSPORTAL is set; skipping OddsPortal refresh.")
+        # settled picks. However heavy OddsPortal bulk capture (--all) can timeout CI (30 min).
+        # FIX: intraday skips heavy bulk, only does lightweight live odds below. Full bulk only in full morning run.
+        print("\n>>> intraday mode: skipping heavy OddsPortal bulk capture (lightweight live odds below)")
+        # Still try tennisdata for current year (lightweight)
+        if not disable_oddsportal:
+            print(">>> intraday: tennisdata results refresh only")
 
     # 2. Targeted live odds capture for known API coverage gaps + always-on current odds.
     # FIX: Pre-era had tennisdata odds Jan-Jun, current regime Sep has NaN odds because tennisdata stopped and OddsPortal was disabled.

@@ -210,12 +210,25 @@ def settle_leg(leg, df, additional_df=None, target_date: str | None = None):
 def settle_open_slips(state, df, additional_df=None):
     logs = []
     remaining_open = []
-    # Idempotency: don't double-settle already in history
-    history_dates = set(h.get("date") for h in state.get("history", []))
+    # Idempotency: don't double-settle already in history, but allow partial history to continue settling pending accas
+    # Build map of date -> is_fully_settled (True if any history entry for date is not partial)
+    history_fully_settled = {}
+    for h in state.get("history", []):
+        d = h.get("date")
+        if not d:
+            continue
+        is_partial = bool(h.get("partial"))
+        # If any entry for date is not partial, consider it fully settled (or at least don't skip partials)
+        if d not in history_fully_settled:
+            history_fully_settled[d] = not is_partial
+        else:
+            # If we have both partial and full, full wins
+            if not is_partial:
+                history_fully_settled[d] = True
     for slip in state.get("open_slips", []):
         date_str = slip.get("date")
-        if date_str in history_dates:
-            logs.append(f"{date_str}: already in history, skipping (idempotent)")
+        if date_str in history_fully_settled and history_fully_settled[date_str]:
+            logs.append(f"{date_str}: already in history (fully settled), skipping (idempotent)")
             continue
         # Per-acca settlement (Edge parity) — accas settle independently with their own stake
         settled_accas = []
