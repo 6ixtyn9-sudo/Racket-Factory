@@ -10,4 +10,5 @@ Generated 2026-09-12
 | Tour | N | ROI | Hit Rate |
 |---|---|---|---|
 | ATP | 3 | 0.37 | 1.0 |
-| WTA | 2 | None | 1.0 |
+| CHALLENGER | 3 | None | 0.666667 |
+| WTA | 5 | None | 0.8 |
