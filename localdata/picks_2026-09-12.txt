@@ -1,0 +1,63 @@
+Racket Factory Picks — 2026-09-12
+============================================================
+Generated at: 2026-09-12 07:00:30
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  [live_only_fallback] Aryna Sabalenka vs Elena Rybakina          KO 21:00 -> ARYNA SABALENKA  conf 57% @1.78  EV +0.01u
+     bucket=WATCHLIST  tour=WTA  series=Grand Slam  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  [live_only_fallback] Luca Castelnuovo vs Ilya Ivashka           KO 10:00 -> ILYA IVASHKA  conf 80% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Rositsa Dencheva vs Irene Burillo          KO 11:00 -> ROSITSA DENCHEVA  conf 77% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Frances Tiafoe vs Ben Shelton              KO 00:00 -> BEN SHELTON  conf 75% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Hard  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Cengiz / Oz vs Kucmova / Laboutkova        KO 15:00 -> KUCMOVA / LABOUTKOVA  conf 69% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Max Alcala Gurri vs Dusan Lajovic          KO 19:30 -> DUSAN LAJOVIC  conf 69% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Dalma Galfi vs Fiona Ferro                 KO 15:00 -> FIONA FERRO  conf 66% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Alevtina Ibragimova vs Alicia Herrero Lina KO 12:30 -> ALEVTINA IBRAGIMOVA  conf 63% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Joao Lucas Reis da Silva vs Alex Barrena   KO 12:45 -> JOAO LUCAS REIS DA SILVA  conf 63% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Harrison / Skupski vs Krawietz / Puetz     KO 17:00 -> HARRISON / SKUPSKI  conf 60% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Grand Slam  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Vitaliy Sachko vs Mika Brunold             KO 10:00 -> MIKA BRUNOLD  conf 60% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Jaume Munar vs Facundo Diaz Acosta         KO 18:00 -> FACUNDO DIAZ ACOSTA  conf 57% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Pavel Kotov vs Marat Sharipov              KO 11:30 -> PAVEL KOTOV  conf 57% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Fossa Huergo / Havlickova vs Cascino / Fen KO 11:00 -> FOSSA HUERGO / HAVLICKOVA  conf 54% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Noma Noha Akugue vs Guiomar Maristany Zule KO 13:30 -> NOMA NOHA AKUGUE  conf 54% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  (none)
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  (none)
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.

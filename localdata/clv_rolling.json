@@ -1,9 +1,108 @@
 {
-  "audit_roi_by_source": {},
-  "audit_roi_by_surface": {},
-  "audit_roi_by_tour": {},
+  "audit_roi_by_source": {
+    "BetClan": {
+      "hit_rate": 1.0,
+      "priced_picks": 0,
+      "roi": null,
+      "selected_won_any_set": 2,
+      "selected_won_any_set_rate": 1.0,
+      "selected_won_set1": 0,
+      "selected_won_set1_rate": null,
+      "selected_won_set2": 0,
+      "selected_won_set2_rate": null,
+      "selected_won_set3": 0,
+      "selected_won_set3_rate": null,
+      "set_diagnostic_picks": 2,
+      "settled_picks": 2,
+      "wins": 2
+    },
+    "BetClan, PredixSport": {
+      "hit_rate": 1.0,
+      "priced_picks": 0,
+      "roi": null,
+      "selected_won_any_set": 1,
+      "selected_won_any_set_rate": 1.0,
+      "selected_won_set1": 0,
+      "selected_won_set1_rate": null,
+      "selected_won_set2": 0,
+      "selected_won_set2_rate": null,
+      "selected_won_set3": 0,
+      "selected_won_set3_rate": null,
+      "set_diagnostic_picks": 1,
+      "settled_picks": 1,
+      "wins": 1
+    }
+  },
+  "audit_roi_by_surface": {
+    "Grass": {
+      "hit_rate": 1.0,
+      "priced_picks": 0,
+      "roi": null,
+      "selected_won_any_set": 2,
+      "selected_won_any_set_rate": 1.0,
+      "selected_won_set1": 0,
+      "selected_won_set1_rate": null,
+      "selected_won_set2": 0,
+      "selected_won_set2_rate": null,
+      "selected_won_set3": 0,
+      "selected_won_set3_rate": null,
+      "set_diagnostic_picks": 2,
+      "settled_picks": 2,
+      "wins": 2
+    },
+    "Hard": {
+      "hit_rate": 1.0,
+      "priced_picks": 0,
+      "roi": null,
+      "selected_won_any_set": 1,
+      "selected_won_any_set_rate": 1.0,
+      "selected_won_set1": 0,
+      "selected_won_set1_rate": null,
+      "selected_won_set2": 0,
+      "selected_won_set2_rate": null,
+      "selected_won_set3": 0,
+      "selected_won_set3_rate": null,
+      "set_diagnostic_picks": 1,
+      "settled_picks": 1,
+      "wins": 1
+    }
+  },
+  "audit_roi_by_tour": {
+    "ATP": {
+      "hit_rate": 1.0,
+      "priced_picks": 0,
+      "roi": null,
+      "selected_won_any_set": 1,
+      "selected_won_any_set_rate": 1.0,
+      "selected_won_set1": 0,
+      "selected_won_set1_rate": null,
+      "selected_won_set2": 0,
+      "selected_won_set2_rate": null,
+      "selected_won_set3": 0,
+      "selected_won_set3_rate": null,
+      "set_diagnostic_picks": 1,
+      "settled_picks": 1,
+      "wins": 1
+    },
+    "WTA": {
+      "hit_rate": 1.0,
+      "priced_picks": 0,
+      "roi": null,
+      "selected_won_any_set": 2,
+      "selected_won_any_set_rate": 1.0,
+      "selected_won_set1": 0,
+      "selected_won_set1_rate": null,
+      "selected_won_set2": 0,
+      "selected_won_set2_rate": null,
+      "selected_won_set3": 0,
+      "selected_won_set3_rate": null,
+      "set_diagnostic_picks": 2,
+      "settled_picks": 2,
+      "wins": 2
+    }
+  },
   "calibration_by_confidence": {},
   "calibration_by_source": {},
   "calibration_by_tour": {},
-  "total_settled": 3801
+  "total_settled": 3803
 }
