@@ -253,7 +253,6 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
         df=pd.DataFrame()
     # Merge additional result sources for settlement robustness
     try:
-        import pandas as pd
         localdata=warehouse_path.parent
         add=[]
         for pattern in ["foretennis_results_*.csv.gz", "forebet_results_*.csv.gz", "challenger_results_*.csv.gz", "theoddsapi_scores_*.csv.gz"]:
