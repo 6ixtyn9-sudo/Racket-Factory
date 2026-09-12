@@ -461,16 +461,28 @@ def main():
         from datetime import timedelta
         import json as _json
         existing_dates = set(s.get("date") for s in state.get("open_slips", [])) | set(h.get("date") for h in state.get("history", []))
+        print(f"Reconstruct check: existing_dates={existing_dates}, open_slips count={len(state.get('open_slips',[]))}, history count={len(state.get('history',[]))}")
+        # List recent auto_tickets files
+        try:
+            recent_files = sorted(LOCALDATA.glob("auto_tickets_20*.json"))[-10:]
+            print(f"Recent auto_tickets files: {[f.name for f in recent_files]}")
+        except Exception as e:
+            print(f"Failed to list files: {e}")
         reconstructed = []
         for days_back in range(1, 8):
             d = (now.date() - timedelta(days=days_back)).isoformat()
             if d in existing_dates:
+                print(f"  {d} already in existing_dates, skipping")
                 continue
             f = LOCALDATA / f"auto_tickets_{d}.json"
-            if f.exists():
+            exists = f.exists()
+            print(f"  Checking {d}: file exists={exists}")
+            if exists:
                 try:
                     data = _json.loads(f.read_text())
-                    if data.get("accas"):
+                    has_accas = bool(data.get("accas"))
+                    print(f"    {d} has_accas={has_accas}, accas count={len(data.get('accas',[]))}")
+                    if has_accas:
                         slip = {
                             "date": d,
                             "generated_at": data.get("generated_at") or f"{d}T00:00:00",
@@ -479,13 +491,17 @@ def main():
                             "stake_per_acca_pct": data.get("stake_per_acca_pct", 0),
                         }
                         reconstructed.append(slip)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"    {d} failed to load: {e}")
         if reconstructed:
-            print(f"Reconstructed {len(reconstructed)} missing historical open_slips from auto_tickets_*.json for settlement")
+            print(f"Reconstructed {len(reconstructed)} missing historical open_slips from auto_tickets_*.json for settlement: {[s['date'] for s in reconstructed]}")
             state["open_slips"].extend(reconstructed)
+        else:
+            print(f"No historical slips reconstructed")
     except Exception as e:
         print(f"Reconstruct failed: {e}")
+        import traceback
+        traceback.print_exc()
     # Update state open_slips so grade can settle
     existing_today = [s for s in state.get("open_slips", []) if s.get("date") == target_date]
     if existing_today and is_frozen:
