@@ -639,6 +639,7 @@ def run_once(args: argparse.Namespace) -> None:
     print("\n>>> Second pass: backfill result sources for settlement (yesterday)")
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet yesterday (results)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_foretennis.py --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_foretennis second pass (results)", env=child_env)
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_challenger_results.py --days 3 --output-dir localdata", "backfill_challenger_results (settlement)", env=child_env)
     if os.getenv("RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES", "").strip().lower() not in {"1", "true", "yes", "on"}:
         run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_theoddsapi_scores.py --days-from 3 --output-dir localdata", "capture_theoddsapi_scores second pass (results)", env=child_env)
     # Rebuild warehouse with new result rows so audit can settle
@@ -686,7 +687,7 @@ def run_once(args: argparse.Namespace) -> None:
     restore_picks_today(target_picks_text)
 
     # 8. Run Audit + CLV/Calibration (feeds ML feedback loop for next run)
-    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_recent_picks.py --end {target} --days 30 --warehouse localdata/warehouse.csv.gz", "audit_recent_picks", env=child_env)
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_recent_picks.py --end {target} --days 30 --warehouse localdata/warehouse.csv.gz --include-same-day", "audit_recent_picks (include same-day for visibility)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_clv.py --days 30", "audit_clv", env=child_env)
 
     # 8b. Auto Tickets (Edge-Factory parity) — tennis accas from playable picks

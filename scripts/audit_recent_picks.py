@@ -256,7 +256,7 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
         import pandas as pd
         localdata=warehouse_path.parent
         add=[]
-        for pattern in ["foretennis_results_*.csv.gz", "forebet_results_*.csv.gz"]:
+        for pattern in ["foretennis_results_*.csv.gz", "forebet_results_*.csv.gz", "challenger_results_*.csv.gz", "theoddsapi_scores_*.csv.gz"]:
             for f in localdata.glob(pattern):
                 try:
                     adf=pd.read_csv(f, low_memory=False)
