@@ -172,12 +172,62 @@ def align_odds_to_probabilities(
     odds_home: object,
     odds_away: object,
 ) -> tuple[object, object]:
-    """Previously swapped odds based on prediction probability — removed per investigation.
+    """Repair side-inverted scraper rows using probability as a sanity signal.
 
-    A model disagreeing with a market does not prove an inverted market. Prices carry
-    player labels and should be oriented by identity, not by probability.
-    This function now returns odds unchanged to avoid false inversions.
+    Previous version returned odds unchanged to avoid false inversions from model
+    vs market disagreement.  However tests and production logs show a common
+    scraper failure mode: a valid two-way pair (e.g. 1.02 / 9.50) lands on the
+    wrong home/away side during extraction, so the 79% favorite is paired with
+    9.50.  This is not a value bet, it is a labeling error.
+
+    We use odds_suspicious_for_probability() to detect this:
+      - If home odds are suspicious for prob_home (e.g. 79% with 9.50) and
+        away odds are NOT suspicious for prob_away (21% with 1.02), swap.
+      - Vice versa for away suspicious.
+      - If both sides suspicious or both clean, return unchanged to avoid
+        flipping on genuine market vs model disagreement.
+
+    This is intentionally conservative and only repairs clear inversions.
     """
+    try:
+        # If either prob missing, cannot assess inversion
+        ph = normalize_probability(prob_home)
+        pa = normalize_probability(prob_away)
+        if ph is None or pa is None:
+            return odds_home, odds_away
+
+        oh_susp = odds_suspicious_for_probability(prob_home, odds_home)
+        oa_susp = odds_suspicious_for_probability(prob_away, odds_away)
+        # Also check cross: home prob with away odds, away prob with home odds
+        oh_cross_susp = odds_suspicious_for_probability(prob_home, odds_away)
+        oa_cross_susp = odds_suspicious_for_probability(prob_away, odds_home)
+
+        # Clear inversion: home prob high but home odds long (suspicious), away prob low but away odds short (not suspicious)
+        # and cross pairing is clean
+        if oh_susp and not oa_susp:
+            if not oh_cross_susp and not oa_cross_susp:
+                # Home is favorite but paired with long odds, away is longshot but paired with short -> swap
+                return odds_away, odds_home
+            # If cross is also suspicious, don't swap (both sides long etc)
+            # Check if swapping would make both sides non-suspicious
+            if not odds_suspicious_for_probability(prob_home, odds_away) and not odds_suspicious_for_probability(prob_away, odds_home):
+                return odds_away, odds_home
+        if oa_susp and not oh_susp:
+            if not odds_suspicious_for_probability(prob_home, odds_away) and not odds_suspicious_for_probability(prob_away, odds_home):
+                return odds_away, odds_home
+
+        # Additional heuristic: if prob_home > prob_away but odds_home > odds_away and prob_home >= STRONG_PROBABILITY,
+        # and odds_home is suspicious, swap. This catches 79% vs 21% with 9.5 vs 1.02
+        if ph > pa and coerce_decimal_odds(odds_home) is not None and coerce_decimal_odds(odds_away) is not None:
+            if coerce_decimal_odds(odds_home) > coerce_decimal_odds(odds_away) and ph >= STRONG_PROBABILITY:
+                if oh_susp and not oa_susp:
+                    return odds_away, odds_home
+        if pa > ph and coerce_decimal_odds(odds_away) > coerce_decimal_odds(odds_home) and pa >= STRONG_PROBABILITY:
+            if oa_susp and not oh_susp:
+                return odds_away, odds_home
+
+    except Exception:
+        pass
     return odds_home, odds_away
 
 
@@ -922,22 +972,26 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
             row.get("scraped_odds_home"),
             row.get("scraped_odds_away"),
         )
-        # Be more permissive for scraped fallback: accept if pair is valid OR
-        # if at least one side is a valid decimal odd (1.01-51.0). This allows
-        # Challenger/ITF matches where only one side was scraped or where
-        # overround is high due to low liquidity.
+        # Strict validation for scraped fallback: must be a valid two-way pair
+        # (implied sum 0.98-1.35 and both odds 1.01-51.0).  This rejects impossible
+        # pairs like 9.50/9.70 (implied sum 0.21) which would otherwise inflate EV.
+        # For Challenger/ITF where only one side scraped, allow single-side if other is NA.
         if not valid_two_way_decimal_pair(scraped_home, scraped_away):
-            # Fallback to single-side valid check
             ch = coerce_decimal_odds(scraped_home)
             ca = coerce_decimal_odds(scraped_away)
+            # If both sides present but pair invalid -> reject (e.g. both long 9.5/9.7)
+            if ch is not None and ca is not None:
+                fallback_invalid += 1
+                continue
+            # If one side NA and other valid, allow single-side promotion
             if ch is None and ca is None:
                 fallback_invalid += 1
                 continue
-            # If only one side valid, keep it and leave other as NA - still usable for EV calc if selected side matches
             if ch is None:
                 scraped_home = pd.NA
             if ca is None:
                 scraped_away = pd.NA
+            # Still need at least one valid side to be usable; but if both present and invalid, already rejected above
 
         out.at[idx, "odds_home"] = scraped_home
         out.at[idx, "odds_away"] = scraped_away
