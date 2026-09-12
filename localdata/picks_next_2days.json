@@ -1,6 +1,6 @@
 [
   {
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "WATCHLIST",
     "confidence": 57.0,
     "context_used": "US Open Women Prediction",
     "cross_source_agree": "Both",
@@ -10,7 +10,7 @@
     "edge_n": 0,
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
-    "expected_value": -0.0025000000000000577,
+    "expected_value": 0.003199999999999925,
     "kickoff": "21:00",
     "match": "Aryna Sabalenka vs Elena Rybakina",
     "match_time": "21:00",
@@ -21,7 +21,7 @@
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [],
     "ml_w_score": 1.0,
-    "odds": 1.75,
+    "odds": 1.76,
     "odds_bookmaker": "The Odds API",
     "odds_reject_reason": null,
     "odds_source": "TheOddsAPI",
@@ -34,7 +34,6 @@
     "selected_player": "Aryna Sabalenka",
     "selected_side": "player_a",
     "series": "Grand Slam",
-    "skip_reason": "negative EV (-0.003 < 0.000)",
     "slice_matched": "live_only_fallback",
     "source": "BetClan",
     "source_count": 2,
