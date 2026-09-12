@@ -496,8 +496,17 @@ def main():
         if reconstructed:
             print(f"Reconstructed {len(reconstructed)} missing historical open_slips from auto_tickets_*.json for settlement: {[s['date'] for s in reconstructed]}")
             state["open_slips"].extend(reconstructed)
+            # Write log file that gets committed for debugging (since GH logs fail to fetch via API)
+            try:
+                (LOCALDATA / "auto_tickets_reconstruct.log").write_text(f"{now.isoformat()}: reconstructed {[s['date'] for s in reconstructed]} existing_dates={existing_dates}\n" + "\n".join([f"{s['date']}: {len(s.get('accas',[]))} accas" for s in reconstructed]) + "\n")
+            except Exception:
+                pass
         else:
             print(f"No historical slips reconstructed")
+            try:
+                (LOCALDATA / "auto_tickets_reconstruct.log").write_text(f"{now.isoformat()}: no reconstruct existing_dates={existing_dates} files={[f.name for f in sorted(LOCALDATA.glob('auto_tickets_20*.json'))[-10:]]}\n")
+            except Exception:
+                pass
     except Exception as e:
         print(f"Reconstruct failed: {e}")
         import traceback
