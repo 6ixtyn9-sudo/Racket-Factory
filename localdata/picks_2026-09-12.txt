@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-12
 ============================================================
-Generated at: 2026-09-12 18:34:04
+Generated at: 2026-09-12 19:07:59
 
 
 CERTIFIED CLEAN PICKS
@@ -60,7 +60,7 @@ SKIPPED — VETO CONTEXT
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
-  [live_only_fallback] Aryna Sabalenka vs Elena Rybakina          KO 21:00 -> ARYNA SABALENKA  conf 57% @1.70  EV -0.03u
+  [live_only_fallback] Aryna Sabalenka vs Elena Rybakina          KO 21:00 -> ARYNA SABALENKA  conf 57% @1.68  EV -0.04u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=Grand Slam  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
 
 ⚠️  Flat stakes only. Best odds inflate ROI (~halve it).

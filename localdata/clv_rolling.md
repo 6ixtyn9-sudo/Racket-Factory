@@ -12,6 +12,6 @@ Generated 2026-09-12
 ## ROI by Tour (from audit)
 | Tour | N | ROI | Hit Rate |
 |---|---|---|---|
-| ATP | 4 | 0.37 | 1.0 |
-| CHALLENGER | 14 | None | 0.571429 |
-| WTA | 20 | None | 0.75 |
+| ATP | 1 | None | 1.0 |
+| CHALLENGER | 4 | None | 0.75 |
+| WTA | 5 | None | 1.0 |

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-12T18:35:51",
+  "generated_at": "2026-09-12T19:09:25",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 102.285712,
@@ -19,8 +19,6 @@
   },
   "open_slips": [
     {
-      "date": "2026-09-12",
-      "generated_at": "2026-09-12T08:51:19+02:00",
       "accas": [
         {
           "legs": [
@@ -131,8 +129,10 @@
           "type": "value_2leg_3"
         }
       ],
-      "staked_pct": 7.0821,
-      "stake_per_acca_pct": 6.25
+      "date": "2026-09-12",
+      "generated_at": "2026-09-12T08:51:19+02:00",
+      "stake_per_acca_pct": 6.25,
+      "staked_pct": 7.0821
     }
   ],
   "events": [],
@@ -657,32 +657,18 @@
       "staked_pct": 0.0
     },
     {
-      "date": "2026-09-12",
-      "staked_pct": 0.0,
-      "return_pct": 0.0,
-      "pnl_pct": 0.0,
-      "bank_pct": 102.285712,
-      "paper_staked_pct": 10.835899999999999,
-      "paper_return_pct": 73.08606999999999,
-      "paper_pnl_pct": 62.25017,
-      "paper_bank_pct": 221.287712,
       "accas": [
         {
-          "odds": 6.0,
-          "won": true,
-          "stake_pct": 7.0821,
-          "return_pct": 42.492599999999996,
-          "type": "value_2leg_2",
           "legs": [
             {
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-12",
-                "score": "4-6 6-2 6-3",
-                "winner": "Ibragimova A.",
                 "result_id": "3321355.0",
+                "score": "4-6 6-2 6-3",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Ibragimova A."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-12 4-6 6-2 6-3",
@@ -729,13 +715,13 @@
             },
             {
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-12",
-                "score": "6-2 6-3",
-                "winner": "Reis Da Silva J.",
                 "result_id": "3321325.0",
+                "score": "6-2 6-3",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Reis Da Silva J."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-12 6-2 6-3",
@@ -781,26 +767,26 @@
               "tournament": "Challenger Tulln Prediction"
             }
           ],
+          "odds": 6.0,
           "paper": true,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 42.492599999999996,
+          "stake_pct": 7.0821,
+          "type": "value_2leg_2",
+          "unpriced": false,
+          "won": true
         },
         {
-          "odds": 8.15,
-          "won": true,
-          "stake_pct": 3.7538,
-          "return_pct": 30.59347,
-          "type": "high_strength_3leg",
           "legs": [
             {
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-12",
-                "score": "4-6 6-4 6-4",
-                "winner": "Dencheva R.",
                 "result_id": "3321287.0",
+                "score": "4-6 6-4 6-4",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Dencheva R."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-12 4-6 6-4 6-4",
@@ -848,13 +834,13 @@
             },
             {
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-12",
-                "score": "6-3 6-4",
-                "winner": "Ivashka I.",
                 "result_id": "3321235.0",
+                "score": "6-3 6-4",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Ivashka I."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-12 6-3 6-4",
@@ -902,13 +888,13 @@
             },
             {
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-12",
-                "score": "4-6 6-2 6-3",
-                "winner": "Ibragimova A.",
                 "result_id": "3321355.0",
+                "score": "4-6 6-2 6-3",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Ibragimova A."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-12 4-6 6-2 6-3",
@@ -954,41 +940,41 @@
               "tournament": "WTA Antalya Prediction"
             }
           ],
+          "odds": 8.15,
           "paper": true,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 30.59347,
+          "stake_pct": 3.7538,
+          "type": "high_strength_3leg",
+          "unpriced": false,
+          "won": true
         }
       ],
+      "bank_pct": 102.285712,
+      "date": "2026-09-12",
+      "paper_bank_pct": 221.287712,
+      "paper_pnl_pct": 62.25017,
+      "paper_return_pct": 73.08606999999999,
+      "paper_staked_pct": 10.835899999999999,
       "partial": true,
-      "pending_accas": 1
+      "pending_accas": 1,
+      "pnl_pct": 0.0,
+      "return_pct": 0.0,
+      "staked_pct": 0.0
     },
     {
-      "date": "2026-09-11",
-      "staked_pct": 0.0,
-      "return_pct": 0.0,
-      "pnl_pct": 0.0,
-      "bank_pct": 102.285712,
-      "paper_staked_pct": 5.9524,
-      "paper_return_pct": 30.119144,
-      "paper_pnl_pct": 24.166743999999998,
-      "paper_bank_pct": 245.454456,
       "accas": [
         {
-          "odds": 5.06,
-          "won": true,
-          "stake_pct": 5.9524,
-          "return_pct": 30.119144,
-          "type": "value_2leg_2",
           "legs": [
             {
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-12",
-                "score": "6-1 7-6",
-                "winner": "Blinkova A.",
                 "result_id": "3321137.0",
+                "score": "6-1 7-6",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Blinkova A."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-12 6-1 7-6",
@@ -1035,13 +1021,13 @@
             },
             {
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-11",
-                "score": "6-1 5-7 6-3",
-                "winner": "Alcala Gurri M.",
                 "result_id": "3321119.0",
+                "score": "6-1 5-7 6-3",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Alcala Gurri M."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-11 6-1 5-7 6-3",
@@ -1087,11 +1073,25 @@
               "tournament": "Challenger Seville Prediction"
             }
           ],
+          "odds": 5.06,
           "paper": true,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 30.119144,
+          "stake_pct": 5.9524,
+          "type": "value_2leg_2",
+          "unpriced": false,
+          "won": true
         }
-      ]
+      ],
+      "bank_pct": 102.285712,
+      "date": "2026-09-11",
+      "paper_bank_pct": 245.454456,
+      "paper_pnl_pct": 24.166743999999998,
+      "paper_return_pct": 30.119144,
+      "paper_staked_pct": 5.9524,
+      "pnl_pct": 0.0,
+      "return_pct": 0.0,
+      "staked_pct": 0.0
     }
   ]
 }

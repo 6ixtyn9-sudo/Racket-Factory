@@ -1,10 +1,10 @@
 {
   "date": "2026-09-12",
-  "generated_at": "2026-09-12T18:26:10+02:00",
+  "generated_at": "2026-09-12T19:01:04+02:00",
   "bank_pct": 102.285712,
   "stake_per_acca_pct": 0,
   "staked_pct": 0,
-  "paper_staked_pct": 39.7594,
+  "paper_staked_pct": 61.3636,
   "accas": [
     {
       "legs": [
@@ -107,7 +107,7 @@
       ],
       "odds": null,
       "type": "value_2leg_mutual_paper",
-      "stake_pct": 9.9398,
+      "stake_pct": 15.3409,
       "paper": true
     },
     {
@@ -208,7 +208,7 @@
       ],
       "odds": null,
       "type": "value_2leg_mutual_paper",
-      "stake_pct": 9.9398,
+      "stake_pct": 15.3409,
       "paper": true
     },
     {
@@ -310,7 +310,7 @@
       ],
       "odds": null,
       "type": "value_2leg_mutual_paper",
-      "stake_pct": 9.9398,
+      "stake_pct": 15.3409,
       "paper": true
     },
     {
@@ -412,7 +412,7 @@
       ],
       "odds": null,
       "type": "value_2leg_mutual_paper",
-      "stake_pct": 9.9398,
+      "stake_pct": 15.3409,
       "paper": true
     }
   ],
