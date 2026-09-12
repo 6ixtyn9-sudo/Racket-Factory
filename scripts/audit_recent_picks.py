@@ -248,9 +248,49 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
     if not warehouse_path.exists():
         return pd.DataFrame()
     try:
-        return pd.read_csv(warehouse_path, low_memory=False)
+        df=pd.read_csv(warehouse_path, low_memory=False)
     except Exception:
-        return pd.DataFrame()
+        df=pd.DataFrame()
+    # Merge additional result sources for settlement robustness
+    try:
+        import pandas as pd
+        localdata=warehouse_path.parent
+        add=[]
+        for pattern in ["foretennis_results_*.csv.gz", "forebet_results_*.csv.gz"]:
+            for f in localdata.glob(pattern):
+                try:
+                    adf=pd.read_csv(f, low_memory=False)
+                    if not adf.empty and "winner" in adf.columns:
+                        add.append(adf)
+                except Exception:
+                    pass
+        # Also load predictions_foretennis with actual_result as fallback winners
+        for f in localdata.glob("predictions_foretennis_*.csv.gz"):
+            try:
+                adf=pd.read_csv(f, low_memory=False)
+                if not adf.empty and "actual_result" in adf.columns:
+                    def winner_from_actual(row):
+                        ar=str(row.get("actual_result") or "").strip()
+                        digits=[int(ch) for ch in ar if ch.isdigit()]
+                        if len(digits)<2:
+                            return None
+                        home,away=digits[0],digits[1]
+                        if home==away:
+                            return None
+                        return str(row.get("player_a") or "") if home>away else str(row.get("player_b") or "")
+                    adf["winner"]=adf.apply(winner_from_actual, axis=1)
+                    adf=adf[adf["winner"].notna() & (adf["winner"].astype(str).str.strip()!="")]
+                    if not adf.empty:
+                        add.append(adf)
+            except Exception:
+                pass
+        if add:
+            combined=pd.concat([df]+add, ignore_index=True, sort=False) if not df.empty else pd.concat(add, ignore_index=True, sort=False)
+            print(f"Loaded {len(combined)-len(df) if not df.empty else len(combined)} additional result rows for settlement")
+            return combined
+    except Exception as e:
+        print(f"additional results load failed: {e}")
+    return df
 
 
 
