@@ -68,6 +68,8 @@ data/cache/
 !localdata/betexplorer_*.csv.gz
 !localdata/forebet.csv.gz
 !localdata/foretennis.csv.gz
+!localdata/forebet_results_*.csv.gz
+!localdata/foretennis_results_*.csv.gz
 !localdata/settled_results.json
 
 # Stray data files accidentally created in repo root (no extension)
