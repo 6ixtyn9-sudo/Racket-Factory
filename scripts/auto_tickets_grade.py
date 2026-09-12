@@ -19,160 +19,28 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+from racketfactory.settlement import clean_str, settle_selection  # noqa: E402
 LOCALDATA = ROOT / "localdata"
 STATE_FILE = LOCALDATA / "auto_tickets_state.json"
 WAREHOUSE = LOCALDATA / "warehouse.csv.gz"
 
 TZ = ZoneInfo("Africa/Johannesburg")
 
-def clean_text(v):
-    if v is None:
-        return ""
-    s = str(v).strip()
-    if s.lower() in {"", "nan", "none", "<na>", "nat"}:
-        return ""
-    return s
+def _leg_odds_trusted(leg) -> bool:
+    """A leg price counts as real only with a named odds source.
 
-def normalize_name(v):
-    text = clean_text(v)
-    if not text:
-        return ""
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(ch for ch in text if not unicodedata.combining(ch))
-    text = re.sub(r"[^a-zA-Z0-9/\s'-]", " ", text).lower()
-    text = re.sub(r"\s+", " ", text).strip()
-    parts = [p for p in text.replace("-", " ").replace("'", " ").split() if p]
-    # Keep initials for strict matching
-    return " ".join(parts)
-
-# Alias map for known player name variations (reviewed from public sources)
-PLAYER_ALIASES = {
-    "irene burillo": "irene burillo escorihuela",
-    "burillo escorihuela": "irene burillo escorihuela",
-    "irene burillo escorihuela": "irene burillo escorihuela",
-}
-
-def apply_alias(name: str) -> str:
-    norm = normalize_name(name)
-    # Check alias map
-    for short, full in PLAYER_ALIASES.items():
-        if norm == normalize_name(short) or norm == normalize_name(full) or short in norm or norm in short:
-            # If alias matches, return full
-            if "burillo" in norm:
-                return normalize_name(full)
-    return norm
-
-def names_match(a, b) -> bool:
-    # STRICT matching: reject Alexander vs Mischa, Smith J vs Smith A, partial doubles
-    str_a, str_b = str(a), str(b)
-    # Handle doubles: require both sides have "/" and same team size, reject partial
-    has_slash_a = "/" in str_a
-    has_slash_b = "/" in str_b
-    if has_slash_a or has_slash_b:
-        if not (has_slash_a and has_slash_b):
-            return False  # partial team: one doubles, one singles -> reject
-        parts_a = [p.strip() for p in str_a.split("/")]
-        parts_b = [p.strip() for p in str_b.split("/")]
-        if len(parts_a) != len(parts_b):
-            return False
-        # Require full team match in any order
-        if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
-            return True
-        if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
-            return True
+    Legs whose odds were estimated from confidence carry odds_source nan
+    (or an odds_reject_reason); accas containing them are paper, never
+    allowed to move the real bank.
+    """
+    src = clean_str(leg.get("odds_source"))
+    if not src or leg.get("odds_reject_reason"):
+        return False
+    try:
+        return float(leg.get("odds") or 0) > 1.0
+    except (TypeError, ValueError):
         return False
 
-    na = apply_alias(a)
-    nb = apply_alias(b)
-    if not na or not nb:
-        return False
-    if na == nb:
-        return True
-
-    # Alias for Burillo already handled in apply_alias, but allow substring only for burillo
-    if "burillo" in na and "burillo" in nb:
-        return True
-
-    ta = na.split()
-    tb = nb.split()
-    if not ta or not tb:
-        return False
-
-    # Helper to extract surname and firstname/initial
-    def parse(tokens):
-        # tokens normalized lower, no punctuation, initials kept as single letters
-        if len(tokens) == 1:
-            return (tokens[0], None, None)  # surname, firstname, initial
-        if len(tokens) == 2:
-            # Cases: "Ivashka I" -> surname first, initial last
-            # "I Ivashka" -> initial first, surname last
-            # "Ilya Ivashka" -> firstname surname
-            if len(tokens[0]) == 1 and len(tokens[1]) > 1:
-                return (tokens[1], None, tokens[0])
-            if len(tokens[1]) == 1 and len(tokens[0]) > 1:
-                return (tokens[0], None, tokens[1])
-            # Both full
-            return (tokens[-1], tokens[0], None)
-        # len >2: could be compound surname
-        # Check for trailing initial
-        if len(tokens[-1]) == 1:
-            # e.g., "Burillo Escorihuela I" -> surname compound, initial
-            surname = " ".join(tokens[:-1])
-            return (surname, None, tokens[-1])
-        if len(tokens[0]) == 1:
-            # "I Burillo Escorihuela"
-            surname = " ".join(tokens[1:])
-            return (surname, None, tokens[0])
-        # No initial, assume last token surname, rest firstname(s)
-        surname = tokens[-1]
-        firstname = tokens[0]
-        # For compound surnames like "burillo escorihuela", consider last 2 as surname
-        if len(tokens) >= 3 and tokens[-2] in ("burillo", "escorihuela") or "burillo" in " ".join(tokens):
-            surname = " ".join(tokens[1:])
-        return (surname, firstname, None)
-
-    sur_a, first_a, init_a = parse(ta)
-    sur_b, first_b, init_b = parse(tb)
-
-    # Surname must match exactly (or compound contains)
-    # For compound, allow exact or last token match if burillo case already handled
-    if sur_a != sur_b:
-        # Allow compound surname where one is suffix of other (e.g., "burillo escorihuela" vs "escorihuela")
-        # Only for burillo already returned True, so strict here
-        # Check if surnames share last token but firstnames must also match
-        # For strictness, reject if surnames differ
-        # Exception: if one surname is two tokens and other is one token that equals last token of compound, require firstname match
-        # e.g., "burillo escorihuela" vs "escorihuela" with same firstname -> would be handled by alias
-        return False
-
-    # Surnames match, now check firstname/initial compatibility
-    # If both have full firstnames, they must match exactly (or one is initial of other)
-    if first_a and first_b:
-        if first_a == first_b:
-            return True
-        # If firstnames differ (Alexander vs Mischa), reject
-        return False
-    if first_a and init_b:
-        # first_a full, init_b initial: check initial matches first letter
-        if first_a[0] == init_b[0]:
-            return True
-        return False
-    if first_b and init_a:
-        if first_b[0] == init_a[0]:
-            return True
-        return False
-    if init_a and init_b:
-        # Both initials: must match
-        if init_a[0] == init_b[0]:
-            return True
-        return False
-    # Allow surname-only vs surname+firstname/initial for doubles settlement
-    # e.g., Cascino / Feng (surnames only) vs Cascino E / Feng S. (surname+initial) should match
-    # Full vs full with different firstnames (Alexander vs Mischa) already rejected above
-    if (len(ta) == 1 or len(tb) == 1) and sur_a == sur_b:
-        return True
-
-    return False
 
 def load_state():
     if not STATE_FILE.exists():
@@ -221,71 +89,50 @@ def load_additional_results():
         return pd.DataFrame()
 
 def settle_leg(leg, df, additional_df=None, target_date: str | None = None):
-    # Date-scoped matching (Edge parity) — only consider rows within +/-1 day of target_date
-    if df.empty and (additional_df is None or additional_df.empty):
-        return None
-    match_text = clean_text(leg.get("match"))
-    selected = clean_text(leg.get("selected_player"))
+    """Settle one leg via the shared settlement module.
+
+    Returns the outcome string (WON / LOST / PENDING / VOID / CONFLICT) and
+    records the evidence (reason + basis rows) on the leg dict so history
+    keeps the full settlement trail.
+    """
+    match_text = clean_str(leg.get("match"))
+    selected = clean_str(leg.get("selected_player"))
     if not match_text or not selected:
-        return None
-    parts = re.split(r"\s+v(?:s\.?)?\s+", match_text, flags=re.IGNORECASE)
-    if len(parts) == 2:
-        p_home, p_away = clean_text(parts[0]), clean_text(parts[1])
-    else:
-        p_home, p_away = "", ""
+        leg["_settle_outcome"] = "PENDING"
+        leg["_settle_reason"] = "leg missing match/selection"
+        return "PENDING"
 
     def date_filter(frame):
-        if frame.empty or not target_date or "match_date" not in frame.columns:
-            return frame
+        if frame is None or frame.empty or not target_date or "match_date" not in frame.columns:
+            return frame if frame is not None else pd.DataFrame()
         try:
             from datetime import datetime, timedelta
             base = datetime.strptime(target_date[:10], "%Y-%m-%d").date()
-            allowed = {base.isoformat(), (base + timedelta(days=1)).isoformat(), (base - timedelta(days=1)).isoformat()}
+            allowed = {base.isoformat(), (base + timedelta(days=1)).isoformat(),
+                       (base - timedelta(days=1)).isoformat()}
             return frame[frame["match_date"].astype(str).str[:10].isin(allowed)]
         except Exception:
             return frame
 
-    candidates = date_filter(df)
-    additional_candidates = date_filter(additional_df) if additional_df is not None else pd.DataFrame()
+    frames = []
+    for frame in (date_filter(df), date_filter(additional_df)):
+        if frame is not None and not frame.empty:
+            frames.append(frame)
+    candidates = []
+    for frame in frames:
+        for row in frame.to_dict(orient="records"):
+            candidates.append({k: (None if (isinstance(v, float) and v != v) else v)
+                               for k, v in row.items()})
+    if not target_date:
+        target_date = clean_str(leg.get("date"))
+    result = settle_selection(match_text, selected, candidates, target_date or "")
+    leg["_settle_outcome"] = result.outcome
+    leg["_settle_reason"] = result.reason
+    leg["_settle_basis"] = result.basis
+    if result.bare_surname:
+        leg["_settle_bare_surname"] = True
+    return result.outcome
 
-    def row_match(row):
-        a = clean_text(row.get("player_a"))
-        b = clean_text(row.get("player_b"))
-        if p_home and p_away:
-            return (names_match(a, p_home) and names_match(b, p_away)) or (names_match(a, p_away) and names_match(b, p_home))
-        else:
-            return names_match(a, selected) or names_match(b, selected)
-
-    matched = candidates[candidates.apply(row_match, axis=1)] if not candidates.empty else pd.DataFrame()
-    additional_matched = additional_candidates[additional_candidates.apply(row_match, axis=1)] if not additional_candidates.empty else pd.DataFrame()
-
-    # Only final rows
-    def is_final(row):
-        winner = clean_text(row.get("winner"))
-        if not winner:
-            return False
-        status = " ".join([clean_text(row.get(k)) for k in ("score","status","_comment")]).lower()
-        if any(tok in status for tok in ("live","to finish","suspended","postponed","not started")):
-            return False
-        return True
-
-    final_rows = matched[matched.apply(is_final, axis=1)] if not matched.empty else pd.DataFrame()
-    # FIX: If warehouse has pending row (empty winner), check fallback sources even if warehouse matched
-    if final_rows.empty and not additional_matched.empty:
-        final_rows = additional_matched[additional_matched.apply(is_final, axis=1)] if not additional_matched.empty else pd.DataFrame()
-        if not final_rows.empty:
-            matched = additional_matched
-
-    if final_rows.empty:
-        # If warehouse had match but no final, and no fallback final, return None (pending)
-        # But if there was no warehouse match at all, also return None
-        return None
-
-    # Take first
-    row = final_rows.iloc[0]
-    winner = clean_text(row.get("winner"))
-    won = names_match(winner, selected)
-    return won
 
 def settle_open_slips(state, df, additional_df=None):
     logs = []
@@ -315,33 +162,75 @@ def settle_open_slips(state, df, additional_df=None):
         pending_accas = []
         total_return = 0.0
         total_staked_settled = 0.0
+        paper_return = 0.0
+        paper_staked = 0.0
         wins = 0
+        losses = 0
+        paper_wins = 0
         for acca in slip.get("accas", []):
             legs = acca.get("legs", [])
-            leg_outcomes = []
-            all_legs_settled = True
-            for leg in legs:
-                won = settle_leg(leg, df, additional_df, target_date=date_str)
-                if won is None:
-                    all_legs_settled = False
-                    leg_outcomes.append(None)
-                else:
-                    leg_outcomes.append(won)
-            if not all_legs_settled:
+            leg_outcomes = [settle_leg(leg, df, additional_df, target_date=date_str)
+                            for leg in legs]
+            if any(o in ("PENDING", "CONFLICT") for o in leg_outcomes):
                 pending_accas.append(acca)
+                for leg, o in zip(legs, leg_outcomes):
+                    if o in ("PENDING", "CONFLICT"):
+                        logs.append(f"  {date_str} {acca.get('type')}: leg {o}: "
+                                    f"{leg.get('match')} -- {leg.get('_settle_reason')}")
                 continue
-            won_acca = all(leg_outcomes) if leg_outcomes else False
+            paper = any(not _leg_odds_trusted(leg) for leg in legs)
             stake_pct = float(acca.get("stake_pct") or slip.get("stake_per_acca_pct") or 0)
-            total_staked_settled += stake_pct
-            if won_acca:
-                total_return += stake_pct * float(acca.get("odds", 1.0))
-                wins += 1
+            try:
+                acca_odds = float(acca.get("odds") or 0)
+            except (TypeError, ValueError):
+                acca_odds = 0.0
+            voids = [leg for leg, o in zip(legs, leg_outcomes) if o == "VOID"]
+            refunded = False
+            if any(o == "LOST" for o in leg_outcomes):
+                won_acca, acca_return = False, 0.0
+            elif voids and len(voids) == len(legs):
+                won_acca, acca_return, refunded = False, stake_pct, True
+            elif voids:
+                eff, repriceable = acca_odds, acca_odds > 1.0
+                for leg in voids:
+                    try:
+                        lo = float(leg.get("odds") or 0)
+                    except (TypeError, ValueError):
+                        lo = 0.0
+                    if lo > 1.0:
+                        eff /= lo
+                    else:
+                        repriceable = False
+                if not repriceable:
+                    pending_accas.append(acca)
+                    logs.append(f"  {date_str} {acca.get('type')}: void leg without "
+                                f"valid odds, cannot reprice -- acca held open")
+                    continue
+                won_acca, acca_odds, acca_return = True, round(eff, 4), stake_pct * eff
+            elif acca_odds > 1.0:
+                won_acca, acca_return = True, stake_pct * acca_odds
+            else:
+                pending_accas.append(acca)
+                logs.append(f"  {date_str} {acca.get('type')}: won legs but acca has "
+                            f"no valid odds -- held open, never pays on fiction")
+                continue
+            if paper:
+                paper_staked += stake_pct
+                paper_return += acca_return
+                paper_wins += int(won_acca)
+            else:
+                total_staked_settled += stake_pct
+                total_return += acca_return
+                wins += int(won_acca)
+                losses += int(not won_acca and not refunded)
             settled_accas.append({
-                "odds": acca.get("odds"),
+                "odds": acca_odds,
                 "won": bool(won_acca),
                 "stake_pct": stake_pct,
                 "type": acca.get("type"),
-                "legs": acca.get("legs", []),
+                "legs": legs,
+                "paper": paper,
+                "refunded": refunded,
             })
         # If some accas still pending, keep slip open with pending accas
         if pending_accas:
@@ -352,18 +241,28 @@ def settle_open_slips(state, df, additional_df=None):
                 old_bank = state.get("bank", 100.0)
                 new_bank = old_bank + pnl
                 state["bank"] = new_bank
+                old_paper_bank = state.get("paper_bank", 100.0)
+                paper_pnl = paper_return - paper_staked
+                state["paper_bank"] = old_paper_bank + paper_pnl
                 hist_entry = {
                     "date": date_str,
                     "staked_pct": staked,
                     "return_pct": total_return,
                     "pnl_pct": pnl,
                     "bank_pct": new_bank,
+                    "paper_staked_pct": paper_staked,
+                    "paper_return_pct": paper_return,
+                    "paper_pnl_pct": paper_pnl,
+                    "paper_bank_pct": state["paper_bank"],
                     "accas": settled_accas,
                     "partial": True,
                     "pending_accas": len(pending_accas),
                 }
                 state["history"].append(hist_entry)
-                logs.append(f"{date_str}: partially settled {wins}W/{len(settled_accas)-wins}L + {len(pending_accas)} pending  PnL {pnl:+.1f}%  bank {old_bank:.1f}% -> {new_bank:.1f}%")
+                logs.append(f"{date_str}: partially settled {wins}W/{losses}L "
+                            f"({paper_wins} paper wins) + {len(pending_accas)} pending  "
+                            f"PnL {pnl:+.1f}% (paper {paper_pnl:+.1f}%)  "
+                            f"bank {old_bank:.1f}% -> {new_bank:.1f}%")
                 # Keep pending as new open slip
                 remaining_open.append({
                     "date": date_str,
@@ -381,21 +280,30 @@ def settle_open_slips(state, df, additional_df=None):
             remaining_open.append(slip)
             logs.append(f"{date_str}: still open ({len(slip.get('accas',[]))} accas)")
             continue
-        staked = total_staked_settled or slip.get("staked_pct", 0)
+        staked = total_staked_settled
         pnl = total_return - staked
         old_bank = state.get("bank", 100.0)
         new_bank = old_bank + pnl
         state["bank"] = new_bank
+        old_paper_bank = state.get("paper_bank", 100.0)
+        paper_pnl = paper_return - paper_staked
+        state["paper_bank"] = old_paper_bank + paper_pnl
         hist_entry = {
             "date": date_str,
             "staked_pct": staked,
             "return_pct": total_return,
             "pnl_pct": pnl,
             "bank_pct": new_bank,
+            "paper_staked_pct": paper_staked,
+            "paper_return_pct": paper_return,
+            "paper_pnl_pct": paper_pnl,
+            "paper_bank_pct": state["paper_bank"],
             "accas": settled_accas,
         }
         state["history"].append(hist_entry)
-        logs.append(f"{date_str}: settled {wins}W/{len(settled_accas)-wins}L  PnL {pnl:+.1f}%  bank {old_bank:.1f}% -> {new_bank:.1f}%")
+        logs.append(f"{date_str}: settled {wins}W/{losses}L "
+                    f"({paper_wins} paper wins)  PnL {pnl:+.1f}% (paper {paper_pnl:+.1f}%)  "
+                    f"bank {old_bank:.1f}% -> {new_bank:.1f}%")
         cycle_base = state.get("cycle_base", 100.0)
         target = cycle_base * 2.0
         if new_bank >= target:
@@ -425,24 +333,35 @@ def write_performance(state):
 
     history = state.get("history", [])
     accas = [a for h in history for a in h.get("accas", [])]
-    wins = sum(1 for a in accas if a.get("won"))
-    losses = len(accas) - wins
+    real = [a for a in accas if not a.get("paper")]
+    paper = [a for a in accas if a.get("paper")]
+    wins = sum(1 for a in real if a.get("won"))
+    losses = len(real) - wins
+    paper_wins = sum(1 for a in paper if a.get("won"))
+    paper_bank = state.get("paper_bank")
+    paper_pnl_total = round(sum(float(h.get("paper_pnl_pct") or 0) for h in history), 4)
 
     lines = []
     lines.append("AUTO-TICKETS (TENNIS) PERFORMANCE — percentages of capital only")
     lines.append("="*62)
     lines.append(f"generated {datetime.now().isoformat(timespec='seconds')}")
     lines.append(f"bank {bank:.1f}% of capital (x{multiple:.2f}) · cycle baseline {cycle_base:.1f}% · next take-profit at {next_target:.1f}% (+100% per cycle)")
-    if accas:
-        lines.append(f"bet-days {len(history)} · accas {wins}W/{losses}L (hit {wins/len(accas):.1%})" if accas else "no settled accas yet")
+    if real:
+        lines.append(f"bet-days {len(history)} · REAL accas {wins}W/{losses}L (hit {wins/len(real):.1%})")
     else:
-        lines.append(f"bet-days {len(history)} · no settled accas yet")
+        lines.append(f"bet-days {len(history)} · no settled REAL accas yet")
+    if paper:
+        lines.append(f"PAPER accas (phantom odds, excluded from bank): {paper_wins}W/{len(paper)-paper_wins}L  paper-PnL {paper_pnl_total:+.1f}%"
+                     + (f"  paper-bank {paper_bank:.1f}%" if paper_bank is not None else ""))
     lines.append(f"open slips {len(state.get('open_slips',[]))} · {len(state.get('events',[]))} take-profit notification(s)")
     lines.append("")
     lines.append("--- bet-days (most recent first) ---")
     for h in reversed(history[-15:]):
-        acc_str = " ".join(f"@{a['odds']:.2f}{'W' if a['won'] else 'L'}" for a in h.get("accas", []))
-        lines.append(f"  {h['date']}  {acc_str:44s} bank {h['bank_pct']:7.1f}%")
+        acc_str = " ".join(f"@{a['odds']:.2f}{'W' if a['won'] else 'L'}{'●' if a.get('paper') else ''}{'~' if a.get('refunded') else ''}" for a in h.get("accas", []))
+        extra = ""
+        if h.get("paper_pnl_pct"):
+            extra = f" (paper {float(h['paper_pnl_pct']):+.1f}%)"
+        lines.append(f"  {h['date']}  {acc_str:44s} bank {h['bank_pct']:7.1f}%{extra}")
     for e in state.get("events", []):
         lines.append(f"  🔔 {e['date']}: TAKE-PROFIT — +{e['gain_pct']:.1f}% (bank {e['bank_after_pct']:.1f}%, next {e['next_target_pct']:.1f}%)")
 
@@ -458,6 +377,8 @@ def write_performance(state):
         "next_take_profit_pct": round(next_target,2),
         "bet_days": len(history),
         "accas": {"wins": wins, "losses": losses},
+        "paper_accas": {"wins": paper_wins, "losses": len(paper) - paper_wins,
+                        "pnl_pct": paper_pnl_total, "bank_pct": paper_bank},
         "open_slips": state.get("open_slips", []),
         "events": state.get("events", []),
         "history": history,
