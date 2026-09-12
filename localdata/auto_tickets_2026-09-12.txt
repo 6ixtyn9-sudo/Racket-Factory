@@ -1,25 +1,21 @@
 Racket Factory Auto Tickets — 2026-09-12
-Generated at: 2026-09-12T10:56:39+02:00
+Generated at: 2026-09-12T13:28:16+02:00
 Bank: 102.29% (cycle base 100.00%)
 Take profit target: 200.00%
 
 Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 2.0), 4 accas max, NO SINGLES
 Stake: 25% of bank per day
 
-ACCA 1 [value_2leg] — Odds 4.66 — Stake 7.24%
-  - Rositsa Dencheva vs Irene Burillo -> Rositsa Dencheva @ 1.9 (conf 77.0 ml 0.55 BOOST src BetClan odds_src nan)
-  - Alevtina Ibragimova vs Alicia Herrero Linana -> Alevtina Ibragimova @ 2.45 (conf 63.0 ml 0.4 BOOST src BetClan odds_src nan)
-
-ACCA 2 [value_2leg_2] — Odds 6.00 — Stake 7.24%
-  - Joao Lucas Reis da Silva vs Alex Barrena -> Joao Lucas Reis da Silva @ 2.45 (conf 63.0 ml 0.4 BOOST src BetClan odds_src nan)
+ACCA 1 [value_2leg] — Odds 5.51 — Stake 10.11%
   - Harrison / Skupski vs Krawietz / Puetz -> Harrison / Skupski @ 2.45 (conf 60.0 ml 0.4 BOOST src BetClan odds_src nan)
+  - Cengiz / Oz vs Kucmova / Laboutkova -> Kucmova / Laboutkova @ 2.25 (conf 69.0 ml 0.4 BOOST src BetClan odds_src nan)
 
-ACCA 3 [high_strength_3leg] — Odds 11.40 — Stake 3.84%
-  - Rositsa Dencheva vs Irene Burillo -> Rositsa Dencheva @ 1.9 (conf 77.0 ml 0.55 BOOST src BetClan odds_src nan)
-  - Alevtina Ibragimova vs Alicia Herrero Linana -> Alevtina Ibragimova @ 2.45 (conf 63.0 ml 0.4 BOOST src BetClan odds_src nan)
-  - Joao Lucas Reis da Silva vs Alex Barrena -> Joao Lucas Reis da Silva @ 2.45 (conf 63.0 ml 0.4 BOOST src BetClan odds_src nan)
+ACCA 2 [value_2leg_2] — Odds 5.06 — Stake 10.11%
+  - Max Alcala Gurri vs Dusan Lajovic -> Dusan Lajovic @ 2.25 (conf 69.0 ml 0.4 BOOST src BetClan odds_src nan)
+  - Dalma Galfi vs Fiona Ferro -> Fiona Ferro @ 2.25 (conf 66.0 ml 0.4 BOOST src BetClan odds_src nan)
 
-ACCA 4 [value_2leg_3] — Odds 5.06 — Stake 7.24%
+ACCA 3 [high_strength_3leg] — Odds 12.40 — Stake 5.36%
+  - Harrison / Skupski vs Krawietz / Puetz -> Harrison / Skupski @ 2.45 (conf 60.0 ml 0.4 BOOST src BetClan odds_src nan)
   - Cengiz / Oz vs Kucmova / Laboutkova -> Kucmova / Laboutkova @ 2.25 (conf 69.0 ml 0.4 BOOST src BetClan odds_src nan)
   - Max Alcala Gurri vs Dusan Lajovic -> Dusan Lajovic @ 2.25 (conf 69.0 ml 0.4 BOOST src BetClan odds_src nan)
 
