@@ -145,25 +145,33 @@ def load_additional_results():
     except Exception:
         return pd.DataFrame()
 
-def settle_leg(leg, df, additional_df=None):
-    # Try to find matching row in warehouse, fallback to additional results
+def settle_leg(leg, df, additional_df=None, target_date: str | None = None):
+    # Date-scoped matching (Edge parity) — only consider rows within +/-1 day of target_date
     if df.empty and (additional_df is None or additional_df.empty):
-        return None  # unsettled
+        return None
     match_text = clean_text(leg.get("match"))
     selected = clean_text(leg.get("selected_player"))
     if not match_text or not selected:
         return None
-
-    # Split match into players
     parts = re.split(r"\s+v(?:s\.?)?\s+", match_text, flags=re.IGNORECASE)
     if len(parts) == 2:
         p_home, p_away = clean_text(parts[0]), clean_text(parts[1])
     else:
-        # fallback: try to use selected + opponent unknown
         p_home, p_away = "", ""
 
-    candidates = df
-    additional_candidates = additional_df if additional_df is not None else pd.DataFrame()
+    def date_filter(frame):
+        if frame.empty or not target_date or "match_date" not in frame.columns:
+            return frame
+        try:
+            from datetime import datetime, timedelta
+            base = datetime.strptime(target_date[:10], "%Y-%m-%d").date()
+            allowed = {base.isoformat(), (base + timedelta(days=1)).isoformat(), (base - timedelta(days=1)).isoformat()}
+            return frame[frame["match_date"].astype(str).str[:10].isin(allowed)]
+        except Exception:
+            return frame
+
+    candidates = date_filter(df)
+    additional_candidates = date_filter(additional_df) if additional_df is not None else pd.DataFrame()
 
     def row_match(row):
         a = clean_text(row.get("player_a"))
@@ -202,68 +210,99 @@ def settle_leg(leg, df, additional_df=None):
 def settle_open_slips(state, df, additional_df=None):
     logs = []
     remaining_open = []
+    # Idempotency: don't double-settle already in history
+    history_dates = set(h.get("date") for h in state.get("history", []))
     for slip in state.get("open_slips", []):
         date_str = slip.get("date")
-        all_settled = True
-        acca_results = []
+        if date_str in history_dates:
+            logs.append(f"{date_str}: already in history, skipping (idempotent)")
+            continue
+        # Per-acca settlement (Edge parity) — accas settle independently with their own stake
+        settled_accas = []
+        pending_accas = []
+        total_return = 0.0
+        total_staked_settled = 0.0
+        wins = 0
         for acca in slip.get("accas", []):
             legs = acca.get("legs", [])
             leg_outcomes = []
+            all_legs_settled = True
             for leg in legs:
-                won = settle_leg(leg, df, additional_df)
+                won = settle_leg(leg, df, additional_df, target_date=date_str)
                 if won is None:
-                    all_settled = False
+                    all_legs_settled = False
                     leg_outcomes.append(None)
                 else:
                     leg_outcomes.append(won)
-            # Acca wins only if all legs won and all settled
-            if not all_settled:
-                acca_results.append(None)
+            if not all_legs_settled:
+                pending_accas.append(acca)
+                continue
+            won_acca = all(leg_outcomes) if leg_outcomes else False
+            stake_pct = float(acca.get("stake_pct") or slip.get("stake_per_acca_pct") or 0)
+            total_staked_settled += stake_pct
+            if won_acca:
+                total_return += stake_pct * float(acca.get("odds", 1.0))
+                wins += 1
+            settled_accas.append({
+                "odds": acca.get("odds"),
+                "won": bool(won_acca),
+                "stake_pct": stake_pct,
+                "type": acca.get("type"),
+                "legs": acca.get("legs", []),
+            })
+        # If some accas still pending, keep slip open with pending accas
+        if pending_accas:
+            # If at least one acca settled, move settled to history and keep pending open
+            if settled_accas:
+                staked = total_staked_settled
+                pnl = total_return - staked
+                old_bank = state.get("bank", 100.0)
+                new_bank = old_bank + pnl
+                state["bank"] = new_bank
+                hist_entry = {
+                    "date": date_str,
+                    "staked_pct": staked,
+                    "return_pct": total_return,
+                    "pnl_pct": pnl,
+                    "bank_pct": new_bank,
+                    "accas": settled_accas,
+                    "partial": True,
+                    "pending_accas": len(pending_accas),
+                }
+                state["history"].append(hist_entry)
+                logs.append(f"{date_str}: partially settled {wins}W/{len(settled_accas)-wins}L + {len(pending_accas)} pending  PnL {pnl:+.1f}%  bank {old_bank:.1f}% -> {new_bank:.1f}%")
+                # Keep pending as new open slip
+                remaining_open.append({
+                    "date": date_str,
+                    "generated_at": slip.get("generated_at"),
+                    "accas": pending_accas,
+                    "staked_pct": round(sum(float(a.get("stake_pct") or 0) for a in pending_accas),4),
+                    "stake_per_acca_pct": slip.get("stake_per_acca_pct"),
+                })
             else:
-                won_acca = all(leg_outcomes)
-                acca_results.append(won_acca)
-
-        if not all_settled:
+                remaining_open.append(slip)
+                logs.append(f"{date_str}: still open ({len(pending_accas)} accas pending)")
+            continue
+        # All accas settled
+        if not settled_accas:
             remaining_open.append(slip)
             logs.append(f"{date_str}: still open ({len(slip.get('accas',[]))} accas)")
             continue
-
-        # All settled, compute PnL
-        staked = slip.get("staked_pct", 0)
-        # Each acca has equal stake
-        per_acca = slip.get("stake_per_acca_pct") or (staked / len(slip.get("accas",[])) if slip.get("accas") else 0)
-        total_return = 0.0
-        wins = 0
-        for acca, won in zip(slip.get("accas", []), acca_results):
-            if won:
-                total_return += per_acca * float(acca.get("odds",1.0))
-                wins += 1
+        staked = total_staked_settled or slip.get("staked_pct", 0)
         pnl = total_return - staked
         old_bank = state.get("bank", 100.0)
         new_bank = old_bank + pnl
         state["bank"] = new_bank
-
-        # History
         hist_entry = {
             "date": date_str,
             "staked_pct": staked,
             "return_pct": total_return,
             "pnl_pct": pnl,
             "bank_pct": new_bank,
-            "accas": [
-                {
-                    "odds": a.get("odds"),
-                    "won": bool(w),
-                    "stake_pct": per_acca,
-                    "legs": a.get("legs", [])
-                }
-                for a, w in zip(slip.get("accas", []), acca_results)
-            ]
+            "accas": settled_accas,
         }
         state["history"].append(hist_entry)
-        logs.append(f"{date_str}: settled {wins}W/{len(acca_results)-wins}L  PnL {pnl:+.1f}%  bank {old_bank:.1f}% -> {new_bank:.1f}%")
-
-        # Check take-profit
+        logs.append(f"{date_str}: settled {wins}W/{len(settled_accas)-wins}L  PnL {pnl:+.1f}%  bank {old_bank:.1f}% -> {new_bank:.1f}%")
         cycle_base = state.get("cycle_base", 100.0)
         target = cycle_base * 2.0
         if new_bank >= target:
@@ -275,9 +314,13 @@ def settle_open_slips(state, df, additional_df=None):
             }
             state.setdefault("events", []).append(event)
             state["cycle_base"] = new_bank
-            logs.append(f"  🔔 TAKE-PROFIT NOTIFICATION — bank {new_bank:.1f}% >= target {target:.1f}%")
-
+            logs.append(f"  TAKE-PROFIT bank {new_bank:.1f}% >= target {target:.1f}%")
     state["open_slips"] = remaining_open
+    # Write grading log for CI debugging
+    try:
+        (LOCALDATA / "auto_tickets_grade.log").write_text("\n".join(logs) + "\n")
+    except Exception:
+        pass
     return logs
 
 def write_performance(state):

@@ -251,7 +251,7 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
         df=pd.read_csv(warehouse_path, low_memory=False)
     except Exception:
         df=pd.DataFrame()
-    # Merge additional result sources for settlement robustness
+    # Merge additional result sources for settlement robustness — even if warehouse absent
     try:
         localdata=warehouse_path.parent
         add=[]
@@ -263,7 +263,6 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
                         add.append(adf)
                 except Exception:
                     pass
-        # Also load predictions_foretennis with actual_result as fallback winners
         for f in localdata.glob("predictions_foretennis_*.csv.gz"):
             try:
                 adf=pd.read_csv(f, low_memory=False)
@@ -284,11 +283,17 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
             except Exception:
                 pass
         if add:
-            combined=pd.concat([df]+add, ignore_index=True, sort=False) if not df.empty else pd.concat(add, ignore_index=True, sort=False)
-            print(f"Loaded {len(combined)-len(df) if not df.empty else len(combined)} additional result rows for settlement")
+            if df.empty:
+                combined=pd.concat(add, ignore_index=True, sort=False)
+                print(f"Loaded {len(combined)} additional result rows for settlement (warehouse was empty)")
+            else:
+                combined=pd.concat([df]+add, ignore_index=True, sort=False)
+                print(f"Loaded {len(combined)-len(df)} additional result rows for settlement")
             return combined
     except Exception as e:
         print(f"additional results load failed: {e}")
+        import traceback
+        traceback.print_exc()
     return df
 
 
@@ -701,6 +706,7 @@ def build_report(
     picks = load_archived_picks(start, end, ledger_kind=ledger_kind)
     df = load_warehouse_df(warehouse_path)
     settled_rows: list[SettledPick] = []
+    all_rows: list[dict] = []  # For per-pick audit with pending status
     archived_dates = sorted({str(p.get("date") or "")[:10] for p in picks if p.get("date")})
     today_local = local_today()
     same_day_excluded = 0
@@ -709,11 +715,54 @@ def build_report(
         pick_date = str(pick.get("date") or "")[:10]
         if not include_same_day and pick_date >= today_local:
             same_day_excluded += 1
+            # Still track as pending for visibility
+            all_rows.append({
+                "date": pick_date,
+                "match": pick.get("match") or f"{pick.get('player_home')} vs {pick.get('player_away')}",
+                "selected_player": pick.get("selected_player") or pick.get("selection"),
+                "tour": pick.get("tour"),
+                "surface": pick.get("surface") or pick.get("_surface"),
+                "series": pick.get("series") or pick.get("_series"),
+                "source": pick.get("source"),
+                "bucket": pick.get("bucket"),
+                "status": "pending_same_day_excluded",
+                "won": None,
+            })
             continue
         settled = settle_pick(pick, df)
         if settled is not None:
             settled_rows.append(settled)
+            all_rows.append({
+                "date": pick_date,
+                "match": settled.match,
+                "selected_player": settled.selected_player,
+                "winner": settled.winner,
+                "tour": settled.tour,
+                "surface": settled.surface,
+                "series": settled.series,
+                "source": settled.source,
+                "bucket": settled.bucket,
+                "status": "won" if settled.won else "lost",
+                "won": settled.won,
+                "odds": settled.odds,
+                "pnl": settled.pnl,
+            })
+        else:
+            all_rows.append({
+                "date": pick_date,
+                "match": pick.get("match") or f"{pick.get('player_home')} vs {pick.get('player_away')}",
+                "selected_player": pick.get("selected_player") or pick.get("selection"),
+                "tour": pick.get("tour"),
+                "surface": pick.get("surface") or pick.get("_surface"),
+                "series": pick.get("series") or pick.get("_series"),
+                "source": pick.get("source"),
+                "bucket": pick.get("bucket"),
+                "status": "pending_no_result",
+                "won": None,
+            })
 
+    # Summary includes pending counts
+    pending = sum(1 for r in all_rows if r["status"].startswith("pending"))
     return {
         "start": start,
         "end": end,
@@ -723,13 +772,14 @@ def build_report(
         "same_day_cutoff": today_local,
         "include_same_day": include_same_day,
         "ledger_kind": ledger_kind,
-        "overall": summarize_scored(settled_rows),
+        "overall": {**summarize_scored(settled_rows), "pending_picks": pending, "total_picks": len(picks)},
         "by_ledger_kind": summarize_by(settled_rows, "ledger_kind"),
         "by_tour": summarize_by(settled_rows, "tour"),
         "by_series": summarize_by(settled_rows, "series"),
         "by_surface": summarize_by(settled_rows, "surface"),
         "by_bucket": summarize_by(settled_rows, "bucket"),
         "by_source": summarize_by(settled_rows, "source"),
+        "all_picks": all_rows,  # Per-pick audit with pending status
     }
 
 
@@ -747,6 +797,8 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         f"- hit rate: {overall.get('hit_rate')}",
         f"- priced picks: {overall.get('priced_picks', 0)}",
         f"- ROI: {overall.get('roi')}",
+        f"- pending picks: {overall.get('pending_picks', 0)}",
+        f"- total picks: {overall.get('total_picks', 0)}",
         f"- set diagnostic picks: {overall.get('set_diagnostic_picks', 0)}",
         f"- selected won any set: {overall.get('selected_won_any_set')} ({overall.get('selected_won_any_set_rate')})",
         f"- selected won set 1: {overall.get('selected_won_set1')} ({overall.get('selected_won_set1_rate')})",
@@ -762,9 +814,23 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         "- settlement date tolerance: exact pick date preferred, warehouse match_date +/- 1 day allowed",
         "- settlement finality guard: live/suspended/to-finish rows are rejected",
         "",
-        "## By Tour",
+        "## Per-pick audit (won/lost/pending)",
         "",
     ]
+    all_picks = report.get("all_picks", [])
+    if all_picks:
+        for pp in all_picks[:100]:
+            status = pp.get("status")
+            match = pp.get("match")
+            sel = pp.get("selected_player")
+            winner = pp.get("winner", "?")
+            d = pp.get("date")
+            lines.append(f"- {d} {match} selected={sel} winner={winner} status={status}")
+        if len(all_picks) > 100:
+            lines.append(f"- ... and {len(all_picks)-100} more")
+    else:
+        lines.append("- none")
+    lines.extend(["", "## By Tour", ""])
     by_tour = report.get("by_tour", {})
     if not by_tour:
         lines.append("- none")

@@ -496,7 +496,6 @@ def main():
         if reconstructed:
             print(f"Reconstructed {len(reconstructed)} missing historical open_slips from auto_tickets_*.json for settlement: {[s['date'] for s in reconstructed]}")
             state["open_slips"].extend(reconstructed)
-            # Write log file that gets committed for debugging (since GH logs fail to fetch via API)
             try:
                 (LOCALDATA / "auto_tickets_reconstruct.log").write_text(f"{now.isoformat()}: reconstructed {[s['date'] for s in reconstructed]} existing_dates={existing_dates}\n" + "\n".join([f"{s['date']}: {len(s.get('accas',[]))} accas" for s in reconstructed]) + "\n")
             except Exception:
@@ -511,10 +510,17 @@ def main():
         print(f"Reconstruct failed: {e}")
         import traceback
         traceback.print_exc()
+        try:
+            (LOCALDATA / "auto_tickets_reconstruct.log").write_text(f"{now.isoformat()}: reconstruct failed {e}\n")
+        except Exception:
+            pass
     # Update state open_slips so grade can settle
     existing_today = [s for s in state.get("open_slips", []) if s.get("date") == target_date]
     if existing_today and is_frozen:
-        print(f"Frozen — keeping existing open slip for {target_date}")
+        print(f"Frozen — keeping existing open slip for {target_date}, but saving reconstructed historical slips")
+        # FIX: frozen path must save state so reconstructed slips aren't discarded
+        save_state(state)
+        return 0
     else:
         state["open_slips"] = [s for s in state.get("open_slips", []) if s.get("date") != target_date]
         if accas_out:

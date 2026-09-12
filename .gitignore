@@ -52,6 +52,8 @@ data/cache/
 !localdata/auto_tickets_*.json
 !localdata/auto_tickets_*.txt
 !localdata/auto_tickets_*.log
+!localdata/auto_tickets_grade.log
+!localdata/auto_tickets_grade_*.log
 !localdata/auto_tickets_state.json
 !localdata/auto_tickets_performance.json
 !localdata/auto_tickets_today.json
