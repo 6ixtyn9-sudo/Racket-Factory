@@ -104,7 +104,6 @@ def load_warehouse():
 
 def load_additional_results():
     """Load foretennis_results, forebet_results, predictions with actual_result for settlement."""
-    import pandas as pd
     dfs=[]
     for f in LOCALDATA.glob("foretennis_results_*.csv.gz"):
         try:
