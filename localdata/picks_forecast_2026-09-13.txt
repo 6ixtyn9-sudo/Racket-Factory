@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-13
 ============================================================
-Generated at: 2026-09-12 08:55:42
-Snapshot as of: 2026-09-12T08:51:19+02:00
+Generated at: 2026-09-12 09:10:21
+Snapshot as of: 2026-09-12T09:01:37+02:00
 Ledger kind: forecast
 
 
