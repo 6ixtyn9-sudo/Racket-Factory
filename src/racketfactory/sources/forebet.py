@@ -406,7 +406,185 @@ class ForebetPredictor:
     # Low-level fetch (curl_cffi + Playwright fallback)
     # ------------------------------------------------------------------
 
+    def _fetch_via_jina(self, url: str) -> Optional[str]:
+        """Lightweight fallback via Jina AI Reader (https://r.jina.ai/) which bypasses Cloudflare.
+        Jina's servers fetch the page, not the GitHub runner IP, so 403 is avoided.
+        Returns markdown text if successful, else None.
+        """
+        jina_url = f"https://r.jina.ai/{url}"
+        # Try curl_cffi first (Jina is not CF protected, but use impersonation for safety)
+        try:
+            from curl_cffi import requests as curl_requests
+            for imp in ["chrome133a", "chrome124", "safari18"]:
+                try:
+                    r = curl_requests.get(jina_url, impersonate=imp, timeout=30)
+                    if r.status_code == 200 and len(r.text) > 2000 and "Tennis predictions" in r.text:
+                        logger.info(f"Forebet recovered via Jina {imp} for {url} (len={len(r.text)})")
+                        return r.text
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        # Fallback to standard requests if available
+        try:
+            import requests as std_requests
+            r = std_requests.get(jina_url, timeout=30, headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0.0.0 Safari/537.36"})
+            if r.status_code == 200 and len(r.text) > 2000 and "Tennis predictions" in r.text:
+                logger.info(f"Forebet recovered via Jina std for {url} (len={len(r.text)})")
+                return r.text
+        except Exception as e:
+            logger.warning(f"Forebet Jina std failed for {url}: {e}")
+        return None
+
+    def parse_jina_markdown(self, md_text: str) -> list[dict[str, Any]]:
+        """Parse Jina markdown output for Forebet predictions-today/yesterday/tomorrow.
+        Markdown structure (from r.jina.ai):
+          Tournament heading line (e.g. 'ATP US Open - Semi-finals')
+          [F. Tiafoe B. Shelton 12/09/2026 01:45](https://www.forebet.com/en/tennis/matches/atp-singles/us-open/...)
+          41 59   -> prob_home prob_away
+          2 1-3   -> pred winner + predicted score
+          ...
+          FT
+          1**3**  -> final result
+        We extract at least player_home/away, date, prob, predicted_winner, tournament, tour/tournament slug, and result if present.
+        """
+        results = []
+        lines = [l.strip() for l in md_text.splitlines()]
+        current_tournament = None
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            if line and " - " in line and not line.startswith("[") and not line.startswith("![") and len(line) < 80 and not line.startswith("*") and not line.startswith("Tennis predictions"):
+                j = i+1
+                while j < len(lines) and not lines[j]:
+                    j+=1
+                if j < len(lines) and lines[j].startswith("[") and "/tennis/matches/" in lines[j]:
+                    current_tournament = line
+            if line.startswith("[") and "/tennis/matches/" in line:
+                m = re.match(r"\[(.+?)\]\((https?://[^)]+)\)", line)
+                if m:
+                    link_text = m.group(1).strip()
+                    url = m.group(2).strip()
+                    date_match = re.search(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})", link_text)
+                    match_date = None
+                    match_time = ""
+                    players_part = link_text
+                    if date_match:
+                        date_str = date_match.group(1)
+                        time_str = date_match.group(2)
+                        players_part = link_text[:date_match.start()].strip()
+                        for fmt in ("%d/%m/%Y", "%m/%d/%Y"):
+                            try:
+                                dt = datetime.strptime(date_str, fmt)
+                                match_date = dt.strftime("%Y-%m-%d")
+                                match_time = time_str
+                                break
+                            except ValueError:
+                                continue
+                    tokens = players_part.split()
+                    init_positions = [idx for idx, tok in enumerate(tokens) if re.match(r"^[A-Z]\.$", tok)]
+                    home = None
+                    away = None
+                    if len(init_positions) >= 2:
+                        split_idx = init_positions[1]
+                        home = " ".join(tokens[:split_idx]).strip()
+                        away = " ".join(tokens[split_idx:]).strip()
+                    else:
+                        if len(tokens) >= 2:
+                            mid = len(tokens)//2
+                            home = " ".join(tokens[:mid])
+                            away = " ".join(tokens[mid:])
+                        else:
+                            home = players_part
+                            away = ""
+                    tour_slug = ""
+                    tournament_slug = ""
+                    tm = re.search(r"/tennis/matches/([^/]+)/([^/]+)/", url)
+                    if tm:
+                        tour_slug = tm.group(1)
+                        tournament_slug = tm.group(2)
+                    prob_home = None
+                    prob_away = None
+                    predicted_winner = None
+                    lookahead = []
+                    for k in range(i+1, min(i+10, len(lines))):
+                        if lines[k]:
+                            lookahead.append(lines[k])
+                        if len(lookahead) >= 5:
+                            break
+                    for la in lookahead:
+                        mprob = re.match(r"^(\d{1,3})\s+(\d{1,3})$", la)
+                        if mprob:
+                            try:
+                                ph = int(mprob.group(1))
+                                pa = int(mprob.group(2))
+                                if 0 <= ph <= 100 and 0 <= pa <= 100 and ph+pa>=80:
+                                    prob_home = ph
+                                    prob_away = pa
+                                    break
+                            except:
+                                pass
+                    for la in lookahead:
+                        if re.match(r"^[12]\s+\d+\-\d+", la):
+                            predicted_winner = la.split()[0]
+                            break
+                        if la in ("1","2") and predicted_winner is None:
+                            predicted_winner = la
+                    result_status = None
+                    result_score = None
+                    result_winner = None
+                    result_sets_home = None
+                    result_sets_away = None
+                    for k in range(i+1, min(i+20, len(lines))):
+                        if lines[k] == "FT":
+                            result_status = "FT"
+                            for kk in range(k+1, min(k+5, len(lines))):
+                                if lines[kk]:
+                                    cleaned = lines[kk].replace("*","").strip()
+                                    orig = lines[kk]
+                                    nums = re.findall(r"\d+", cleaned)
+                                    if len(nums) >= 2:
+                                        try:
+                                            h = int(nums[0])
+                                            a = int(nums[1])
+                                            result_sets_home = h
+                                            result_sets_away = a
+                                            result_score = f"{h}-{a}"
+                                            if h > a:
+                                                result_winner = "1"
+                                            elif a > h:
+                                                result_winner = "2"
+                                            break
+                                        except:
+                                            pass
+                            break
+                    results.append({
+                        "match_date": match_date,
+                        "match_time": match_time,
+                        "player_home": home,
+                        "player_away": away,
+                        "prob_home": prob_home,
+                        "prob_away": prob_away,
+                        "odds_home": None,
+                        "odds_away": None,
+                        "predicted_winner": predicted_winner,
+                        "tournament": current_tournament,
+                        "tour_slug": tour_slug,
+                        "tournament_slug": tournament_slug,
+                        "result_status": result_status,
+                        "result_score": result_score,
+                        "result_winner": result_winner,
+                        "result_winner_name": None,
+                        "result_sets_home": result_sets_home,
+                        "result_sets_away": result_sets_away,
+                        "source": "Forebet",
+                    })
+            i+=1
+        logger.info("Parsed %d predictions from Jina markdown", len(results))
+        return results
+
     def _fetch_via_playwright(self, url: str, timeout_ms: int = 120000) -> Optional[str]:
+
         """Playwright fallback for Forebet — bypasses Cloudflare via real browser."""
         try:
             from playwright.sync_api import sync_playwright
@@ -542,6 +720,16 @@ class ForebetPredictor:
             pass
         except Exception as e:
             logger.debug("Forebet cloudscraper failed for %s: %s", url, e)
+
+        # 2.5 Jina AI Reader fallback — lightweight, no browser, bypasses runner IP block
+        logger.info("Forebet trying Jina AI Reader for %s", url)
+        jina = self._fetch_via_jina(url)
+        if jina:
+            # Jina returns markdown; return it so fetch_daily can parse via parse_jina_markdown
+            # For _fetch we return markdown and let caller handle; but to keep HTML path working, return markdown if it looks valid
+            if "Tennis predictions" in jina:
+                logger.info("Forebet fetched via Jina for %s (%d bytes)", url, len(jina))
+                return jina
 
         # 3. Playwright fallback — real browser can clear CF
         logger.info("Forebet falling back to Playwright for %s", url)
@@ -783,11 +971,40 @@ class ForebetPredictor:
         Fetch all predictions for a given day across ALL tournaments.
         day: 'yesterday', 'today', or 'tomorrow'
         Returns list of raw prediction dicts.
+        Tries HTML first, then Jina markdown fallback.
         """
         html = self._fetch_daily_page(day)
         if not html:
+            url = f"{self.BASE_URL}/predictions-{day}"
+            jina_md = self._fetch_via_jina(url)
+            if jina_md:
+                try:
+                    parsed = self.parse_jina_markdown(jina_md)
+                    if parsed:
+                        return parsed
+                except Exception as e:
+                    logger.warning(f"Jina markdown parse failed for {day}: {e}")
             return []
-        return self.parse_page(html)
+        if "Markdown Content:" in html or "URL Source:" in html or "Tennis predictions for" in html and "[" in html and "/tennis/matches/" in html:
+            try:
+                parsed = self.parse_jina_markdown(html)
+                if parsed:
+                    return parsed
+            except Exception as e:
+                logger.warning(f"Jina markdown parse failed for {day} (from _fetch): {e}")
+        parsed = self.parse_page(html)
+        if not parsed:
+            url = f"{self.BASE_URL}/predictions-{day}"
+            jina_md = self._fetch_via_jina(url)
+            if jina_md:
+                try:
+                    jparsed = self.parse_jina_markdown(jina_md)
+                    if jparsed:
+                        logger.info(f"Forebet {day} recovered via Jina markdown with {len(jparsed)} rows")
+                        return jparsed
+                except Exception as e:
+                    logger.warning(f"Jina fallback parse failed for {day}: {e}")
+        return parsed
 
     # ------------------------------------------------------------------
     # Mapping: align Forebet prediction to warehouse orientation
