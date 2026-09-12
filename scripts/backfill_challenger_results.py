@@ -30,8 +30,11 @@ logger = logging.getLogger("backfill_challenger")
 
 def fetch_flashscore_challenger_results(target_date: str) -> list[dict]:
     """Try Flashscore API for challenger results - fallback to empty if fails"""
+    # Flashscore uses an API endpoint that requires some headers
+    # For now, try a simple approach using tennisexplorer which is easier to parse
     results=[]
     try:
+        # TennisExplorer has daily results with challenger coverage
         url=f"https://www.tennisexplorer.com/results/?type=all&year={target_date[:4]}&month={target_date[5:7]}&day={target_date[8:10]}"
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         if HAS_CURL:
