@@ -137,27 +137,34 @@ def load_picks(target_date: str) -> list[dict]:
             continue
     return []
 
-def estimate_odds_from_confidence(pick: dict) -> float:
-    conf = pick.get("confidence") or 60
+_UNTRUSTED_ODDS_SOURCES = {"", "nan", "none", "ml_estimated", "<na>"}
+
+
+def _leg_real_odds(pick: dict):
+    """Real market odds for a leg, or None when unpriced.
+
+    NEVER estimated: legs without a trusted market price go to the paper
+    track (hit-rate only) instead of being staked on fabricated odds.
+    """
+    if pick.get("odds_reject_reason"):
+        return None
+    src = str(pick.get("odds_source") or "").strip().lower()
+    if src in _UNTRUSTED_ODDS_SOURCES:
+        return None
     try:
-        conf_f = float(conf)
-        if conf_f <= 1.0:
-            conf_f *= 100
-    except Exception:
-        conf_f = 60
-    if conf_f >= 85:
-        return 1.65
-    if conf_f >= 80:
-        return 1.75
-    if conf_f >= 75:
-        return 1.90
-    if conf_f >= 70:
-        return 2.05
-    if conf_f >= 65:
-        return 2.25
-    if conf_f >= 60:
-        return 2.45
-    return 2.70
+        o = float(pick.get("odds"))
+    except (TypeError, ValueError):
+        return None
+    return o if o > 1.0 else None
+
+
+def _leg_paper_reason(pick: dict) -> str:
+    if pick.get("_late_start"):
+        return "already started at generation time (stale price)"
+    if _leg_real_odds(pick) is None:
+        return "no trusted market price"
+    return ""
+
 
 def is_playable(pick: dict) -> bool:
     bucket = str(pick.get("bucket","")).upper()
@@ -240,10 +247,16 @@ def kickoff_guard(pool, target_date, now):
 def build_accas(pool):
     """ML-driven mutually exclusive accas for capital growth (Edge parity).
 
+    Two tracks, never mixed:
+
+    - PRICED: every leg carries real market odds (>= MIN_ODDS_PER_LEG).
+      Staked from the real bank, Kelly-sized.
+    - PAPER: any leg unpriced or already started. Hit-rate only; the
+      grader settles W/L but the legs never touch any bank.
+
     - Mutually exclusive: no leg reused across accas (prudent, avoids correlated risk)
     - ML strengths: source_weights (Wilson LB), context ROI veto/boost, strength_score
-    - Kelly growth: fractional Kelly per leg and per acca, using prob vs real odds
-    - Real odds priority: use market odds when available, else ML estimated but flagged
+    - Kelly growth: fractional Kelly per leg and per acca, using prob vs REAL odds only
     """
     audit = {}
     registry = {}
@@ -257,13 +270,7 @@ def build_accas(pool):
             pass
 
     def get_odds(p):
-        o = p.get("odds")
-        if o is None:
-            o = estimate_odds_from_confidence(p)
-        try:
-            return float(o)
-        except:
-            return 2.0
+        return _leg_real_odds(p)
 
     def get_prob(p):
         # Probability from confidence or prediction_prob
@@ -275,7 +282,7 @@ def build_accas(pool):
             pf = pf / 100.0
             if 0 < pf < 1:
                 return pf
-        except:
+        except Exception:
             pass
         # Fallback from confidence
         conf = p.get("confidence") or 60
@@ -284,10 +291,12 @@ def build_accas(pool):
             if cf <= 1.0:
                 cf *= 100
             return max(0.51, min(0.85, cf / 100.0))
-        except:
+        except Exception:
             return 0.6
 
     def kelly_fraction(p, odds):
+        if odds is None:
+            return 0.0
         prob = get_prob(p)
         b = odds - 1
         if b <= 0:
@@ -296,119 +305,132 @@ def build_accas(pool):
         f = (b * prob - q) / b
         return max(0.0, min(0.25, f))  # Cap at 25% Kelly, fractional
 
-    def sort_key(p):
+    def ml_score_of(p):
         ml_score = 0
         if _ML_AVAILABLE:
             try:
                 scoring = score_pick_strengths(p, registry, weights)
                 ml_score = scoring.get("strength_score", 0)
-            except:
+            except Exception:
                 ml_score = 0
         if p.get("ml_strength_score") is not None:
             try:
                 ml_score = max(ml_score, float(p.get("ml_strength_score")))
-            except:
+            except Exception:
                 pass
+        return ml_score
+
+    def conf_of(p):
         conf = p.get("confidence") or 0
         try:
             conf_f = float(conf)
             if conf_f <= 1.0:
                 conf_f *= 100
-        except:
+        except Exception:
             conf_f = 0
-        ev = p.get("expected_value") or 0
-        try:
-            ev_f = float(ev)
-        except:
-            ev_f = 0
-        odds_f = get_odds(p)
+        return conf_f
+
+    def sort_key(p):
+        ml_score = ml_score_of(p)
+        conf_f = conf_of(p)
         prob_f = get_prob(p)
-        # Kelly-adjusted value score for capital growth
+        odds_f = get_odds(p)
+        if odds_f is None:
+            # Paper legs have no price: rank on prob/ML/conf only.
+            return (-prob_f, -ml_score, -conf_f, str(p.get("match", "")))
         kelly_f = kelly_fraction(p, odds_f)
-        # Edge: prob * odds - 1
         edge = prob_f * odds_f - 1
-        # Strengths-focused: weight by ML score, Wilson LB, source count, real odds availability
-        real_odds_bonus = 0.3 if p.get("odds_source") in ("TheOddsAPI", "ScrapedFallback", "Bzzoiro") else 0
         source_count = int(p.get("source_count") or 1)
-        value_score = (edge if edge>0 else 0.02) * (1 + ml_score) * (1 + kelly_f*2) * (1 + real_odds_bonus) * (1 + source_count*0.05)
-        return (-value_score, -ml_score, -conf_f, -kelly_f, odds_f, str(p.get("match","")))
-
-    pool_sorted = sorted(pool, key=sort_key)
-
-    # Filter: avoid super short odds, require real odds or strong ML
-    value_odds = []
-    for p in pool_sorted:
-        o = get_odds(p)
-        if o < MIN_ODDS_PER_LEG:
-            continue
-        # Require either real odds or BOOST verdict for NO_ODDS
-        bucket = str(p.get("bucket",""))
-        if "NO_ODDS" in bucket:
-            if str(p.get("ml_verdict")) != "BOOST":
-                continue
-        value_odds.append(p)
-
-    accas = []
-    used_matches = set()
+        value_score = (edge if edge > 0 else 0.02) * (1 + ml_score) * (1 + kelly_f * 2) * (1 + source_count * 0.05)
+        return (-value_score, -ml_score, -conf_f, -kelly_f, odds_f, str(p.get("match", "")))
 
     def match_key(p):
         return normalize_name(p.get("match") or f"{p.get('player_a')} vs {p.get('player_b')}")
 
-    # Mutually exclusive partitioning: iterate pool, build accas without reuse
-    idx = 0
-    while idx < len(value_odds) and len(accas) < MAX_ACCAS:
-        # Build 2-leg acca from next 2 unused
-        chunk = []
-        while len(chunk) < 2 and idx < len(value_odds):
-            p = value_odds[idx]
-            mk = match_key(p)
-            if mk not in used_matches:
-                chunk.append(p)
-                used_matches.add(mk)
-            idx += 1
-        if len(chunk) == 2:
-            prod = math.prod([get_odds(leg) for leg in chunk])
-            if prod >= MIN_ACCA_ODDS:
-                for leg in chunk:
-                    if leg.get("odds") is None:
-                        leg["odds"] = estimate_odds_from_confidence(leg)
-                        leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
-                # Calculate acca Kelly and expected growth
-                prob_prod = math.prod([get_prob(leg) for leg in chunk])
-                kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod>1 else 0
-                kelly_acca = max(0.0, min(0.15, kelly_acca))
-                accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg_mutual", "kelly": round(kelly_acca,4), "prob": round(prob_prod,4)})
+    def eligible_pool(pool_sorted, paper):
+        out = []
+        for p in pool_sorted:
+            o = get_odds(p)
+            late = bool(p.get("_late_start"))
+            if paper:
+                if o is not None and not late:
+                    continue
+            else:
+                if o is None or late or o < MIN_ODDS_PER_LEG:
+                    continue
+            bucket = str(p.get("bucket", ""))
+            if "NO_ODDS" in bucket and str(p.get("ml_verdict")) != "BOOST":
+                continue
+            out.append(p)
+        return out
 
-    # If we have BOOST picks left, build 3-leg high-strength mutually exclusive
-    if _ML_AVAILABLE:
-        boost_picks = [p for p in pool_sorted if str(p.get("ml_verdict"))=="BOOST"]
-        boost_unused = [p for p in boost_picks if match_key(p) not in used_matches]
-        if len(boost_unused) >= 3 and len(accas) < MAX_ACCAS:
-            chunk = boost_unused[:3]
-            prod = math.prod([get_odds(leg) for leg in chunk])
-            if prod >= 2.0:
+    def build_track(pool_sorted, paper, used_matches):
+        """Build 2-leg + 3-leg + fallback accas for one track."""
+        track = []
+        suffix = "_paper" if paper else ""
+        idx = 0
+        while idx < len(pool_sorted) and len(track) < MAX_ACCAS:
+            chunk = []
+            while len(chunk) < 2 and idx < len(pool_sorted):
+                p = pool_sorted[idx]
+                mk = match_key(p)
+                if mk not in used_matches:
+                    chunk.append(p)
+                    used_matches.add(mk)
+                idx += 1
+            if len(chunk) == 2:
+                if paper:
+                    for leg in chunk:
+                        leg["_paper_reason"] = _leg_paper_reason(leg)
+                    track.append({"legs": chunk, "odds": None, "type": f"value_2leg_mutual{suffix}",
+                                  "prob": round(math.prod([get_prob(leg) for leg in chunk]), 4),
+                                  "paper": True})
+                else:
+                    prod = math.prod([get_odds(leg) for leg in chunk])
+                    if prod >= MIN_ACCA_ODDS:
+                        prob_prod = math.prod([get_prob(leg) for leg in chunk])
+                        kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod > 1 else 0
+                        kelly_acca = max(0.0, min(0.15, kelly_acca))
+                        track.append({"legs": chunk, "odds": round(prod, 2), "type": "value_2leg_mutual",
+                                      "kelly": round(kelly_acca, 4), "prob": round(prob_prod, 4), "paper": False})
+        if _ML_AVAILABLE:
+            boost_picks = [p for p in pool_sorted if str(p.get("ml_verdict")) == "BOOST"]
+            boost_unused = [p for p in boost_picks if match_key(p) not in used_matches]
+            if len(boost_unused) >= 3 and len(track) < MAX_ACCAS:
+                chunk = boost_unused[:3]
                 for leg in chunk:
-                    if leg.get("odds") is None:
-                        leg["odds"] = estimate_odds_from_confidence(leg)
-                        leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
                     used_matches.add(match_key(leg))
-                prob_prod = math.prod([get_prob(leg) for leg in chunk])
-                kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod>1 else 0
-                kelly_acca = max(0.0, min(0.10, kelly_acca))
-                accas.append({"legs": chunk, "odds": round(prod,2), "type": "high_strength_3leg_mutual", "kelly": round(kelly_acca,4), "prob": round(prob_prod,4)})
+                if paper:
+                    for leg in chunk:
+                        leg["_paper_reason"] = _leg_paper_reason(leg)
+                    track.append({"legs": chunk, "odds": None, "type": f"high_strength_3leg_mutual{suffix}",
+                                  "prob": round(math.prod([get_prob(leg) for leg in chunk]), 4),
+                                  "paper": True})
+                else:
+                    prod = math.prod([get_odds(leg) for leg in chunk])
+                    if prod >= 2.0:
+                        prob_prod = math.prod([get_prob(leg) for leg in chunk])
+                        kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod > 1 else 0
+                        kelly_acca = max(0.0, min(0.10, kelly_acca))
+                        track.append({"legs": chunk, "odds": round(prod, 2), "type": "high_strength_3leg_mutual",
+                                      "kelly": round(kelly_acca, 4), "prob": round(prob_prod, 4), "paper": False})
+        if not track and len(pool_sorted) >= 2:
+            chunk1 = pool_sorted[:2]
+            if paper:
+                for leg in chunk1:
+                    leg["_paper_reason"] = _leg_paper_reason(leg)
+                track.append({"legs": chunk1, "odds": None, "type": f"fallback_2leg_mutual{suffix}", "paper": True})
+            else:
+                prod1 = math.prod([get_odds(leg) for leg in chunk1])
+                track.append({"legs": chunk1, "odds": round(prod1, 2), "type": "fallback_2leg_mutual", "paper": False})
+        return track[:MAX_ACCAS]
 
-    # Fallback if no accas yet
-    if not accas and len(pool_sorted) >= 2:
-        chunk1 = pool_sorted[:2]
-        prod1 = math.prod([get_odds(leg) for leg in chunk1])
-        for leg in chunk1:
-            if leg.get("odds") is None:
-                leg["odds"] = estimate_odds_from_confidence(leg)
-                leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
-        accas.append({"legs": chunk1, "odds": round(prod1,2), "type": "fallback_2leg_mutual"})
+    pool_sorted = sorted(pool, key=sort_key)
+    used_matches: set = set()
+    priced = build_track(eligible_pool(pool_sorted, False), False, used_matches)
+    paper = build_track(eligible_pool(pool_sorted, True), True, used_matches)
+    return priced, paper, pool_sorted
 
-    accas = accas[:MAX_ACCAS]
-    return accas, pool_sorted
 
 def load_state():
     if not STATE_FILE.exists():
@@ -425,55 +447,72 @@ def save_state(state):
 def take_profit_target(state):
     return state.get("cycle_base", 100.0) * (1.0 + TAKE_PROFIT_GAIN)
 
+def _acca_weights(accas):
+    weights = []
+    for acca in accas:
+        t = acca.get("type", "")
+        weights.append(0.15 if "3leg" in t else 0.283)
+    s = sum(weights)
+    return [w / s for w in weights] if s else []
+
+
 def format_tickets_txt(target_date, accas, state, skipped_info):
     now = now_local()
     bank = state.get("bank", 100.0)
     cycle_base = state.get("cycle_base", 100.0)
+    priced = [a for a in accas if not a.get("paper")]
+    paper = [a for a in accas if a.get("paper")]
     lines = [
         f"Racket Factory Auto Tickets — {target_date}",
         f"Generated at: {now.isoformat()}",
         f"Bank: {bank:.2f}% (cycle base {cycle_base:.2f}%)",
         f"Take profit target: {take_profit_target(state):.2f}%",
         "",
-        f"Strategy: strengths-focused, avoid super short odds (min leg {MIN_ODDS_PER_LEG}, min acca {MIN_ACCA_ODDS}), {MAX_ACCAS} accas max, NO SINGLES",
-        f"Stake: {STAKE_FRAC*100:.0f}% of bank per day",
+        f"Strategy: strengths-focused, avoid super short odds (min leg {MIN_ODDS_PER_LEG}, min acca {MIN_ACCA_ODDS}), {MAX_ACCAS} accas max per track, NO SINGLES",
+        f"Stake: {STAKE_FRAC*100:.0f}% of bank per day (priced track only; paper is hit-rate only)",
         "",
     ]
-    if not accas:
-        lines.append("NO BET — not enough playable legs or all filtered by kickoff guard")
-        lines.append(f"Playable buckets: {PLAYABLE_BUCKETS} + ML NO_ODDS BOOST")
+    if not priced:
+        lines.append("NO BET — no priced legs available (zero qualifying bets is a valid outcome)")
+        lines.append(f"Playable buckets: {PLAYABLE_BUCKETS} + ML NO_ODDS BOOST (paper track)")
         if skipped_info:
             lines.append(f"Skipped: {skipped_info}")
-        return "\n".join(lines)
-    total_stake = bank * STAKE_FRAC
-    weights = []
-    for acca in accas:
-        t = acca.get("type","")
-        if "3leg" in t:
-            weights.append(0.15)
-        else:
-            weights.append(0.283)
-    s = sum(weights)
-    weights = [w/s for w in weights]
-    for i, acca in enumerate(accas):
-        legs = acca.get("legs", [])
-        odds = acca.get("odds", 1.0)
-        acca_type = acca.get("type","acca")
-        stake = total_stake * weights[i]
-        lines.append(f"ACCA {i+1} [{acca_type}] — Odds {odds:.2f} — Stake {stake:.2f}%")
-        for leg in legs:
-            match = leg.get("match","")
-            sel = leg.get("selected_player","")
-            leg_odds = leg.get("odds") or estimate_odds_from_confidence(leg)
-            conf = leg.get("confidence") or ""
-            ml_s = leg.get("ml_strength_score") or ""
-            ml_v = leg.get("ml_verdict") or ""
-            src = leg.get("source") or ""
-            odds_src = leg.get("odds_source") or ""
-            lines.append(f"  - {match} -> {sel} @ {leg_odds} (conf {conf} ml {ml_s} {ml_v} src {src} odds_src {odds_src})")
         lines.append("")
-    lines.append(f"Total staked: {total_stake:.2f}% of bank")
+    else:
+        total_stake = bank * STAKE_FRAC
+        weights = _acca_weights(priced)
+        for i, acca in enumerate(priced):
+            legs = acca.get("legs", [])
+            odds = acca.get("odds", 1.0)
+            acca_type = acca.get("type", "acca")
+            stake = total_stake * weights[i]
+            lines.append(f"ACCA {i+1} [{acca_type}] — Odds {odds:.2f} — Stake {stake:.2f}%")
+            for leg in legs:
+                match = leg.get("match", "")
+                sel = leg.get("selected_player", "")
+                leg_odds = leg.get("odds")
+                conf = leg.get("confidence") or ""
+                ml_s = leg.get("ml_strength_score") or ""
+                ml_v = leg.get("ml_verdict") or ""
+                src = leg.get("source") or ""
+                odds_src = leg.get("odds_source") or ""
+                lines.append(f"  - {match} -> {sel} @ {leg_odds} (conf {conf} ml {ml_s} {ml_v} src {src} odds_src {odds_src})")
+            lines.append("")
+        lines.append(f"Total staked: {total_stake:.2f}% of bank")
+        lines.append("")
+    if paper:
+        lines.append(f"PAPER TRACK — {len(paper)} acca(s), hit-rate only, never staked:")
+        for i, acca in enumerate(paper):
+            legs = acca.get("legs", [])
+            lines.append(f"PAPER {i+1} [{acca.get('type', 'acca')}] — unpriced — {len(legs)} legs")
+            for leg in legs:
+                match = leg.get("match", "")
+                sel = leg.get("selected_player", "")
+                reason = leg.get("_paper_reason") or _leg_paper_reason(leg)
+                lines.append(f"  - {match} -> {sel} @ unpriced ({reason})")
+            lines.append("")
     return "\n".join(lines)
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -486,33 +525,39 @@ def main():
     playable = [p for p in picks if is_playable(p)]
     kept, skipped = kickoff_guard(playable, target_date, now)
     if len(kept) < 2 and len(playable) >= 2:
+        late = [p for p in playable if p not in kept]
+        for p in late:
+            p["_late_start"] = True
+        skipped = [(p, "paper_late_included") for p in late]
         kept = playable
-        skipped = [(p, "paper_late_included") for p in playable if p not in kept]
-    accas, sorted_pool = build_accas(kept)
+    priced, paper, sorted_pool = build_accas(kept)
+    accas = priced + paper
     state = load_state()
     bank = state.get("bank", 100.0)
-    total_stake = bank * STAKE_FRAC if accas else 0
-    weights = []
-    for acca in accas:
-        t = acca.get("type","")
-        if "3leg" in t:
-            weights.append(0.15)
-        else:
-            weights.append(0.283)
-    if weights:
-        s = sum(weights)
-        weights = [w/s for w in weights]
+    total_stake = bank * STAKE_FRAC if priced else 0
+    weights = _acca_weights(priced)
+    paper_bank = state.get("paper_bank", bank)
+    paper_stake_total = paper_bank * STAKE_FRAC if paper else 0
+    paper_weights = _acca_weights(paper)
     accas_out = []
-    for i, acca in enumerate(accas):
+    for i, acca in enumerate(priced):
         stake_pct = total_stake * weights[i] if weights else 0
-        accas_out.append({"legs": acca.get("legs", []), "odds": acca.get("odds", 1.0), "type": acca.get("type",""), "stake_pct": round(stake_pct, 4)})
+        accas_out.append({"legs": acca.get("legs", []), "odds": acca.get("odds", 1.0),
+                          "type": acca.get("type", ""), "stake_pct": round(stake_pct, 4),
+                          "paper": False})
+    for i, acca in enumerate(paper):
+        stake_pct = paper_stake_total * paper_weights[i] if paper_weights else 0
+        accas_out.append({"legs": acca.get("legs", []), "odds": acca.get("odds"),
+                          "type": acca.get("type", ""), "stake_pct": round(stake_pct, 4),
+                          "paper": True})
     is_frozen = now.hour >= FREEZE_HOUR or now.hour < GENERATE_HOUR_START
     out = {
         "date": target_date,
         "generated_at": now.isoformat(),
         "bank_pct": bank,
-        "stake_per_acca_pct": round(total_stake / len(accas), 4) if accas else 0,
+        "stake_per_acca_pct": round(total_stake / len(priced), 4) if priced else 0,
         "staked_pct": round(total_stake, 4),
+        "paper_staked_pct": round(paper_stake_total, 4),
         "accas": accas_out,
         "skipped": skipped,
         "frozen": is_frozen,

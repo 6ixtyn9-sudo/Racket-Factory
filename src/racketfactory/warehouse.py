@@ -12,11 +12,11 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from typing import Optional
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from racketfactory.entities import player_key
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
-from racketfactory.sources.forebet import ForebetPredictor, name_signature
+from racketfactory.sources.forebet import ForebetPredictor, name_signature, name_signature_strict
 from racketfactory.sources.foretennis import ForeTennisPredictor
 from racketfactory.sources.bzzoiro import BzzoiroPredictor
 
@@ -149,11 +149,10 @@ def valid_two_way_decimal_pair(odds_a: object, odds_b: object) -> bool:
 
 
 def odds_suspicious_for_probability(probability: object, odds: object) -> bool:
-    """Flag prices that are more likely side-inverted than genuine value.
+    """Flag prices that disagree with the prediction probability.
 
-    This is not a bet veto by itself.  It is used to repair live scraper rows
-    where the page exposed a valid two-way pair, but the pair landed on the
-    wrong home/away side during extraction or source aggregation.
+    Disagreement is a REJECT signal, never a repair signal: a model and a
+    labeled market disagreeing does not prove an inverted market.
     """
     p = normalize_probability(probability)
     o = coerce_decimal_odds(odds)
@@ -172,62 +171,12 @@ def align_odds_to_probabilities(
     odds_home: object,
     odds_away: object,
 ) -> tuple[object, object]:
-    """Repair side-inverted scraper rows using probability as a sanity signal.
+    """Previously swapped odds based on prediction probability — removed per investigation.
 
-    Previous version returned odds unchanged to avoid false inversions from model
-    vs market disagreement.  However tests and production logs show a common
-    scraper failure mode: a valid two-way pair (e.g. 1.02 / 9.50) lands on the
-    wrong home/away side during extraction, so the 79% favorite is paired with
-    9.50.  This is not a value bet, it is a labeling error.
-
-    We use odds_suspicious_for_probability() to detect this:
-      - If home odds are suspicious for prob_home (e.g. 79% with 9.50) and
-        away odds are NOT suspicious for prob_away (21% with 1.02), swap.
-      - Vice versa for away suspicious.
-      - If both sides suspicious or both clean, return unchanged to avoid
-        flipping on genuine market vs model disagreement.
-
-    This is intentionally conservative and only repairs clear inversions.
+    A model disagreeing with a market does not prove an inverted market. Prices carry
+    player labels and should be oriented by identity, not by probability.
+    This function now returns odds unchanged to avoid false inversions.
     """
-    try:
-        # If either prob missing, cannot assess inversion
-        ph = normalize_probability(prob_home)
-        pa = normalize_probability(prob_away)
-        if ph is None or pa is None:
-            return odds_home, odds_away
-
-        oh_susp = odds_suspicious_for_probability(prob_home, odds_home)
-        oa_susp = odds_suspicious_for_probability(prob_away, odds_away)
-        # Also check cross: home prob with away odds, away prob with home odds
-        oh_cross_susp = odds_suspicious_for_probability(prob_home, odds_away)
-        oa_cross_susp = odds_suspicious_for_probability(prob_away, odds_home)
-
-        # Clear inversion: home prob high but home odds long (suspicious), away prob low but away odds short (not suspicious)
-        # and cross pairing is clean
-        if oh_susp and not oa_susp:
-            if not oh_cross_susp and not oa_cross_susp:
-                # Home is favorite but paired with long odds, away is longshot but paired with short -> swap
-                return odds_away, odds_home
-            # If cross is also suspicious, don't swap (both sides long etc)
-            # Check if swapping would make both sides non-suspicious
-            if not odds_suspicious_for_probability(prob_home, odds_away) and not odds_suspicious_for_probability(prob_away, odds_home):
-                return odds_away, odds_home
-        if oa_susp and not oh_susp:
-            if not odds_suspicious_for_probability(prob_home, odds_away) and not odds_suspicious_for_probability(prob_away, odds_home):
-                return odds_away, odds_home
-
-        # Additional heuristic: if prob_home > prob_away but odds_home > odds_away and prob_home >= STRONG_PROBABILITY,
-        # and odds_home is suspicious, swap. This catches 79% vs 21% with 9.5 vs 1.02
-        if ph > pa and coerce_decimal_odds(odds_home) is not None and coerce_decimal_odds(odds_away) is not None:
-            if coerce_decimal_odds(odds_home) > coerce_decimal_odds(odds_away) and ph >= STRONG_PROBABILITY:
-                if oh_susp and not oa_susp:
-                    return odds_away, odds_home
-        if pa > ph and coerce_decimal_odds(odds_away) > coerce_decimal_odds(odds_home) and pa >= STRONG_PROBABILITY:
-            if oa_susp and not oh_susp:
-                return odds_away, odds_home
-
-    except Exception:
-        pass
     return odds_home, odds_away
 
 
@@ -316,48 +265,29 @@ def choose_display_name(values: pd.Series) -> str:
 
 
 def names_match(name_a: str, name_b: str) -> bool:
-    norm_a = normalize_person_name(name_a)
-    norm_b = normalize_person_name(name_b)
-    if not norm_a or not norm_b:
-        return False
+    """Cross-source identity via the shared settlement primitives.
 
-    if norm_a == norm_b:
-        return True
+    Replaces the old surname-tail + token-overlap heuristic, which ignored
+    initials (``Johnson S.`` matched ``Johnson A.``) and merged bare
+    surnames with full names. Singles compare with
+    :func:`settlement.players_match`; doubles compare member-wise,
+    order-insensitive, with strict partner counts (partner swaps fail).
+    """
+    from racketfactory.settlement import players_match, split_team
 
-    if "/" in norm_a or "/" in norm_b:
-        parts_a = [p.strip() for p in norm_a.split("/") if p.strip()]
-        parts_b = [p.strip() for p in norm_b.split("/") if p.strip()]
-        if len(parts_a) != len(parts_b):
-            return False
-        
-        def member_match(m1, m2):
-            if not m1 or not m2: return False
-            if m1 == m2: return True
-            t1, t2 = surname_tokens(m1), surname_tokens(m2)
-            if t1 and t2 and t1[-1] == t2[-1]: return True
-            if len(m1) > 3 and len(m2) > 3:
-                if m1.startswith(m2) or m2.startswith(m1): return True
-            return False
-        
-        if all(member_match(a, b) for a, b in zip(parts_a, parts_b)):
+    members_a = split_team(name_a)
+    members_b = split_team(name_b)
+    if len(members_a) == 1 and len(members_b) == 1:
+        ok, _ = players_match(members_a[0], members_b[0])
+        return ok
+    if len(members_a) == 2 and len(members_b) == 2:
+        straight = players_match(members_a[0], members_b[0])[0] and players_match(
+            members_a[1], members_b[1])[0]
+        if straight:
             return True
-        if all(member_match(a, b) for a, b in zip(parts_a, reversed(parts_b))):
-            return True
-        return False
-
-    if surname_tokens(name_a) == surname_tokens(name_b):
-        return True
-    
-    toks_a = tuple(p for p in norm_a.split() if p != "/")
-    toks_b = tuple(p for p in norm_b.split() if p != "/")
-    if len(toks_a) == len(toks_b):
-        shared = sum(1 for x, y in zip(toks_a, toks_b) if x == y)
-        if shared >= max(1, len(toks_a) - 1):
-            return True
-    
-    set_a, set_b = set(toks_a), set(toks_b)
-    overlap = set_a & set_b
-    return len(overlap) >= min(len(set_a), len(set_b)) and len(overlap) >= 1
+        return bool(players_match(members_a[0], members_b[1])[0] and players_match(
+            members_a[1], members_b[0])[0])
+    return False
 
 
 def rows_refer_to_same_match(a: pd.Series, b: pd.Series) -> bool:
@@ -566,7 +496,7 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict]) -> tuple[dic
 
 
 THE_ODDS_API_BASE = "https://api.the-odds-api.com/v4"
-DEFAULT_THE_ODDS_API_SPORTS = "tennis_atp_wimbledon,tennis_wta_wimbledon,tennis"
+DEFAULT_THE_ODDS_API_SPORTS = "tennis_atp_wimbledon,tennis_wta_wimbledon"
 
 
 def the_odds_api_sports() -> tuple[str, ...]:
@@ -717,6 +647,140 @@ def _write_the_odds_api_cache(target_date: str, sports: tuple[str, ...], regions
     except Exception as exc:
         logger.warning("Could not write The Odds API cache for %s: %s", target_date, exc)
 
+def _odds_api_usage_path() -> Path:
+    root = Path(__file__).resolve().parents[2]
+    return root / "localdata" / "theoddsapi_usage.json"
+
+
+def _key_fingerprint(key: str) -> str:
+    import hashlib
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:8]
+
+
+def _odds_api_month_key() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m")
+
+
+def record_odds_api_usage(api_key: str, headers, *, endpoint: str) -> None:
+    """Persist quota headers per key fingerprint (never the key itself)."""
+    try:
+        fp = _key_fingerprint(api_key)
+        month = _odds_api_month_key()
+        path = _odds_api_usage_path()
+        ledger = {}
+        if path.exists():
+            try:
+                ledger = json.loads(path.read_text())
+            except Exception:
+                ledger = {}
+        if not isinstance(ledger, dict) or ledger.get("month") != month:
+            ledger = {"month": month, "keys": {}}
+        keys = ledger.setdefault("keys", {})
+        slot = keys.setdefault(fp, {})
+        get = headers.get if hasattr(headers, "get") else (lambda k, d=None: None)
+        for field in ("x-requests-remaining", "x-requests-used", "x-requests-last"):
+            value = get(field)
+            if value is not None:
+                try:
+                    slot[field.replace("x-requests-", "")] = int(value)
+                except (TypeError, ValueError):
+                    pass
+        slot["endpoint"] = str(endpoint or "")[:64]
+        slot["seen_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        ledger["updated_at"] = slot["seen_at"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(ledger, indent=2, sort_keys=True))
+    except Exception as exc:
+        logger.warning("Could not record Odds API usage: %s", exc)
+
+
+def odds_api_min_remaining_reserve() -> int:
+    try:
+        return max(0, int(os.getenv("THE_ODDS_API_MIN_REMAINING", "25")))
+    except ValueError:
+        return 25
+
+
+def odds_api_budget_ok(api_keys: tuple[str, ...]) -> bool:
+    """True unless every known key is at/below the remaining reserve.
+
+    Unknown keys (never used this month) fail open: the first call records
+    them into the ledger.
+    """
+    reserve = odds_api_min_remaining_reserve()
+    path = _odds_api_usage_path()
+    if not path.exists():
+        return True
+    try:
+        ledger = json.loads(path.read_text())
+    except Exception:
+        return True
+    if not isinstance(ledger, dict) or ledger.get("month") != _odds_api_month_key():
+        return True
+    slots = ledger.get("keys", {}) if isinstance(ledger.get("keys"), dict) else {}
+    known = [_key_fingerprint(k) for k in api_keys]
+    seen = [slots.get(fp, {}) for fp in known if fp in slots]
+    if len(seen) < len(known):
+        return True  # at least one key has no readings yet
+    remaining = [s.get("remaining") for s in seen if isinstance(s.get("remaining"), int)]
+    if not remaining:
+        return True
+    if all(r <= reserve for r in remaining):
+        logger.warning("The Odds API: all %d keys at/below remaining reserve %d; "
+                       "skipping paid calls this run.", len(remaining), reserve)
+        return False
+    return True
+
+
+def _odds_api_sports_cache_path() -> Path:
+    root = Path(__file__).resolve().parents[2]
+    return root / "localdata" / "theoddsapi_sports_cache.json"
+
+
+def discover_active_tennis_sports(api_keys: tuple[str, ...], *, ttl_days: int = 7) -> list[str] | None:
+    """Free /sports/ discovery: active tennis tournament keys.
+
+    Returns None when discovery is impossible (fail open: caller keeps the
+    configured keys). Cached for ``ttl_days`` to avoid repeated calls.
+    """
+    cache_path = _odds_api_sports_cache_path()
+    try:
+        if cache_path.exists():
+            payload = json.loads(cache_path.read_text())
+            fetched = datetime.fromisoformat(str(payload.get("fetched_at", "")).replace("Z", "+00:00"))
+            age_days = (datetime.now(timezone.utc) - fetched).total_seconds() / 86400.0
+            if age_days < ttl_days and isinstance(payload.get("keys"), list):
+                return [str(k) for k in payload["keys"]]
+    except Exception:
+        pass
+    if not api_keys:
+        return None
+    try:
+        resp = requests.get(f"{THE_ODDS_API_BASE}/sports/",
+                            params={"apiKey": api_keys[0]}, timeout=20)
+        if resp.status_code != 200:
+            logger.warning("The Odds API /sports/ discovery failed: HTTP %s",
+                           resp.status_code)
+            return None
+        data = resp.json()
+        keys = [str(s.get("key")) for s in (data or []) if isinstance(s, dict)
+                and str(s.get("group", "")).lower() == "tennis"
+                and s.get("active", True) and s.get("key")]
+        try:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps({
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "keys": keys,
+            }, indent=2, sort_keys=True))
+        except Exception as exc:
+            logger.warning("Could not write sports discovery cache: %s", exc)
+        logger.info("The Odds API discovery: %d active tennis keys", len(keys))
+        return keys
+    except Exception as exc:
+        logger.warning("The Odds API /sports/ discovery failed: %s", exc)
+        return None
+
+
 def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     """Fetch The Odds API H2H tennis prices for the target date.
 
@@ -736,13 +800,28 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     regions = os.getenv("THE_ODDS_API_REGIONS", "eu,uk,us")
     bookmakers = os.getenv("THE_ODDS_API_BOOKMAKERS", "").strip()
 
+    api_keys = the_odds_api_keys()
+    if not api_keys:
+        logger.warning("THE_ODDS_API_KEY missing; live API odds unavailable.")
+        return []
+
+    active = discover_active_tennis_sports(api_keys)
+    if active is not None:
+        active_set = set(active)
+        skipped = [s for s in sports if s not in active_set]
+        sports = tuple(s for s in sports if s in active_set)
+        for sport in skipped:
+            logger.warning("The Odds API sport key %r is not active "
+                           "(check THE_ODDS_API_SPORT_KEYS)", sport)
+        if not sports:
+            logger.warning("No active configured tennis sport keys; skipping odds fetch.")
+            return []
+
     cached_rows = _load_the_odds_api_cache(str(target_date)[:10], sports, regions, bookmakers)
     if cached_rows is not None:
         return cached_rows
 
-    api_keys = the_odds_api_keys()
-    if not api_keys:
-        logger.warning("THE_ODDS_API_KEY missing; live API odds unavailable.")
+    if not odds_api_budget_ok(api_keys):
         return []
 
     rows: list[dict] = []
@@ -807,6 +886,8 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
                         used_raw,
                         last_raw,
                     )
+                    record_odds_api_usage(api_keys[key_index], resp.headers,
+                                          endpoint=f"odds:{sport}")
                     events = resp.json()
                     break
 
@@ -841,12 +922,18 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
             if not home or not away:
                 continue
 
-            best_home = best_away = None
-            best_home_book = best_away_book = ""
+            # Prefer a complete single-book pair (reference book first) so
+            # the two sides are mutually consistent. Per-side best prices
+            # across different books are a documented fallback ("mixed").
+            preferred = [b.strip().lower() for b in
+                         os.getenv("THE_ODDS_API_PREFERRED_BOOKS", "pinnacle").split(",")
+                         if b.strip()]
+            book_pairs: list[tuple[str, float | None, float | None]] = []
             for book in event.get("bookmakers") or []:
                 if not isinstance(book, dict):
                     continue
                 book_name = str(book.get("title") or book.get("key") or "")
+                side_home = side_away = None
                 for market in book.get("markets") or []:
                     if not isinstance(market, dict) or market.get("key") != "h2h":
                         continue
@@ -861,14 +948,46 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
                             price = float(str(price_raw))
                         except (TypeError, ValueError):
                             continue
+                        if price <= 1.0:
+                            continue
                         if names_match(name, home):
-                            if best_home is None or price > best_home:
-                                best_home = price
-                                best_home_book = book_name
+                            if side_home is None or price > side_home:
+                                side_home = price
                         elif names_match(name, away):
-                            if best_away is None or price > best_away:
-                                best_away = price
-                                best_away_book = book_name
+                            if side_away is None or price > side_away:
+                                side_away = price
+                if side_home is not None or side_away is not None:
+                    book_pairs.append((book_name, side_home, side_away))
+
+            if not book_pairs:
+                continue
+            complete = [(b, h, a) for (b, h, a) in book_pairs
+                        if h is not None and a is not None]
+            chosen = None
+            for want in preferred:
+                for entry in complete:
+                    if want in entry[0].lower() or entry[0].lower() in want:
+                        chosen = entry
+                        break
+                if chosen is not None:
+                    break
+            mixed_books = False
+            if chosen is None and complete:
+                chosen = complete[0]
+            if chosen is None:
+                best_home = best_home_book = None
+                best_away = best_away_book = None
+                for book_name, side_home, side_away in book_pairs:
+                    if side_home is not None and (best_home is None or side_home > best_home):
+                        best_home, best_home_book = side_home, book_name
+                    if side_away is not None and (best_away is None or side_away > best_away):
+                        best_away, best_away_book = side_away, book_name
+                mixed_books = (best_home_book or "") != (best_away_book or "")
+                book_label = best_home_book or ""
+                if mixed_books:
+                    book_label = f"{best_home_book}/{best_away_book} (mixed)"
+                chosen = (book_label, best_home, best_away)
+            book_name, best_home, best_away = chosen
 
             if best_home is None and best_away is None:
                 continue
@@ -880,8 +999,9 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
                 "player_away": away,
                 "odds_home": best_home,
                 "odds_away": best_away,
-                "odds_home_bookmaker": best_home_book,
-                "odds_away_bookmaker": best_away_book,
+                "odds_home_bookmaker": book_name if not mixed_books else (best_home_book or ""),
+                "odds_away_bookmaker": book_name if not mixed_books else (best_away_book or ""),
+                "bookmaker": book_name,
                 "source": "TheOddsAPI",
                 "sport_key": sport,
                 "event_id": event.get("id"),
@@ -976,6 +1096,7 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
         # (implied sum 0.98-1.35 and both odds 1.01-51.0).  This rejects impossible
         # pairs like 9.50/9.70 (implied sum 0.21) which would otherwise inflate EV.
         # For Challenger/ITF where only one side scraped, allow single-side if other is NA.
+        # Merged with recover branch: still require coherent pair, but allow single-side NA case.
         if not valid_two_way_decimal_pair(scraped_home, scraped_away):
             ch = coerce_decimal_odds(scraped_home)
             ca = coerce_decimal_odds(scraped_away)
@@ -991,7 +1112,6 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
                 scraped_home = pd.NA
             if ca is None:
                 scraped_away = pd.NA
-            # Still need at least one valid side to be usable; but if both present and invalid, already rejected above
 
         out.at[idx, "odds_home"] = scraped_home
         out.at[idx, "odds_away"] = scraped_away
@@ -1469,8 +1589,8 @@ def build_warehouse(
     PRIMARY_SOURCES = {"Forebet"}
 
     # Create canonical merge keys in warehouse based on match_date and player signatures
-    warehouse['_key_a'] = warehouse['player_a'].astype(str).map(name_signature)
-    warehouse['_key_b'] = warehouse['player_b'].astype(str).map(name_signature)
+    warehouse['_key_a'] = warehouse['player_a'].astype(str).map(name_signature_strict)
+    warehouse['_key_b'] = warehouse['player_b'].astype(str).map(name_signature_strict)
     warehouse['_merge_key'] = warehouse.apply(
         lambda r: f"{r['match_date']}|" + "|".join(sorted([r['_key_a'], r['_key_b']])), axis=1
     )
@@ -1495,8 +1615,8 @@ def build_warehouse(
             merged = pd.concat(frames, ignore_index=True)
             if "match_date" not in merged.columns or "player_a" not in merged.columns or "player_b" not in merged.columns:
                 continue
-            merged['_key_a'] = merged['player_a'].astype(str).map(name_signature)
-            merged['_key_b'] = merged['player_b'].astype(str).map(name_signature)
+            merged['_key_a'] = merged['player_a'].astype(str).map(name_signature_strict)
+            merged['_key_b'] = merged['player_b'].astype(str).map(name_signature_strict)
             merged['_merge_key'] = merged.apply(
                 lambda r: f"{r['match_date']}|" + "|".join(sorted([r['_key_a'], r['_key_b']])), axis=1
             )

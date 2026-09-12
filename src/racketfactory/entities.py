@@ -9,6 +9,13 @@ TOUR_ALIASES = {
     "challenger": "CHALLENGER",
     "atp challenger": "CHALLENGER",
     "itf": "ITF",
+    "itf-w": "ITF-W",
+    "itf-m": "ITF-M",
+    "itf men": "ITF-M",
+    "itf women": "ITF-W",
+    "utr": "UTR",
+    "davis cup": "Davis Cup",
+    "bjk cup": "BJK Cup",
     "exhibition": "EXHIBITION",
 }
 

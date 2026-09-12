@@ -22,8 +22,12 @@ def _forebet_price_to_decimal(value: object) -> float | None:
         return None
 
     try:
-        # American odds, e.g. +160 or -227.
+        # American odds, e.g. +160 or -227. Unsigned 1-2 digit integers are
+        # far more likely probabilities ("79") than prices, so they are
+        # rejected: a real unsigned American price has 3+ digits ("+100").
         if re.fullmatch(r"[+-]?\d+", text):
+            if text[0] not in "+-" and len(text) < 3:
+                return None
             american = int(text)
             if american > 0:
                 return round(1.0 + american / 100.0, 6)
@@ -303,6 +307,33 @@ def name_signature(name: str) -> str:
     if long_words:
         return long_words[-1].lower()
     return "".join(sorted(w.lower() for w in words))
+
+
+def name_signature_strict(name: str) -> str:
+    """Collision-resistant merge key: surname + given initial.
+
+    :func:`name_signature` returns the bare surname, so ``Alexander Zverev``
+    and ``Mischa Zverev`` share the key ``zverev`` and their predictions
+    cross-attach in the warehouse join. The strict key appends the given
+    initial from either layout (``Zverev A.`` -> ``zverev|a``,
+    ``Alexander Zverev`` -> ``zverev|a``), keeping brothers apart while
+    still joining ``Bergs Z.`` to ``Zizou Bergs``.
+    """
+    words = re.findall(r"[a-zA-Z]+", str(name or ""))
+    if not words:
+        return ""
+    long_words = [w for w in words if len(w) > 1]
+    surname = long_words[-1].lower() if long_words else "".join(sorted(w.lower() for w in words))
+    given = ""
+    if len(words[0]) == 1:
+        given = words[0].lower()
+    elif len(words[-1]) == 1:
+        given = words[-1].lower()
+    elif long_words:
+        given = long_words[0][0].lower()
+    return f"{surname}|{given}" if given else surname
+
+
 
 
 
@@ -753,16 +784,25 @@ class ForebetPredictor:
     # Daily overview page fetch
     # ------------------------------------------------------------------
     def _fetch_daily_page(self, day: str = "today") -> Optional[str]:
-        """Fetch predictions-yesterday, predictions-today, or predictions-tomorrow."""
-        if day not in ("yesterday", "today", "tomorrow"):
-            raise ValueError("day must be 'yesterday', 'today', or 'tomorrow'")
-        url = f"{self.BASE_URL}/predictions-{day}"
+        """Fetch a daily predictions page.
+
+        ``day`` is ``yesterday``/``today``/``tomorrow`` or an explicit
+        ``YYYY-MM-DD`` calendar date (Forebet serves
+        ``/tennis/predictions/YYYY-MM-DD``).
+        """
+        import re as _re
+        if _re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(day or "")):
+            url = f"{self.BASE_URL}/predictions-{day}"
+        elif day in ("yesterday", "today", "tomorrow"):
+            url = f"{self.BASE_URL}/predictions-{day}"
+        else:
+            raise ValueError("day must be 'yesterday', 'today', 'tomorrow' or YYYY-MM-DD")
         return self._fetch(url)
 
     # ------------------------------------------------------------------
     # Unified parser — works on both tournament pages and daily pages
     # ------------------------------------------------------------------
-    def parse_page(self, html: str) -> list[dict[str, Any]]:
+    def parse_page(self, html: str, expected_day: str | None = None) -> list[dict[str, Any]]:
         """
         Parse any Forebet page containing tennis match predictions.
         """
@@ -836,9 +876,11 @@ class ForebetPredictor:
             if not row_container:
                 row_container = anchor.find_parent("div")
             if row_container:
-                prev_heading = row_container.find_previous("div", class_="heading")
-                if prev_heading:
-                    heading_text = prev_heading.get_text(" ", strip=True)
+                heading = row_container.find("div", class_="heading")
+                if heading is None:
+                    heading = row_container.find_previous("div", class_="heading")
+                if heading:
+                    heading_text = heading.get_text(" ", strip=True)
                     if heading_text:
                         tournament_name = heading_text
 

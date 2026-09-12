@@ -79,7 +79,55 @@ def infer_tour_title(sport_key: str, sport_title: str) -> tuple[str, str]:
     return tour, title
 
 
+def _scores_cache_path(sport: str, days_from: int, day: str) -> Path:
+    safe_sport = "".join(c if c.isalnum() or c in "-_" else "_" for c in sport)
+    return LOCALDATA / f"theoddsapi_scores_cache_{safe_sport}_{days_from}d_{day}.json"
+
+
+def _scores_cache_ttl_minutes() -> int:
+    try:
+        return max(0, int(os.getenv("THE_ODDS_API_SCORES_CACHE_MINUTES", "60")))
+    except ValueError:
+        return 60
+
+
+def _load_scores_cache(sport: str, days_from: int, day: str) -> list[dict[str, Any]] | None:
+    ttl = _scores_cache_ttl_minutes()
+    if ttl <= 0:
+        return None
+    path = _scores_cache_path(sport, days_from, day)
+    if not path.exists():
+        return None
+    try:
+        import time
+        if time.time() - path.stat().st_mtime > ttl * 60:
+            return None
+        payload = json.loads(path.read_text())
+        rows = payload.get("events", [])
+        if isinstance(rows, list):
+            logger.info("%s scores loaded from cache (%d events)", sport, len(rows))
+            return rows
+    except Exception as exc:
+        logger.warning("Could not read scores cache %s: %s", path, exc)
+    return None
+
+
+def _write_scores_cache(sport: str, days_from: int, day: str, events: list[dict[str, Any]]) -> None:
+    if _scores_cache_ttl_minutes() <= 0:
+        return
+    try:
+        path = _scores_cache_path(sport, days_from, day)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"sport": sport, "events": events}))
+    except Exception as exc:
+        logger.warning("Could not write scores cache for %s: %s", sport, exc)
+
+
 def fetch_scores(sport: str, days_from: int, api_key: str) -> list[dict[str, Any]]:
+    from datetime import date as _date
+    cached = _load_scores_cache(sport, days_from, _date.today().isoformat())
+    if cached is not None:
+        return cached
     params = {
         "apiKey": api_key,
         "daysFrom": str(days_from),
@@ -102,6 +150,13 @@ def fetch_scores(sport: str, days_from: int, api_key: str) -> list[dict[str, Any
                 resp.headers.get("x-requests-used"),
                 resp.headers.get("x-requests-last"),
             )
+            try:
+                sys.path.insert(0, str(ROOT / "src"))
+                from racketfactory.warehouse import record_odds_api_usage
+                record_odds_api_usage(api_key, resp.headers, endpoint=f"scores:{sport}")
+            except Exception as exc:
+                logger.warning("Usage ledger write failed: %s", exc)
+            _write_scores_cache(sport, days_from, _date.today().isoformat(), payload)
             return payload
     except HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")[:300]
@@ -156,7 +211,12 @@ def row_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
         "player_a": home,
         "player_b": away,
         "winner": winner,
-        "score": f"{int(hs) if hs.is_integer() else hs}-{int(as_) if as_.is_integer() else as_}",
+        # Sets-only feed: no per-set strings exist, so score stays empty and
+        # the S evidence travels in _sets_a/_sets_b (settlement finality).
+        "score": "",
+        "_sets_a": int(hs),
+        "_sets_b": int(as_),
+        "_result_status": "COMPLETED_FEED",
         "odds_a": pd.NA,
         "odds_b": pd.NA,
         "bookmaker": "",
@@ -193,6 +253,8 @@ def write_monthly(rows: list[dict[str, Any]], output_dir: Path) -> list[Path]:
             combined = group.copy()
 
         key_cols = ["match_date", "tour", "tournament", "player_a", "player_b"]
+        if "_api_event_id" in combined.columns and combined["_api_event_id"].notna().any():
+            key_cols = ["_api_event_id"]
         combined = combined.drop_duplicates(subset=key_cols, keep="last")
         combined.to_csv(path, index=False, compression="gzip")
         written.append(path)
@@ -206,14 +268,33 @@ def main() -> int:
     args = ap.parse_args()
 
     load_env()
-    api_key = os.getenv("THE_ODDS_API_KEY")
-    if not api_key:
+    sys.path.insert(0, str(ROOT / "src"))
+    from racketfactory.warehouse import (
+        discover_active_tennis_sports,
+        odds_api_budget_ok,
+        the_odds_api_keys,
+    )
+    api_keys = the_odds_api_keys()
+    if not api_keys:
         logger.warning("THE_ODDS_API_KEY missing; cannot fetch scores.")
         return 0
+    if not odds_api_budget_ok(api_keys):
+        return 0
+    sports = sports_from_env()
+    active = discover_active_tennis_sports(api_keys)
+    if active is not None:
+        active_set = set(active)
+        skipped = [s for s in sports if s not in active_set]
+        sports = [s for s in sports if s in active_set]
+        for sport in skipped:
+            logger.warning("Scores sport key %r is not active; skipping", sport)
+        if not sports:
+            logger.warning("No active score sport keys; skipping scores fetch.")
+            return 0
 
     all_rows: list[dict[str, Any]] = []
-    for sport in sports_from_env():
-        events = fetch_scores(sport, args.days_from, api_key)
+    for i, sport in enumerate(sports):
+        events = fetch_scores(sport, args.days_from, api_keys[i % len(api_keys)])
         for event in events:
             row = row_from_event(event)
             if row:

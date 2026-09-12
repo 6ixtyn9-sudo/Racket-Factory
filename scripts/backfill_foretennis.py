@@ -19,7 +19,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from racketfactory.sources.foretennis import ForeTennisPredictor, name_signature
+from racketfactory.sources.foretennis import (
+    ForeTennisPredictor,
+    flip_actual_result,
+    name_signature,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -178,6 +182,12 @@ def main():
             for idx, pa_sig, pb_sig, player_a, player_b in pred_index[date_str]:
                 mapped = ft.map_prediction_to_player(p, player_a, player_b)
                 if mapped:
+                    actual_result = p.get("actual_result")
+                    if not mapped.get("home_is_a", True):
+                        # Warehouse order swapped vs feed order: flip the
+                        # set digits so player_a/player_b stay consistent
+                        # with actual_result (else wrong winner, cf. 1324).
+                        actual_result = flip_actual_result(actual_result)
                     matched_predictions.append({
                         "match_date": date_str,
                         "tour": wh.at[idx, "tour"],
@@ -188,7 +198,7 @@ def main():
                         "prediction_prob": mapped.get("prediction_prob"),
                         "source": "ForeTennis",
                         "match_id": idx,  # Keep for deduplication
-                        "actual_result": p.get("actual_result"),
+                        "actual_result": actual_result,
                         "prediction_correct": p.get("prediction_correct"),
                     })
                     break
@@ -211,6 +221,9 @@ def main():
                 for idx, pa_sig, pb_sig, player_a, player_b in pred_index[date_str]:
                     mapped = ft.map_prediction_to_player(p, player_a, player_b)
                     if mapped:
+                        actual_result = p.get("actual_result")
+                        if not mapped.get("home_is_a", True):
+                            actual_result = flip_actual_result(actual_result)
                         matched_predictions.append({
                             "match_date": date_str,
                             "tour": wh.at[idx, "tour"],
@@ -221,7 +234,7 @@ def main():
                             "prediction_prob": mapped.get("prediction_prob"),
                             "source": "ForeTennis",
                             "match_id": idx,
-                            "actual_result": p.get("actual_result"),
+                            "actual_result": actual_result,
                             "prediction_correct": p.get("prediction_correct"),
                         })
                         break
