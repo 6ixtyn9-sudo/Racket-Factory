@@ -1,0 +1,22 @@
+Racket Factory Auto Tickets — 2026-09-12
+Generated at: 2026-09-12T13:28:16+02:00
+Bank: 102.29% (cycle base 100.00%)
+Take profit target: 200.00%
+
+Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 2.0), 4 accas max, NO SINGLES
+Stake: 25% of bank per day
+
+ACCA 1 [value_2leg] — Odds 5.51 — Stake 10.11%
+  - Harrison / Skupski vs Krawietz / Puetz -> Harrison / Skupski @ 2.45 (conf 60.0 ml 0.4 BOOST src BetClan odds_src nan)
+  - Cengiz / Oz vs Kucmova / Laboutkova -> Kucmova / Laboutkova @ 2.25 (conf 69.0 ml 0.4 BOOST src BetClan odds_src nan)
+
+ACCA 2 [value_2leg_2] — Odds 5.06 — Stake 10.11%
+  - Max Alcala Gurri vs Dusan Lajovic -> Dusan Lajovic @ 2.25 (conf 69.0 ml 0.4 BOOST src BetClan odds_src nan)
+  - Dalma Galfi vs Fiona Ferro -> Fiona Ferro @ 2.25 (conf 66.0 ml 0.4 BOOST src BetClan odds_src nan)
+
+ACCA 3 [high_strength_3leg] — Odds 12.40 — Stake 5.36%
+  - Harrison / Skupski vs Krawietz / Puetz -> Harrison / Skupski @ 2.45 (conf 60.0 ml 0.4 BOOST src BetClan odds_src nan)
+  - Cengiz / Oz vs Kucmova / Laboutkova -> Kucmova / Laboutkova @ 2.25 (conf 69.0 ml 0.4 BOOST src BetClan odds_src nan)
+  - Max Alcala Gurri vs Dusan Lajovic -> Dusan Lajovic @ 2.25 (conf 69.0 ml 0.4 BOOST src BetClan odds_src nan)
+
+Total staked: 25.57% of bank
