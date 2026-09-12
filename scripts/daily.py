@@ -573,7 +573,13 @@ def run_once(args: argparse.Namespace) -> None:
 
     if not args.intraday_only:
         # 1. Official Source Captures (Heavy History)
-        if refresh_oddsportal:
+        # FIX: Bulk historical OddsPortal --all for current year 2026 tries 36 tournaments with 5 pages each,
+        # each failing after 120s Playwright wait (no PageTournament marker, 503) -> 45m+ run with 0 rows.
+        # For current regime, we don't need 2026 bulk historical — we need recent results and live odds via TheOddsAPI/Bzzoiro.
+        # So skip bulk --all for current year, only run if explicitly forced via REFRESH_ODDSPORTAL=1 and not current year,
+        # or via manual mode. Keep tennisdata for lightweight results.
+        current_year = 2026
+        if refresh_oddsportal and year != current_year:
             run_soft(
                 f"{env_prefix} PYTHONPATH=src python3 scripts/capture_"
                 f"oddsportal.py --all --years {year} --no-checkpoint --delay {oddsportal_delay:g}",
@@ -581,7 +587,10 @@ def run_once(args: argparse.Namespace) -> None:
                 env=child_env,
             )
         else:
-            print("\n>>> capture_oddsportal skipped (disabled via RACKET_FACTORY_DISABLE_ODDSPORTAL)")
+            if year == current_year:
+                print(f"\n>>> capture_oddsportal bulk {year} skipped — current year has no historical bulk, use live API/Bzzoiro + tennisdata")
+            else:
+                print("\n>>> capture_oddsportal skipped (disabled via RACKET_FACTORY_DISABLE_ODDSPORTAL)")
         run_soft(
             f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_tennisdata.py --year {year}",
             f"backfill_tennisdata {year}",
