@@ -301,4 +301,22 @@ class ForeTennisPredictor:
             "predicted_winner": winner,
             "prediction_prob": prob,
             "source": "ForeTennis",
+            # Orientation flag: actual_result digits are in feed
+            # (home/away) order and MUST be flipped when home maps to
+            # player_b, or the winner derivation names the wrong side
+            # (root cause of quarantined match 1324).
+            "home_is_a": home_is_a,
         }
+
+
+def flip_actual_result(actual_result: object) -> str:
+    """Swap the home/away set digits of a ForeTennis actual_result.
+
+    Values are two set-count digits (``'12'`` -> ``'21'``); anything else
+    passes through unchanged so unknown formats never corrupt silently.
+    """
+    text = str(actual_result or "").strip()
+    digits = [ch for ch in text if ch.isdigit()]
+    if len(digits) != 2 or len(text) != 2:
+        return text
+    return digits[1] + digits[0]

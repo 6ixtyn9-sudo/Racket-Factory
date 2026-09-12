@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-12T14:49:20",
+  "generated_at": "2026-09-12T15:04:13",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 102.285712,
@@ -501,6 +501,17 @@
         {
           "legs": [
             {
+              "_settle_basis": {
+                "match_date": "2026-09-11",
+                "result_id": "",
+                "score": "",
+                "source": "ForeTennis_results",
+                "status": "",
+                "tournament": "US Open Prediction",
+                "winner": "Alexander Zverev"
+              },
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from ForeTennis_results 2026-09-11",
               "bucket": "WATCHLIST",
               "confidence": 85.0,
               "context_used": "US Open Prediction",
@@ -570,6 +581,17 @@
         {
           "legs": [
             {
+              "_settle_basis": {
+                "match_date": "2026-09-12",
+                "result_id": "",
+                "score": "2-1 4-6 6-4 6-4",
+                "source": "Challenger_results",
+                "status": "",
+                "tournament": "",
+                "winner": "Dencheva R."
+              },
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-12 2-1 4-6 6-4 6-4",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 77.0,
               "context_used": "WTA Antalya Prediction",
@@ -613,6 +635,17 @@
               "tournament": "WTA Antalya Prediction"
             },
             {
+              "_settle_basis": {
+                "match_date": "2026-09-12",
+                "result_id": "",
+                "score": "2-0 6-3 6-4",
+                "source": "Challenger_results",
+                "status": "",
+                "tournament": "",
+                "winner": "Ivashka I."
+              },
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-12 2-0 6-3 6-4",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 80.0,
               "context_used": "Challenger Shanghai Prediction",

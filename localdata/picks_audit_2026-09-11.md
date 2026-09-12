@@ -35,7 +35,7 @@
 
 ## Per-pick audit (won/lost/pending)
 
-- 2026-09-11 Frances Tiafoe vs Ben Shelton selected=Ben Shelton winner=Ben Shelton status=won basis=ForeTennis_results@2026-09-11:
+- 2026-09-11 Frances Tiafoe vs Ben Shelton selected=Ben Shelton winner=Shelton B. status=won basis=ForeTennis_results@2026-09-11:
 - 2026-09-11 Alexander Zverev vs Karen Khachanov selected=Alexander Zverev winner=Alexander Zverev status=won basis=ForeTennis_results@2026-09-11:
 - 2026-09-11 Coco Gauff vs Elena Rybakina selected=Elena Rybakina winner=Elena Rybakina status=won basis=ForeTennis_results@2026-09-11:
 - 2026-09-11 Alicia Herrero Linana vs Eva Bennemann selected=Alicia Herrero Linana winner=Herrero Linana A. status=won basis=Challenger_results@2026-09-12:2-0 6-3 6-2
