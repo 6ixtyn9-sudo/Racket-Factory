@@ -44,9 +44,17 @@ class PredixSportPredictor:
                 players = [p.text.strip() for p in s.find_all('h2', class_='player-name')]
                 probs = [p.text.strip().replace('%', '') for p in s.find_all('div', class_='win-probability')]
                 
-                if len(players) == 2 and len(probs) == 2 and probs[0].isdigit() and probs[1].isdigit():
+                # FIX: Accept decimal probabilities like 70.5% (was isdigit() rejected decimals)
+                def parse_prob(txt):
+                    try:
+                        # Allow decimal like 70.5
+                        return float(txt)
+                    except:
+                        return None
+                prob_vals = [parse_prob(pr) for pr in probs]
+                if len(players) == 2 and len(prob_vals) == 2 and prob_vals[0] is not None and prob_vals[1] is not None:
                     p1, p2 = players[0], players[1]
-                    prob1, prob2 = int(probs[0]), int(probs[1])
+                    prob1, prob2 = prob_vals[0], prob_vals[1]
 
                     main = s.find('div', class_='main-content') or s.find('div', class_='container')
                     main_text = " ".join(main.get_text(" ", strip=True).split()) if main else ""
@@ -91,19 +99,27 @@ class PredixSportPredictor:
                             odds_home, odds_away = float(matches[0]), float(matches[1])
 
                     winner = p1 if prob1 >= prob2 else p2
+                    # FIX: Try to extract publication date from page if available, otherwise use today but keep LOW confidence
+                    pub_date = date.today().isoformat()
+                    try:
+                        # Look for Last updated: 2026-09-11 in page text
+                        import re as _re
+                        main_text_for_date = " ".join((s.get_text(" ", strip=True) for s in [s.find('div', class_='main-content') or s.find('div', class_='container')] if s)) or ""
+                        if not main_text_for_date:
+                            main_text_for_date = s.get_text(" ", strip=True)
+                        m_date = _re.search(r"Last updated:\s*(\d{4}-\d{2}-\d{2})", main_text_for_date)
+                        if m_date:
+                            pub_date = m_date.group(1)
+                    except Exception:
+                        pass
                     if not any(r["player_home"] == p1 for r in results):
                         results.append({
-                        # PredixSport tennis dates are not reliable actual play dates.
-                        # The public/API tennis date behaves like a generated/tournament
-                        # slate date, not a confirmed scheduled match day.  Keep this
-                        # generated date for compatibility, but mark it LOW confidence so
-                        # downstream pick hygiene does not treat PredixSport-only rows as
-                        # actionable same-day fixtures.
-                        "match_date": date.today().isoformat(),
-                        "predix_generated_date": date.today().isoformat(),
+                        # PredixSport tennis dates are not reliable actual play dates — keep publication date but mark LOW
+                        "match_date": pub_date,
+                        "predix_generated_date": pub_date,
                         "date_confidence": "LOW",
-                        "scheduled_date_source": "PredixSportGeneratedDate",
-                        "date_warning": "PredixSport tennis date is not confirmed actual play date",
+                        "scheduled_date_source": "PredixSportPublicationDate",
+                        "date_warning": "PredixSport tennis date is publication date, not confirmed kickoff",
                         "match_time": "",
                         "player_home": p1,
                         "player_away": p2,

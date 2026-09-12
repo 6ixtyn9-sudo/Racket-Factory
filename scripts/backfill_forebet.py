@@ -135,6 +135,19 @@ def mode_tournament(args) -> int:
             if not mapped:
                 continue
 
+            # FIX: Orient prices by identity (player_home vs player_a), not by predicted winner
+            # Previously used predicted_winner to map odds, which is wrong per investigation
+            pred_home = str(pred.get("player_home") or "")
+            # Determine if pred home matches warehouse player_a
+            from racketfactory.sources.forebet import name_signature as _ns
+            home_is_a = _ns(pred_home) == sig_a
+            # If home is A, then odds_a = odds_home, else odds_a = odds_away
+            if home_is_a:
+                odds_a = pred.get("odds_home")
+                odds_b = pred.get("odds_away")
+            else:
+                odds_a = pred.get("odds_away")
+                odds_b = pred.get("odds_home")
             predictions.append({
                 "match_date": match_date,
                 "tour": row["tour"],
@@ -143,8 +156,8 @@ def mode_tournament(args) -> int:
                 "player_b": row["player_b"],
                 "predicted_winner": mapped["predicted_winner"],
                 "prediction_prob": mapped["prediction_prob"],
-                "odds_a": pred.get("odds_home") if mapped["predicted_winner"] == "player_a" else pred.get("odds_away"),
-                "odds_b": pred.get("odds_away") if mapped["predicted_winner"] == "player_a" else pred.get("odds_home"),
+                "odds_a": odds_a,
+                "odds_b": odds_b,
                 "source": "Forebet",
             })
             matched_count += 1
@@ -324,6 +337,16 @@ def mode_daily(args) -> int:
                     if key == w_key:
                         mapped = predictor.map_prediction_to_player(p, row["player_a"], row["player_b"])
                         if mapped:
+                            # FIX: Orient prices by identity, not predicted winner
+                            pred_home_sig = name_signature(p["player_home"])
+                            row_a_sig = name_signature(row["player_a"])
+                            home_is_a = pred_home_sig == row_a_sig
+                            if home_is_a:
+                                odds_a = p.get("odds_home")
+                                odds_b = p.get("odds_away")
+                            else:
+                                odds_a = p.get("odds_away")
+                                odds_b = p.get("odds_home")
                             row_out = {
                                 "match_date": match_date,
                                 "tour": row["tour"],
@@ -332,8 +355,8 @@ def mode_daily(args) -> int:
                                 "player_b": row["player_b"],
                                 "predicted_winner": mapped["predicted_winner"],
                                 "prediction_prob": mapped["prediction_prob"],
-                                "odds_a": p.get("odds_home") if mapped["predicted_winner"] == "player_a" else p.get("odds_away"),
-                                "odds_b": p.get("odds_away") if mapped["predicted_winner"] == "player_a" else p.get("odds_home"),
+                                "odds_a": odds_a,
+                                "odds_b": odds_b,
                                 "source": "Forebet",
                             }
                             predictions.append(_copy_forebet_result_fields(row_out, p, row["player_a"], row["player_b"]))

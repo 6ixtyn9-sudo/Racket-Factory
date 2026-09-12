@@ -603,7 +603,7 @@ LOCAL_ODDSPORTAL_ODDS_CACHE: dict[str, list[dict]] = {}
 
 def _split_match_text_for_odds(match: object) -> tuple[str, str]:
     text = str(match or "").strip()
-    parts = re.split(r"\s+v(?:s\.)?\s+", text, maxsplit=1, flags=re.IGNORECASE)
+    parts = re.split(r"\s+v(?:s\.?)?\s+", text, maxsplit=1, flags=re.IGNORECASE)
     if len(parts) == 2:
         return parts[0].strip(), parts[1].strip()
     return "", ""
@@ -999,7 +999,7 @@ def _pick_players_for_dedupe(pick: dict) -> tuple[str, str]:
         return home, away
 
     match = str(pick.get("match") or "").strip()
-    parts = re.split(r"\s+v(?:s\.)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
+    parts = re.split(r"\s+v(?:s\.?)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
     if len(parts) == 2:
         return parts[0].strip(), parts[1].strip()
 

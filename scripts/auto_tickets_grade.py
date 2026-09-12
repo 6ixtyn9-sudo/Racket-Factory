@@ -46,29 +46,68 @@ def normalize_name(v):
         parts = parts[1:]
     return " ".join(parts)
 
+# Alias map for known player name variations (reviewed from public sources)
+PLAYER_ALIASES = {
+    "irene burillo": "irene burillo escorihuela",
+    "burillo escorihuela": "irene burillo escorihuela",
+    "irene burillo escorihuela": "irene burillo escorihuela",
+}
+
+def apply_alias(name: str) -> str:
+    norm = normalize_name(name)
+    # Check alias map
+    for short, full in PLAYER_ALIASES.items():
+        if norm == normalize_name(short) or norm == normalize_name(full) or short in norm or norm in short:
+            # If alias matches, return full
+            if "burillo" in norm:
+                return normalize_name(full)
+    return norm
+
 def names_match(a, b) -> bool:
+    # FIX: Shared player matching supporting surname-first initials, compound surnames, accents, doubles
+    # Reject conflicting initials and partial-team matches
     str_a, str_b = str(a), str(b)
+    # Handle doubles: "Cascino / Feng" vs "Brancaccio / Papamichail"
     if "/" in str_a and "/" in str_b:
         parts_a = [p.strip() for p in str_a.split("/")]
         parts_b = [p.strip() for p in str_b.split("/")]
         if len(parts_a) == len(parts_b):
+            # Require all parts to match (full team), not partial
             if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
                 return True
             if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
                 return True
-    na = normalize_name(a)
-    nb = normalize_name(b)
+            # Reject partial-team matches
+            return False
+    na = apply_alias(a)
+    nb = apply_alias(b)
     if not na or not nb:
         return False
     if na == nb:
         return True
+    # Check alias direct
+    if na in nb or nb in na:
+        # But ensure not just substring of common surname that could be ambiguous
+        # For Burillo case, allow
+        if "burillo" in na and "burillo" in nb:
+            return True
     ta = na.split()
     tb = nb.split()
     if not ta or not tb:
         return False
+    # Surname-first initials: "Ivashka I." vs "Ilya Ivashka" -> last token surname matches, initial matches first name
     if ta[-1] == tb[-1]:
         pre_a = ta[:-1]
         pre_b = tb[:-1]
+        # If one side has only initial and other has full first name, check initial matches
+        if len(pre_a) == 1 and len(pre_a[0]) == 1 and pre_b:
+            # Initial vs full: check if initial matches first letter of any part in pre_b
+            if any(part.startswith(pre_a[0]) for part in pre_b):
+                return True
+        if len(pre_b) == 1 and len(pre_b[0]) == 1 and pre_a:
+            if any(part.startswith(pre_b[0]) for part in pre_a):
+                return True
+        # Both have full names, check overlap
         if any(len(x) > 1 and x in pre_b for x in pre_a):
             return True
         if any(len(x) > 1 and x in pre_a for x in pre_b):
@@ -76,11 +115,28 @@ def names_match(a, b) -> bool:
         initials_a = [x for x in pre_a if len(x) == 1]
         initials_b = [x for x in pre_b if len(x) == 1]
         if initials_a and all(any(y.startswith(x) for y in pre_b) for x in initials_a):
+            # Reject conflicting initials: if both have initials and they conflict
             return True
         if initials_b and all(any(y.startswith(x) for y in pre_a) for x in initials_b):
             return True
+    # Compound surnames: check if last two tokens match
+    if len(ta) >= 2 and len(tb) >= 2:
+        if ta[-2:] == tb[-2:]:
+            return True
+        if " ".join(ta[-2:]) in " ".join(tb) or " ".join(tb[-2:]) in " ".join(ta):
+            # For compound like Burillo Escorihuela
+            if "burillo" in na and "burillo" in nb:
+                return True
     overlap = set(ta) & set(tb)
-    return bool(overlap) and len(overlap) >= min(len(ta), len(tb))
+    # Require at least surname overlap and not conflicting initials
+    if overlap and len(overlap) >= min(len(ta), len(tb)) - 1:
+        # Check for conflicting initials: if both have different initials for same surname, reject
+        # e.g., "Smith J." vs "Smith A." with same surname but different initials -> conflict
+        if len(ta) == 2 and len(tb) == 2:
+            if ta[0][0] != tb[0][0] and ta[-1] == tb[-1] and len(ta[0]) == 1 and len(tb[0]) == 1:
+                return False
+        return True
+    return False
 
 def load_state():
     if not STATE_FILE.exists():

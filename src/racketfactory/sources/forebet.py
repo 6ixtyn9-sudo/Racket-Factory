@@ -470,17 +470,40 @@ class ForebetPredictor:
                 continue
 
             # --- Date & Time -----------------------------------------------
+            # FIX: Accept both %d/%m/%Y %H:%M and MM/DD/YYYY h:MM AM/PM (Forebet displayed 09/11/2026 6:15 AM)
             date_span = anchor.find("span", class_="date_bah")
             match_date = None
             match_time = ""
             if date_span:
                 date_text = date_span.get_text(strip=True)
-                try:
-                    dt = datetime.strptime(date_text, "%d/%m/%Y %H:%M")
-                    match_date = dt.strftime("%Y-%m-%d")
-                    match_time = dt.strftime("%H:%M")
-                except ValueError:
-                    match_date = None
+                # Try multiple formats
+                for fmt in ("%d/%m/%Y %H:%M", "%m/%d/%Y %I:%M %p", "%m/%d/%Y %H:%M", "%d/%m/%Y %I:%M %p", "%Y-%m-%d %H:%M"):
+                    try:
+                        dt = datetime.strptime(date_text, fmt)
+                        match_date = dt.strftime("%Y-%m-%d")
+                        match_time = dt.strftime("%H:%M")
+                        break
+                    except ValueError:
+                        continue
+                # Fallback: try to extract date with regex if strptime fails
+                if not match_date:
+                    import re as _re
+                    # Look for MM/DD/YYYY or DD/MM/YYYY
+                    m = _re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", date_text)
+                    if m:
+                        try:
+                            # Try both interpretations, prefer MM/DD if first <=12 and second >12 or context
+                            # Forebet uses MM/DD/YYYY in US format per note: 09/11/2026 6:15 AM = Sep 11
+                            # So try MM/DD first
+                            for fmt2 in ("%m/%d/%Y", "%d/%m/%Y"):
+                                try:
+                                    dt = datetime.strptime(f"{m.group(1)}/{m.group(2)}/{m.group(3)}", fmt2)
+                                    match_date = dt.strftime("%Y-%m-%d")
+                                    break
+                                except ValueError:
+                                    continue
+                        except Exception:
+                            pass
 
             # --- Tournament -----------------------------------------------
             tournament_name = None

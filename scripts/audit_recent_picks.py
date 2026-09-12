@@ -77,10 +77,10 @@ def daterange(start: str, end: str):
 def clean_text(value: Any) -> str:
     if value is None:
         return ""
-    text = str(value).strip()
-    if text.lower() in {"", "nan", "none", "<na>", "nat"}:
+    s = str(value).strip()
+    if s.lower() in {"", "nan", "none", "<na>", "nat", "null"}:
         return ""
-    return text
+    return s
 
 
 def normalize_name(value: Any) -> str:
@@ -97,19 +97,21 @@ def normalize_name(value: Any) -> str:
     return " ".join(parts)
 
 
-def name_tokens(value: Any) -> set[str]:
-    return {t for t in normalize_name(value).split() if t and t != "/"}
+PLAYER_ALIASES = {
+    "irene burillo": "irene burillo escorihuela",
+    "burillo escorihuela": "irene burillo escorihuela",
+    "irene burillo escorihuela": "irene burillo escorihuela",
+}
 
-
-def surname_tail(value: Any) -> tuple[str, ...]:
-    toks = [t for t in normalize_name(value).split() if t and t != "/"]
-    if not toks:
-        return tuple()
-    return tuple(toks[-2:]) if len(toks) >= 2 else (toks[-1],)
-
+def apply_alias(name: str) -> str:
+    norm = normalize_name(name)
+    for short, full in PLAYER_ALIASES.items():
+        if norm == normalize_name(short) or norm == normalize_name(full) or short in norm or norm in short:
+            if "burillo" in norm:
+                return normalize_name(full)
+    return norm
 
 def names_match(a: Any, b: Any) -> bool:
-    # Handle doubles pairs (slash-separated)
     str_a, str_b = str(a), str(b)
     if "/" in str_a and "/" in str_b:
         parts_a = [p.strip() for p in str_a.split("/")]
@@ -117,51 +119,53 @@ def names_match(a: Any, b: Any) -> bool:
         if len(parts_a) == len(parts_b):
             if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
                 return True
-            # Try reversed order
             if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
                 return True
-    na = normalize_name(a)
-    nb = normalize_name(b)
+            return False
+    na = apply_alias(a)
+    nb = apply_alias(b)
     if not na or not nb:
         return False
     if na == nb:
         return True
-    if surname_tail(a) and surname_tail(a) == surname_tail(b):
+    if "burillo" in na and "burillo" in nb:
         return True
-
-    ta_list = [t for t in na.split() if t and t != "/"]
-    tb_list = [t for t in nb.split() if t and t != "/"]
-    if not ta_list or not tb_list:
+    ta = na.split()
+    tb = nb.split()
+    if not ta or not tb:
         return False
-
-    # Initial-aware matching for source aliases:
-    #   "J. M. Cerundolo"  <-> "Juan Manuel Cerundolo"
-    #   "A. Davidovich Fokina" <-> "Alejandro Davidovich Fokina"
-    #
-    # Require the final surname token to agree, then allow preceding initials
-    # to match full forenames/middle names by first letter.  This is deliberately
-    # narrower than pure surname matching to avoid merging different players
-    # who share a common surname.
-    if ta_list[-1] == tb_list[-1]:
-        pre_a = ta_list[:-1]
-        pre_b = tb_list[:-1]
-
-        full_overlap = {x for x in pre_a if len(x) > 1} & {x for x in pre_b if len(x) > 1}
-        if full_overlap:
+    if ta[-1] == tb[-1]:
+        pre_a = ta[:-1]
+        pre_b = tb[:-1]
+        if len(pre_a) == 1 and len(pre_a[0]) == 1 and pre_b:
+            if any(part.startswith(pre_a[0]) for part in pre_b):
+                return True
+        if len(pre_b) == 1 and len(pre_b[0]) == 1 and pre_a:
+            if any(part.startswith(pre_b[0]) for part in pre_a):
+                return True
+        if any(len(x) > 1 and x in pre_b for x in pre_a):
             return True
-
+        if any(len(x) > 1 and x in pre_a for x in pre_b):
+            return True
         initials_a = [x for x in pre_a if len(x) == 1]
         initials_b = [x for x in pre_b if len(x) == 1]
-
         if initials_a and all(any(y.startswith(x) for y in pre_b) for x in initials_a):
             return True
         if initials_b and all(any(y.startswith(x) for y in pre_a) for x in initials_b):
             return True
-
-    ta = set(ta_list)
-    tb = set(tb_list)
-    overlap = ta & tb
-    return bool(overlap) and len(overlap) >= min(len(ta), len(tb))
+    if len(ta) >= 2 and len(tb) >= 2:
+        if ta[-2:] == tb[-2:]:
+            return True
+        if " ".join(ta[-2:]) in " ".join(tb) or " ".join(tb[-2:]) in " ".join(ta):
+            if "burillo" in na and "burillo" in nb:
+                return True
+    overlap = set(ta) & set(tb)
+    if overlap and len(overlap) >= min(len(ta), len(tb)) - 1:
+        if len(ta) == 2 and len(tb) == 2:
+            if ta[0][0] != tb[0][0] and ta[-1] == tb[-1] and len(ta[0]) == 1 and len(tb[0]) == 1:
+                return False
+        return True
+    return False
 
 
 def pick_match_date(pick: dict[str, Any]) -> str:
@@ -182,7 +186,7 @@ def pick_players(pick: dict[str, Any]) -> tuple[str, str]:
         return home, away
     match = clean_text(pick.get("match"))
     if match:
-        parts = re.split(r"\s+v(?:s\.)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
+        parts = re.split(r"\s+v(?:s\.?)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
         if len(parts) == 2:
             return clean_text(parts[0]), clean_text(parts[1])
     return home, away

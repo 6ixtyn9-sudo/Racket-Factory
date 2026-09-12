@@ -1417,16 +1417,22 @@ def build_warehouse(
         if col not in warehouse.columns:
             warehouse[col] = ""
 
+    # FIX: Preserve finished result when newly appended live prediction has same match key
+    # Previously keep="last" allowed empty winner to overwrite finished result
     warehouse['p_a_key'] = warehouse['player_a'].apply(player_key)
     warehouse['p_b_key'] = warehouse['player_b'].apply(player_key)
     warehouse['_sorted_players'] = warehouse.apply(
         lambda r: tuple(sorted([r['p_a_key'], r['p_b_key']])), axis=1
     )
-    
+    # Sort so that rows with winner (finished) come last, so keep="last" preserves them
+    # Also prefer rows with odds, and more complete data
+    warehouse['_has_winner'] = warehouse['winner'].astype(str).str.strip().ne("").astype(int)
+    warehouse['_has_odds'] = warehouse['odds_a'].notna().astype(int) + warehouse['odds_b'].notna().astype(int)
+    warehouse = warehouse.sort_values(by=['_has_winner', '_has_odds'], ascending=[True, True])
     warehouse = warehouse.drop_duplicates(
         subset=["match_date", "tour", "tournament", "_sorted_players"], 
         keep="last"
-    ).drop(columns=['p_a_key', 'p_b_key', '_sorted_players'])
+    ).drop(columns=['p_a_key', 'p_b_key', '_sorted_players', '_has_winner', '_has_odds'])
     
     # 2. Multi-Source Prediction Join
     PRIMARY_SOURCES = {"Forebet"}
