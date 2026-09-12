@@ -46,41 +46,8 @@ def normalize_name(v):
         parts = parts[1:]
     return " ".join(parts)
 
-def names_match(a, b) -> bool:
-    str_a, str_b = str(a), str(b)
-    if "/" in str_a and "/" in str_b:
-        parts_a = [p.strip() for p in str_a.split("/")]
-        parts_b = [p.strip() for p in str_b.split("/")]
-        if len(parts_a) == len(parts_b):
-            if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
-                return True
-            if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
-                return True
-    na = normalize_name(a)
-    nb = normalize_name(b)
-    if not na or not nb:
-        return False
-    if na == nb:
-        return True
-    ta = na.split()
-    tb = nb.split()
-    if not ta or not tb:
-        return False
-    if ta[-1] == tb[-1]:
-        pre_a = ta[:-1]
-        pre_b = tb[:-1]
-        if any(len(x) > 1 and x in pre_b for x in pre_a):
-            return True
-        if any(len(x) > 1 and x in pre_a for x in pre_b):
-            return True
-        initials_a = [x for x in pre_a if len(x) == 1]
-        initials_b = [x for x in pre_b if len(x) == 1]
-        if initials_a and all(any(y.startswith(x) for y in pre_b) for x in initials_a):
-            return True
-        if initials_b and all(any(y.startswith(x) for y in pre_a) for x in initials_b):
-            return True
-    overlap = set(ta) & set(tb)
-    return bool(overlap) and len(overlap) >= min(len(ta), len(tb))
+from racketfactory.matching import names_match
+
 
 def load_state():
     if not STATE_FILE.exists():
@@ -105,33 +72,24 @@ def load_warehouse():
 def load_additional_results():
     """Load foretennis_results, forebet_results, predictions with actual_result for settlement."""
     dfs=[]
-    for f in LOCALDATA.glob("foretennis_results_*.csv.gz"):
-        try:
-            df=pd.read_csv(f, low_memory=False)
-            if not df.empty and "winner" in df.columns:
-                dfs.append(df)
-        except Exception:
-            pass
-    for f in LOCALDATA.glob("forebet_results_*.csv.gz"):
-        try:
-            df=pd.read_csv(f, low_memory=False)
-            if not df.empty and "winner" in df.columns:
-                dfs.append(df)
-        except Exception:
-            pass
+    for pattern in ("foretennis_results_*.csv.gz", "forebet_results_*.csv.gz",
+                    "challenger_results_*.csv.gz", "theoddsapi_scores_*.csv.gz",
+                    "oddsportal_*.csv.gz"):
+        for f in LOCALDATA.glob(pattern):
+            try:
+                frame = pd.read_csv(f, low_memory=False)
+                if not frame.empty and "winner" in frame.columns:
+                    dfs.append(frame)
+            except Exception as exc:
+                print(f"Cannot load results {f.name}: {exc}")
     for f in LOCALDATA.glob("predictions_foretennis_*.csv.gz"):
         try:
-            df=pd.read_csv(f, low_memory=False)
+            df=pd.read_csv(f, low_memory=False, dtype={"actual_result": "string"})
             if not df.empty and "actual_result" in df.columns:
                 def winner_from_actual(row):
-                    ar=str(row.get("actual_result") or "").strip()
-                    digits=[int(ch) for ch in ar if ch.isdigit()]
-                    if len(digits)<2:
-                        return None
-                    home,away=digits[0],digits[1]
-                    if home==away:
-                        return None
-                    return str(row.get("player_a") or "") if home>away else str(row.get("player_b") or "")
+                    from racketfactory.results import foretennis_winner_side
+                    side = foretennis_winner_side(row.get("actual_result"))
+                    return row.get(side) if side else None
                 df["winner"]=df.apply(winner_from_actual, axis=1)
                 df=df[df["winner"].notna()]
                 if not df.empty:
@@ -162,8 +120,15 @@ def settle_leg(leg, df, additional_df=None):
         # fallback: try to use selected + opponent unknown
         p_home, p_away = "", ""
 
-    candidates = df
-    additional_candidates = additional_df if additional_df is not None else pd.DataFrame()
+    candidates = pd.concat([df, additional_df if additional_df is not None else pd.DataFrame()], ignore_index=True)
+    # Never grade a rematch from a different date or a selected-player-only match.
+    day = clean_text(leg.get("date"))[:10]
+    if not day or not p_home or not p_away or "match_date" not in candidates:
+        return None
+    day_value = pd.Timestamp(day)
+    dates = pd.to_datetime(candidates["match_date"].astype(str).str[:10], errors="coerce")
+    candidates = candidates[(dates >= day_value) & (dates <= day_value + pd.Timedelta(days=1))]
+    additional_candidates = pd.DataFrame()
 
     def row_match(row):
         a = clean_text(row.get("player_a"))
@@ -193,75 +158,59 @@ def settle_leg(leg, df, additional_df=None):
     if final_rows.empty:
         return None
 
-    # Take first
-    row = final_rows.iloc[0]
-    winner = clean_text(row.get("winner"))
-    won = names_match(winner, selected)
-    return won
+    exact = final_rows[final_rows['match_date'].astype(str).str[:10] == day]
+    if not exact.empty:
+        final_rows = exact
+    elif final_rows['match_date'].astype(str).str[:10].nunique() != 1:
+        return None
+    outcomes = {names_match(clean_text(r.get("winner")), selected)
+                for _, r in final_rows.iterrows()
+                if names_match(r.get("winner"), p_home) or names_match(r.get("winner"), p_away)}
+    if len(outcomes) != 1:
+        return None
+    return outcomes.pop()
 
 def settle_open_slips(state, df, additional_df=None):
     logs = []
     remaining_open = []
     for slip in state.get("open_slips", []):
         date_str = slip.get("date")
-        all_settled = True
-        acca_results = []
-        for acca in slip.get("accas", []):
+        pending, settled = [], []
+        accas = slip.get("accas", [])
+        fallback_stake = slip.get("stake_per_acca_pct") or (slip.get("staked_pct", 0) / len(accas) if accas else 0)
+        for acca in accas:
             legs = acca.get("legs", [])
-            leg_outcomes = []
-            for leg in legs:
-                won = settle_leg(leg, df, additional_df)
-                if won is None:
-                    all_settled = False
-                    leg_outcomes.append(None)
-                else:
-                    leg_outcomes.append(won)
-            # Acca wins only if all legs won and all settled
-            if not all_settled:
-                acca_results.append(None)
-            else:
-                won_acca = all(leg_outcomes)
-                acca_results.append(won_acca)
-
-        if not all_settled:
-            remaining_open.append(slip)
-            logs.append(f"{date_str}: still open ({len(slip.get('accas',[]))} accas)")
+            outcomes = [settle_leg(dict(leg, date=leg.get("date") or date_str), df, additional_df) for leg in legs]
+            stake = float(acca.get("stake_pct", fallback_stake))
+            # A lost leg makes the acca a loss even while other legs remain pending.
+            won = False if False in outcomes else (True if outcomes and all(x is True for x in outcomes) else None)
+            if won is None:
+                pending.append(dict(acca, stake_pct=stake))
+                logs.append(f"{date_str} {acca.get('type', 'acca')}: pending {outcomes.count(None)}/{len(legs)} legs")
+                continue
+            settled.append(dict(acca, won=won, stake_pct=stake, leg_outcomes=outcomes))
+        if pending:
+            remaining_open.append(dict(slip, accas=pending, staked_pct=sum(a['stake_pct'] for a in pending)))
+        if not settled:
             continue
-
-        # All settled, compute PnL
-        staked = slip.get("staked_pct", 0)
-        # Each acca has equal stake
-        per_acca = slip.get("stake_per_acca_pct") or (staked / len(slip.get("accas",[])) if slip.get("accas") else 0)
-        total_return = 0.0
-        wins = 0
-        for acca, won in zip(slip.get("accas", []), acca_results):
-            if won:
-                total_return += per_acca * float(acca.get("odds",1.0))
-                wins += 1
+        staked = sum(a['stake_pct'] for a in settled)
+        total_return = sum(a['stake_pct'] * float(a['odds']) for a in settled if a['won'])
         pnl = total_return - staked
         old_bank = state.get("bank", 100.0)
         new_bank = old_bank + pnl
         state["bank"] = new_bank
-
-        # History
-        hist_entry = {
-            "date": date_str,
-            "staked_pct": staked,
-            "return_pct": total_return,
-            "pnl_pct": pnl,
-            "bank_pct": new_bank,
-            "accas": [
-                {
-                    "odds": a.get("odds"),
-                    "won": bool(w),
-                    "stake_pct": per_acca,
-                    "legs": a.get("legs", [])
-                }
-                for a, w in zip(slip.get("accas", []), acca_results)
-            ]
-        }
-        state["history"].append(hist_entry)
-        logs.append(f"{date_str}: settled {wins}W/{len(acca_results)-wins}L  PnL {pnl:+.1f}%  bank {old_bank:.1f}% -> {new_bank:.1f}%")
+        history = state.setdefault("history", [])
+        entry = next((h for h in history if h.get("date") == date_str), None)
+        if entry is None:
+            entry = dict(date=date_str, staked_pct=0, return_pct=0, pnl_pct=0, accas=[])
+            history.append(entry)
+        entry['accas'].extend(settled)
+        entry['staked_pct'] += staked
+        entry['return_pct'] += total_return
+        entry['pnl_pct'] += pnl
+        entry['bank_pct'] = new_bank
+        entry['complete'] = not pending
+        logs.append(f"{date_str}: settled {len(settled)} accas, {len(pending)} pending; PnL {pnl:+.4f}%, bank {new_bank:.4f}%")
 
         # Check take-profit
         cycle_base = state.get("cycle_base", 100.0)
@@ -289,12 +238,19 @@ def write_performance(state):
 
     history = state.get("history", [])
     accas = [a for h in history for a in h.get("accas", [])]
+    for acca in accas:
+        acca["price_basis"] = "estimated" if any(
+            "NO_ODDS" in str(leg.get("bucket", "")) or leg.get("odds_source") == "ML_Estimated"
+            for leg in acca.get("legs", [])
+        ) else "recorded"
+    estimated = sum(a["price_basis"] == "estimated" for a in accas)
     wins = sum(1 for a in accas if a.get("won"))
     losses = len(accas) - wins
 
     lines = []
     lines.append("AUTO-TICKETS (TENNIS) PERFORMANCE — percentages of capital only")
     lines.append("="*62)
+    lines.append(f"PAPER SIMULATION — {estimated} settled accas contain estimated odds, not verified bookmaker returns")
     lines.append(f"generated {datetime.now().isoformat(timespec='seconds')}")
     lines.append(f"bank {bank:.1f}% of capital (x{multiple:.2f}) · cycle baseline {cycle_base:.1f}% · next take-profit at {next_target:.1f}% (+100% per cycle)")
     if accas:
@@ -305,7 +261,7 @@ def write_performance(state):
     lines.append("")
     lines.append("--- bet-days (most recent first) ---")
     for h in reversed(history[-15:]):
-        acc_str = " ".join(f"@{a['odds']:.2f}{'W' if a['won'] else 'L'}" for a in h.get("accas", []))
+        acc_str = " ".join(f"@{a['odds']:.2f}{'W' if a['won'] else 'L'}{' (estimated)' if a.get('price_basis') == 'estimated' else ''}" for a in h.get("accas", []))
         lines.append(f"  {h['date']}  {acc_str:44s} bank {h['bank_pct']:7.1f}%")
     for e in state.get("events", []):
         lines.append(f"  🔔 {e['date']}: TAKE-PROFIT — +{e['gain_pct']:.1f}% (bank {e['bank_after_pct']:.1f}%, next {e['next_target_pct']:.1f}%)")
@@ -315,6 +271,8 @@ def write_performance(state):
     (LOCALDATA / "auto_tickets_performance.json").write_text(json.dumps({
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "unit": "percent_of_capital",
+        "ledger_type": "paper_simulation",
+        "settled_accas_with_estimated_odds": estimated,
         "base_pct": base,
         "bank_pct": bank,
         "multiple": multiple,
@@ -336,8 +294,10 @@ def main():
     df = load_warehouse()
     additional_df = load_additional_results()
     if not additional_df.empty:
-        print(f"Loaded {len(additional_df)} additional result rows from foretennis/forebet")
-    for line in settle_open_slips(state, df, additional_df):
+        print(f"Loaded {len(additional_df)} additional result rows")
+    logs = settle_open_slips(state, df, additional_df)
+    (LOCALDATA / "auto_tickets_grade.log").write_text("\n".join(logs) + "\n")
+    for line in logs:
         print(line)
     write_performance(state)
     save_state(state)

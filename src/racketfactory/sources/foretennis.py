@@ -24,7 +24,7 @@ def _fetch_page(url: str) -> Optional[str]:
         if resp.status_code != 200:
             logger.warning("ForeTennis returned %d for %s", resp.status_code, url)
             return None
-        if "Just a moment" in resp.text or "challenge" in resp.text.lower():
+        if "Just a moment" in resp.text or any(marker in resp.text.lower() for marker in ("cf-chl-", "challenge-platform", "challenge-error")):
             logger.warning("ForeTennis Cloudflare challenge for %s", url)
             return None
         return resp.text

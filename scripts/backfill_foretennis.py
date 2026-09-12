@@ -29,16 +29,18 @@ logging.basicConfig(
 logger = logging.getLogger("backfill_foretennis")
 
 
-def _winner_from_actual_result(actual_result: object) -> str | None:
-    """Infer winner side from ForeTennis actual_result like '20', '02', '21', '12', '30', '23'."""
-    text = str(actual_result or "").strip()
-    digits = [int(ch) for ch in text if ch.isdigit()]
-    if len(digits) < 2:
-        return None
-    home_sets, away_sets = digits[0], digits[1]
-    if home_sets == away_sets:
-        return None
-    return "player_a" if home_sets > away_sets else "player_b"
+from racketfactory.results import foretennis_winner_side as _winner_from_actual_result
+from racketfactory.results import foretennis_set_totals
+from racketfactory.matching import names_match
+
+
+def oriented_actual_result(pred, player_a):
+    pair = foretennis_set_totals(pred.get("actual_result"))
+    if pair is None:
+        return ""
+    if not names_match(pred.get("player_home"), player_a):
+        pair = pair[::-1]
+    return f"{pair[0]}{pair[1]}"
 
 
 def _result_rows_from_foretennis(df):
@@ -140,13 +142,9 @@ def main():
         parser.error("--tour and --year are required for historical mode")
 
     wh_path = Path(args.warehouse)
-    if not wh_path.exists():
-        logger.error(f"Warehouse not found at {wh_path}")
-        return
-
-    logger.info(f"Loading warehouse from {wh_path}")
-    wh = pd.read_csv(wh_path, compression="gzip", low_memory=False)
-    wh["match_date"] = pd.to_datetime(wh["match_date"]).dt.strftime("%Y-%m-%d")
+    wh = pd.read_csv(wh_path, compression="gzip", low_memory=False) if wh_path.exists() else pd.DataFrame()
+    if not wh.empty:
+        wh["match_date"] = pd.to_datetime(wh["match_date"]).dt.strftime("%Y-%m-%d")
 
     # Build pred_index dictionary
     pred_index = {}
@@ -190,7 +188,7 @@ def main():
                         "prediction_prob": mapped.get("prediction_prob"),
                         "source": "ForeTennis",
                         "match_id": idx,  # Keep for deduplication
-                        "actual_result": p.get("actual_result"),
+                        "actual_result": oriented_actual_result(p, player_a),
                         "prediction_correct": p.get("prediction_correct"),
                     })
                     break
@@ -223,7 +221,7 @@ def main():
                             "prediction_prob": mapped.get("prediction_prob"),
                             "source": "ForeTennis",
                             "match_id": idx,
-                            "actual_result": p.get("actual_result"),
+                            "actual_result": oriented_actual_result(p, player_a),
                             "prediction_correct": p.get("prediction_correct"),
                         })
                         break

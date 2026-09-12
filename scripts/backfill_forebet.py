@@ -27,6 +27,7 @@ import argparse
 import logging
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from collections import defaultdict
@@ -143,8 +144,8 @@ def mode_tournament(args) -> int:
                 "player_b": row["player_b"],
                 "predicted_winner": mapped["predicted_winner"],
                 "prediction_prob": mapped["prediction_prob"],
-                "odds_a": pred.get("odds_home") if mapped["predicted_winner"] == "player_a" else pred.get("odds_away"),
-                "odds_b": pred.get("odds_away") if mapped["predicted_winner"] == "player_a" else pred.get("odds_home"),
+                "odds_a": pred.get("odds_home") if name_signature(pred["player_home"]) == name_signature(row["player_a"]) else pred.get("odds_away"),
+                "odds_b": pred.get("odds_away") if name_signature(pred["player_home"]) == name_signature(row["player_a"]) else pred.get("odds_home"),
                 "source": "Forebet",
             })
             matched_count += 1
@@ -191,16 +192,20 @@ def _map_forebet_result_side(p: dict, player_a: str, player_b: str) -> str | Non
 def _copy_forebet_result_fields(out: dict, p: dict, player_a: str, player_b: str) -> dict:
     """Attach Forebet result fields to a prediction row."""
     result_side = _map_forebet_result_side(p, player_a, player_b)
+    out["source_url"] = p.get("source_url")
     out["result_status"] = p.get("result_status")
     out["result_score"] = p.get("result_score")
+    reversed_order = name_signature(str(p.get("player_home") or "")) == name_signature(player_b)
+    if reversed_order and out["result_score"]:
+        out["result_score"] = " ".join("-".join(token.split("-")[::-1]) for token in str(out["result_score"]).split())
     out["result_winner"] = result_side
     out["result_winner_name"] = (
         player_a if result_side == "player_a"
         else player_b if result_side == "player_b"
         else p.get("result_winner_name")
     )
-    out["result_sets_home"] = p.get("result_sets_home")
-    out["result_sets_away"] = p.get("result_sets_away")
+    out["result_sets_home"] = p.get("result_sets_away" if reversed_order else "result_sets_home")
+    out["result_sets_away"] = p.get("result_sets_home" if reversed_order else "result_sets_away")
     return out
 
 
@@ -210,6 +215,8 @@ def _forebet_result_rows_from_predictions(predictions: list[dict]) -> pd.DataFra
 
     rows = []
     for p in predictions:
+        if str(p.get("result_status") or "").upper() != "FT":
+            continue
         side = str(p.get("result_winner") or "").strip()
         if side not in {"player_a", "player_b"}:
             continue
@@ -237,6 +244,7 @@ def _forebet_result_rows_from_predictions(predictions: list[dict]) -> pd.DataFra
             "odds_b": p.get("odds_b"),
             "bookmaker": "Forebet",
             "source": "Forebet_results",
+            "source_url": p.get("source_url"),
             "captured_at": datetime.now().isoformat(timespec="seconds"),
             "oddsportal_url": "",
             "_surface": "",
@@ -287,6 +295,7 @@ def mode_daily(args) -> int:
     """Daily capture using predictions-yesterday / today / tomorrow pages."""
     predictor = ForebetPredictor()
     predictions: list[dict] = []
+    diagnostics = []
 
     warehouse_df = None
     if args.warehouse and Path(args.warehouse).exists():
@@ -298,6 +307,10 @@ def mode_daily(args) -> int:
     for day in args.days:
         logger.info("Fetching predictions-%s ...", day)
         preds = predictor.fetch_daily_predictions(day)
+        diagnostics.append(dict(day=day, parsed=len(preds),
+            with_date=sum(bool(p.get("match_date")) for p in preds),
+            with_two_prices=sum(p.get("odds_home") is not None and p.get("odds_away") is not None for p in preds),
+            finished=sum(p.get("result_status") == "FT" for p in preds)))
         if not preds:
             logger.warning("No predictions returned for %s.", day)
             continue
@@ -332,8 +345,8 @@ def mode_daily(args) -> int:
                                 "player_b": row["player_b"],
                                 "predicted_winner": mapped["predicted_winner"],
                                 "prediction_prob": mapped["prediction_prob"],
-                                "odds_a": p.get("odds_home") if mapped["predicted_winner"] == "player_a" else p.get("odds_away"),
-                                "odds_b": p.get("odds_away") if mapped["predicted_winner"] == "player_a" else p.get("odds_home"),
+                                "odds_a": p.get("odds_home") if name_signature(p["player_home"]) == name_signature(row["player_a"]) else p.get("odds_away"),
+                                "odds_b": p.get("odds_away") if name_signature(p["player_home"]) == name_signature(row["player_a"]) else p.get("odds_home"),
                                 "source": "Forebet",
                             }
                             predictions.append(_copy_forebet_result_fields(row_out, p, row["player_a"], row["player_b"]))
@@ -376,6 +389,14 @@ def mode_daily(args) -> int:
 
         time.sleep(args.delay)
 
+    import json
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "source_capture_forebet.json").write_text(json.dumps({
+        "captured_at": datetime.now().isoformat(), "pages": diagnostics,
+        "stored_predictions": len(predictions),
+        "note": "parsed=0 may mean fetch/block/selector failure; inspect run warnings"
+    }, indent=2))
     _write_predictions(predictions, args.output_dir)
 
     written_results = _write_forebet_result_rows(predictions, Path(args.output_dir))

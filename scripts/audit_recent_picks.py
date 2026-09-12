@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import re
 import unicodedata
 from collections import defaultdict
@@ -20,6 +21,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
 LOCALDATA = ROOT / "localdata"
 WAREHOUSE = LOCALDATA / "warehouse.csv.gz"
 DEFAULT_LOCAL_TZ = "Africa/Johannesburg"
@@ -46,6 +48,9 @@ class SettledPick:
     selected_won_set2: bool | None = None
     selected_won_set3: bool | None = None
     ledger_kind: str = "official"
+    result_date: str = ""
+    result_source: str = ""
+    result_url: str = ""
 
 
 def local_today() -> str:
@@ -108,60 +113,7 @@ def surname_tail(value: Any) -> tuple[str, ...]:
     return tuple(toks[-2:]) if len(toks) >= 2 else (toks[-1],)
 
 
-def names_match(a: Any, b: Any) -> bool:
-    # Handle doubles pairs (slash-separated)
-    str_a, str_b = str(a), str(b)
-    if "/" in str_a and "/" in str_b:
-        parts_a = [p.strip() for p in str_a.split("/")]
-        parts_b = [p.strip() for p in str_b.split("/")]
-        if len(parts_a) == len(parts_b):
-            if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
-                return True
-            # Try reversed order
-            if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
-                return True
-    na = normalize_name(a)
-    nb = normalize_name(b)
-    if not na or not nb:
-        return False
-    if na == nb:
-        return True
-    if surname_tail(a) and surname_tail(a) == surname_tail(b):
-        return True
-
-    ta_list = [t for t in na.split() if t and t != "/"]
-    tb_list = [t for t in nb.split() if t and t != "/"]
-    if not ta_list or not tb_list:
-        return False
-
-    # Initial-aware matching for source aliases:
-    #   "J. M. Cerundolo"  <-> "Juan Manuel Cerundolo"
-    #   "A. Davidovich Fokina" <-> "Alejandro Davidovich Fokina"
-    #
-    # Require the final surname token to agree, then allow preceding initials
-    # to match full forenames/middle names by first letter.  This is deliberately
-    # narrower than pure surname matching to avoid merging different players
-    # who share a common surname.
-    if ta_list[-1] == tb_list[-1]:
-        pre_a = ta_list[:-1]
-        pre_b = tb_list[:-1]
-
-        full_overlap = {x for x in pre_a if len(x) > 1} & {x for x in pre_b if len(x) > 1}
-        if full_overlap:
-            return True
-
-        initials_a = [x for x in pre_a if len(x) == 1]
-        initials_b = [x for x in pre_b if len(x) == 1]
-
-        if initials_a and all(any(y.startswith(x) for y in pre_b) for x in initials_a):
-            return True
-        if initials_b and all(any(y.startswith(x) for y in pre_a) for x in initials_b):
-            return True
-
-    ta = set(ta_list)
-    tb = set(tb_list)
-    overlap = ta & tb
-    return bool(overlap) and len(overlap) >= min(len(ta), len(tb))
+from racketfactory.matching import names_match
 
 
 def pick_match_date(pick: dict[str, Any]) -> str:
@@ -182,7 +134,7 @@ def pick_players(pick: dict[str, Any]) -> tuple[str, str]:
         return home, away
     match = clean_text(pick.get("match"))
     if match:
-        parts = re.split(r"\s+v(?:s\.)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
+        parts = re.split(r"\s+v(?:s\.?)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
         if len(parts) == 2:
             return clean_text(parts[0]), clean_text(parts[1])
     return home, away
@@ -245,8 +197,6 @@ def load_archived_picks(start: str, end: str, *, ledger_kind: str = "official") 
 
 
 def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
-    if not warehouse_path.exists():
-        return pd.DataFrame()
     try:
         df=pd.read_csv(warehouse_path, low_memory=False)
     except Exception:
@@ -255,7 +205,7 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
     try:
         localdata=warehouse_path.parent
         add=[]
-        for pattern in ["foretennis_results_*.csv.gz", "forebet_results_*.csv.gz", "challenger_results_*.csv.gz", "theoddsapi_scores_*.csv.gz"]:
+        for pattern in ["foretennis_results_*.csv.gz", "forebet_results_*.csv.gz", "challenger_results_*.csv.gz", "theoddsapi_scores_*.csv.gz", "oddsportal_*.csv.gz"]:
             for f in localdata.glob(pattern):
                 try:
                     adf=pd.read_csv(f, low_memory=False)
@@ -266,17 +216,12 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
         # Also load predictions_foretennis with actual_result as fallback winners
         for f in localdata.glob("predictions_foretennis_*.csv.gz"):
             try:
-                adf=pd.read_csv(f, low_memory=False)
+                adf=pd.read_csv(f, low_memory=False, dtype={"actual_result": "string"})
                 if not adf.empty and "actual_result" in adf.columns:
                     def winner_from_actual(row):
-                        ar=str(row.get("actual_result") or "").strip()
-                        digits=[int(ch) for ch in ar if ch.isdigit()]
-                        if len(digits)<2:
-                            return None
-                        home,away=digits[0],digits[1]
-                        if home==away:
-                            return None
-                        return str(row.get("player_a") or "") if home>away else str(row.get("player_b") or "")
+                        from racketfactory.results import foretennis_winner_side
+                        side = foretennis_winner_side(row.get("actual_result"))
+                        return row.get(side) if side else None
                     adf["winner"]=adf.apply(winner_from_actual, axis=1)
                     adf=adf[adf["winner"].notna() & (adf["winner"].astype(str).str.strip()!="")]
                     if not adf.empty:
@@ -641,6 +586,9 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
         match=str(pick.get("match") or f"{player_home} vs {player_away}"),
         selected_player=selected_player,
         winner=winner,
+        result_date=clean_text(row.get("match_date"))[:10],
+        result_source=clean_text(row.get("source")),
+        result_url=clean_text(row.get("source_url")),
         won=won,
         odds=odds,
         pnl=pnl,
@@ -704,20 +652,30 @@ def build_report(
     archived_dates = sorted({str(p.get("date") or "")[:10] for p in picks if p.get("date")})
     today_local = local_today()
     same_day_excluded = 0
+    pick_rows = []
 
     for pick in picks:
         pick_date = str(pick.get("date") or "")[:10]
+        detail = {key: pick.get(key) for key in ("date", "match", "selected_player", "tour", "source")}
+        pick_rows.append(detail)
         if not include_same_day and pick_date >= today_local:
+            detail["status"] = "excluded_same_day"
             same_day_excluded += 1
             continue
         settled = settle_pick(pick, df)
         if settled is not None:
             settled_rows.append(settled)
+            detail["status"] = "won" if settled.won else "lost"
+            detail.update(result_date=settled.result_date, result_source=settled.result_source, result_url=settled.result_url, odds=settled.odds)
+        else:
+            detail["status"] = "pending"
 
     return {
         "start": start,
         "end": end,
         "archived_pick_rows": len(picks),
+        "pending_picks": sum(r["status"] == "pending" for r in pick_rows),
+        "picks": pick_rows,
         "archived_pick_dates": archived_dates,
         "same_day_excluded": same_day_excluded,
         "same_day_cutoff": today_local,
@@ -742,6 +700,7 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         "",
         f"- archived pick rows: {report.get('archived_pick_rows', 0)}",
         f"- archived pick dates: {len(report.get('archived_pick_dates', []))}",
+        f"- pending picks: {report.get('pending_picks', 0)}",
         f"- settled picks: {overall.get('settled_picks', 0)}",
         f"- wins: {overall.get('wins', 0)}",
         f"- hit rate: {overall.get('hit_rate')}",
@@ -809,6 +768,10 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
             lines.append(
                 f"- `{key}`: settled={summary.get('settled_picks', 0)}, wins={summary.get('wins', 0)}, hit_rate={summary.get('hit_rate')}, ROI={summary.get('roi')}"
             )
+    lines.extend(["", "## Archived picks", "", "| Date | Match | Selection | Status | Result source |", "|---|---|---|---|---|"])
+    for pick in report.get("picks", []):
+        cells = [str(pick.get(k) or "").replace("|", "\\|").replace("\n", " ") for k in ("date", "match", "selected_player", "status", "result_source")]
+        lines.append("| " + " | ".join(cells) + " |")
     path.write_text("\n".join(lines) + "\n")
 
 

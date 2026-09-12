@@ -236,7 +236,7 @@ def forebet_day_for_target(target_date: str) -> str:
         return "yesterday"
     if target == today + timedelta(days=1):
         return "tomorrow"
-    return "today"
+    return "today" if target == today else target.isoformat()
 
 
 def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.DataFrame:
@@ -265,6 +265,8 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
         out["_odds_source"] = ""
 
     odds_rows = fetch_the_odds_api_rows(target_date)
+    from racketfactory.sources.tennisexplorer import load_prematch_odds
+    odds_rows += load_prematch_odds(ROOT / "localdata", target_date)
     if not odds_rows:
         logger.info("No The Odds API odds available for fallback card %s; trying validated scraped fallback odds.", target_date)
 
@@ -277,6 +279,8 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
             continue
 
         for odds_row in odds_rows:
+            if str(odds_row.get("match_date") or target_date)[:10] != str(target_date)[:10]:
+                continue
             api_home = str(odds_row.get("player_home") or "").strip()
             api_away = str(odds_row.get("player_away") or "").strip()
 
@@ -292,9 +296,7 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
                 odds_home = odds_row.get("odds_away")
                 odds_away = odds_row.get("odds_home")
 
-            odds_home, odds_away = align_odds_to_probabilities(
-                row.get("prob_home"), row.get("prob_away"), odds_home, odds_away
-            )
+            odds_home, odds_away = coerce_decimal_odds(odds_home), coerce_decimal_odds(odds_away)
             if not valid_two_way_decimal_pair(odds_home, odds_away):
                 continue
 
@@ -302,7 +304,7 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
             out.at[idx, "odds_away"] = odds_away
             out.at[idx, "odds_a"] = odds_home
             out.at[idx, "odds_b"] = odds_away
-            out.at[idx, "_odds_source"] = "TheOddsAPI"
+            out.at[idx, "_odds_source"] = odds_row.get("source", "TheOddsAPI")
             out.at[idx, "_is_live"] = True
             out.at[idx, "_comment"] = "forecast_upcoming_api_priced"
             api_matched += 1
@@ -310,7 +312,7 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
 
     fallback_matched = 0
     for idx, row in out.iterrows():
-        if str(row.get("_odds_source", "") or "") == "TheOddsAPI":
+        if str(row.get("_odds_source", "") or "") in {"TheOddsAPI", "TennisExplorer"}:
             continue
 
         scraped_home, scraped_away = align_odds_to_probabilities(
@@ -574,26 +576,18 @@ def row_has_live_flag(row: pd.Series) -> bool:
 
 
 def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: object) -> tuple[float | None, str | None]:
-    """Return selected-side odds, repairing likely live side inversions."""
+    """Return the price attached to the selected player, never infer sides from probability."""
     odds_val = odds_for_selected_side(row, selected_side)
     if odds_val is None:
         return None, "missing selected-side odds"
 
     if row_has_live_flag(row):
         odds_source = str(row.get("_odds_source", "") or "")
-        usable_live_sources = {"TheOddsAPI", "ScrapedFallback"}
+        usable_live_sources = {"TheOddsAPI", "ScrapedFallback", "TennisExplorer"}
         if odds_source not in usable_live_sources:
             return None, "missing usable live odds"
         if not valid_two_way_decimal_pair(row.get("odds_a"), row.get("odds_b")):
             return None, f"incomplete/invalid {odds_source} live odds pair"
-        side = normalize_side_token(selected_side)
-        other_odds = coerce_decimal_odds(row.get("odds_b" if side == "player_a" else "odds_a"))
-        if (
-            other_odds is not None
-            and odds_suspicious_for_probability(probability, odds_val)
-            and not odds_suspicious_for_probability(probability, other_odds)
-        ):
-            return other_odds, f"corrected likely side-inverted {odds_source} live odds"
 
     return odds_val, None
 
@@ -603,7 +597,7 @@ LOCAL_ODDSPORTAL_ODDS_CACHE: dict[str, list[dict]] = {}
 
 def _split_match_text_for_odds(match: object) -> tuple[str, str]:
     text = str(match or "").strip()
-    parts = re.split(r"\s+v(?:s\.)?\s+", text, maxsplit=1, flags=re.IGNORECASE)
+    parts = re.split(r"\s+v(?:s\.?)?\s+", text, maxsplit=1, flags=re.IGNORECASE)
     if len(parts) == 2:
         return parts[0].strip(), parts[1].strip()
     return "", ""
@@ -763,6 +757,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
 
     return {
         "match": f"{home_name} vs {away_name}",
+        "source_urls": row.get("source_urls", []),
         "date": str(row.get("match_date", target_date)),
         "match_time": str(time_val),
         "kickoff": str(time_val),
@@ -928,7 +923,7 @@ def _pick_players_for_dedupe(pick: dict) -> tuple[str, str]:
         return home, away
 
     match = str(pick.get("match") or "").strip()
-    parts = re.split(r"\s+v(?:s\.)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
+    parts = re.split(r"\s+v(?:s\.?)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
     if len(parts) == 2:
         return parts[0].strip(), parts[1].strip()
 

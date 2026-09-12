@@ -431,9 +431,11 @@ class ForebetPredictor:
     # ------------------------------------------------------------------
     def _fetch_daily_page(self, day: str = "today") -> Optional[str]:
         """Fetch predictions-yesterday, predictions-today, or predictions-tomorrow."""
-        if day not in ("yesterday", "today", "tomorrow"):
-            raise ValueError("day must be 'yesterday', 'today', or 'tomorrow'")
-        url = f"{self.BASE_URL}/predictions-{day}"
+        if day in ("yesterday", "today", "tomorrow"):
+            url = f"{self.BASE_URL}/predictions-{day}"
+        else:
+            datetime.strptime(day, "%Y-%m-%d")
+            url = f"{self.BASE_URL}/predictions/{day}"
         return self._fetch(url)
 
     # ------------------------------------------------------------------
@@ -475,12 +477,17 @@ class ForebetPredictor:
             match_time = ""
             if date_span:
                 date_text = date_span.get_text(strip=True)
-                try:
-                    dt = datetime.strptime(date_text, "%d/%m/%Y %H:%M")
-                    match_date = dt.strftime("%Y-%m-%d")
-                    match_time = dt.strftime("%H:%M")
-                except ValueError:
-                    match_date = None
+                # Locale changed: current English pages use 09/11/2026 6:15 AM.
+                # Never read this as 9 November or discard it as an invalid date.
+                formats = (["%m/%d/%Y %I:%M %p"] if re.search(r"\b[AP]M\b", date_text, re.I)
+                           else ["%d/%m/%Y %H:%M", "%Y-%m-%d %H:%M"])
+                for fmt in formats:
+                    try:
+                        dt = datetime.strptime(date_text.upper(), fmt)
+                        match_date, match_time = dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
+                        break
+                    except ValueError:
+                        continue
 
             # --- Tournament -----------------------------------------------
             tournament_name = None
@@ -594,6 +601,7 @@ class ForebetPredictor:
                 "result_sets_home": result_info.get("result_sets_home"),
                 "result_sets_away": result_info.get("result_sets_away"),
                 "source": "Forebet",
+                "source_url": href,
             })
 
         logger.info("Parsed %d predictions from Forebet page", len(results))

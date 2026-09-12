@@ -40,7 +40,7 @@ def test_live_odds_alignment_identifies_likely_side_inversions():
     assert not odds_suspicious_for_probability(82, 1.02)
 
 
-def test_collapse_live_card_repairs_side_inverted_live_odds():
+def test_collapse_live_card_preserves_named_prices_despite_model_disagreement():
     from racketfactory.warehouse import collapse_live_card
 
     card = pd.DataFrame([{
@@ -63,8 +63,8 @@ def test_collapse_live_card_repairs_side_inverted_live_odds():
     collapsed = collapse_live_card(card)
 
     assert len(collapsed) == 1
-    assert collapsed.loc[0, "odds_home"] == 1.02
-    assert collapsed.loc[0, "odds_away"] == 9.50
+    assert collapsed.loc[0, "odds_home"] == 9.50
+    assert collapsed.loc[0, "odds_away"] == 1.02
 
 
 def test_collapse_live_card_reorients_reversed_source_before_aggregating_odds():
@@ -130,7 +130,7 @@ def test_enrich_live_card_uses_validated_scraped_fallback_when_api_missing(monke
         "predicted_winner": "1",
         "prob_home": 79,
         "prob_away": 21,
-        # Valid pair, but side-inverted relative to the prediction probabilities.
+        # Valid labelled pair. Model disagreement does not prove side inversion.
         "odds_home": 9.50,
         "odds_away": 1.02,
     }])
@@ -140,8 +140,8 @@ def test_enrich_live_card_uses_validated_scraped_fallback_when_api_missing(monke
     assert len(enriched) == 1
     assert enriched.loc[0, "odds_source"] == "ScrapedFallback"
     assert enriched.loc[0, "odds_bookmaker"] == "Validated scrape"
-    assert enriched.loc[0, "odds_home"] == 1.02
-    assert enriched.loc[0, "odds_away"] == 9.50
+    assert enriched.loc[0, "odds_home"] == 9.50
+    assert enriched.loc[0, "odds_away"] == 1.02
     assert enriched.loc[0, "api_odds_home"] is pd.NA
     assert enriched.loc[0, "scraped_odds_home"] == 9.50
     assert enriched.loc[0, "scraped_odds_away"] == 1.02

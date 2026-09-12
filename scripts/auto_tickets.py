@@ -295,7 +295,7 @@ def build_accas(pool):
             for leg in chunk:
                 if leg.get("odds") is None:
                     leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+                    leg["odds_source"] = "ML_Estimated"
             accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg"})
     if len(value_odds) >= 4:
         chunk = value_odds[2:4]
@@ -304,7 +304,7 @@ def build_accas(pool):
             for leg in chunk:
                 if leg.get("odds") is None:
                     leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+                    leg["odds_source"] = "ML_Estimated"
             accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg_2"})
     boost_picks = [p for p in pool_sorted if str(p.get("ml_verdict"))=="BOOST"][:6]
     if len(boost_picks) >= 3:
@@ -314,7 +314,7 @@ def build_accas(pool):
             for leg in chunk:
                 if leg.get("odds") is None:
                     leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+                    leg["odds_source"] = "ML_Estimated"
             accas.append({"legs": chunk, "odds": round(prod,2), "type": "high_strength_3leg"})
     if len(value_odds) >= 6:
         chunk = value_odds[4:6]
@@ -323,7 +323,7 @@ def build_accas(pool):
             for leg in chunk:
                 if leg.get("odds") is None:
                     leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+                    leg["odds_source"] = "ML_Estimated"
             accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg_3"})
     if not accas and len(pool_sorted) >= 2:
         chunk1 = pool_sorted[:2]
@@ -331,7 +331,7 @@ def build_accas(pool):
         for leg in chunk1:
             if leg.get("odds") is None:
                 leg["odds"] = estimate_odds_from_confidence(leg)
-                leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+                leg["odds_source"] = "ML_Estimated"
         accas.append({"legs": chunk1, "odds": round(prod1,2), "type": "fallback_2leg"})
         if len(pool_sorted) >= 4:
             chunk2 = pool_sorted[2:4]
@@ -339,7 +339,7 @@ def build_accas(pool):
             for leg in chunk2:
                 if leg.get("odds") is None:
                     leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+                    leg["odds_source"] = "ML_Estimated"
             accas.append({"legs": chunk2, "odds": round(prod2,2), "type": "fallback_2leg_2"})
     accas = accas[:MAX_ACCAS]
     return accas, pool_sorted
@@ -409,6 +409,35 @@ def format_tickets_txt(target_date, accas, state, skipped_info):
     lines.append(f"Total staked: {total_stake:.2f}% of bank")
     return "\n".join(lines)
 
+def reconstruct_open_slips(state, target_date):
+    """Restore missing archived days relative to the requested run, not wall time."""
+    existing = {s.get("date") for s in state.get("open_slips", []) + state.get("history", [])}
+    logs = []
+    for days_back in range(1, 8):
+        day = (date.fromisoformat(target_date) - timedelta(days=days_back)).isoformat()
+        path = LOCALDATA / f"auto_tickets_{day}.json"
+        if day in existing:
+            logs.append(f"{day}: already tracked")
+            continue
+        if not path.exists():
+            logs.append(f"{day}: archive missing")
+            continue
+        try:
+            data = json.loads(path.read_text())
+            if data.get("date") != day or not data.get("accas"):
+                logs.append(f"{day}: empty or mismatched archive")
+                continue
+            state.setdefault("open_slips", []).append(data)
+            existing.add(day)
+            logs.append(f"{day}: reconstructed {len(data['accas'])} accas")
+        except (ValueError, OSError) as exc:
+            logs.append(f"{day}: reconstruction failed: {exc}")
+    LOCALDATA.mkdir(parents=True, exist_ok=True)
+    (LOCALDATA / "auto_tickets_reconstruct.log").write_text("\n".join(logs) + "\n")
+    for line in logs:
+        print(line)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", default=None)
@@ -424,6 +453,13 @@ def main():
         skipped = [(p, "paper_late_included") for p in playable if p not in kept]
     accas, sorted_pool = build_accas(kept)
     state = load_state()
+    tracked = any(s.get("date") == target_date for s in state.get("open_slips", []))
+    graded = any(s.get("date") == target_date for s in state.get("history", []))
+    if graded or (tracked and (now.hour >= FREEZE_HOUR or now.hour < GENERATE_HOUR_START)):
+        reconstruct_open_slips(state, target_date)
+        save_state(state)
+        print(f"Keeping tracked tickets for {target_date}; state saved")
+        return
     bank = state.get("bank", 100.0)
     total_stake = bank * STAKE_FRAC if accas else 0
     weights = []
@@ -456,61 +492,7 @@ def main():
     (LOCALDATA / f"auto_tickets_{target_date}.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
     (LOCALDATA / "auto_tickets_today.json").write_text(json.dumps(out, indent=2))
     (LOCALDATA / "auto_tickets_today.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
-    # --- RECONSTRUCT missing historical open_slips (Edge parity) ---
-    try:
-        from datetime import timedelta
-        import json as _json
-        existing_dates = set(s.get("date") for s in state.get("open_slips", [])) | set(h.get("date") for h in state.get("history", []))
-        print(f"Reconstruct check: existing_dates={existing_dates}, open_slips count={len(state.get('open_slips',[]))}, history count={len(state.get('history',[]))}")
-        # List recent auto_tickets files
-        try:
-            recent_files = sorted(LOCALDATA.glob("auto_tickets_20*.json"))[-10:]
-            print(f"Recent auto_tickets files: {[f.name for f in recent_files]}")
-        except Exception as e:
-            print(f"Failed to list files: {e}")
-        reconstructed = []
-        for days_back in range(1, 8):
-            d = (now.date() - timedelta(days=days_back)).isoformat()
-            if d in existing_dates:
-                print(f"  {d} already in existing_dates, skipping")
-                continue
-            f = LOCALDATA / f"auto_tickets_{d}.json"
-            exists = f.exists()
-            print(f"  Checking {d}: file exists={exists}")
-            if exists:
-                try:
-                    data = _json.loads(f.read_text())
-                    has_accas = bool(data.get("accas"))
-                    print(f"    {d} has_accas={has_accas}, accas count={len(data.get('accas',[]))}")
-                    if has_accas:
-                        slip = {
-                            "date": d,
-                            "generated_at": data.get("generated_at") or f"{d}T00:00:00",
-                            "accas": data.get("accas", []),
-                            "staked_pct": data.get("staked_pct", 0),
-                            "stake_per_acca_pct": data.get("stake_per_acca_pct", 0),
-                        }
-                        reconstructed.append(slip)
-                except Exception as e:
-                    print(f"    {d} failed to load: {e}")
-        if reconstructed:
-            print(f"Reconstructed {len(reconstructed)} missing historical open_slips from auto_tickets_*.json for settlement: {[s['date'] for s in reconstructed]}")
-            state["open_slips"].extend(reconstructed)
-            # Write log file that gets committed for debugging (since GH logs fail to fetch via API)
-            try:
-                (LOCALDATA / "auto_tickets_reconstruct.log").write_text(f"{now.isoformat()}: reconstructed {[s['date'] for s in reconstructed]} existing_dates={existing_dates}\n" + "\n".join([f"{s['date']}: {len(s.get('accas',[]))} accas" for s in reconstructed]) + "\n")
-            except Exception:
-                pass
-        else:
-            print(f"No historical slips reconstructed")
-            try:
-                (LOCALDATA / "auto_tickets_reconstruct.log").write_text(f"{now.isoformat()}: no reconstruct existing_dates={existing_dates} files={[f.name for f in sorted(LOCALDATA.glob('auto_tickets_20*.json'))[-10:]]}\n")
-            except Exception:
-                pass
-    except Exception as e:
-        print(f"Reconstruct failed: {e}")
-        import traceback
-        traceback.print_exc()
+    reconstruct_open_slips(state, target_date)
     # Update state open_slips so grade can settle
     existing_today = [s for s in state.get("open_slips", []) if s.get("date") == target_date]
     if existing_today and is_frozen:
@@ -527,7 +509,7 @@ def main():
             }
             state["open_slips"].append(new_slip)
             print(f"Added open slip for {target_date} with {len(accas_out)} accas to state")
-        save_state(state)
+    save_state(state)
     print(f"Auto tickets for {target_date}: {len(accas)} accas, {len(kept)} playable, {len(playable)} total playable, {len(picks)} total picks")
     for acca in accas:
         print(f"  {acca.get('type')} @ {acca.get('odds')} legs {len(acca.get('legs',[]))}")

@@ -8,6 +8,7 @@ import re
 from bs4 import BeautifulSoup
 from typing import Any, Optional
 from datetime import date
+from urllib.parse import urljoin
 from curl_cffi import requests
 
 from racketfactory.entities import normalize_player
@@ -30,11 +31,13 @@ class PredixSportPredictor:
             return []
 
         soup = BeautifulSoup(resp.text, 'html.parser')
+        updated = re.search(r"Last updated:\s*(\d{4}-\d{2}-\d{2})", soup.get_text(" ", strip=True))
+        published_date = updated.group(1) if updated else None
         links = [a['href'] for a in soup.find_all('a', href=True) if '/tennis/' in a['href'] and '.html' in a['href']]
         
         results = []
         for link in set(links):
-            match_url = self.base_url + link
+            match_url = urljoin(self.base_url, link)
             try:
                 r = requests.get(match_url, impersonate="chrome133a", timeout=20)
                 if r.status_code != 200:
@@ -44,9 +47,11 @@ class PredixSportPredictor:
                 players = [p.text.strip() for p in s.find_all('h2', class_='player-name')]
                 probs = [p.text.strip().replace('%', '') for p in s.find_all('div', class_='win-probability')]
                 
-                if len(players) == 2 and len(probs) == 2 and probs[0].isdigit() and probs[1].isdigit():
+                if len(players) == 2 and len(probs) == 2 and all(re.fullmatch(r'\d+(?:\.\d+)?', p) for p in probs):
                     p1, p2 = players[0], players[1]
-                    prob1, prob2 = int(probs[0]), int(probs[1])
+                    prob1, prob2 = float(probs[0]), float(probs[1])
+                    if not (0 <= prob1 <= 100 and 0 <= prob2 <= 100):
+                        continue
 
                     main = s.find('div', class_='main-content') or s.find('div', class_='container')
                     main_text = " ".join(main.get_text(" ", strip=True).split()) if main else ""
@@ -71,24 +76,12 @@ class PredixSportPredictor:
                         if m2:
                             tournament = m2.group(1).strip()
 
-                    # Robustly extract bookmaker odds across all containers and tags
-                    odds_home, odds_away = None, None
-                    for tag in s.find_all(["div", "span", "button", "a"]):
-                        text = tag.get_text(strip=True)
-                        cls_str = str(tag.get("class", [])).lower()
-                        if any(w in cls_str for w in ("odds", "odd", "bet", "price", "val", "book")):
-                            matches = re.findall(r"\b([1-9]\.\d{1,3})\b", text)
-                            if len(matches) >= 2:
-                                odds_home, odds_away = float(matches[0]), float(matches[1])
-                                break
-                            elif len(matches) == 1:
-                                if odds_home is None: odds_home = float(matches[0])
-                                elif odds_away is None: odds_away = float(matches[0])
-
-                    if odds_home is None or odds_away is None:
-                        matches = re.findall(r"\b([1-9]\.\d{1,3})\b", main_text)
-                        if len(matches) >= 2:
-                            odds_home, odds_away = float(matches[0]), float(matches[1])
+                    # Probabilities, predicted games and aces are not market odds.
+                    # Only explicit price elements may supply decimal quotes.
+                    price_tags = s.select(".odds, .odd, .price")
+                    prices = [float(t.get_text(strip=True)) for t in price_tags
+                              if re.fullmatch(r"\d+\.\d+", t.get_text(strip=True))]
+                    odds_home, odds_away = prices if len(prices) == 2 else (None, None)
 
                     winner = p1 if prob1 >= prob2 else p2
                     if not any(r["player_home"] == p1 for r in results):
@@ -99,8 +92,8 @@ class PredixSportPredictor:
                         # generated date for compatibility, but mark it LOW confidence so
                         # downstream pick hygiene does not treat PredixSport-only rows as
                         # actionable same-day fixtures.
-                        "match_date": date.today().isoformat(),
-                        "predix_generated_date": date.today().isoformat(),
+                        "match_date": published_date or "",
+                        "predix_generated_date": published_date or "",
                         "date_confidence": "LOW",
                         "scheduled_date_source": "PredixSportGeneratedDate",
                         "date_warning": "PredixSport tennis date is not confirmed actual play date",
@@ -118,7 +111,8 @@ class PredixSportPredictor:
                         "surface": surface,
                         "event_level": series,
                         "event_text": main_text[:500],
-                        "source": "PredixSport"
+                        "source": "PredixSport",
+                        "source_url": match_url
                     })
             except Exception as e:
                 logger.warning(f"Error parsing match {match_url}: {e}")

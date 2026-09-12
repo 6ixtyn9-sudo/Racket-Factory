@@ -172,36 +172,12 @@ def align_odds_to_probabilities(
     odds_home: object,
     odds_away: object,
 ) -> tuple[float | None, float | None]:
-    """Repair likely home/away odds inversions using the source probabilities.
+    """Coerce source prices without inventing a side assignment.
 
-    Example from the bad report class: Ostapenko 79% got @9.50 while Dart had
-    @1.02.  The two-way pair itself is coherent; the problem is side assignment.
-    In that case we swap the pair instead of rejecting it.
+    Kept as a compatibility wrapper. Prediction probability is NOT identity
+    evidence: reversing names is the only legitimate reason to swap prices.
     """
-    oh = coerce_decimal_odds(odds_home)
-    oa = coerce_decimal_odds(odds_away)
-    if oh is None or oa is None:
-        return oh, oa
-    if not valid_two_way_decimal_pair(oh, oa):
-        return oh, oa
-
-    ph = normalize_probability(prob_home)
-    pa = normalize_probability(prob_away)
-    home_looks_inverted = (
-        ph is not None
-        and ph >= STRONG_PROBABILITY
-        and odds_suspicious_for_probability(ph, oh)
-        and not odds_suspicious_for_probability(ph, oa)
-    )
-    away_looks_inverted = (
-        pa is not None
-        and pa >= STRONG_PROBABILITY
-        and odds_suspicious_for_probability(pa, oa)
-        and not odds_suspicious_for_probability(pa, oh)
-    )
-    if home_looks_inverted or away_looks_inverted:
-        return oa, oh
-    return oh, oa
+    return coerce_decimal_odds(odds_home), coerce_decimal_odds(odds_away)
 
 
 def normalize_person_name(name: str) -> str:
@@ -288,49 +264,7 @@ def choose_display_name(values: pd.Series) -> str:
     return vals[0]
 
 
-def names_match(name_a: str, name_b: str) -> bool:
-    norm_a = normalize_person_name(name_a)
-    norm_b = normalize_person_name(name_b)
-    if not norm_a or not norm_b:
-        return False
-
-    if norm_a == norm_b:
-        return True
-
-    if "/" in norm_a or "/" in norm_b:
-        parts_a = [p.strip() for p in norm_a.split("/") if p.strip()]
-        parts_b = [p.strip() for p in norm_b.split("/") if p.strip()]
-        if len(parts_a) != len(parts_b):
-            return False
-        
-        def member_match(m1, m2):
-            if not m1 or not m2: return False
-            if m1 == m2: return True
-            t1, t2 = surname_tokens(m1), surname_tokens(m2)
-            if t1 and t2 and t1[-1] == t2[-1]: return True
-            if len(m1) > 3 and len(m2) > 3:
-                if m1.startswith(m2) or m2.startswith(m1): return True
-            return False
-        
-        if all(member_match(a, b) for a, b in zip(parts_a, parts_b)):
-            return True
-        if all(member_match(a, b) for a, b in zip(parts_a, reversed(parts_b))):
-            return True
-        return False
-
-    if surname_tokens(name_a) == surname_tokens(name_b):
-        return True
-    
-    toks_a = tuple(p for p in norm_a.split() if p != "/")
-    toks_b = tuple(p for p in norm_b.split() if p != "/")
-    if len(toks_a) == len(toks_b):
-        shared = sum(1 for x, y in zip(toks_a, toks_b) if x == y)
-        if shared >= max(1, len(toks_a) - 1):
-            return True
-    
-    set_a, set_b = set(toks_a), set(toks_b)
-    overlap = set_a & set_b
-    return len(overlap) >= min(len(set_a), len(set_b)) and len(overlap) >= 1
+from racketfactory.matching import names_match
 
 
 def rows_refer_to_same_match(a: pd.Series, b: pd.Series) -> bool:
@@ -409,6 +343,7 @@ def _orient_live_source_row(row: pd.Series, base_home: str, base_away: str) -> d
         "context_used": row.get("context_used", ""),
         "_series": row.get("_series", ""),
         "source": row.get("source", ""),
+        "source_url": row.get("source_url", ""),
         "predicted_winner": predicted_winner,
         "prob_home": prob_home_num,
         "prob_away": prob_away_num,
@@ -495,6 +430,7 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
             "context_used": _first_present(pd.Series([rr.get("context_used", "") for rr in oriented])),
             "_series": _first_present(pd.Series([rr.get("_series", "") for rr in oriented])),
             "source": ", ".join(sorted(set(str(rr.get("source", "")) for rr in oriented if str(rr.get("source", "")).strip()))),
+            "source_urls": sorted({str(rr.get("source_url")) for rr in oriented if rr.get("source_url") and str(rr.get("source_url")) != "nan"}),
             "predicted_winner": _first_present(pd.Series([rr.get("predicted_winner", "") for rr in oriented])),
             "prob_home": _max_numeric("prob_home", oriented),
             "prob_away": _max_numeric("prob_away", oriented),
@@ -903,6 +839,8 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
     out["odds_away"] = pd.NA
 
     odds_rows = fetch_the_odds_api_rows(target_date)
+    from racketfactory.sources.tennisexplorer import load_prematch_odds
+    odds_rows += load_prematch_odds(Path(__file__).resolve().parents[2] / "localdata", target_date)
 
     api_matched = 0
     if not odds_rows:
@@ -919,9 +857,7 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
             api_home = odds_row.get("odds_home")
             api_away = odds_row.get("odds_away")
 
-        api_home, api_away = align_odds_to_probabilities(
-            row.get("prob_home"), row.get("prob_away"), api_home, api_away
-        )
+        api_home, api_away = coerce_decimal_odds(api_home), coerce_decimal_odds(api_away)
         if not valid_two_way_decimal_pair(api_home, api_away):
             continue
 
@@ -929,7 +865,7 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
         out.at[idx, "api_odds_away"] = api_away
         out.at[idx, "odds_home"] = api_home
         out.at[idx, "odds_away"] = api_away
-        out.at[idx, "odds_source"] = "TheOddsAPI"
+        out.at[idx, "odds_source"] = odds_row.get("source", "TheOddsAPI")
         out.at[idx, "odds_bookmaker"] = odds_row.get("bookmaker") or "The Odds API"
         api_matched += 1
 
@@ -945,22 +881,9 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
             row.get("scraped_odds_home"),
             row.get("scraped_odds_away"),
         )
-        # Be more permissive for scraped fallback: accept if pair is valid OR
-        # if at least one side is a valid decimal odd (1.01-51.0). This allows
-        # Challenger/ITF matches where only one side was scraped or where
-        # overround is high due to low liquidity.
         if not valid_two_way_decimal_pair(scraped_home, scraped_away):
-            # Fallback to single-side valid check
-            ch = coerce_decimal_odds(scraped_home)
-            ca = coerce_decimal_odds(scraped_away)
-            if ch is None and ca is None:
-                fallback_invalid += 1
-                continue
-            # If only one side valid, keep it and leave other as NA - still usable for EV calc if selected side matches
-            if ch is None:
-                scraped_home = pd.NA
-            if ca is None:
-                scraped_away = pd.NA
+            fallback_invalid += 1
+            continue
 
         out.at[idx, "odds_home"] = scraped_home
         out.at[idx, "odds_away"] = scraped_away
@@ -1084,6 +1007,7 @@ def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
             "odds_b": odds_a if odds_a is not None and not pd.isna(odds_a) else pd.NA,
             "bookmaker": str(odds_bookmaker) if odds_h is not None and not pd.isna(odds_h) else "",
             "source": first.get("source", ""),
+            "source_urls": first.get("source_urls", []),
             "captured_at": pd.Timestamp.now().isoformat(),
             "oddsportal_url": "",
             "_surface": infer_surface(str(tournament or ""), str(first.get("surface", "") or "")),
@@ -1423,10 +1347,14 @@ def build_warehouse(
         lambda r: tuple(sorted([r['p_a_key'], r['p_b_key']])), axis=1
     )
     
-    warehouse = warehouse.drop_duplicates(
-        subset=["match_date", "tour", "tournament", "_sorted_players"], 
+    # Live rows are appended last. A blind keep="last" used to overwrite an
+    # already finished result with an empty winner on every rebuild.
+    winners = warehouse.get("winner", pd.Series("", index=warehouse.index)).fillna("").astype(str).str.strip()
+    warehouse['_settled_priority'] = (~winners.str.lower().isin(["", "nan", "none", "<na>"])) & ~warehouse['_is_live'].fillna(False).astype(bool)
+    warehouse = warehouse.sort_values('_settled_priority', kind='stable').drop_duplicates(
+        subset=["match_date", "tour", "tournament", "_sorted_players"],
         keep="last"
-    ).drop(columns=['p_a_key', 'p_b_key', '_sorted_players'])
+    ).drop(columns=['p_a_key', 'p_b_key', '_sorted_players', '_settled_priority'])
     
     # 2. Multi-Source Prediction Join
     PRIMARY_SOURCES = {"Forebet"}

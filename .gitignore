@@ -77,3 +77,10 @@ data/cache/
 # Stray data files accidentally created in repo root (no extension)
 # Date-named files like "2026-06-14" should not be committed
 /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]
+
+# Raw prediction provenance needed to reproduce matching after cache eviction
+!localdata/archive_betclan.csv
+!localdata/archive_predixsport.csv
+!localdata/archive_bzzoiro.csv
+!localdata/tennisexplorer_odds_*.json
+!localdata/source_capture_*.json

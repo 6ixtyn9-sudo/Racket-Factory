@@ -639,7 +639,7 @@ def run_once(args: argparse.Namespace) -> None:
     print("\n>>> Second pass: backfill result sources for settlement (yesterday)")
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet yesterday (results)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_foretennis.py --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_foretennis second pass (results)", env=child_env)
-    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_challenger_results.py --days 3 --output-dir localdata", "backfill_challenger_results (settlement)", env=child_env)
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_challenger_results.py --days 7 --include-today --fixtures-date {target} --output-dir localdata", "backfill_challenger_results (settlement)", env=child_env)
     if os.getenv("RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES", "").strip().lower() not in {"1", "true", "yes", "on"}:
         run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_theoddsapi_scores.py --days-from 3 --output-dir localdata", "capture_theoddsapi_scores second pass (results)", env=child_env)
     # Rebuild warehouse with new result rows so audit can settle
