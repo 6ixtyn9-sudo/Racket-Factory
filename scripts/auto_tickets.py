@@ -238,6 +238,13 @@ def kickoff_guard(pool, target_date, now):
     return kept, skipped
 
 def build_accas(pool):
+    """ML-driven mutually exclusive accas for capital growth (Edge parity).
+
+    - Mutually exclusive: no leg reused across accas (prudent, avoids correlated risk)
+    - ML strengths: source_weights (Wilson LB), context ROI veto/boost, strength_score
+    - Kelly growth: fractional Kelly per leg and per acca, using prob vs real odds
+    - Real odds priority: use market odds when available, else ML estimated but flagged
+    """
     audit = {}
     registry = {}
     weights = {}
@@ -248,6 +255,7 @@ def build_accas(pool):
             weights = source_weights_from_audit(audit)
         except Exception:
             pass
+
     def get_odds(p):
         o = p.get("odds")
         if o is None:
@@ -256,6 +264,38 @@ def build_accas(pool):
             return float(o)
         except:
             return 2.0
+
+    def get_prob(p):
+        # Probability from confidence or prediction_prob
+        prob = p.get("prediction_prob") or p.get("prob") or p.get("confidence")
+        try:
+            pf = float(prob)
+            if pf <= 1.0:
+                pf *= 100
+            pf = pf / 100.0
+            if 0 < pf < 1:
+                return pf
+        except:
+            pass
+        # Fallback from confidence
+        conf = p.get("confidence") or 60
+        try:
+            cf = float(conf)
+            if cf <= 1.0:
+                cf *= 100
+            return max(0.51, min(0.85, cf / 100.0))
+        except:
+            return 0.6
+
+    def kelly_fraction(p, odds):
+        prob = get_prob(p)
+        b = odds - 1
+        if b <= 0:
+            return 0.0
+        q = 1 - prob
+        f = (b * prob - q) / b
+        return max(0.0, min(0.25, f))  # Cap at 25% Kelly, fractional
+
     def sort_key(p):
         ml_score = 0
         if _ML_AVAILABLE:
@@ -282,49 +322,82 @@ def build_accas(pool):
         except:
             ev_f = 0
         odds_f = get_odds(p)
-        value_score = (ev_f if ev_f>0 else 0.05) * (1 + ml_score) * (1 + (odds_f-1)*0.1)
-        return (-value_score, -ml_score, -conf_f, odds_f, str(p.get("match","")))
+        prob_f = get_prob(p)
+        # Kelly-adjusted value score for capital growth
+        kelly_f = kelly_fraction(p, odds_f)
+        # Edge: prob * odds - 1
+        edge = prob_f * odds_f - 1
+        # Strengths-focused: weight by ML score, Wilson LB, source count, real odds availability
+        real_odds_bonus = 0.3 if p.get("odds_source") in ("TheOddsAPI", "ScrapedFallback", "Bzzoiro") else 0
+        source_count = int(p.get("source_count") or 1)
+        value_score = (edge if edge>0 else 0.02) * (1 + ml_score) * (1 + kelly_f*2) * (1 + real_odds_bonus) * (1 + source_count*0.05)
+        return (-value_score, -ml_score, -conf_f, -kelly_f, odds_f, str(p.get("match","")))
+
     pool_sorted = sorted(pool, key=sort_key)
-    short_odds = [p for p in pool_sorted if get_odds(p) < MIN_ODDS_PER_LEG]
-    value_odds = [p for p in pool_sorted if get_odds(p) >= MIN_ODDS_PER_LEG]
+
+    # Filter: avoid super short odds, require real odds or strong ML
+    value_odds = []
+    for p in pool_sorted:
+        o = get_odds(p)
+        if o < MIN_ODDS_PER_LEG:
+            continue
+        # Require either real odds or BOOST verdict for NO_ODDS
+        bucket = str(p.get("bucket",""))
+        if "NO_ODDS" in bucket:
+            if str(p.get("ml_verdict")) != "BOOST":
+                continue
+        value_odds.append(p)
+
     accas = []
-    if len(value_odds) >= 2:
-        chunk = value_odds[:2]
-        prod = math.prod([get_odds(leg) for leg in chunk])
-        if prod >= MIN_ACCA_ODDS:
-            for leg in chunk:
-                if leg.get("odds") is None:
-                    leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
-            accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg"})
-    if len(value_odds) >= 4:
-        chunk = value_odds[2:4]
-        prod = math.prod([get_odds(leg) for leg in chunk])
-        if prod >= MIN_ACCA_ODDS:
-            for leg in chunk:
-                if leg.get("odds") is None:
-                    leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
-            accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg_2"})
-    boost_picks = [p for p in pool_sorted if str(p.get("ml_verdict"))=="BOOST"][:6]
-    if len(boost_picks) >= 3:
-        chunk = boost_picks[:3]
-        prod = math.prod([get_odds(leg) for leg in chunk])
-        if prod >= 2.0:
-            for leg in chunk:
-                if leg.get("odds") is None:
-                    leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
-            accas.append({"legs": chunk, "odds": round(prod,2), "type": "high_strength_3leg"})
-    if len(value_odds) >= 6:
-        chunk = value_odds[4:6]
-        prod = math.prod([get_odds(leg) for leg in chunk])
-        if prod >= MIN_ACCA_ODDS:
-            for leg in chunk:
-                if leg.get("odds") is None:
-                    leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
-            accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg_3"})
+    used_matches = set()
+
+    def match_key(p):
+        return normalize_name(p.get("match") or f"{p.get('player_a')} vs {p.get('player_b')}")
+
+    # Mutually exclusive partitioning: iterate pool, build accas without reuse
+    idx = 0
+    while idx < len(value_odds) and len(accas) < MAX_ACCAS:
+        # Build 2-leg acca from next 2 unused
+        chunk = []
+        while len(chunk) < 2 and idx < len(value_odds):
+            p = value_odds[idx]
+            mk = match_key(p)
+            if mk not in used_matches:
+                chunk.append(p)
+                used_matches.add(mk)
+            idx += 1
+        if len(chunk) == 2:
+            prod = math.prod([get_odds(leg) for leg in chunk])
+            if prod >= MIN_ACCA_ODDS:
+                for leg in chunk:
+                    if leg.get("odds") is None:
+                        leg["odds"] = estimate_odds_from_confidence(leg)
+                        leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+                # Calculate acca Kelly and expected growth
+                prob_prod = math.prod([get_prob(leg) for leg in chunk])
+                kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod>1 else 0
+                kelly_acca = max(0.0, min(0.15, kelly_acca))
+                accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg_mutual", "kelly": round(kelly_acca,4), "prob": round(prob_prod,4)})
+
+    # If we have BOOST picks left, build 3-leg high-strength mutually exclusive
+    if _ML_AVAILABLE:
+        boost_picks = [p for p in pool_sorted if str(p.get("ml_verdict"))=="BOOST"]
+        boost_unused = [p for p in boost_picks if match_key(p) not in used_matches]
+        if len(boost_unused) >= 3 and len(accas) < MAX_ACCAS:
+            chunk = boost_unused[:3]
+            prod = math.prod([get_odds(leg) for leg in chunk])
+            if prod >= 2.0:
+                for leg in chunk:
+                    if leg.get("odds") is None:
+                        leg["odds"] = estimate_odds_from_confidence(leg)
+                        leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
+                    used_matches.add(match_key(leg))
+                prob_prod = math.prod([get_prob(leg) for leg in chunk])
+                kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod>1 else 0
+                kelly_acca = max(0.0, min(0.10, kelly_acca))
+                accas.append({"legs": chunk, "odds": round(prod,2), "type": "high_strength_3leg_mutual", "kelly": round(kelly_acca,4), "prob": round(prob_prod,4)})
+
+    # Fallback if no accas yet
     if not accas and len(pool_sorted) >= 2:
         chunk1 = pool_sorted[:2]
         prod1 = math.prod([get_odds(leg) for leg in chunk1])
@@ -332,15 +405,8 @@ def build_accas(pool):
             if leg.get("odds") is None:
                 leg["odds"] = estimate_odds_from_confidence(leg)
                 leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
-        accas.append({"legs": chunk1, "odds": round(prod1,2), "type": "fallback_2leg"})
-        if len(pool_sorted) >= 4:
-            chunk2 = pool_sorted[2:4]
-            prod2 = math.prod([get_odds(leg) for leg in chunk2])
-            for leg in chunk2:
-                if leg.get("odds") is None:
-                    leg["odds"] = estimate_odds_from_confidence(leg)
-                    leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
-            accas.append({"legs": chunk2, "odds": round(prod2,2), "type": "fallback_2leg_2"})
+        accas.append({"legs": chunk1, "odds": round(prod1,2), "type": "fallback_2leg_mutual"})
+
     accas = accas[:MAX_ACCAS]
     return accas, pool_sorted
 
