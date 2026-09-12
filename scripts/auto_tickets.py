@@ -440,6 +440,7 @@ def main():
     for i, acca in enumerate(accas):
         stake_pct = total_stake * weights[i] if weights else 0
         accas_out.append({"legs": acca.get("legs", []), "odds": acca.get("odds", 1.0), "type": acca.get("type",""), "stake_pct": round(stake_pct, 4)})
+    is_frozen = now.hour >= FREEZE_HOUR or now.hour < GENERATE_HOUR_START
     out = {
         "date": target_date,
         "generated_at": now.isoformat(),
@@ -448,13 +449,30 @@ def main():
         "staked_pct": round(total_stake, 4),
         "accas": accas_out,
         "skipped": skipped,
-        "frozen": now.hour >= FREEZE_HOUR or now.hour < GENERATE_HOUR_START,
+        "frozen": is_frozen,
     }
     LOCALDATA.mkdir(parents=True, exist_ok=True)
     (LOCALDATA / f"auto_tickets_{target_date}.json").write_text(json.dumps(out, indent=2))
     (LOCALDATA / f"auto_tickets_{target_date}.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
     (LOCALDATA / "auto_tickets_today.json").write_text(json.dumps(out, indent=2))
     (LOCALDATA / "auto_tickets_today.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
+    # Update state open_slips so grade can settle
+    existing_today = [s for s in state.get("open_slips", []) if s.get("date") == target_date]
+    if existing_today and is_frozen:
+        print(f"Frozen — keeping existing open slip for {target_date}")
+    else:
+        state["open_slips"] = [s for s in state.get("open_slips", []) if s.get("date") != target_date]
+        if accas_out:
+            new_slip = {
+                "date": target_date,
+                "generated_at": now.isoformat(),
+                "accas": accas_out,
+                "staked_pct": round(total_stake, 4),
+                "stake_per_acca_pct": round(total_stake / len(accas), 4) if accas else 0,
+            }
+            state["open_slips"].append(new_slip)
+            print(f"Added open slip for {target_date} with {len(accas_out)} accas to state")
+        save_state(state)
     print(f"Auto tickets for {target_date}: {len(accas)} accas, {len(kept)} playable, {len(playable)} total playable, {len(picks)} total picks")
     for acca in accas:
         print(f"  {acca.get('type')} @ {acca.get('odds')} legs {len(acca.get('legs',[]))}")
