@@ -486,31 +486,6 @@ def main():
             state["open_slips"].extend(reconstructed)
     except Exception as e:
         print(f"Reconstruct failed: {e}")
-    # --- RECONSTRUCT missing historical open_slips from auto_tickets_*.json (Edge parity) ---
-    try:
-        from datetime import timedelta
-        import json as _json
-        if not state.get("open_slips"):
-            reconstructed=[]
-            for days_back in range(1,8):
-                d=(now.date()-timedelta(days=days_back)).isoformat()
-                f=LOCALDATA / f"auto_tickets_{d}.json"
-                if f.exists():
-                    try:
-                        data=_json.loads(f.read_text())
-                        if data.get("accas"):
-                            in_history=any(h.get("date")==d for h in state.get("history",[]))
-                            if not in_history:
-                                slip={"date": d, "generated_at": data.get("generated_at") or f"{d}T00:00:00", "accas": data.get("accas",[]), "staked_pct": data.get("staked_pct",0), "stake_per_acca_pct": data.get("stake_per_acca_pct",0)}
-                                reconstructed.append(slip)
-                    except Exception:
-                        pass
-            if reconstructed:
-                print(f"Reconstructed {len(reconstructed)} missing historical open_slips from auto_tickets_*.json for settlement")
-                state["open_slips"].extend(reconstructed)
-    except Exception as e:
-        print(f"Reconstruct failed: {e}")
-
     # Update state open_slips so grade can settle
     existing_today = [s for s in state.get("open_slips", []) if s.get("date") == target_date]
     if existing_today and is_frozen:
