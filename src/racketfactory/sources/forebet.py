@@ -403,51 +403,156 @@ class ForebetPredictor:
         self._session.impersonate = impersonate
 
     # ------------------------------------------------------------------
-    # Low-level fetch
+    # Low-level fetch (curl_cffi + Playwright fallback)
     # ------------------------------------------------------------------
-    def _fetch(self, url: str) -> Optional[str]:
-        # Try primary session (curl_cffi with impersonate)
+
+    def _fetch_via_playwright(self, url: str, timeout_ms: int = 120000) -> Optional[str]:
+        """Playwright fallback for Forebet — bypasses Cloudflare via real browser."""
         try:
-            resp = self._session.get(url, timeout=20)
-            if resp.status_code == 200:
-                if "Just a moment" in resp.text or "challenge-error" in resp.text:
-                    logger.warning("Forebet Cloudflare challenge for %s", url)
-                else:
-                    return resp.text
-            # Log non-200 but continue to fallback for 403
-            if resp.status_code != 200:
-                logger.warning("Forebet returned %d for %s", resp.status_code, url)
-                if resp.status_code == 403:
-                    # Try curl_cffi fallback with different UA
-                    try:
-                        from curl_cffi import requests as curl_requests
-                        # Try chrome and firefox impersonations
-                        for imp in ["chrome124", "firefox133"]:
-                            try:
-                                r = curl_requests.get(url, impersonate=imp, timeout=20)
-                                if r.status_code == 200 and "Just a moment" not in r.text:
-                                    logger.info("Forebet 403 recovered via curl_cffi %s for %s", imp, url)
-                                    return r.text
-                            except Exception:
-                                continue
-                    except ImportError:
-                        pass
-                    # Still blocked - return None, caller should not repeat immediately
-                    return None
-                # For other non-200, return None
-                return None
-            return resp.text
-        except Exception as e:
-            logger.warning("Forebet fetch error for %s: %s", url, e)
-            # Try curl_cffi fallback
-            try:
-                from curl_cffi import requests as curl_requests
-                r = curl_requests.get(url, impersonate="chrome124", timeout=20)
-                if r.status_code == 200:
-                    return r.text
-            except Exception:
-                pass
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            logger.warning("Playwright not installed — cannot fetch Forebet via browser")
             return None
+        try:
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                    ],
+                )
+                context = browser.new_context(
+                    user_agent=(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+                    ),
+                    viewport={"width": 1920, "height": 1080},
+                    locale="en-US",
+                    timezone_id="UTC",
+                )
+                # Stealth
+                context.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                    Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
+                    Object.defineProperty(navigator, 'languages', {get: () => ['en-US','en']});
+                    window.navigator.chrome = {runtime: {}};
+                """)
+                page = context.new_page()
+                try:
+                    page.goto(url, wait_until="commit", timeout=timeout_ms)
+                except Exception as e:
+                    logger.warning("Forebet Playwright goto failed for %s: %s", url, e)
+                # Wait for predictions to appear
+                try:
+                    page.wait_for_selector("a.tnmscn, .rcnt, .heading", timeout=30000)
+                except Exception:
+                    pass
+                # Extra wait for Cloudflare
+                try:
+                    page.wait_for_timeout(3000)
+                except Exception:
+                    pass
+                html = ""
+                try:
+                    html = page.content()
+                except Exception as e:
+                    logger.warning("Forebet Playwright content failed: %s", e)
+                context.close()
+                browser.close()
+                if html and len(html) > 1000:
+                    if "Just a moment" in html or "challenge-error" in html:
+                        logger.warning("Forebet Playwright still got CF challenge for %s", url)
+                        return None
+                    return html
+                return None
+        except Exception as e:
+            logger.warning("Forebet Playwright error for %s: %s", url, e)
+            return None
+
+    def _fetch(self, url: str) -> Optional[str]:
+        """Fetch with curl_cffi primary, Playwright fallback, robust UA rotation."""
+        # Common headers
+        headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://www.forebet.com/",
+            "Accept-Encoding": "gzip, deflate, br",
+        }
+
+        # 1. Try curl_cffi with rotating impersonations (most reliable for CF)
+        try:
+            from curl_cffi import requests as cffi_requests
+            imps = [
+                "chrome131",
+                "chrome126",
+                "chrome124",
+                "chrome120",
+                "chrome110",
+                "safari17_2",
+                "safari15_5",
+                "firefox133",
+                "chrome133a",
+            ]
+            for imp in imps:
+                try:
+                    # Use session-less get to avoid stale cookies
+                    resp = cffi_requests.get(url, impersonate=imp, headers=headers, timeout=30)
+                    if resp.status_code == 200:
+                        txt = resp.text
+                        if "Just a moment" in txt or "challenge-error" in txt or "Attention Required" in txt:
+                            logger.info("Forebet CF challenge with %s for %s", imp, url)
+                            continue
+                        # Must have some prediction marker or reasonable size
+                        if len(txt) < 2000:
+                            continue
+                        # If page contains tnmscn it's definitely good
+                        if "tnmscn" in txt or "homeTeam" in txt:
+                            logger.info("Forebet fetched via curl_cffi %s for %s (%d bytes)", imp, url, len(txt))
+                            return txt
+                        # Otherwise still return if 200 and not challenge (tournament page may have 0 matches)
+                        if len(txt) > 5000:
+                            logger.info("Forebet fetched via curl_cffi %s (generic) for %s", imp, url)
+                            return txt
+                    elif resp.status_code == 403:
+                        logger.warning("Forebet 403 with %s for %s", imp, url)
+                        continue
+                    else:
+                        logger.warning("Forebet %d with %s for %s", resp.status_code, imp, url)
+                except Exception as e:
+                    logger.debug("Forebet curl_cffi %s failed for %s: %s", imp, url, e)
+                    continue
+        except ImportError:
+            logger.warning("curl_cffi not installed for Forebet")
+        except Exception as e:
+            logger.warning("Forebet curl_cffi outer error: %s", e)
+
+        # 2. Try cloudscraper if available (undetected)
+        try:
+            import cloudscraper
+            scraper = cloudscraper.create_scraper(
+                browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False}
+            )
+            r = scraper.get(url, headers=headers, timeout=30)
+            if r.status_code == 200 and "Just a moment" not in r.text and len(r.text) > 2000:
+                logger.info("Forebet fetched via cloudscraper for %s", url)
+                return r.text
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug("Forebet cloudscraper failed for %s: %s", url, e)
+
+        # 3. Playwright fallback — real browser can clear CF
+        logger.info("Forebet falling back to Playwright for %s", url)
+        html = self._fetch_via_playwright(url)
+        if html:
+            logger.info("Forebet fetched via Playwright for %s (%d bytes)", url, len(html))
+            return html
+
+        logger.error("Forebet failed to fetch %s via all methods", url)
+        return None
+
 
     # ------------------------------------------------------------------
     # Tournament page fetch
