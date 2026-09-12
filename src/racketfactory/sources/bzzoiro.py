@@ -19,16 +19,46 @@ class BzzoiroPredictor:
 
     def fetch_historical_predictions(self, date_from: str, date_to: str) -> list[dict[str, Any]]:
         all_results = []
-        url = "https://sports.bzzoiro.com/tennis/api/predictions/"
+        url = "https://sports.bzzoiro.com/tennis/api/v2/predictions/"
+        # Fallback to new domain if v2 fails: https://tennis.bzzoiro.com/api/predictions/
+        fallback_urls = [
+            "https://tennis.bzzoiro.com/api/predictions/",
+            "https://sports.bzzoiro.com/api/v2/predictions/",
+        ]
         params = {"date_from": date_from, "date_to": date_to, "upcoming_only": "false"}
         headers = {"Authorization": f"Token {BZZOIRO_TOKEN}"}
+        tried_fallback = False
         while url:
             logger.info(f"Fetching Bzzoiro predictions from {url}")
             try:
                 response = requests.get(url, headers=headers, params=params, timeout=20)
                 params = None
+                if response.status_code == 404 and not tried_fallback:
+                    # Try fallback endpoints
+                    logger.warning(f"Bzzoiro 404 on {url}, trying fallback endpoints")
+                    for fb_url in fallback_urls:
+                        try:
+                            logger.info(f"Trying Bzzoiro fallback {fb_url}")
+                            fb_resp = requests.get(fb_url, headers=headers, params={"date_from": params.get("date_from") if isinstance(params, dict) else None, "date_to": params.get("date_to") if isinstance(params, dict) else None, "upcoming_only": "false"} if params else {"upcoming_only": "false"}, timeout=20)
+                            if fb_resp.status_code == 200:
+                                logger.info(f"Bzzoiro fallback succeeded: {fb_url}")
+                                response = fb_resp
+                                url = fb_url
+                                break
+                        except Exception as fe:
+                            logger.warning(f"Bzzoiro fallback {fb_url} failed: {fe}")
+                            continue
+                    tried_fallback = True
                 if response.status_code != 200:
                     logger.error(f"Bzzoiro API failed: HTTP {response.status_code}")
+                    if response.status_code == 404:
+                        # Try next fallback if not yet
+                        if not tried_fallback:
+                            for fb_url in fallback_urls:
+                                if fb_url != url:
+                                    url = fb_url
+                                    break
+                            continue
                     break
                 data = response.json()
                 results = data.get("results", [])
