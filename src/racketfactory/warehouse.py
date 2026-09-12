@@ -463,10 +463,17 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
 
 
 def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict]) -> tuple[dict | None, bool]:
-    """Return matching API odds row and whether it was reversed vs card row."""
+    """Return matching API odds row and whether it was reversed vs card row.
+
+    Date matching is tolerant: first try exact date, then allow ±1 day for
+    Grand Slams where commence_time may be in different timezone (e.g. US Open
+    01:45 UTC on 12th listed as 11th in US). This fixes missing odds for
+    Tiafoe vs Shelton type matches where card_date 2026-09-12 but API date 2026-09-11.
+    """
     card_date = str(card_row.get("match_date", "") or "")[:10]
     home = str(card_row.get("player_home") or "")
     away = str(card_row.get("player_away") or "")
+    # First pass: exact date match
     for odds_row in odds_rows:
         odds_date = str(odds_row.get("match_date", "") or "")[:10]
         if card_date and odds_date and card_date != odds_date:
@@ -477,6 +484,16 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict]) -> tuple[dic
             return odds_row, False
         if names_match(home, api_away) and names_match(away, api_home):
             return odds_row, True
+    # Second pass: ignore date if names match strongly (for Slams, timezone drift)
+    # Only for non-doubles to avoid false positives
+    if "/" not in home and "/" not in away and "&" not in home and "&" not in away:
+        for odds_row in odds_rows:
+            api_home = str(odds_row.get("player_home") or "")
+            api_away = str(odds_row.get("player_away") or "")
+            if names_match(home, api_home) and names_match(away, api_away):
+                return odds_row, False
+            if names_match(home, api_away) and names_match(away, api_home):
+                return odds_row, True
     # Diagnostic: log near-misses for doubles teams where date and sport
     # match but name matching failed. This helps the operator identify
     # new separator or naming conventions from The Odds API.

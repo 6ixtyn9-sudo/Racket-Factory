@@ -566,6 +566,61 @@ class ForebetPredictor:
                     result_winner = None
                     result_sets_home = None
                     result_sets_away = None
+                    odds_home = None
+                    odds_away = None
+                    # Extract odds from lookahead (Jina markdown contains American odds like -303 +240 or decimal like 1.57 2.35)
+                    # Search up to 15 lines ahead for price tokens, prefer a valid two-way pair
+                    all_prices = []
+                    for k in range(i+1, min(i+15, len(lines))):
+                        line_k = lines[k]
+                        if not line_k or line_k.startswith("[") or line_k == "FT":
+                            continue
+                        # Skip pure prob lines (e.g. "41 59") and predicted winner lines
+                        if re.match(r"^\d{1,3}\s+\d{1,3}$", line_k):
+                            continue
+                        if re.match(r"^[12]\s+\d+\-\d+", line_k):
+                            continue
+                        prices = _forebet_prices_from_text(line_k)
+                        if prices:
+                            all_prices.extend(prices)
+                        if len(all_prices) >= 2:
+                            # Try to find a valid two-way pair among collected prices
+                            # Prefer pair that forms valid implied probability sum 0.98-1.35
+                            found = False
+                            for a_idx in range(len(all_prices)):
+                                for b_idx in range(a_idx+1, len(all_prices)):
+                                    oh = all_prices[a_idx]
+                                    oa = all_prices[b_idx]
+                                    # Use same validation as warehouse
+                                    try:
+                                        from racketfactory.warehouse import valid_two_way_decimal_pair
+                                        if valid_two_way_decimal_pair(oh, oa):
+                                            odds_home, odds_away = oh, oa
+                                            found = True
+                                            break
+                                    except Exception:
+                                        # Fallback: simple range check
+                                        if 1.01 <= oh <= 51 and 1.01 <= oa <= 51:
+                                            # Check implied sum
+                                            try:
+                                                s = 1.0/oh + 1.0/oa
+                                                if 0.98 <= s <= 1.35:
+                                                    odds_home, odds_away = oh, oa
+                                                    found = True
+                                                    break
+                                            except:
+                                                pass
+                                if found:
+                                    break
+                            if found:
+                                break
+                            # If no valid pair yet but we have at least 2, keep first two as fallback (will be validated later)
+                            if len(all_prices) >= 2 and odds_home is None:
+                                odds_home, odds_away = all_prices[0], all_prices[1]
+                                # Don't break yet, keep searching for better valid pair
+                    # If we collected prices but didn't find valid pair, use first two
+                    if odds_home is None and len(all_prices) >= 2:
+                        odds_home, odds_away = all_prices[0], all_prices[1]
                     for k in range(i+1, min(i+20, len(lines))):
                         if lines[k] == "FT":
                             result_status = "FT"
@@ -596,8 +651,8 @@ class ForebetPredictor:
                         "player_away": away,
                         "prob_home": prob_home,
                         "prob_away": prob_away,
-                        "odds_home": None,
-                        "odds_away": None,
+                        "odds_home": odds_home,
+                        "odds_away": odds_away,
                         "predicted_winner": predicted_winner,
                         "tournament": current_tournament,
                         "tour_slug": tour_slug,
