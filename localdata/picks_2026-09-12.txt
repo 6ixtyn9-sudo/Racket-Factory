@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-12
 ============================================================
-Generated at: 2026-09-12 07:23:20
+Generated at: 2026-09-12 07:33:54
 
 
 CERTIFIED CLEAN PICKS
@@ -13,7 +13,7 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] Aryna Sabalenka vs Elena Rybakina          KO 21:00 -> ARYNA SABALENKA  conf 57% @1.78  EV +0.01u
+  [live_only_fallback] Aryna Sabalenka vs Elena Rybakina          KO 21:00 -> ARYNA SABALENKA  conf 57% @1.76  EV +0.00u
      bucket=WATCHLIST  tour=WTA  series=Grand Slam  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
 
 WATCHLIST — NO MATCHED ODDS
