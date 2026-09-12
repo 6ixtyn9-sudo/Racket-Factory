@@ -14,7 +14,7 @@ Recipe v3 (user dislikes singles):
   FREEZE    06:00-09:00 SAST
 """
 from __future__ import annotations
-import json, math, os, re, sys
+import argparse, json, math, os, re, sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
