@@ -30,8 +30,14 @@ from pathlib import Path
 from typing import Any
 from collections import defaultdict
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 LOCALDATA = ROOT / "localdata"
+# Also support running from project root where localdata is sibling
+if not LOCALDATA.exists():
+    # Fallback: try two levels up from file's grandparent's parent (project root)
+    alt = Path(__file__).resolve().parents[2] / "localdata"
+    if alt.exists():
+        LOCALDATA = alt
 
 Z95 = 1.959963984540054
 
