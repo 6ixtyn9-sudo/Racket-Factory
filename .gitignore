@@ -76,8 +76,6 @@ data/cache/
 !localdata/challenger_results_*.csv.gz
 !localdata/settled_results.json
 !localdata/pipeline_health.json
-!localdata/quarantine/
-!localdata/quarantine/*
 !localdata/auto_tickets_state.json.*
 
 # Stray data files accidentally created in repo root (no extension)
