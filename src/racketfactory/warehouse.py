@@ -171,37 +171,14 @@ def align_odds_to_probabilities(
     prob_away: object,
     odds_home: object,
     odds_away: object,
-) -> tuple[float | None, float | None]:
-    """Repair likely home/away odds inversions using the source probabilities.
+) -> tuple[object, object]:
+    """Previously swapped odds based on prediction probability — removed per investigation.
 
-    Example from the bad report class: Ostapenko 79% got @9.50 while Dart had
-    @1.02.  The two-way pair itself is coherent; the problem is side assignment.
-    In that case we swap the pair instead of rejecting it.
+    A model disagreeing with a market does not prove an inverted market. Prices carry
+    player labels and should be oriented by identity, not by probability.
+    This function now returns odds unchanged to avoid false inversions.
     """
-    oh = coerce_decimal_odds(odds_home)
-    oa = coerce_decimal_odds(odds_away)
-    if oh is None or oa is None:
-        return oh, oa
-    if not valid_two_way_decimal_pair(oh, oa):
-        return oh, oa
-
-    ph = normalize_probability(prob_home)
-    pa = normalize_probability(prob_away)
-    home_looks_inverted = (
-        ph is not None
-        and ph >= STRONG_PROBABILITY
-        and odds_suspicious_for_probability(ph, oh)
-        and not odds_suspicious_for_probability(ph, oa)
-    )
-    away_looks_inverted = (
-        pa is not None
-        and pa >= STRONG_PROBABILITY
-        and odds_suspicious_for_probability(pa, oa)
-        and not odds_suspicious_for_probability(pa, oh)
-    )
-    if home_looks_inverted or away_looks_inverted:
-        return oa, oh
-    return oh, oa
+    return odds_home, odds_away
 
 
 def normalize_person_name(name: str) -> str:

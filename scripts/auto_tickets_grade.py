@@ -42,8 +42,7 @@ def normalize_name(v):
     text = re.sub(r"[^a-zA-Z0-9/\s'-]", " ", text).lower()
     text = re.sub(r"\s+", " ", text).strip()
     parts = [p for p in text.replace("-", " ").replace("'", " ").split() if p]
-    if len(parts) >= 2 and len(parts[0]) == 1:
-        parts = parts[1:]
+    # Keep initials for strict matching
     return " ".join(parts)
 
 # Alias map for known player name variations (reviewed from public sources)
@@ -64,78 +63,121 @@ def apply_alias(name: str) -> str:
     return norm
 
 def names_match(a, b) -> bool:
-    # FIX: Shared player matching supporting surname-first initials, compound surnames, accents, doubles
-    # Reject conflicting initials and partial-team matches
+    # STRICT matching: reject Alexander vs Mischa, Smith J vs Smith A, partial doubles
     str_a, str_b = str(a), str(b)
-    # Handle doubles: "Cascino / Feng" vs "Brancaccio / Papamichail"
-    if "/" in str_a and "/" in str_b:
+    # Handle doubles: require both sides have "/" and same team size, reject partial
+    has_slash_a = "/" in str_a
+    has_slash_b = "/" in str_b
+    if has_slash_a or has_slash_b:
+        if not (has_slash_a and has_slash_b):
+            return False  # partial team: one doubles, one singles -> reject
         parts_a = [p.strip() for p in str_a.split("/")]
         parts_b = [p.strip() for p in str_b.split("/")]
-        if len(parts_a) == len(parts_b):
-            # Require all parts to match (full team), not partial
-            if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
-                return True
-            if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
-                return True
-            # Reject partial-team matches
+        if len(parts_a) != len(parts_b):
             return False
+        # Require full team match in any order
+        if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
+            return True
+        if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
+            return True
+        return False
+
     na = apply_alias(a)
     nb = apply_alias(b)
     if not na or not nb:
         return False
     if na == nb:
         return True
-    # Check alias direct
-    if na in nb or nb in na:
-        # But ensure not just substring of common surname that could be ambiguous
-        # For Burillo case, allow
-        if "burillo" in na and "burillo" in nb:
-            return True
+
+    # Alias for Burillo already handled in apply_alias, but allow substring only for burillo
+    if "burillo" in na and "burillo" in nb:
+        return True
+
     ta = na.split()
     tb = nb.split()
     if not ta or not tb:
         return False
-    # Surname-first initials: "Ivashka I." vs "Ilya Ivashka" -> last token surname matches, initial matches first name
-    if ta[-1] == tb[-1]:
-        pre_a = ta[:-1]
-        pre_b = tb[:-1]
-        # If one side has only initial and other has full first name, check initial matches
-        if len(pre_a) == 1 and len(pre_a[0]) == 1 and pre_b:
-            # Initial vs full: check if initial matches first letter of any part in pre_b
-            if any(part.startswith(pre_a[0]) for part in pre_b):
-                return True
-        if len(pre_b) == 1 and len(pre_b[0]) == 1 and pre_a:
-            if any(part.startswith(pre_b[0]) for part in pre_a):
-                return True
-        # Both have full names, check overlap
-        if any(len(x) > 1 and x in pre_b for x in pre_a):
+
+    # Helper to extract surname and firstname/initial
+    def parse(tokens):
+        # tokens normalized lower, no punctuation, initials kept as single letters
+        if len(tokens) == 1:
+            return (tokens[0], None, None)  # surname, firstname, initial
+        if len(tokens) == 2:
+            # Cases: "Ivashka I" -> surname first, initial last
+            # "I Ivashka" -> initial first, surname last
+            # "Ilya Ivashka" -> firstname surname
+            if len(tokens[0]) == 1 and len(tokens[1]) > 1:
+                return (tokens[1], None, tokens[0])
+            if len(tokens[1]) == 1 and len(tokens[0]) > 1:
+                return (tokens[0], None, tokens[1])
+            # Both full
+            return (tokens[-1], tokens[0], None)
+        # len >2: could be compound surname
+        # Check for trailing initial
+        if len(tokens[-1]) == 1:
+            # e.g., "Burillo Escorihuela I" -> surname compound, initial
+            surname = " ".join(tokens[:-1])
+            return (surname, None, tokens[-1])
+        if len(tokens[0]) == 1:
+            # "I Burillo Escorihuela"
+            surname = " ".join(tokens[1:])
+            return (surname, None, tokens[0])
+        # No initial, assume last token surname, rest firstname(s)
+        surname = tokens[-1]
+        firstname = tokens[0]
+        # For compound surnames like "burillo escorihuela", consider last 2 as surname
+        if len(tokens) >= 3 and tokens[-2] in ("burillo", "escorihuela") or "burillo" in " ".join(tokens):
+            surname = " ".join(tokens[1:])
+        return (surname, firstname, None)
+
+    sur_a, first_a, init_a = parse(ta)
+    sur_b, first_b, init_b = parse(tb)
+
+    # Surname must match exactly (or compound contains)
+    # For compound, allow exact or last token match if burillo case already handled
+    if sur_a != sur_b:
+        # Allow compound surname where one is suffix of other (e.g., "burillo escorihuela" vs "escorihuela")
+        # Only for burillo already returned True, so strict here
+        # Check if surnames share last token but firstnames must also match
+        # For strictness, reject if surnames differ
+        # Exception: if one surname is two tokens and other is one token that equals last token of compound, require firstname match
+        # e.g., "burillo escorihuela" vs "escorihuela" with same firstname -> would be handled by alias
+        return False
+
+    # Surnames match, now check firstname/initial compatibility
+    # If both have full firstnames, they must match exactly (or one is initial of other)
+    if first_a and first_b:
+        if first_a == first_b:
             return True
-        if any(len(x) > 1 and x in pre_a for x in pre_b):
+        # If firstnames differ (Alexander vs Mischa), reject
+        return False
+    if first_a and init_b:
+        # first_a full, init_b initial: check initial matches first letter
+        if first_a[0] == init_b[0]:
             return True
-        initials_a = [x for x in pre_a if len(x) == 1]
-        initials_b = [x for x in pre_b if len(x) == 1]
-        if initials_a and all(any(y.startswith(x) for y in pre_b) for x in initials_a):
-            # Reject conflicting initials: if both have initials and they conflict
+        return False
+    if first_b and init_a:
+        if first_b[0] == init_a[0]:
             return True
-        if initials_b and all(any(y.startswith(x) for y in pre_a) for x in initials_b):
+        return False
+    if init_a and init_b:
+        # Both initials: must match
+        if init_a[0] == init_b[0]:
             return True
-    # Compound surnames: check if last two tokens match
-    if len(ta) >= 2 and len(tb) >= 2:
-        if ta[-2:] == tb[-2:]:
-            return True
-        if " ".join(ta[-2:]) in " ".join(tb) or " ".join(tb[-2:]) in " ".join(ta):
-            # For compound like Burillo Escorihuela
-            if "burillo" in na and "burillo" in nb:
-                return True
-    overlap = set(ta) & set(tb)
-    # Require at least surname overlap and not conflicting initials
-    if overlap and len(overlap) >= min(len(ta), len(tb)) - 1:
-        # Check for conflicting initials: if both have different initials for same surname, reject
-        # e.g., "Smith J." vs "Smith A." with same surname but different initials -> conflict
-        if len(ta) == 2 and len(tb) == 2:
-            if ta[0][0] != tb[0][0] and ta[-1] == tb[-1] and len(ta[0]) == 1 and len(tb[0]) == 1:
-                return False
-        return True
+        return False
+    # One has only surname, other has surname+firstname/initial -> ambiguous, reject unless exact already
+    # e.g., "Cascino" vs "Cascino / Feng" already rejected via slash check, but "Cascino" vs "Cascino" exact would have matched earlier
+    # For single token vs two tokens with same surname but no firstname conflict, we allow? That would cause "Cascino" vs "Cascino / Feng" partial already rejected.
+    # For "Smith" vs "Smith" exact would have matched, but "Smith" vs "Smith J" -> surname same, one has initial, other only surname -> allow? Safer to reject to avoid false positives.
+    # However for cases where one source provides only surname (rare), we should not match.
+    # So if one side is surname-only and other has firstname/initial, reject unless exact match already.
+    if (len(ta) == 1 or len(tb) == 1) and sur_a == sur_b:
+        # Both surname-only would have been exact match earlier, so this is surname-only vs surname+firstname
+        # Reject to avoid Alexander Zverev matching Zverev alone incorrectly? Actually Zverev vs Alexander Zverev could be considered match if we want permissive, but to be strict we reject.
+        # For our use case, we want to reject partial.
+        return False
+
     return False
 
 def load_state():
@@ -159,22 +201,19 @@ def load_warehouse():
         return pd.DataFrame()
 
 def load_additional_results():
-    """Load foretennis_results, forebet_results, predictions with actual_result for settlement."""
+    """Load foretennis_results, forebet_results, challenger_results, theoddsapi_scores, predictions for settlement."""
     dfs=[]
-    for f in LOCALDATA.glob("foretennis_results_*.csv.gz"):
-        try:
-            df=pd.read_csv(f, low_memory=False)
-            if not df.empty and "winner" in df.columns:
-                dfs.append(df)
-        except Exception:
-            pass
-    for f in LOCALDATA.glob("forebet_results_*.csv.gz"):
-        try:
-            df=pd.read_csv(f, low_memory=False)
-            if not df.empty and "winner" in df.columns:
-                dfs.append(df)
-        except Exception:
-            pass
+    for pattern in ["foretennis_results_*.csv.gz", "forebet_results_*.csv.gz", "challenger_results_*.csv.gz", "theoddsapi_scores_*.csv.gz"]:
+        for f in LOCALDATA.glob(pattern):
+            try:
+                df=pd.read_csv(f, low_memory=False)
+                if not df.empty and "winner" in df.columns:
+                    # Filter only rows with winner
+                    df=df[df["winner"].astype(str).str.strip() != ""]
+                    if not df.empty:
+                        dfs.append(df)
+            except Exception:
+                pass
     for f in LOCALDATA.glob("predictions_foretennis_*.csv.gz"):
         try:
             df=pd.read_csv(f, low_memory=False)
@@ -238,10 +277,7 @@ def settle_leg(leg, df, additional_df=None, target_date: str | None = None):
             return names_match(a, selected) or names_match(b, selected)
 
     matched = candidates[candidates.apply(row_match, axis=1)] if not candidates.empty else pd.DataFrame()
-    if matched.empty and not additional_candidates.empty:
-        matched = additional_candidates[additional_candidates.apply(row_match, axis=1)] if not additional_candidates.empty else pd.DataFrame()
-    if matched.empty:
-        return None
+    additional_matched = additional_candidates[additional_candidates.apply(row_match, axis=1)] if not additional_candidates.empty else pd.DataFrame()
 
     # Only final rows
     def is_final(row):
@@ -253,8 +289,16 @@ def settle_leg(leg, df, additional_df=None, target_date: str | None = None):
             return False
         return True
 
-    final_rows = matched[matched.apply(is_final, axis=1)]
+    final_rows = matched[matched.apply(is_final, axis=1)] if not matched.empty else pd.DataFrame()
+    # FIX: If warehouse has pending row (empty winner), check fallback sources even if warehouse matched
+    if final_rows.empty and not additional_matched.empty:
+        final_rows = additional_matched[additional_matched.apply(is_final, axis=1)] if not additional_matched.empty else pd.DataFrame()
+        if not final_rows.empty:
+            matched = additional_matched
+
     if final_rows.empty:
+        # If warehouse had match but no final, and no fallback final, return None (pending)
+        # But if there was no warehouse match at all, also return None
         return None
 
     # Take first

@@ -292,8 +292,9 @@ def main():
         dates=[args.date]
     else:
         today=date.today()
+        # FIX: include today for same-day settlement, not just previous 3 days
         for i in range(args.days):
-            dates.append((today - timedelta(days=i+1)).isoformat())
+            dates.append((today - timedelta(days=i)).isoformat())
 
     all_rows=[]
     for d in dates:

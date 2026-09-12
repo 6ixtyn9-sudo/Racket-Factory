@@ -92,8 +92,7 @@ def normalize_name(value: Any) -> str:
     text = re.sub(r"[^a-zA-Z0-9/\s'-]", " ", text).lower()
     text = re.sub(r"\s+", " ", text).strip()
     parts = [p for p in text.replace("-", " ").replace("'", " ").split() if p]
-    if len(parts) >= 2 and len(parts[0]) == 1:
-        parts = parts[1:]
+    # Keep initials (do not strip leading single letter) — needed for strict Smith J vs Smith A check
     return " ".join(parts)
 
 
@@ -112,16 +111,22 @@ def apply_alias(name: str) -> str:
     return norm
 
 def names_match(a: Any, b: Any) -> bool:
+    # STRICT: reject Alexander vs Mischa, Smith J vs Smith A, partial doubles
     str_a, str_b = str(a), str(b)
-    if "/" in str_a and "/" in str_b:
+    has_slash_a = "/" in str_a
+    has_slash_b = "/" in str_b
+    if has_slash_a or has_slash_b:
+        if not (has_slash_a and has_slash_b):
+            return False
         parts_a = [p.strip() for p in str_a.split("/")]
         parts_b = [p.strip() for p in str_b.split("/")]
-        if len(parts_a) == len(parts_b):
-            if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
-                return True
-            if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
-                return True
+        if len(parts_a) != len(parts_b):
             return False
+        if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
+            return True
+        if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
+            return True
+        return False
     na = apply_alias(a)
     nb = apply_alias(b)
     if not na or not nb:
@@ -134,37 +139,37 @@ def names_match(a: Any, b: Any) -> bool:
     tb = nb.split()
     if not ta or not tb:
         return False
-    if ta[-1] == tb[-1]:
-        pre_a = ta[:-1]
-        pre_b = tb[:-1]
-        if len(pre_a) == 1 and len(pre_a[0]) == 1 and pre_b:
-            if any(part.startswith(pre_a[0]) for part in pre_b):
-                return True
-        if len(pre_b) == 1 and len(pre_b[0]) == 1 and pre_a:
-            if any(part.startswith(pre_b[0]) for part in pre_a):
-                return True
-        if any(len(x) > 1 and x in pre_b for x in pre_a):
-            return True
-        if any(len(x) > 1 and x in pre_a for x in pre_b):
-            return True
-        initials_a = [x for x in pre_a if len(x) == 1]
-        initials_b = [x for x in pre_b if len(x) == 1]
-        if initials_a and all(any(y.startswith(x) for y in pre_b) for x in initials_a):
-            return True
-        if initials_b and all(any(y.startswith(x) for y in pre_a) for x in initials_b):
-            return True
-    if len(ta) >= 2 and len(tb) >= 2:
-        if ta[-2:] == tb[-2:]:
-            return True
-        if " ".join(ta[-2:]) in " ".join(tb) or " ".join(tb[-2:]) in " ".join(ta):
-            if "burillo" in na and "burillo" in nb:
-                return True
-    overlap = set(ta) & set(tb)
-    if overlap and len(overlap) >= min(len(ta), len(tb)) - 1:
-        if len(ta) == 2 and len(tb) == 2:
-            if ta[0][0] != tb[0][0] and ta[-1] == tb[-1] and len(ta[0]) == 1 and len(tb[0]) == 1:
-                return False
-        return True
+
+    def parse(tokens):
+        if len(tokens) == 1:
+            return (tokens[0], None, None)
+        if len(tokens) == 2:
+            if len(tokens[0]) == 1 and len(tokens[1]) > 1:
+                return (tokens[1], None, tokens[0])
+            if len(tokens[1]) == 1 and len(tokens[0]) > 1:
+                return (tokens[0], None, tokens[1])
+            return (tokens[-1], tokens[0], None)
+        if len(tokens[-1]) == 1:
+            return (" ".join(tokens[:-1]), None, tokens[-1])
+        if len(tokens[0]) == 1:
+            return (" ".join(tokens[1:]), None, tokens[0])
+        return (tokens[-1], tokens[0], None)
+
+    sur_a, first_a, init_a = parse(ta)
+    sur_b, first_b, init_b = parse(tb)
+
+    if sur_a != sur_b:
+        return False
+
+    if first_a and first_b:
+        return first_a == first_b
+    if first_a and init_b:
+        return first_a[0] == init_b[0]
+    if first_b and init_a:
+        return first_b[0] == init_a[0]
+    if init_a and init_b:
+        return init_a[0] == init_b[0]
+    # surname-only vs surname+firstname -> reject (avoid false positives)
     return False
 
 
