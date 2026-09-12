@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Optional
 import pandas as pd
 import urllib.request
-from racketfactory.entities import normalize_player, normalize_tour
+from racketfactory.entities import normalize_player, normalize_tour, player_key
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +49,44 @@ def parse_comment(comment: object) -> str:
     if any(x in c for x in ["abandoned", "cancelled"]): return "Abandoned"
     return "Completed"
 
-def format_score(row: dict) -> str:
+def format_score(row: dict, *, flip: bool = False) -> str:
+    """Set tokens in player_a-first order (settlement contract).
+
+    The source columns are winner-first (W1/L1...); when player_a is the
+    loser (underdog won), every token flips to ``loser-games_winner-games``
+    so downstream set counting attributes games to the right side.
+    """
     parts = []
     for i in range(1, 6):
         w, l = row.get(f"W{i}"), row.get(f"L{i}")
         if pd.notna(w) and pd.notna(l): # type: ignore
-            parts.append(f"{int(w)}-{int(l)}")
+            if int(w) == 0 and int(l) == 0:
+                continue  # unplayed set recorded as 0-0: not a set
+            a, b = (int(l), int(w)) if flip else (int(w), int(l))
+            parts.append(f"{a}-{b}")
     return " ".join(parts)
+
+
+def flip_score_perspective(score: object) -> tuple[str, int]:
+    """Flip plain ``N-M`` tokens of an existing score string.
+
+    Returns (flipped_score, skipped_tokens). Only plain ``digits-digits``
+    tokens flip; anything else (tiebreak annotations, retirements) is left
+    untouched and counted so callers can report it.
+    """
+    import re
+    flipped: list[str] = []
+    skipped = 0
+    for tok in str(score or "").split():
+        m = re.fullmatch(r"(\d+)-(\d+)", tok)
+        # Fused tiebreaks ("7-68") match digits-digits but must never flip;
+        # no real set has a side above 30 games.
+        if m and int(m.group(1)) <= 30 and int(m.group(2)) <= 30:
+            flipped.append(f"{m.group(2)}-{m.group(1)}")
+        else:
+            flipped.append(tok)
+            skipped += 1
+    return " ".join(flipped), skipped
 
 def pick_odds(ps: object, b365: object, avg: object) -> Optional[float]:
     for val in [ps, b365, avg]:
@@ -79,8 +110,7 @@ def normalize_row(row: dict, *, tour: str) -> Optional[dict[str, Any]]:
 
     odds_winner = pick_odds(row.get("PSW"), row.get("B365W"), row.get("AvgW"))
     odds_loser = pick_odds(row.get("PSL"), row.get("B365L"), row.get("AvgL"))
-    if odds_winner is None or odds_loser is None:
-        return None
+    has_odds = odds_winner is not None and odds_loser is not None
 
     date_val = row.get("Date")
     if pd.isna(date_val): return None # type: ignore
@@ -94,14 +124,22 @@ def normalize_row(row: dict, *, tour: str) -> Optional[dict[str, Any]]:
     # NOT by winner/loser identity. This prevents look-ahead bias: the assay
     # must not know who won when deciding which player is 'a' or 'b'.
     # The `winner` field remains the ground truth for outcome checking.
-    if odds_winner <= odds_loser:
-        # Winner is the favourite
-        p_a, p_b = winner, loser
-        odds_a, odds_b = odds_winner, odds_loser
+    if has_odds:
+        assert odds_winner is not None and odds_loser is not None
+        if odds_winner <= odds_loser:
+            # Winner is the favourite
+            p_a, p_b = winner, loser
+            odds_a, odds_b = odds_winner, odds_loser
+        else:
+            # Loser is the favourite (upset scenario)
+            p_a, p_b = loser, winner
+            odds_a, odds_b = odds_loser, odds_winner
     else:
-        # Loser is the favourite (upset scenario)
-        p_a, p_b = loser, winner
-        odds_a, odds_b = odds_loser, odds_winner
+        # No market price: keep the result (it still settles on winner)
+        # ordered alphabetically by canonical key — also leak-free.
+        p_a, p_b = sorted([winner, loser], key=lambda n: player_key(n))
+        odds_a, odds_b = None, None
+    score = format_score(row, flip=(p_a == loser))
 
     return {
         "match_date": match_date,
@@ -111,12 +149,13 @@ def normalize_row(row: dict, *, tour: str) -> Optional[dict[str, Any]]:
         "player_a": p_a,
         "player_b": p_b,
         "winner": winner,
-        "score": format_score(row),
+        "score": score,
+        "_score_perspective": "player_a_games-player_b_games",
         "odds_a": odds_a,
         "odds_b": odds_b,
-        "bookmaker": "Pinnacle" if pd.notna(row.get("PSW")) else ( # type: ignore
+        "bookmaker": ("Pinnacle" if pd.notna(row.get("PSW")) else ( # type: ignore
             "Bet365" if pd.notna(row.get("B365W")) else "OddsPortal Avg" # type: ignore
-        ),
+        )) if has_odds else "",
         "source": "tennis-data.co.uk",
         "captured_at": captured_at,
         "oddsportal_url": "",
@@ -127,9 +166,9 @@ def normalize_row(row: dict, *, tour: str) -> Optional[dict[str, Any]]:
         "_location": str(row.get("Location") or "").strip(),
         "_winner_rank": int(row.get("WRank")) if pd.notna(row.get("WRank")) else None, # type: ignore
         "_loser_rank": int(row.get("LRank")) if pd.notna(row.get("LRank")) else None, # type: ignore
-        "_odds_source": "pinnacle" if pd.notna(row.get("PSW")) else ( # type: ignore
+        "_odds_source": ("pinnacle" if pd.notna(row.get("PSW")) else ( # type: ignore
             "bet365" if pd.notna(row.get("B365W")) else "avg" # type: ignore
-        ),
+        )) if has_odds else "",
     }
 
 def read_yearly_excel(path: str | Path, *, tour: str = "ATP") -> list[dict[str, Any]]:
@@ -152,10 +191,27 @@ def read_yearly_excel(path: str | Path, *, tour: str = "ATP") -> list[dict[str, 
             rows.append(normalized)
     return rows
 
+def _cache_is_fresh(path: Path, year: int, max_age_hours: float) -> bool:
+    """Past-year files are final (cache forever); the current year's file
+    grows through the season and must refetch once stale."""
+    if not path.exists():
+        return False
+    if year != datetime.now().year:
+        return True
+    try:
+        age_hours = (datetime.now().timestamp() - path.stat().st_mtime) / 3600.0
+    except OSError:
+        return False
+    return age_hours <= max_age_hours
+
+
 def download_yearly_excel(
     year: int,
     tour: str = "ATP",
     data_dir: str | Path = "localdata/tennisdata",
+    *,
+    force: bool = False,
+    max_age_hours: float = 24.0,
 ) -> Optional[Path]:
     tour_upper = tour.upper()
     url = ATP_YEARLY_URL.format(year=year) if tour_upper == "ATP" else WTA_YEARLY_URL.format(year=year)
@@ -165,8 +221,15 @@ def download_yearly_excel(
     filename = f"{year}{'' if tour_upper == 'ATP' else 'w'}.xlsx"
     dest = data_dir / filename
     
-    if dest.exists():
+    if not force and _cache_is_fresh(dest, year, max_age_hours):
+        logger.info("Using cached %s (fresh)", dest)
         return dest
+    if dest.exists():
+        logger.info("Refetching stale %s", dest)
+        try:
+            dest.unlink()
+        except OSError:
+            pass
 
     try:
         logger.info("Downloading %s -> %s", url, dest)
@@ -222,17 +285,60 @@ def write_monthly_csv(
         written.append(path)
     return written
 
+def repair_monthly_scores(path: str | Path) -> dict[str, int]:
+    """One-off repair for monthly files written with winner-first scores.
+
+    Rows where player_a != winner get their plain N-M tokens flipped to
+    player_a-first; every row gains the ``_score_perspective`` label.
+    Rewrites the file in place (gzipped). Returns counts.
+    """
+    path = Path(path)
+    df = pd.read_csv(path, low_memory=False)
+    stats = {"rows": len(df), "flipped": 0, "skipped_tokens": 0,
+             "stripped_00": 0, "already_labeled": 0}
+    if df.empty:
+        return stats
+    labeled = "_score_perspective" in df.columns
+    scores = []
+    for _, row in df.iterrows():
+        raw = row.get("score")
+        score = raw if isinstance(raw, str) else ""
+        toks = [x for x in score.split() if x != "0-0"]
+        if len(toks) != len(score.split()):
+            stats["stripped_00"] += 1
+            score = " ".join(toks)
+        if labeled and str(row.get("_score_perspective") or "") != "":
+            stats["already_labeled"] += 1
+            scores.append(score)
+            continue
+        if str(row.get("player_a") or "") != str(row.get("winner") or "") and score:
+            fixed, skipped = flip_score_perspective(score)
+            stats["flipped"] += 1
+            stats["skipped_tokens"] += skipped
+            scores.append(fixed)
+        else:
+            scores.append(score)
+    df["score"] = scores
+    df["_score_perspective"] = "player_a_games-player_b_games"
+    df.to_csv(path, index=False, compression="gzip")
+    return stats
+
+
 def fetch_and_normalize_years(
     years: list[int],
     tours: list[str] | None = None,
     data_dir: str | Path = "localdata/tennisdata",
     output_dir: str | Path = "localdata",
+    *,
+    force: bool = False,
+    max_age_hours: float = 24.0,
 ) -> int:
     if tours is None: tours = ["ATP", "WTA"]
     all_rows: list[dict[str, Any]] = []
     for tour in tours:
         for year in years:
-            path = download_yearly_excel(year, tour, data_dir)
+            path = download_yearly_excel(year, tour, data_dir,
+                                         force=force, max_age_hours=max_age_hours)
             if path:
                 rows = read_yearly_excel(path, tour=tour)
                 all_rows.extend(rows)
