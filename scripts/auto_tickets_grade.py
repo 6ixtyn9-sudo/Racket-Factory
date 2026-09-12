@@ -102,9 +102,53 @@ def load_warehouse():
     except Exception:
         return pd.DataFrame()
 
-def settle_leg(leg, df):
-    # Try to find matching row in warehouse
-    if df.empty:
+def load_additional_results():
+    """Load foretennis_results, forebet_results, predictions with actual_result for settlement."""
+    import pandas as pd
+    dfs=[]
+    for f in LOCALDATA.glob("foretennis_results_*.csv.gz"):
+        try:
+            df=pd.read_csv(f, low_memory=False)
+            if not df.empty and "winner" in df.columns:
+                dfs.append(df)
+        except Exception:
+            pass
+    for f in LOCALDATA.glob("forebet_results_*.csv.gz"):
+        try:
+            df=pd.read_csv(f, low_memory=False)
+            if not df.empty and "winner" in df.columns:
+                dfs.append(df)
+        except Exception:
+            pass
+    for f in LOCALDATA.glob("predictions_foretennis_*.csv.gz"):
+        try:
+            df=pd.read_csv(f, low_memory=False)
+            if not df.empty and "actual_result" in df.columns:
+                def winner_from_actual(row):
+                    ar=str(row.get("actual_result") or "").strip()
+                    digits=[int(ch) for ch in ar if ch.isdigit()]
+                    if len(digits)<2:
+                        return None
+                    home,away=digits[0],digits[1]
+                    if home==away:
+                        return None
+                    return str(row.get("player_a") or "") if home>away else str(row.get("player_b") or "")
+                df["winner"]=df.apply(winner_from_actual, axis=1)
+                df=df[df["winner"].notna()]
+                if not df.empty:
+                    dfs.append(df)
+        except Exception:
+            pass
+    if not dfs:
+        return pd.DataFrame()
+    try:
+        return pd.concat(dfs, ignore_index=True, sort=False)
+    except Exception:
+        return pd.DataFrame()
+
+def settle_leg(leg, df, additional_df=None):
+    # Try to find matching row in warehouse, fallback to additional results
+    if df.empty and (additional_df is None or additional_df.empty):
         return None  # unsettled
     match_text = clean_text(leg.get("match"))
     selected = clean_text(leg.get("selected_player"))
@@ -119,10 +163,8 @@ def settle_leg(leg, df):
         # fallback: try to use selected + opponent unknown
         p_home, p_away = "", ""
 
-    # Date filter: if slip has date, allow +/-1 day
-    # leg doesn't have date, but slip date is available via caller
-    # For now, search all
     candidates = df
+    additional_candidates = additional_df if additional_df is not None else pd.DataFrame()
 
     def row_match(row):
         a = clean_text(row.get("player_a"))
@@ -130,10 +172,11 @@ def settle_leg(leg, df):
         if p_home and p_away:
             return (names_match(a, p_home) and names_match(b, p_away)) or (names_match(a, p_away) and names_match(b, p_home))
         else:
-            # If we don't have both players, match on selected player being in row
             return names_match(a, selected) or names_match(b, selected)
 
     matched = candidates[candidates.apply(row_match, axis=1)] if not candidates.empty else pd.DataFrame()
+    if matched.empty and not additional_candidates.empty:
+        matched = additional_candidates[additional_candidates.apply(row_match, axis=1)] if not additional_candidates.empty else pd.DataFrame()
     if matched.empty:
         return None
 
@@ -157,7 +200,7 @@ def settle_leg(leg, df):
     won = names_match(winner, selected)
     return won
 
-def settle_open_slips(state, df):
+def settle_open_slips(state, df, additional_df=None):
     logs = []
     remaining_open = []
     for slip in state.get("open_slips", []):
@@ -168,7 +211,7 @@ def settle_open_slips(state, df):
             legs = acca.get("legs", [])
             leg_outcomes = []
             for leg in legs:
-                won = settle_leg(leg, df)
+                won = settle_leg(leg, df, additional_df)
                 if won is None:
                     all_settled = False
                     leg_outcomes.append(None)
@@ -292,7 +335,10 @@ def main():
         print("no state yet — run auto_tickets.py first")
         return 0
     df = load_warehouse()
-    for line in settle_open_slips(state, df):
+    additional_df = load_additional_results()
+    if not additional_df.empty:
+        print(f"Loaded {len(additional_df)} additional result rows from foretennis/forebet")
+    for line in settle_open_slips(state, df, additional_df):
         print(line)
     write_performance(state)
     save_state(state)
