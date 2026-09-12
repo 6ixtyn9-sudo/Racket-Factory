@@ -1,0 +1,5 @@
+{
+ "quarantined": "1 row (_foretennis_match_id=1324)",
+ "evidence": "TE match-detail id=3320729; Challenger 2-1 3-6 6-4 6-4 W=Rybakina; theoddsapi_scores; 2 all_fetched rows",
+ "cause": "legacy backfill parser reversed player order vs actual_result digits"
+}

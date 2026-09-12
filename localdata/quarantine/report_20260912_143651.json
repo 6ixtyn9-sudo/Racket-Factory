@@ -1,0 +1,173 @@
+{
+  "applied": true,
+  "files": [
+    {
+      "examples": [
+        {
+          "_quarantine_reason": "tournament-like player 'Reus ITF'",
+          "match_date": "2026-09-11",
+          "player_a": "Reus ITF",
+          "player_b": "Guiyang ITF",
+          "score": "2-1",
+          "tournament": NaN,
+          "winner": "Reus ITF"
+        },
+        {
+          "_quarantine_reason": "tournament-like player 'Hurghada 10 ITF'",
+          "match_date": "2026-09-11",
+          "player_a": "Hurghada 10 ITF",
+          "player_b": "Dijon 2 ITF",
+          "score": "2-1",
+          "tournament": NaN,
+          "winner": "Hurghada 10 ITF"
+        },
+        {
+          "_quarantine_reason": "tournament-like player 'Reus ITF'",
+          "match_date": "2026-09-10",
+          "player_a": "Reus ITF",
+          "player_b": "Guiyang ITF",
+          "score": "2-1",
+          "tournament": NaN,
+          "winner": "Reus ITF"
+        },
+        {
+          "_quarantine_reason": "tournament-like player 'Hurghada 10 ITF'",
+          "match_date": "2026-09-10",
+          "player_a": "Hurghada 10 ITF",
+          "player_b": "Dijon 2 ITF",
+          "score": "2-1",
+          "tournament": NaN,
+          "winner": "Hurghada 10 ITF"
+        },
+        {
+          "_quarantine_reason": "tournament-like player 'Reus ITF'",
+          "match_date": "2026-09-09",
+          "player_a": "Reus ITF",
+          "player_b": "Guiyang ITF",
+          "score": "2-1",
+          "tournament": NaN,
+          "winner": "Reus ITF"
+        },
+        {
+          "_quarantine_reason": "tournament-like player 'Hurghada 10 ITF'",
+          "match_date": "2026-09-09",
+          "player_a": "Hurghada 10 ITF",
+          "player_b": "Dijon 2 ITF",
+          "score": "2-1",
+          "tournament": NaN,
+          "winner": "Hurghada 10 ITF"
+        },
+        {
+          "_quarantine_reason": "tournament-like player 'Viserba ITF'",
+          "match_date": "2026-09-09",
+          "player_a": "Viserba ITF",
+          "player_b": "Radom ITF",
+          "score": "5-2",
+          "tournament": NaN,
+          "winner": "Viserba ITF"
+        },
+        {
+          "_quarantine_reason": "tournament-like player 'UTR Pro Match Series'",
+          "match_date": "2026-09-09",
+          "player_a": "UTR Pro Match Series",
+          "player_b": "Yeongwol 2 ITF",
+          "score": "36-1",
+          "tournament": NaN,
+          "winner": "UTR Pro Match Series"
+        }
+      ],
+      "file": "challenger_results_tennis_2026-09.csv.gz",
+      "keep": 0,
+      "legacy": 1274,
+      "quarantine": 1260,
+      "reasons": {
+        "not final: score not final: incomplete final set 1-0": 37,
+        "not final: score not final: incomplete final set 6-6": 80,
+        "not final: score not final: incomplete final set 7-3": 27,
+        "not final: score not final: invalid set 6-5": 28,
+        "not final: score not final: invalid set 6-6": 166,
+        "not final: score not final: invalid set 7-3": 38,
+        "not final: score not final: invalid set 7-4": 48,
+        "not final: score not final: set-count prefix 2-1 disagrees with set scores (1-1)": 25,
+        "tournament-like player 'US Open'": 31,
+        "tournament-like player 'Viserba ITF'": 24
+      },
+      "total": 2534
+    },
+    {
+      "examples": [],
+      "file": "foretennis_results_tennis_2026-06.csv.gz",
+      "keep": 39,
+      "legacy": 0,
+      "quarantine": 0,
+      "reasons": {},
+      "total": 39
+    },
+    {
+      "examples": [],
+      "file": "foretennis_results_tennis_2026-07.csv.gz",
+      "keep": 418,
+      "legacy": 0,
+      "quarantine": 0,
+      "reasons": {},
+      "total": 418
+    },
+    {
+      "examples": [],
+      "file": "foretennis_results_tennis_2026-08.csv.gz",
+      "keep": 320,
+      "legacy": 0,
+      "quarantine": 0,
+      "reasons": {},
+      "total": 320
+    },
+    {
+      "examples": [
+        {
+          "_quarantine_reason": "tournament-like player 'US Open'",
+          "match_date": "2026-09-11",
+          "player_a": "Zverev A.",
+          "player_b": "US Open",
+          "score": 30,
+          "tournament": NaN,
+          "winner": "Zverev A."
+        },
+        {
+          "_quarantine_reason": "tournament-like player 'US Open'",
+          "match_date": "2026-09-10",
+          "player_a": "Zverev A.",
+          "player_b": "US Open",
+          "score": 30,
+          "tournament": NaN,
+          "winner": "Zverev A."
+        },
+        {
+          "_quarantine_reason": "tournament-like player 'US Open'",
+          "match_date": "2026-09-09",
+          "player_a": "Gauff C.",
+          "player_b": "US Open",
+          "score": 12,
+          "tournament": NaN,
+          "winner": "US Open"
+        }
+      ],
+      "file": "foretennis_results_tennis_2026-09.csv.gz",
+      "keep": 183,
+      "legacy": 3,
+      "quarantine": 3,
+      "reasons": {
+        "tournament-like player 'US Open'": 3
+      },
+      "total": 189
+    },
+    {
+      "examples": [],
+      "file": "theoddsapi_scores_tennis_2026-09.csv.gz",
+      "keep": 8,
+      "legacy": 0,
+      "quarantine": 0,
+      "reasons": {},
+      "total": 8
+    }
+  ]
+}
