@@ -426,7 +426,32 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
         base_away = canonical_display_name(str(base.get("player_away") or ""))
 
         oriented = [_orient_live_source_row(rr, base_home, base_away) for _, rr in g.iterrows()]
+        # First, try valid two-way pairs (strict)
         odds_rows = [rr for rr in oriented if _live_odds_pair_is_usable(rr)]
+        # Fallback: if no valid pair, allow single-side valid odds (Challenger/ITF, or Jina partial)
+        # This improves priced share from 0/16 to something, while still rejecting both-long 9.5/9.7
+        if not odds_rows:
+            # Allow rows where at least one side is valid decimal 1.01-51 and other is NA or invalid but not both long
+            single_side = []
+            for rr in oriented:
+                oh = rr.get("odds_home")
+                oa = rr.get("odds_away")
+                ch = None
+                ca = None
+                try:
+                    from racketfactory.warehouse import coerce_decimal_odds
+                    ch = coerce_decimal_odds(oh)
+                    ca = coerce_decimal_odds(oa)
+                except:
+                    pass
+                # If one side valid and other NA/None, allow
+                if (ch is not None and ca is None) or (ca is not None and ch is None):
+                    # Single side valid, allow
+                    single_side.append(rr)
+                elif ch is not None and ca is not None:
+                    # Both present but pair invalid (e.g. 9.5/9.7) -> reject, don't add to single_side
+                    continue
+            odds_rows = single_side
 
         def _max_numeric(key: str, source_rows: list[dict]) -> object:
             vals = [pd.to_numeric(rr.get(key), errors="coerce") for rr in source_rows]
@@ -436,6 +461,7 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
         # Use the best usable price among sources, but only after each source's
         # two-way pair passed sanity checks.  This prevents one poisoned scrape
         # (e.g. @9.50 parsed from page text) from inflating EV for everyone.
+        # If only single-side available, we still take max of that side, other remains NA
         odds_home = _max_numeric("odds_home", odds_rows)
         odds_away = _max_numeric("odds_away", odds_rows)
 
