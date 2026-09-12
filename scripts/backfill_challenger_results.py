@@ -14,6 +14,11 @@ import sys
 from pathlib import Path
 from datetime import date, timedelta
 import pandas as pd
+try:
+    from curl_cffi import requests as curl_requests
+    HAS_CURL=True
+except:
+    HAS_CURL=False
 import requests
 from bs4 import BeautifulSoup
 
@@ -25,14 +30,18 @@ logger = logging.getLogger("backfill_challenger")
 
 def fetch_flashscore_challenger_results(target_date: str) -> list[dict]:
     """Try Flashscore API for challenger results - fallback to empty if fails"""
-    # Flashscore uses an API endpoint that requires some headers
-    # For now, try a simple approach using tennisexplorer which is easier to parse
     results=[]
     try:
-        # TennisExplorer has daily results with challenger coverage
         url=f"https://www.tennisexplorer.com/results/?type=all&year={target_date[:4]}&month={target_date[5:7]}&day={target_date[8:10]}"
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        resp=requests.get(url, headers=headers, timeout=15)
+        if HAS_CURL:
+            try:
+                resp=curl_requests.get(url, headers=headers, timeout=15, impersonate="chrome")
+            except Exception as e:
+                print(f"curl_cffi failed for {target_date}: {e}, trying requests")
+                resp=requests.get(url, headers=headers, timeout=15)
+        else:
+            resp=requests.get(url, headers=headers, timeout=15)
         if resp.status_code!=200:
             logger.warning(f"TennisExplorer returned {resp.status_code} for {target_date}")
             return []
