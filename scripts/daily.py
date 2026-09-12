@@ -157,18 +157,13 @@ def save_forecast_outputs(
     print(f"Forecast ledger written: {forecast_picks_file(target_date)}")
 
 def morning_baseline_file(target_date: str) -> Path:
+    # Deprecated: morning baseline removed per user request (focus on autobets)
     return LOCALDATA / f"picks_morning_{target_date}.json"
 
 
 def save_morning_baseline(target_date: str, picks_text: str | None, *, overwrite: bool = False) -> None:
-    """Lock the FIRST operational picks of the day so late runs cannot drift them."""
-    if picks_text is None:
-        return
-    LOCALDATA.mkdir(parents=True, exist_ok=True)
-    path = morning_baseline_file(target_date)
-    if path.exists() and not overwrite:
-        return
-    path.write_text(picks_text)
+    """Deprecated: morning baseline disabled — user wants autobets only, no morning duplicate."""
+    return
 
 
 def get_actual_kickoff_date(pick: dict[str, Any], fallback: str) -> str:
@@ -668,28 +663,9 @@ def run_once(args: argparse.Namespace) -> None:
     # 5. Mine Edges
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --bet-side prediction --date {target}", "mine_edges", env=child_env)
 
-    # 6. Archive by Kickoff & Lock the morning baseline
-    picks_today = LOCALDATA / "picks_today.json"
-    if picks_today.exists():
-        try:
-            current_picks = json.loads(picks_today.read_text())
-            if not isinstance(current_picks, list):
-                current_picks = []
-        except Exception:
-            current_picks = []
-
-        distinct_dates = archive_picks_by_kickoff(current_picks, target)
-        if target not in distinct_dates:
-            distinct_dates.append(target)
-
-        for d in distinct_dates:
-            arch = archived_picks_file(d)
-            if arch.exists():
-                save_morning_baseline(d, arch.read_text(), overwrite=args.force_repick)
-    else:
-        archive = archived_picks_file(target)
-        if archive.exists():
-            save_morning_baseline(target, archive.read_text(), overwrite=args.force_repick)
+    # 6. Archive by Kickoff (morning baseline disabled per user request)
+    # Previously locked morning baseline, now skipped — focus on autobets only
+    pass
 
     # 7. Generate human friendly TXT report + inline next-day planner (Edge-Factory parity)
     target_archive = archived_picks_file(target)
