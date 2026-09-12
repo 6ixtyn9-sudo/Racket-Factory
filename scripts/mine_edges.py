@@ -683,11 +683,32 @@ def load_local_oddsportal_odds(target_date: str) -> list[dict]:
 BZZOIRO_ODDS_CACHE: dict[str, list[dict] | None] = {}
 
 
+def _bzzoiro_cache_path(target_date: str) -> Path:
+    return ROOT / "localdata" / f"bzzoiro_odds_{target_date}.json"
+
+
 def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
-    """Fetch the paid v2 odds/best payload once per date per process."""
+    """Paid v2 odds/best payload, read-through static disk cache.
+
+    One paid fetch per date ever: the payload is persisted to
+    ``localdata/bzzoiro_odds_<date>.json`` and reused by every later run
+    (CI reruns, audits, replays) without spending quota. A corrupt cache
+    file is ignored and refetched when a token is available.
+    """
     import os
     if target_date in BZZOIRO_ODDS_CACHE:
         return BZZOIRO_ODDS_CACHE[target_date]
+    try:
+        cached = json.loads(_bzzoiro_cache_path(target_date).read_text())
+        if isinstance(cached, dict) and isinstance(cached.get("results"), list):
+            BZZOIRO_ODDS_CACHE[target_date] = cached["results"]
+            logger.info("Bzzoiro odds/best: %d matches for %s (static cache)",
+                        len(cached["results"]), target_date)
+            return cached["results"]
+    except FileNotFoundError:
+        pass
+    except Exception as exc:
+        logger.warning("Bzzoiro static cache unreadable for %s: %s", target_date, exc)
     token = os.getenv("BZZOIRO_TOKEN")
     if not token:
         BZZOIRO_ODDS_CACHE[target_date] = None
@@ -706,6 +727,11 @@ def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
         data = resp.json()
         results = data.get("results", []) if isinstance(data, dict) else []
         BZZOIRO_ODDS_CACHE[target_date] = results
+        try:
+            _bzzoiro_cache_path(target_date).write_text(json.dumps(
+                {"date": target_date, "results": results}))
+        except Exception as exc:
+            logger.warning("Bzzoiro static cache write failed for %s: %s", target_date, exc)
         logger.info("Bzzoiro odds/best: %d matches for %s", len(results), target_date)
         return results
     except Exception as exc:
@@ -1750,7 +1776,9 @@ def main() -> int:
                     "edge_dims": best_pick.get("Dims"),
                     "edge_n": best_pick.get("N"),
                     "edge_grade": best_pick.get("Grade"),
-                    "edge_tier": best_pick.get("Tier"),
+                    # BANKER requires an executable price (same gate as the
+                    # live-only branch): unpriced slice picks are paper.
+                    "edge_tier": best_pick.get("Tier") if basis == "api" else "WATCHLIST_ONLY",
                     "edge_verdict": best_pick.get("Verdict"),
                     "roi_estimate": best_pick.get("ROI"),
                 })

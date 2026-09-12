@@ -167,6 +167,7 @@ def settle_open_slips(state, df, additional_df=None):
         wins = 0
         losses = 0
         paper_wins = 0
+        paper_unpriced = 0
         for acca in slip.get("accas", []):
             legs = acca.get("legs", [])
             leg_outcomes = [settle_leg(leg, df, additional_df, target_date=date_str)
@@ -186,12 +187,14 @@ def settle_open_slips(state, df, additional_df=None):
                 acca_odds = 0.0
             voids = [leg for leg, o in zip(legs, leg_outcomes) if o == "VOID"]
             refunded = False
+            priceable = acca_odds > 1.0
             if any(o == "LOST" for o in leg_outcomes):
-                won_acca, acca_return = False, 0.0
+                won_acca, acca_return = False, (0.0 if priceable else None)
             elif voids and len(voids) == len(legs):
-                won_acca, acca_return, refunded = False, stake_pct, True
-            elif voids:
-                eff, repriceable = acca_odds, acca_odds > 1.0
+                won_acca, refunded = False, True
+                acca_return = stake_pct if priceable else None
+            elif voids and priceable:
+                eff, repriceable = acca_odds, True
                 for leg in voids:
                     try:
                         lo = float(leg.get("odds") or 0)
@@ -207,14 +210,23 @@ def settle_open_slips(state, df, additional_df=None):
                                 f"valid odds, cannot reprice -- acca held open")
                     continue
                 won_acca, acca_odds, acca_return = True, round(eff, 4), stake_pct * eff
-            elif acca_odds > 1.0:
+            elif priceable:
                 won_acca, acca_return = True, stake_pct * acca_odds
+            elif paper:
+                # Unpriced paper acca: legs decided, no market price exists.
+                # Settle W/L for hit-rate only; never touches any bank.
+                won_acca, acca_return = True, None
             else:
                 pending_accas.append(acca)
                 logs.append(f"  {date_str} {acca.get('type')}: won legs but acca has "
                             f"no valid odds -- held open, never pays on fiction")
                 continue
-            if paper:
+            unpriced = acca_return is None
+            if unpriced:
+                # Hit-rate only: excluded from every bank calculation.
+                paper_wins += int(won_acca)
+                paper_unpriced += 1
+            elif paper:
                 paper_staked += stake_pct
                 paper_return += acca_return
                 paper_wins += int(won_acca)
@@ -227,10 +239,12 @@ def settle_open_slips(state, df, additional_df=None):
                 "odds": acca_odds,
                 "won": bool(won_acca),
                 "stake_pct": stake_pct,
+                "return_pct": acca_return,
                 "type": acca.get("type"),
                 "legs": legs,
                 "paper": paper,
                 "refunded": refunded,
+                "unpriced": unpriced,
             })
         # If some accas still pending, keep slip open with pending accas
         if pending_accas:
@@ -260,7 +274,7 @@ def settle_open_slips(state, df, additional_df=None):
                 }
                 state["history"].append(hist_entry)
                 logs.append(f"{date_str}: partially settled {wins}W/{losses}L "
-                            f"({paper_wins} paper wins) + {len(pending_accas)} pending  "
+                            f"({paper_wins} paper wins, {paper_unpriced} unpriced) + {len(pending_accas)} pending  "
                             f"PnL {pnl:+.1f}% (paper {paper_pnl:+.1f}%)  "
                             f"bank {old_bank:.1f}% -> {new_bank:.1f}%")
                 # Keep pending as new open slip
@@ -302,7 +316,7 @@ def settle_open_slips(state, df, additional_df=None):
         }
         state["history"].append(hist_entry)
         logs.append(f"{date_str}: settled {wins}W/{losses}L "
-                    f"({paper_wins} paper wins)  PnL {pnl:+.1f}% (paper {paper_pnl:+.1f}%)  "
+                    f"({paper_wins} paper wins, {paper_unpriced} unpriced)  PnL {pnl:+.1f}% (paper {paper_pnl:+.1f}%)  "
                     f"bank {old_bank:.1f}% -> {new_bank:.1f}%")
         cycle_base = state.get("cycle_base", 100.0)
         target = cycle_base * 2.0
