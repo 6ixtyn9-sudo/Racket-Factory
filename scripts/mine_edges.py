@@ -234,9 +234,12 @@ def forebet_day_for_target(target_date: str) -> str:
     today = datetime.now().date()
     if target == today - timedelta(days=1):
         return "yesterday"
+    if target == today:
+        return "today"
     if target == today + timedelta(days=1):
         return "tomorrow"
-    return "today"
+    # Off-window targets use Forebet calendar URLs (YYYY-MM-DD).
+    return target.isoformat()
 
 
 def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.DataFrame:
@@ -574,7 +577,13 @@ def row_has_live_flag(row: pd.Series) -> bool:
 
 
 def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: object) -> tuple[float | None, str | None]:
-    """Return selected-side odds, repairing likely live side inversions."""
+    """Return selected-side odds. NEVER repairs side inversions.
+
+    A model disagreeing with a labeled market price is evidence of model
+    error or market news, never proof of an inverted market. The old
+    "correction" swapped sides on probability disagreement and converted
+    79%-favorites @9.50 into fake value. Disagreement now rejects the row.
+    """
     odds_val = odds_for_selected_side(row, selected_side)
     if odds_val is None:
         return None, "missing selected-side odds"
@@ -593,7 +602,10 @@ def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: 
             and odds_suspicious_for_probability(probability, odds_val)
             and not odds_suspicious_for_probability(probability, other_odds)
         ):
-            return other_odds, f"corrected likely side-inverted {odds_source} live odds"
+            return None, (
+                f"prob/odds side disagreement on {odds_source} live odds "
+                f"(selected {odds_val} vs alt {other_odds}) — not usable"
+            )
 
     return odds_val, None
 
@@ -668,21 +680,50 @@ def load_local_oddsportal_odds(target_date: str) -> list[dict]:
     return rows
 
 
-def lookup_bzzoiro_selected_odds(target_date: str, pick: dict) -> dict | None:
-    """Try Bzzoiro odds best API for selected side — Challenger/ITF coverage."""
+BZZOIRO_ODDS_CACHE: dict[str, list[dict] | None] = {}
+
+
+def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
+    """Fetch the paid v2 odds/best payload once per date per process."""
+    import os
+    if target_date in BZZOIRO_ODDS_CACHE:
+        return BZZOIRO_ODDS_CACHE[target_date]
+    token = os.getenv("BZZOIRO_TOKEN")
+    if not token:
+        BZZOIRO_ODDS_CACHE[target_date] = None
+        return None
     try:
-        import os, requests
-        token = os.getenv("BZZOIRO_TOKEN")
-        if not token:
-            return None
-        # Use Bzzoiro v2 odds best endpoint for target date
-        url = f"https://sports.bzzoiro.com/tennis/api/v2/odds/best/?date_from={target_date}&date_to={target_date}&limit=100"
+        import requests
+        url = (f"https://sports.bzzoiro.com/tennis/api/v2/odds/best/"
+               f"?date_from={target_date}&date_to={target_date}&limit=100")
         headers = {"Authorization": f"Token {token}"}
         resp = requests.get(url, headers=headers, timeout=10)
         if resp.status_code != 200:
+            logger.warning("Bzzoiro odds/best returned %s for %s",
+                           resp.status_code, target_date)
+            BZZOIRO_ODDS_CACHE[target_date] = None
             return None
         data = resp.json()
         results = data.get("results", []) if isinstance(data, dict) else []
+        BZZOIRO_ODDS_CACHE[target_date] = results
+        logger.info("Bzzoiro odds/best: %d matches for %s", len(results), target_date)
+        return results
+    except Exception as exc:
+        logger.warning("Bzzoiro odds/best fetch failed for %s: %s", target_date, exc)
+        BZZOIRO_ODDS_CACHE[target_date] = None
+        return None
+
+
+def lookup_bzzoiro_selected_odds(target_date: str, pick: dict) -> dict | None:
+    """Try Bzzoiro odds best API for selected side — Challenger/ITF coverage.
+
+    Best-price across bookmakers for the SELECTED side only (no Frankenstein
+    pair is built). Labeled ``Bzzoiro`` with the quoting bookmaker.
+    """
+    try:
+        results = _bzzoiro_date_payload(target_date)
+        if not results:
+            return None
         home = str(pick.get("player_home") or "").strip()
         away = str(pick.get("player_away") or "").strip()
         selected = str(pick.get("selected_player") or "").strip()
@@ -806,6 +847,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
             selected_pick = str(val).strip()
             break
 
+    selection_basis = "prediction"
     if selected_pick in {"player_a", "player_b"}:
         selected_player = home_name if selected_pick == "player_a" else away_name
     elif selected_pick in {"1", "2"}:
@@ -815,9 +857,11 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
         if pd.notna(oa) and pd.notna(ob):
             selected_pick = "player_a" if oa <= ob else "player_b"
             selected_player = home_name if selected_pick == "player_a" else away_name
+            selection_basis = "odds_favorite"
         else:
             selected_pick = "player_a"
             selected_player = home_name
+            selection_basis = "arbitrary_default"
 
     source_val = row.get("source", "")
     source_count = row.get("source_count")
@@ -839,6 +883,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
         "kickoff": str(time_val),
         "selected_side": selected_pick,
         "selected_player": selected_player,
+        "_selection_basis": selection_basis,
         "tournament": row.get("tournament"),
         "source": source_val,
         "source_count": source_count,
@@ -851,6 +896,22 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
         "player_home": home_name,
         "player_away": away_name,
     }
+
+
+def market_basis_for_pick(odds_source: str, odds_val: object) -> tuple[str, bool]:
+    """Return (market_basis, is_paper) for an emitted pick.
+
+    ``api`` = executable bookmaker price (TheOddsAPI/OddsPortal/Bzzoiro).
+    ``scraped_fallback`` = label-only scrape pair, paper only.
+    ``none`` = unpriced.
+    """
+    if odds_val is None:
+        return "none", True
+    if str(odds_source or "").strip() in {"TheOddsAPI", "OddsPortal", "Bzzoiro"}:
+        return "api", False
+    if str(odds_source or "").strip() == "ScrapedFallback":
+        return "scraped_fallback", True
+    return "none", True
 
 
 def write_official_pick_outputs(target_date: str, picks: list[dict]) -> None:
@@ -1536,6 +1597,7 @@ def main() -> int:
             if prob is not None and odds_val is not None and odds_val > 1.0:
                 p_dec = max(0.0, min(1.0, prob / 100.0))
                 ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
+            basis, is_paper = market_basis_for_pick(odds_source, odds_val)
             base.update({
                 "bucket": "WATCHLIST" if odds_val is not None else "WATCHLIST_NO_ODDS",
                 "pick": "WATCHLIST",
@@ -1543,19 +1605,26 @@ def main() -> int:
                 "odds_source": odds_source,
                 "odds_bookmaker": odds_bookmaker,
                 "odds_reject_reason": odds_reject_reason,
+                "_market_basis": basis,
+                "_is_paper": is_paper,
                 "confidence": prob,
                 "expected_value": ev,
                 "slice_matched": "live_only_fallback",
                 "edge_dims": 0,
                 "edge_n": 0,
                 "edge_grade": "SILVER",
-                "edge_tier": "BANKER",
+                # BANKER requires an executable price; scrape-priced and
+                # unpriced live-only rows are watchlist-only (paper).
+                "edge_tier": "BANKER" if basis == "api" else "WATCHLIST_ONLY",
                 "edge_verdict": "WATCHLIST",
                 "roi_estimate": "live_only",
             })
             if ev is not None and ev < args.min_ev:
                 base["bucket"] = "SKIPPED_DEAD_EDGE"
                 base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
+            if base.get("_selection_basis") == "arbitrary_default":
+                base["bucket"] = "WATCHLIST_UNKNOWN_CTX"
+                base["skip_reason"] = "no prediction and no odds: selection would be arbitrary"
             picks_to_export.append(base)
 
     if not today_df.empty and results:
@@ -1664,6 +1733,7 @@ def main() -> int:
                     p_dec = max(0.0, min(1.0, prob / 100.0))
                     ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
 
+                basis, is_paper = market_basis_for_pick(odds_source, odds_val)
                 base.update({
                     "bucket": classify_bucket(best_pick),
                     "pick": best_pick["Verdict"],
@@ -1672,6 +1742,8 @@ def main() -> int:
                     "odds_bookmaker": odds_bookmaker,
                     "oddsportal_matched_market": oddsportal_match,
                     "odds_reject_reason": odds_reject_reason,
+                    "_market_basis": basis,
+                    "_is_paper": is_paper,
                     "confidence": prob,
                     "expected_value": ev,
                     "slice_matched": best_pick["Slice"],

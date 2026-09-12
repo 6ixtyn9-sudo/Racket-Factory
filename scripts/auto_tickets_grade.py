@@ -208,25 +208,11 @@ def load_additional_results():
                         dfs.append(df)
             except Exception:
                 pass
-    for f in LOCALDATA.glob("predictions_foretennis_*.csv.gz"):
-        try:
-            df=pd.read_csv(f, low_memory=False)
-            if not df.empty and "actual_result" in df.columns:
-                def winner_from_actual(row):
-                    ar=str(row.get("actual_result") or "").strip()
-                    digits=[int(ch) for ch in ar if ch.isdigit()]
-                    if len(digits)<2:
-                        return None
-                    home,away=digits[0],digits[1]
-                    if home==away:
-                        return None
-                    return str(row.get("player_a") or "") if home>away else str(row.get("player_b") or "")
-                df["winner"]=df.apply(winner_from_actual, axis=1)
-                df=df[df["winner"].notna()]
-                if not df.empty:
-                    dfs.append(df)
-        except Exception:
-            pass
+    # NOTE: predictions_foretennis_*.csv.gz is deliberately NOT merged.
+    # Its actual_result rows duplicate the backfill output (31/35 dupes by
+    # match_id); the 4 unique rows are garbage (player_b="US Open"
+    # phantoms + match 1324, whose positional digit reading names the wrong
+    # winner — quarantined, TE id=3320729). Results files only.
     if not dfs:
         return pd.DataFrame()
     try:

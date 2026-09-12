@@ -40,7 +40,7 @@ def test_live_odds_alignment_identifies_likely_side_inversions():
     assert not odds_suspicious_for_probability(82, 1.02)
 
 
-def test_collapse_live_card_repairs_side_inverted_live_odds():
+def test_collapse_live_card_never_swaps_odds_on_probability():
     from racketfactory.warehouse import collapse_live_card
 
     card = pd.DataFrame([{
@@ -62,9 +62,11 @@ def test_collapse_live_card_repairs_side_inverted_live_odds():
 
     collapsed = collapse_live_card(card)
 
+    # Labeled prices stay on their labeled side; disagreement is rejected
+    # downstream by selected_odds_is_usable, never repaired here.
     assert len(collapsed) == 1
-    assert collapsed.loc[0, "odds_home"] == 1.02
-    assert collapsed.loc[0, "odds_away"] == 9.50
+    assert collapsed.loc[0, "odds_home"] == 9.50
+    assert collapsed.loc[0, "odds_away"] == 1.02
 
 
 def test_collapse_live_card_reorients_reversed_source_before_aggregating_odds():
@@ -130,9 +132,8 @@ def test_enrich_live_card_uses_validated_scraped_fallback_when_api_missing(monke
         "predicted_winner": "1",
         "prob_home": 79,
         "prob_away": 21,
-        # Valid pair, but side-inverted relative to the prediction probabilities.
-        "odds_home": 9.50,
-        "odds_away": 1.02,
+        "odds_home": 1.20,
+        "odds_away": 4.40,
     }])
 
     enriched = warehouse.enrich_live_card_with_api_odds(card, "2026-06-29")
@@ -140,11 +141,69 @@ def test_enrich_live_card_uses_validated_scraped_fallback_when_api_missing(monke
     assert len(enriched) == 1
     assert enriched.loc[0, "odds_source"] == "ScrapedFallback"
     assert enriched.loc[0, "odds_bookmaker"] == "Validated scrape"
-    assert enriched.loc[0, "odds_home"] == 1.02
-    assert enriched.loc[0, "odds_away"] == 9.50
+    assert enriched.loc[0, "odds_home"] == 1.20
+    assert enriched.loc[0, "odds_away"] == 4.40
     assert enriched.loc[0, "api_odds_home"] is pd.NA
-    assert enriched.loc[0, "scraped_odds_home"] == 9.50
-    assert enriched.loc[0, "scraped_odds_away"] == 1.02
+    assert enriched.loc[0, "scraped_odds_home"] == 1.20
+    assert enriched.loc[0, "scraped_odds_away"] == 4.40
+
+
+def test_enrich_live_card_preserves_side_orientation(monkeypatch):
+    from racketfactory import warehouse
+
+    monkeypatch.setattr(warehouse, "fetch_the_odds_api_rows", lambda target_date: [])
+    card = pd.DataFrame([{
+        "match_date": "2026-06-29",
+        "match_time": "13:00",
+        "tour": "WTA",
+        "match_type": "Singles",
+        "player_home": "Jelena Ostapenko",
+        "player_away": "Harriet Dart",
+        "tournament": "Wimbledon",
+        "surface": "Grass",
+        "source": "BetClan",
+        "predicted_winner": "1",
+        "prob_home": 79,
+        "prob_away": 21,
+        # Coherent pair that disagrees with the model: orientation is
+        # preserved (rejection happens at selection, not by swapping).
+        "odds_home": 3.40,
+        "odds_away": 1.30,
+    }])
+
+    enriched = warehouse.enrich_live_card_with_api_odds(card, "2026-06-29")
+
+    assert len(enriched) == 1
+    assert enriched.loc[0, "odds_home"] == 3.40
+    assert enriched.loc[0, "odds_away"] == 1.30
+
+
+def test_names_match_rejects_same_surname_initials():
+    from racketfactory.warehouse import names_match
+
+    assert not names_match("Johnson S.", "Johnson A.")
+    assert not names_match("Zverev A.", "Zverev M.")
+    assert not names_match("Zverev", "Alexander Zverev")
+
+
+def test_names_match_accepts_compound_variants():
+    from racketfactory.warehouse import names_match
+
+    assert names_match("Max Alcala Gurri", "Alcala Gurri M.")
+    assert names_match("Alcala Gurri", "Max Alcala Gurri")
+    assert names_match("Pablo Carreno Busta", "P. Carreno-Busta")
+    assert names_match("Denis Shapovalov", "D. Shapovalov")
+    assert names_match("Jesper De Jong", "De Jong J.")
+    assert names_match("Jaume Munar", "Munar J.")
+
+
+def test_names_match_doubles_strict_partners():
+    from racketfactory.warehouse import names_match
+
+    assert names_match("Cascino / Feng", "Cascino E. / Feng S.")
+    assert names_match("Siniakova / Townsend", "Townsend T. / Siniakova K.")
+    assert not names_match("Siniakova / Townsend", "Siniakova / Krueger")
+    assert names_match("Cascino & Feng", "Cascino / Feng")
 
 
 def test_enrich_live_card_rejects_invalid_scraped_fallback_pair_when_api_missing(monkeypatch):

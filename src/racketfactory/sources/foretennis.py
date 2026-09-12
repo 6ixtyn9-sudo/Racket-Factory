@@ -272,27 +272,19 @@ class ForeTennisPredictor:
     ) -> Optional[dict[str, Any]]:
         """
         Map a ForeTennis prediction (home/away) to warehouse player_a/player_b.
-        Uses the same name_signature as Forebet for consistency.
+        Uses the shared strict orientation helper (initials included, so
+        same-surname rows resolve instead of colliding).
         """
-        sig_a = name_signature(player_a)
-        sig_b = name_signature(player_b)
-        sig_home = name_signature(pred["player_home"])
-        sig_away = name_signature(pred["player_away"])
-
-        if sig_a == sig_home:
-            home_is_a = True
-        elif sig_b == sig_home:
-            home_is_a = False
-        elif sig_a == sig_away:
-            home_is_a = False
-        elif sig_b == sig_away:
-            home_is_a = True
-        else:
+        from racketfactory.settlement import home_is_player_a
+        mapped = home_is_player_a(pred["player_home"], pred["player_away"],
+                                  player_a, player_b)
+        if mapped is None:
             logger.debug(
                 "Cannot map %s/%s to %s/%s",
                 pred["player_home"], pred["player_away"], player_a, player_b,
             )
             return None
+        home_is_a = mapped
 
         predicted_winner = pred.get("predicted_winner")
         prob = None

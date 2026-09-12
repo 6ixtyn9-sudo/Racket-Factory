@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import re
+import sys
 import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass
@@ -23,6 +24,18 @@ ROOT = Path(__file__).resolve().parent.parent
 LOCALDATA = ROOT / "localdata"
 WAREHOUSE = LOCALDATA / "warehouse.csv.gz"
 DEFAULT_LOCAL_TZ = "Africa/Johannesburg"
+
+sys_path = str(ROOT / "src")
+if sys_path not in sys.path:
+    sys.path.insert(0, sys_path)
+
+from racketfactory.settlement import (  # noqa: E402
+    players_match,
+    rank_candidates,
+    row_finality,
+    settle_selection,
+    teams_match,
+)
 
 
 @dataclass
@@ -46,6 +59,14 @@ class SettledPick:
     selected_won_set2: bool | None = None
     selected_won_set3: bool | None = None
     ledger_kind: str = "official"
+    settle_source: str = ""
+    settle_date: str = ""
+    settle_score: str = ""
+    settle_reason: str = ""
+    settle_status: str = ""
+    odds_basis: str = "none"
+    market_basis: str = ""
+    is_paper: bool = False
 
 
 def local_today() -> str:
@@ -96,80 +117,22 @@ def normalize_name(value: Any) -> str:
     return " ".join(parts)
 
 
-PLAYER_ALIASES = {
-    "irene burillo": "irene burillo escorihuela",
-    "burillo escorihuela": "irene burillo escorihuela",
-    "irene burillo escorihuela": "irene burillo escorihuela",
-}
-
-def apply_alias(name: str) -> str:
-    norm = normalize_name(name)
-    for short, full in PLAYER_ALIASES.items():
-        if norm == normalize_name(short) or norm == normalize_name(full) or short in norm or norm in short:
-            if "burillo" in norm:
-                return normalize_name(full)
-    return norm
-
 def names_match(a: Any, b: Any) -> bool:
-    # STRICT: reject Alexander vs Mischa, Smith J vs Smith A, partial doubles
-    str_a, str_b = str(a), str(b)
-    has_slash_a = "/" in str_a
-    has_slash_b = "/" in str_b
-    if has_slash_a or has_slash_b:
-        if not (has_slash_a and has_slash_b):
-            return False
-        parts_a = [p.strip() for p in str_a.split("/")]
-        parts_b = [p.strip() for p in str_b.split("/")]
-        if len(parts_a) != len(parts_b):
-            return False
-        if all(names_match(pa, pb) for pa, pb in zip(parts_a, parts_b)):
+    """Cross-source identity via the shared settlement module.
+
+    Replaces the old bespoke matcher (including the Burillo alias hack:
+    compound surnames now match structurally). Doubles compare member-wise
+    through :func:`teams_match` semantics for single-team strings.
+    """
+    from racketfactory.settlement import split_team
+    ma, mb = split_team(a), split_team(b)
+    if len(ma) == 1 and len(mb) == 1:
+        return bool(players_match(ma[0], mb[0])[0])
+    if len(ma) == 2 and len(mb) == 2:
+        straight = players_match(ma[0], mb[0])[0] and players_match(ma[1], mb[1])[0]
+        if straight:
             return True
-        if all(names_match(pa, pb) for pa, pb in zip(parts_a, reversed(parts_b))):
-            return True
-        return False
-    na = apply_alias(a)
-    nb = apply_alias(b)
-    if not na or not nb:
-        return False
-    if na == nb:
-        return True
-    if "burillo" in na and "burillo" in nb:
-        return True
-    ta = na.split()
-    tb = nb.split()
-    if not ta or not tb:
-        return False
-
-    def parse(tokens):
-        if len(tokens) == 1:
-            return (tokens[0], None, None)
-        if len(tokens) == 2:
-            if len(tokens[0]) == 1 and len(tokens[1]) > 1:
-                return (tokens[1], None, tokens[0])
-            if len(tokens[1]) == 1 and len(tokens[0]) > 1:
-                return (tokens[0], None, tokens[1])
-            return (tokens[-1], tokens[0], None)
-        if len(tokens[-1]) == 1:
-            return (" ".join(tokens[:-1]), None, tokens[-1])
-        if len(tokens[0]) == 1:
-            return (" ".join(tokens[1:]), None, tokens[0])
-        return (tokens[-1], tokens[0], None)
-
-    sur_a, first_a, init_a = parse(ta)
-    sur_b, first_b, init_b = parse(tb)
-
-    if sur_a != sur_b:
-        return False
-
-    if first_a and first_b:
-        return first_a == first_b
-    if first_a and init_b:
-        return first_a[0] == init_b[0]
-    if first_b and init_a:
-        return first_b[0] == init_a[0]
-    if init_a and init_b:
-        return init_a[0] == init_b[0]
-    # surname-only vs surname+firstname -> reject (avoid false positives)
+        return bool(players_match(ma[0], mb[1])[0] and players_match(ma[1], mb[0])[0])
     return False
 
 
@@ -254,8 +217,8 @@ def load_archived_picks(start: str, end: str, *, ledger_kind: str = "official") 
 
 
 def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
-    if not warehouse_path.exists():
-        return pd.DataFrame()
+    # No early return when the warehouse file is absent: the additional
+    # result sources below must still load (offline/local runs).
     try:
         df=pd.read_csv(warehouse_path, low_memory=False)
     except Exception:
@@ -272,25 +235,12 @@ def load_warehouse_df(warehouse_path: Path) -> pd.DataFrame:
                         add.append(adf)
                 except Exception:
                     pass
-        for f in localdata.glob("predictions_foretennis_*.csv.gz"):
-            try:
-                adf=pd.read_csv(f, low_memory=False)
-                if not adf.empty and "actual_result" in adf.columns:
-                    def winner_from_actual(row):
-                        ar=str(row.get("actual_result") or "").strip()
-                        digits=[int(ch) for ch in ar if ch.isdigit()]
-                        if len(digits)<2:
-                            return None
-                        home,away=digits[0],digits[1]
-                        if home==away:
-                            return None
-                        return str(row.get("player_a") or "") if home>away else str(row.get("player_b") or "")
-                    adf["winner"]=adf.apply(winner_from_actual, axis=1)
-                    adf=adf[adf["winner"].notna() & (adf["winner"].astype(str).str.strip()!="")]
-                    if not adf.empty:
-                        add.append(adf)
-            except Exception:
-                pass
+        # NOTE: predictions_foretennis_*.csv.gz is deliberately NOT merged here.
+        # Its actual_result rows duplicate the backfill output in
+        # foretennis_results_*.csv.gz (31/35 dupes by match_id), and the 4
+        # unique rows are garbage: player_b="US Open" phantoms plus
+        # match 1324 whose positional digit reading names the wrong winner
+        # (quarantined; TE id=3320729). Settlement reads results files only.
         if add:
             if df.empty:
                 combined=pd.concat(add, ignore_index=True, sort=False)
@@ -319,111 +269,20 @@ def _parse_int_pair_from_token(token: str) -> tuple[int, int] | None:
 
 
 def _winner_side_from_row_values(winner: str, player_a: str, player_b: str) -> str | None:
-    if names_match(winner, player_a):
+    if players_match(winner, player_a)[0]:
         return "player_a"
-    if names_match(winner, player_b):
+    if players_match(winner, player_b)[0]:
         return "player_b"
     return None
 
 
 def _result_row_is_final(row: pd.Series) -> bool:
-    """Return False for live/suspended/to-finish rows masquerading as results.
-
-    Settlement must only count final outcomes.  Some source rows can contain a
-    winner-like value while the score/status still says the match is live,
-    suspended, or "to finish" the next day.
-    """
-    winner = clean_text(row.get("winner"))
-    if not winner:
-        return False
-
-    status_parts = []
-    for key in ("score", "status", "match_status", "state", "_comment"):
-        val = clean_text(row.get(key))
-        if val:
-            status_parts.append(val)
-
-    status_text = " ".join(status_parts).lower()
-
-    if any(
-        token in status_text
-        for token in (
-            "to finish",
-            "leads",
-            "live",
-            "in progress",
-            "suspended",
-            "interrupted",
-            "not started",
-            "postponed",
-        )
-    ):
-        return False
-
-    completed = clean_text(row.get("completed")).lower()
-    if completed in {"false", "0", "no"}:
-        return False
-
-    score = clean_text(row.get("score")).lower()
-    if score:
-        compact_score = score.replace("—", "-").replace("–", "-").strip()
-        if compact_score in {"-", "(l)", "- (l)", "(live)", "- (live)"}:
-            return False
-
-        # Ordered game-score rows must not include a live point score such as
-        # "40-30" after completed sets.  Example bad row:
-        # "6-3 7-6 40-30" = match in progress, not final.
-        if re.search(r"\b(?:0|15|30|40|ad)-(?:0|15|30|40|ad)\b", score):
-            return False
-
-        score_perspective = clean_text(row.get("_score_perspective") or row.get("score_perspective"))
-        if score_perspective == "player_a_sets-player_b_sets":
-            digits = [int(ch) for ch in re.findall(r"\d", score)]
-            if not digits:
-                return False
-
-            player_a = clean_text(row.get("player_a"))
-            player_b = clean_text(row.get("player_b"))
-            winner_side = _winner_side_from_row_values(winner, player_a, player_b)
-            if winner_side not in {"player_a", "player_b"}:
-                return False
-
-            if len(digits) >= 2:
-                a_sets, b_sets = digits[0], digits[1]
-            else:
-                # CSV coercion can strip a leading zero, e.g. "02" -> "2".
-                # That can be valid for best-of-3, but not for ATP Grand Slam
-                # men's singles where the winner must reach 3 sets.
-                if winner_side == "player_a":
-                    a_sets, b_sets = digits[0], 0
-                else:
-                    a_sets, b_sets = 0, digits[0]
-
-            if a_sets == b_sets:
-                return False
-
-            winner_sets = a_sets if winner_side == "player_a" else b_sets
-            match_text = " ".join(
-                clean_text(row.get(k))
-                for k in ("tour", "tournament", "series", "_series")
-            ).lower()
-
-            if winner_sets < 2:
-                return False
-
-            if (
-                "atp" in match_text
-                and any(x in match_text for x in ("grand slam", "wimbledon", "french open", "australian open", "us open"))
-                and winner_sets < 3
-            ):
-                return False
-
-        has_digit = bool(re.search(r"\d", score))
-        has_final_marker = bool(re.search(r"\b(w/o|wo|walkover|ret\.?|retired|default)\b", score))
-        if not has_digit and not has_final_marker:
-            return False
-
-    return True
+    """Finality via the shared settlement module (single source of truth)."""
+    try:
+        record = row.to_dict()
+    except Exception:
+        record = dict(row)
+    return bool(row_finality(record).final)
 
 
 def _set_diagnostics_from_score(
@@ -431,6 +290,7 @@ def _set_diagnostics_from_score(
     score_perspective: Any,
     selected_side: str | None,
     winner_side: str | None,
+    row: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return set diagnostics for selected side.
 
@@ -459,6 +319,17 @@ def _set_diagnostics_from_score(
     perspective = clean_text(score_perspective)
 
     if not score:
+        sets_pair = None
+        if row:
+            from racketfactory.settlement import sets_only_pair as _sop
+            sets_pair = _sop(row)
+        if sets_pair is None:
+            return out
+        selected_sets = sets_pair[0] if selected_side == "player_a" else sets_pair[1]
+        other_sets = sets_pair[1] if selected_side == "player_a" else sets_pair[0]
+        out["selected_sets_won"] = selected_sets
+        out["selected_sets_lost"] = other_sets
+        out["selected_won_any_set"] = selected_sets > 0
         return out
 
     # Forebet ordered set scores: '7-6 3-6 1-6'
@@ -513,139 +384,142 @@ def _set_diagnostics_from_score(
     out["selected_won_any_set"] = selected_sets > 0
     return out
 
-def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
+def _pick_odds_value(pick: dict[str, Any]) -> float | None:
+    try:
+        odds_val = pick.get("odds") or pick.get("decimal_odds")
+        if odds_val is None or str(odds_val).strip() in {"", "nan", "<NA>", "None"}:
+            return None
+        odds = float(odds_val)
+        return odds if odds > 1.0 else None
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
+def _pick_market_labels(pick: dict[str, Any]) -> tuple[str, bool]:
+    """Return (market_basis, is_paper), preferring emitted labels."""
+    basis = clean_text(pick.get("_market_basis"))
+    if basis:
+        is_paper = str(pick.get("_is_paper")).strip().lower() in {"true", "1", "yes"}
+        return basis, is_paper
+    source = clean_text(pick.get("odds_source"))
+    odds = _pick_odds_value(pick)
+    if odds is None:
+        return "none", True
+    if source in {"TheOddsAPI", "OddsPortal", "Bzzoiro"}:
+        return "api", False
+    if source == "ScrapedFallback":
+        return "scraped_fallback", True
+    return "none", True
+
+
+def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> tuple[SettledPick | None, dict[str, Any]]:
+    """Settle one pick via the shared settlement module.
+
+    Returns (SettledPick|None, info) where info carries status/reason/basis
+    for every outcome including pending/void/conflict, so the report can
+    explain unsettled rows instead of silently dropping them.
+    """
     match_date = pick_match_date(pick)
     player_home, player_away = pick_players(pick)
     selected_player = clean_text(pick.get("selected_player") or pick.get("selection") or pick.get("pick_player"))
+    match_text = clean_text(pick.get("match")) or f"{player_home} vs {player_away}"
 
     if not match_date or not player_home or not player_away or not selected_player:
-        return None
+        return None, {"status": "pending_unparseable_pick",
+                      "reason": "missing date/players/selection"}
+    if df.empty or "winner" not in df.columns:
+        return None, {"status": "pending_no_result", "reason": "no result rows loaded"}
 
-    if df.empty:
-        return None
-
-    # Filter by date first, then use tolerant player matching. Warehouse rows
-    # can be TennisData style ("Ostapenko J."), OddsPortal style, or full-name
-    # live rows; exact string equality is too brittle for settlement.
-    #
-    # Source publish dates and warehouse match dates can differ by one day
-    # around overnight / timezone boundaries.  This is common for early
-    # PredixSport rows and Grand Slam order-of-play timing.  Prefer exact-date
-    # matches, but allow +/- 1 day so those picks settle once results land.
-    date_col = df["match_date"].astype(str).str[:10] if "match_date" in df.columns else pd.Series(dtype=object)
     try:
-        base_match_date = datetime.strptime(match_date, "%Y-%m-%d").date()
-        candidate_date_rank = {
-            base_match_date.isoformat(): 0,
-            (base_match_date + timedelta(days=1)).isoformat(): 1,
-            (base_match_date - timedelta(days=1)).isoformat(): 1,
-        }
+        base = datetime.strptime(match_date, "%Y-%m-%d").date()
+        want = {base.isoformat(), (base + timedelta(days=1)).isoformat(),
+                (base - timedelta(days=1)).isoformat()}
     except ValueError:
-        candidate_date_rank = {match_date: 0}
-
-    candidates = df[date_col.isin(candidate_date_rank.keys())].copy()
+        want = {match_date}
+    if "match_date" in df.columns:
+        date_col = df["match_date"].astype(str).str[:10]
+        candidates = df[date_col.isin(want)]
+    else:
+        candidates = df
     if candidates.empty:
-        return None
+        return None, {"status": "pending_no_result",
+                      "reason": "no result rows within +/-1 day"}
 
-    def row_is_match(row: pd.Series) -> bool:
-        a = row.get("player_a", "")
-        b = row.get("player_b", "")
-        normal = names_match(a, player_home) and names_match(b, player_away)
-        reverse = names_match(a, player_away) and names_match(b, player_home)
-        return bool(normal or reverse)
+    rows = candidates.to_dict(orient="records")
+    outcome = settle_selection(match_text, selected_player, rows, match_date)
+    basis = dict(outcome.basis or {})
+    if outcome.outcome == "CONFLICT":
+        return None, {"status": "conflict", "reason": outcome.reason, "basis": basis}
+    if outcome.outcome == "VOID":
+        return None, {"status": "void", "reason": outcome.reason, "basis": basis}
+    if outcome.outcome == "PENDING":
+        return None, {"status": "pending_no_result", "reason": outcome.reason,
+                      "basis": basis}
 
-    subset = candidates[candidates.apply(row_is_match, axis=1)]
-    if subset.empty or "winner" not in subset.columns:
-        return None
+    won = outcome.outcome == "WON"
 
-    if "match_date" in subset.columns:
-        subset = subset.copy()
-        subset["_settlement_date_rank"] = (
-            subset["match_date"].astype(str).str[:10].map(candidate_date_rank).fillna(99)
-        )
-        subset = subset.sort_values("_settlement_date_rank")
+    # Recover the winning basis row deterministically (same ranking).
+    matched = [r for r in rows
+               if teams_match(match_text, r.get("player_a"), r.get("player_b"))[0]]
+    basis_row: dict[str, Any] = {}
+    for _, row, fin in rank_candidates(matched, match_date):
+        if fin.final:
+            basis_row = row
+            break
 
-    settled_rows = subset[subset["winner"].notna() & (~subset["winner"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))]
-    if settled_rows.empty:
-        return None
-
-    # Do not settle live/suspended/to-finish rows.  A winner-like field is not
-    # enough if the score/status still shows the match was not final.
-    settled_rows = settled_rows[settled_rows.apply(_result_row_is_final, axis=1)]
-    if settled_rows.empty:
-        return None
-
-    # Prefer rows with usable odds for ROI; otherwise any settled result can
-    # still score hit-rate and use captured pick odds as fallback.
-    if {"odds_a", "odds_b"}.issubset(set(settled_rows.columns)):
-        priced = settled_rows[
-            pd.to_numeric(settled_rows["odds_a"], errors="coerce").notna()
-            | pd.to_numeric(settled_rows["odds_b"], errors="coerce").notna()
-        ]
-        if not priced.empty:
-            settled_rows = priced
-
-    row = settled_rows.iloc[0]
-    winner = clean_text(row.get("winner"))
-    won = names_match(winner, selected_player)
-
-    odds = None
+    player_a_val = clean_text(basis_row.get("player_a"))
+    player_b_val = clean_text(basis_row.get("player_b"))
     selected_side_norm = None
-    player_a_val = clean_text(row.get("player_a"))
-    player_b_val = clean_text(row.get("player_b"))
-
-    if names_match(selected_player, player_a_val):
+    warehouse_odds = None
+    if players_match(selected_player, player_a_val)[0]:
         selected_side_norm = "player_a"
-        odds = row.get("odds_a")
-    elif names_match(selected_player, player_b_val):
+        warehouse_odds = basis_row.get("odds_a")
+    elif players_match(selected_player, player_b_val)[0]:
         selected_side_norm = "player_b"
-        odds = row.get("odds_b")
+        warehouse_odds = basis_row.get("odds_b")
     else:
         side = clean_text(pick.get("selected_side"))
         if side in ("player_a", "1"):
             selected_side_norm = "player_a"
-            odds = row.get("odds_a")
+            warehouse_odds = basis_row.get("odds_a")
         elif side in ("player_b", "2"):
             selected_side_norm = "player_b"
-            odds = row.get("odds_b")
-
+            warehouse_odds = basis_row.get("odds_b")
     try:
-        odds = float(odds) if odds is not None and str(odds).strip() not in {"", "nan", "<NA>", "None"} else None # type: ignore
-        if odds is not None and odds <= 1.0: # type: ignore
-            odds = None
+        warehouse_odds = float(warehouse_odds) if warehouse_odds is not None and str(warehouse_odds).strip() not in {"", "nan", "<NA>", "None"} else None
+        if warehouse_odds is not None and warehouse_odds <= 1.0:
+            warehouse_odds = None
     except (TypeError, ValueError, AttributeError):
-        odds = None
+        warehouse_odds = None
 
-    # ROI must use the archived pick price, not an arbitrary warehouse side.
-    # Warehouse odds can be closing prices from another source, or side-misaligned
-    # after tolerant name matching.  They are only a last-resort fallback for
-    # genuinely priced picks.  NO_ODDS buckets must remain unpriced.
+    # ROI must use the archived pick price. Warehouse odds are a last-resort
+    # fallback for genuinely priced picks; NO_ODDS buckets stay unpriced.
     bucket_text = str(pick.get("bucket") or "")
-    pick_odds = None
-    try:
-        odds_val = pick.get("odds") or pick.get("decimal_odds")
-        pick_odds = float(odds_val) if odds_val is not None and str(odds_val).strip() not in {"", "nan", "<NA>", "None"} else None # type: ignore
-        if pick_odds is not None and pick_odds <= 1.0: # type: ignore
-            pick_odds = None
-    except (TypeError, ValueError, AttributeError):
-        pick_odds = None
-
+    pick_odds = _pick_odds_value(pick)
+    odds_basis = "none"
     if "NO_ODDS" in bucket_text.upper():
         odds = None
     elif pick_odds is not None:
-        odds = pick_odds
+        odds, odds_basis = pick_odds, "pick"
+    elif warehouse_odds is not None:
+        odds, odds_basis = warehouse_odds, "warehouse"
+    else:
+        odds = None
 
     pnl = None if odds is None else (odds - 1.0 if won else -1.0)
+    market_basis, is_paper = _pick_market_labels(pick)
 
-    winner_side = _winner_side_from_row_values(winner, player_a_val, player_b_val)
+    winner_side = _winner_side_from_row_values(clean_text(basis.get("winner")),
+                                               player_a_val, player_b_val)
     set_diag = _set_diagnostics_from_score(
-        row.get("score"),
-        row.get("_score_perspective"),
+        basis_row.get("score"),
+        basis_row.get("_score_perspective"),
         selected_side_norm,
         winner_side,
+        row=basis_row,
     )
 
-    return SettledPick(
+    settled = SettledPick(
         date=match_date,
         tour=str(pick.get("tour") or "UNKNOWN"),
         series=str(pick.get("series") or pick.get("_series") or "UNKNOWN"),
@@ -654,7 +528,7 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
         source=str(pick.get("source") or "UNKNOWN"),
         match=str(pick.get("match") or f"{player_home} vs {player_away}"),
         selected_player=selected_player,
-        winner=winner,
+        winner=clean_text(basis.get("winner")),
         won=won,
         odds=odds,
         pnl=pnl,
@@ -665,7 +539,17 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> SettledPick | None:
         selected_won_set2=set_diag.get("selected_won_set2"),
         selected_won_set3=set_diag.get("selected_won_set3"),
         ledger_kind=str(pick.get("ledger_kind") or "official"),
+        settle_source=clean_text(basis.get("source")),
+        settle_date=clean_text(basis.get("match_date")),
+        settle_score=clean_text(basis.get("score")),
+        settle_reason=outcome.reason,
+        settle_status=clean_text(basis.get("status")),
+        odds_basis=odds_basis,
+        market_basis=market_basis,
+        is_paper=is_paper,
     )
+    return settled, {"status": "won" if won else "lost", "reason": outcome.reason,
+                     "basis": basis}
 
 
 def summarize_scored(rows: list[SettledPick]) -> dict[str, Any]:
@@ -673,6 +557,10 @@ def summarize_scored(rows: list[SettledPick]) -> dict[str, Any]:
     wins = sum(1 for row in rows if row.won)
     with_odds = [row for row in rows if row.pnl is not None]
     pnl_sum = sum(float(row.pnl or 0.0) for row in with_odds)
+    real = [row for row in with_odds if not row.is_paper]
+    paper = [row for row in with_odds if row.is_paper]
+    real_sum = sum(float(row.pnl or 0.0) for row in real)
+    paper_sum = sum(float(row.pnl or 0.0) for row in paper)
 
     set_rows = [row for row in rows if row.selected_won_any_set is not None]
     set1_rows = [row for row in rows if row.selected_won_set1 is not None]
@@ -685,6 +573,10 @@ def summarize_scored(rows: list[SettledPick]) -> dict[str, Any]:
         "hit_rate": round(wins / settled, 6) if settled else None,
         "priced_picks": len(with_odds),
         "roi": round(pnl_sum / len(with_odds), 6) if with_odds else None,
+        "priced_real": len(real),
+        "roi_real": round(real_sum / len(real), 6) if real else None,
+        "priced_paper": len(paper),
+        "roi_paper": round(paper_sum / len(paper), 6) if paper else None,
         "set_diagnostic_picks": len(set_rows),
         "selected_won_any_set": sum(1 for row in set_rows if row.selected_won_any_set),
         "selected_won_any_set_rate": round(sum(1 for row in set_rows if row.selected_won_any_set) / len(set_rows), 6) if set_rows else None,
@@ -738,7 +630,10 @@ def build_report(
                 "won": None,
             })
             continue
-        settled = settle_pick(pick, df)
+        settled, info = settle_pick(pick, df)
+        status = str(info.get("status") or "pending_no_result")
+        reason = str(info.get("reason") or "")
+        basis = info.get("basis") or {}
         if settled is not None:
             settled_rows.append(settled)
             all_rows.append({
@@ -751,10 +646,18 @@ def build_report(
                 "series": settled.series,
                 "source": settled.source,
                 "bucket": settled.bucket,
-                "status": "won" if settled.won else "lost",
+                "status": status,
                 "won": settled.won,
                 "odds": settled.odds,
                 "pnl": settled.pnl,
+                "settle_source": settled.settle_source,
+                "settle_date": settled.settle_date,
+                "settle_score": settled.settle_score,
+                "settle_status": settled.settle_status,
+                "settle_reason": settled.settle_reason,
+                "odds_basis": settled.odds_basis,
+                "market_basis": settled.market_basis,
+                "is_paper": settled.is_paper,
             })
         else:
             all_rows.append({
@@ -766,12 +669,18 @@ def build_report(
                 "series": pick.get("series") or pick.get("_series"),
                 "source": pick.get("source"),
                 "bucket": pick.get("bucket"),
-                "status": "pending_no_result",
+                "status": status,
                 "won": None,
+                "reason": reason,
+                "settle_source": basis.get("source", ""),
+                "settle_date": basis.get("match_date", ""),
+                "settle_score": basis.get("score", ""),
             })
 
-    # Summary includes pending counts
+    # Summary includes pending/void/conflict counts
     pending = sum(1 for r in all_rows if r["status"].startswith("pending"))
+    voids = sum(1 for r in all_rows if r["status"] == "void")
+    conflicts = sum(1 for r in all_rows if r["status"] == "conflict")
     return {
         "start": start,
         "end": end,
@@ -781,7 +690,9 @@ def build_report(
         "same_day_cutoff": today_local,
         "include_same_day": include_same_day,
         "ledger_kind": ledger_kind,
-        "overall": {**summarize_scored(settled_rows), "pending_picks": pending, "total_picks": len(picks)},
+        "overall": {**summarize_scored(settled_rows), "pending_picks": pending,
+                    "void_picks": voids, "conflict_picks": conflicts,
+                    "total_picks": len(picks)},
         "by_ledger_kind": summarize_by(settled_rows, "ledger_kind"),
         "by_tour": summarize_by(settled_rows, "tour"),
         "by_series": summarize_by(settled_rows, "series"),
@@ -806,7 +717,11 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         f"- hit rate: {overall.get('hit_rate')}",
         f"- priced picks: {overall.get('priced_picks', 0)}",
         f"- ROI: {overall.get('roi')}",
+        f"- ROI (real-priced): {overall.get('roi_real')} (n={overall.get('priced_real', 0)})",
+        f"- ROI (paper-priced): {overall.get('roi_paper')} (n={overall.get('priced_paper', 0)})",
         f"- pending picks: {overall.get('pending_picks', 0)}",
+        f"- void picks: {overall.get('void_picks', 0)}",
+        f"- conflict picks: {overall.get('conflict_picks', 0)}",
         f"- total picks: {overall.get('total_picks', 0)}",
         f"- set diagnostic picks: {overall.get('set_diagnostic_picks', 0)}",
         f"- selected won any set: {overall.get('selected_won_any_set')} ({overall.get('selected_won_any_set_rate')})",
@@ -822,6 +737,9 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         f"- same-day rows excluded: {report.get('same_day_excluded', 0)}",
         "- settlement date tolerance: exact pick date preferred, warehouse match_date +/- 1 day allowed",
         "- settlement finality guard: live/suspended/to-finish rows are rejected",
+        "- settlement conflicts: two final rows naming different winners force conflict (pending, never a guess)",
+        "- walkovers settle VOID (stake returned); retirements settle to the advancer and are flagged",
+        "- ROI uses the archived pick price; paper-priced (scrape/estimated) legs are split out as ROI (paper)",
         "",
         "## Per-pick audit (won/lost/pending)",
         "",
@@ -834,7 +752,14 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
             sel = pp.get("selected_player")
             winner = pp.get("winner", "?")
             d = pp.get("date")
-            lines.append(f"- {d} {match} selected={sel} winner={winner} status={status}")
+            extra = ""
+            if status not in ("won", "lost"):
+                reason = pp.get("reason") or pp.get("settle_reason") or ""
+                extra = f" reason={reason}" if reason else ""
+            else:
+                basis = f"{pp.get('settle_source', '')}@{pp.get('settle_date', '')}:{pp.get('settle_score', '')}"
+                extra = f" basis={basis}"
+            lines.append(f"- {d} {match} selected={sel} winner={winner} status={status}{extra}")
         if len(all_picks) > 100:
             lines.append(f"- ... and {len(all_picks)-100} more")
     else:

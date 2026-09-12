@@ -22,8 +22,12 @@ def _forebet_price_to_decimal(value: object) -> float | None:
         return None
 
     try:
-        # American odds, e.g. +160 or -227.
+        # American odds, e.g. +160 or -227. Unsigned 1-2 digit integers are
+        # far more likely probabilities ("79") than prices, so they are
+        # rejected: a real unsigned American price has 3+ digits ("+100").
         if re.fullmatch(r"[+-]?\d+", text):
+            if text[0] not in "+-" and len(text) < 3:
+                return None
             american = int(text)
             if american > 0:
                 return round(1.0 + american / 100.0, 6)
@@ -305,6 +309,31 @@ def name_signature(name: str) -> str:
     return "".join(sorted(w.lower() for w in words))
 
 
+def name_signature_strict(name: str) -> str:
+    """Collision-resistant merge key: surname + given initial.
+
+    :func:`name_signature` returns the bare surname, so ``Alexander Zverev``
+    and ``Mischa Zverev`` share the key ``zverev`` and their predictions
+    cross-attach in the warehouse join. The strict key appends the given
+    initial from either layout (``Zverev A.`` -> ``zverev|a``,
+    ``Alexander Zverev`` -> ``zverev|a``), keeping brothers apart while
+    still joining ``Bergs Z.`` to ``Zizou Bergs``.
+    """
+    words = re.findall(r"[a-zA-Z]+", str(name or ""))
+    if not words:
+        return ""
+    long_words = [w for w in words if len(w) > 1]
+    surname = long_words[-1].lower() if long_words else "".join(sorted(w.lower() for w in words))
+    given = ""
+    if len(words[0]) == 1:
+        given = words[0].lower()
+    elif len(words[-1]) == 1:
+        given = words[-1].lower()
+    elif long_words:
+        given = long_words[0][0].lower()
+    return f"{surname}|{given}" if given else surname
+
+
 
 def _span_direct_text(span) -> str:
     """Return main score text from a Forebet score span.
@@ -460,21 +489,33 @@ class ForebetPredictor:
     # Daily overview page fetch
     # ------------------------------------------------------------------
     def _fetch_daily_page(self, day: str = "today") -> Optional[str]:
-        """Fetch predictions-yesterday, predictions-today, or predictions-tomorrow."""
-        if day not in ("yesterday", "today", "tomorrow"):
-            raise ValueError("day must be 'yesterday', 'today', or 'tomorrow'")
-        url = f"{self.BASE_URL}/predictions-{day}"
+        """Fetch a daily predictions page.
+
+        ``day`` is ``yesterday``/``today``/``tomorrow`` or an explicit
+        ``YYYY-MM-DD`` calendar date (Forebet serves
+        ``/tennis/predictions/YYYY-MM-DD``).
+        """
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(day or "")):
+            url = f"{self.BASE_URL}/predictions-{day}"
+        elif day in ("yesterday", "today", "tomorrow"):
+            url = f"{self.BASE_URL}/predictions-{day}"
+        else:
+            raise ValueError("day must be 'yesterday', 'today', 'tomorrow' or YYYY-MM-DD")
         return self._fetch(url)
 
     # ------------------------------------------------------------------
     # Unified parser — works on both tournament pages and daily pages
     # ------------------------------------------------------------------
-    def parse_page(self, html: str) -> list[dict[str, Any]]:
+    def parse_page(self, html: str, expected_day: str | None = None) -> list[dict[str, Any]]:
         """
         Parse any Forebet page containing tennis match predictions.
+
+        ``expected_day`` (YYYY-MM-DD) enables row-date validation: rows whose
+        parsed date disagrees are counted and logged, never silently kept.
         """
         soup = BeautifulSoup(html, "html.parser")
         results = []
+        date_mismatch = 0
 
         match_rows = soup.find_all("a", class_="tnmscn")
         for anchor in match_rows:
@@ -543,9 +584,11 @@ class ForebetPredictor:
             if not row_container:
                 row_container = anchor.find_parent("div")
             if row_container:
-                prev_heading = row_container.find_previous("div", class_="heading")
-                if prev_heading:
-                    heading_text = prev_heading.get_text(" ", strip=True)
+                heading = row_container.find("div", class_="heading")
+                if heading is None:
+                    heading = row_container.find_previous("div", class_="heading")
+                if heading:
+                    heading_text = heading.get_text(" ", strip=True)
                     if heading_text:
                         tournament_name = heading_text
 
@@ -627,6 +670,8 @@ class ForebetPredictor:
                 elif result_info.get("result_winner") == "2":
                     result_info["result_winner_name"] = away
 
+            if expected_day and match_date and match_date != expected_day:
+                date_mismatch += 1
             results.append({
                 "match_date": match_date,
                 "match_time": match_time,
@@ -649,7 +694,9 @@ class ForebetPredictor:
                 "source": "Forebet",
             })
 
-        logger.info("Parsed %d predictions from Forebet page", len(results))
+        logger.info("Parsed %d predictions from Forebet page%s", len(results),
+                    f" ({date_mismatch} row-date mismatches vs {expected_day})"
+                    if expected_day else "")
         return results
 
     # ------------------------------------------------------------------
@@ -676,13 +723,15 @@ class ForebetPredictor:
     def fetch_daily_predictions(self, day: str = "today") -> list[dict[str, Any]]:
         """
         Fetch all predictions for a given day across ALL tournaments.
-        day: 'yesterday', 'today', or 'tomorrow'
+        day: 'yesterday', 'today', 'tomorrow', or explicit 'YYYY-MM-DD'.
         Returns list of raw prediction dicts.
         """
         html = self._fetch_daily_page(day)
         if not html:
+            logger.warning("Forebet daily page %r returned no HTML", day)
             return []
-        return self.parse_page(html)
+        expected = day if re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(day or "")) else None
+        return self.parse_page(html, expected_day=expected)
 
     # ------------------------------------------------------------------
     # Mapping: align Forebet prediction to warehouse orientation
@@ -694,25 +743,16 @@ class ForebetPredictor:
         Map a Forebet prediction (home/away orientation) to the warehouse
         player_a / player_b orientation using name-signature matching.
         """
-        sig_a = name_signature(player_a)
-        sig_b = name_signature(player_b)
-        sig_home = name_signature(pred["player_home"])
-        sig_away = name_signature(pred["player_away"])
-
-        if sig_a == sig_home:
-            home_is_a = True
-        elif sig_b == sig_home:
-            home_is_a = False
-        elif sig_a == sig_away:
-            home_is_a = False
-        elif sig_b == sig_away:
-            home_is_a = True
-        else:
+        from racketfactory.settlement import home_is_player_a
+        mapped = home_is_player_a(pred["player_home"], pred["player_away"],
+                                  player_a, player_b)
+        if mapped is None:
             logger.debug(
                 "Cannot map %s/%s to %s/%s",
                 pred["player_home"], pred["player_away"], player_a, player_b,
             )
             return None
+        home_is_a = mapped
 
         predicted_winner = pred.get("predicted_winner")
         prob = None
