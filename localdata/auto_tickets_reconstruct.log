@@ -1,2 +1,1 @@
-2026-09-12T10:17:37+02:00: reconstructed ['2026-09-11'] existing_dates={'2026-09-12'}
-2026-09-11: 4 accas
+2026-09-12T10:56:39+02:00: no reconstruct existing_dates={'2026-09-11', '2026-09-12'} files=['auto_tickets_2026-09-11.json', 'auto_tickets_2026-09-12.json']

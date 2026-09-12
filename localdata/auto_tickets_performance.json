@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-12T10:24:44",
+  "generated_at": "2026-09-12T11:02:22",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 102.285712,
@@ -431,8 +431,6 @@
       "staked_pct": 25.0
     },
     {
-      "date": "2026-09-11",
-      "generated_at": "2026-09-11T18:29:53+02:00",
       "accas": [
         {
           "legs": [
@@ -754,24 +752,17 @@
           "type": "high_strength_3leg"
         }
       ],
-      "staked_pct": 15.4762,
-      "stake_per_acca_pct": 6.25
+      "date": "2026-09-11",
+      "generated_at": "2026-09-11T18:29:53+02:00",
+      "stake_per_acca_pct": 6.25,
+      "staked_pct": 15.4762
     }
   ],
   "events": [],
   "history": [
     {
-      "date": "2026-09-11",
-      "staked_pct": 9.5238,
-      "return_pct": 11.809512,
-      "pnl_pct": 2.285712,
-      "bank_pct": 102.285712,
       "accas": [
         {
-          "odds": 1.24,
-          "won": true,
-          "stake_pct": 9.5238,
-          "type": "banker_single",
           "legs": [
             {
               "bucket": "WATCHLIST",
@@ -817,11 +808,20 @@
               "tour": "ATP",
               "tournament": "US Open Prediction"
             }
-          ]
+          ],
+          "odds": 1.24,
+          "stake_pct": 9.5238,
+          "type": "banker_single",
+          "won": true
         }
       ],
+      "bank_pct": 102.285712,
+      "date": "2026-09-11",
       "partial": true,
-      "pending_accas": 3
+      "pending_accas": 3,
+      "pnl_pct": 2.285712,
+      "return_pct": 11.809512,
+      "staked_pct": 9.5238
     }
   ]
 }
