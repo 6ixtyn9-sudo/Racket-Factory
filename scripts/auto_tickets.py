@@ -387,6 +387,7 @@ def build_accas(pool: list[dict]):
             accas.append({"legs": chunk, "odds": round(prod,2), "type": "high_strength_3leg"})
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     # 4. Banker single if top short odds is true banker (strength>=0.8, w_score>=0.8)
     if short_odds:
         top_short = short_odds[0]
@@ -405,6 +406,8 @@ def build_accas(pool: list[dict]):
                 top_short["odds_source"] = top_short.get("odds_source") or "ML_Estimated"
             accas.append({"legs": [top_short], "odds": round(o,2), "type": "banker_single"})
 =======
+=======
+>>>>>>> cdacda3 (fix: remove merge conflict markers in auto_tickets — caused SyntaxError, no auto ticket for today)
     # 4. Value acca 3: next 2 value odds (no singles — user dislikes singles)
     if len(value_odds) >= 6:
         chunk = value_odds[4:6]
@@ -417,7 +420,10 @@ def build_accas(pool: list[dict]):
                     leg["odds"] = estimate_odds_from_confidence(leg)
                     leg["odds_source"] = leg.get("odds_source") or "ML_Estimated"
             accas.append({"legs": chunk, "odds": round(prod,2), "type": "value_2leg_3"})
+<<<<<<< HEAD
 >>>>>>> b925d88 (feat: remove singles — user dislikes singles, 4 accas all multi-leg value)
+=======
+>>>>>>> cdacda3 (fix: remove merge conflict markers in auto_tickets — caused SyntaxError, no auto ticket for today)
 
     # Fallback: if no value accas (all short odds), build 2 accas from best available but with min odds filter relaxed
     if not accas and len(pool_sorted) >= 2:
@@ -482,6 +488,7 @@ def format_tickets_txt(target_date: str, accas: list[dict], state, skipped_info)
 
     total_stake = bank * STAKE_FRAC
 <<<<<<< HEAD
+<<<<<<< HEAD
     # Kelly-like weighting: singles 40%, value 2-leg 25% each, 3-leg 10%
     weights = []
     for acca in accas:
@@ -493,6 +500,8 @@ def format_tickets_txt(target_date: str, accas: list[dict], state, skipped_info)
         else:
             weights.append(0.25)
 =======
+=======
+>>>>>>> cdacda3 (fix: remove merge conflict markers in auto_tickets — caused SyntaxError, no auto ticket for today)
     # Kelly-like weighting: value 2-leg 30% each, 3-leg 10% — no singles
     weights = []
     for acca in accas:
@@ -501,7 +510,10 @@ def format_tickets_txt(target_date: str, accas: list[dict], state, skipped_info)
             weights.append(0.15)
         else:
             weights.append(0.283)  # 0.283*3 ~0.85 for 3 value accas
+<<<<<<< HEAD
 >>>>>>> b925d88 (feat: remove singles — user dislikes singles, 4 accas all multi-leg value)
+=======
+>>>>>>> cdacda3 (fix: remove merge conflict markers in auto_tickets — caused SyntaxError, no auto ticket for today)
     # Normalize weights to sum 1
     s = sum(weights)
     weights = [w/s for w in weights]
@@ -598,4 +610,8 @@ def main():
         print(f"  {acca.get('type')} @ {acca.get('odds')} legs {len(acca.get('legs',[]))}")
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     main()
+=======
+    main()
+>>>>>>> cdacda3 (fix: remove merge conflict markers in auto_tickets — caused SyntaxError, no auto ticket for today)
