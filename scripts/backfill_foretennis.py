@@ -165,10 +165,12 @@ def main():
     ft = ForeTennisPredictor()
     matched_predictions = []
 
+    all_fetched_preds = []  # Keep all for result generation
     if args.mode == "daily":
         logger.info("Running in DAILY mode (lastpredictions)")
         preds = ft.fetch_lastpredictions()
         logger.info(f"Fetched {len(preds)} predictions from lastpredictions")
+        all_fetched_preds = preds
         
         for p in preds:
             date_str = p.get("match_date")
@@ -226,35 +228,88 @@ def main():
                         })
                         break
 
-    if not matched_predictions:
-        logger.warning("No predictions matched to warehouse.")
-        return
-
-    df_preds = pd.DataFrame(matched_predictions)
-    
-    # Drop duplicates in case of overlaps
-    df_preds = df_preds.drop_duplicates(subset=["match_id"])
-    
-    # Save the raw extractions to the output dir for the warehouse builder to pick up
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    
-    if args.mode == "daily":
-        filename = "predictions_foretennis_daily.csv.gz"
-    else:
-        filename = f"predictions_foretennis_{args.tour}_{args.year}.csv.gz"
-        
-    out_file = out_dir / filename
-    df_preds.to_csv(out_file, index=False, compression="gzip")
-    logger.info(f"Saved {len(df_preds)} matched predictions to {out_file}")
 
-    # ForeTennis daily/lastpredictions carries actual_result values such as
-    # "20", "02", "21", "12", "30", "23". Convert those into settled,
-    # warehouse-compatible result rows so audit can settle from source results.
-    result_df = _result_rows_from_foretennis(df_preds)
-    written_results = _write_result_rows(result_df, out_dir)
-    for result_path in written_results:
-        logger.info("Saved %d ForeTennis result rows to %s", len(result_df), result_path)
+    if matched_predictions:
+        df_preds = pd.DataFrame(matched_predictions)
+        df_preds = df_preds.drop_duplicates(subset=["match_id"])
+        if args.mode == "daily":
+            filename = "predictions_foretennis_daily.csv.gz"
+        else:
+            filename = f"predictions_foretennis_{args.tour}_{args.year}.csv.gz"
+        out_file = out_dir / filename
+        df_preds.to_csv(out_file, index=False, compression="gzip")
+        logger.info(f"Saved {len(df_preds)} matched predictions to {out_file}")
+        result_df_matched = _result_rows_from_foretennis(df_preds)
+    else:
+        logger.warning("No predictions matched to warehouse.")
+        df_preds = pd.DataFrame()
+        result_df_matched = pd.DataFrame()
+
+    # --- NEW: Generate results from ALL fetched preds with actual_result, not just matched ---
+    # This ensures settlement even when warehouse name matching fails
+    try:
+        all_result_rows = []
+        for p in all_fetched_preds:
+            ar = p.get("actual_result")
+            if not ar:
+                continue
+            # Use raw player names from source
+            pa = str(p.get("player_a") or p.get("player_home") or "").strip()
+            pb = str(p.get("player_b") or p.get("player_away") or "").strip()
+            if not pa or not pb:
+                continue
+            side = _winner_from_actual_result(ar)
+            if side not in {"player_a", "player_b"}:
+                continue
+            winner = pa if side == "player_a" else pb
+            all_result_rows.append({
+                "match_date": str(p.get("match_date") or "")[:10],
+                "tour": str(p.get("tour") or "UNKNOWN"),
+                "tournament": str(p.get("tournament") or ""),
+                "round": "",
+                "player_a": pa,
+                "player_b": pb,
+                "winner": winner,
+                "score": str(ar).strip(),
+                "odds_a": pd.NA,
+                "odds_b": pd.NA,
+                "bookmaker": "",
+                "source": "ForeTennis_results",
+                "captured_at": pd.Timestamp.now().isoformat(timespec="seconds"),
+                "oddsportal_url": "",
+                "_surface": "",
+                "_court": "",
+                "_series": "",
+                "_comment": "result_from_foretennis_all_fetched",
+                "_location": "",
+                "_winner_rank": pd.NA,
+                "_loser_rank": pd.NA,
+                "_odds_source": "",
+                "_is_live": False,
+                "_foretennis_match_id": p.get("match_id"),
+                "_score_perspective": "player_a_sets-player_b_sets",
+            })
+        if all_result_rows:
+            import pandas as pd
+            all_result_df = pd.DataFrame(all_result_rows)
+            # Merge with matched results, dedupe
+            combined_results = pd.concat([result_df_matched, all_result_df], ignore_index=True) if not result_df_matched.empty else all_result_df
+            written_results = _write_result_rows(combined_results, out_dir)
+            for result_path in written_results:
+                logger.info("Saved %d ForeTennis result rows (matched %d + all_fetched %d) to %s", len(combined_results), len(result_df_matched), len(all_result_df), result_path)
+        else:
+            if not result_df_matched.empty:
+                written_results = _write_result_rows(result_df_matched, out_dir)
+                for result_path in written_results:
+                    logger.info("Saved %d ForeTennis result rows to %s", len(result_df_matched), result_path)
+    except Exception as e:
+        logger.warning(f"Failed to generate all-fetched results: {e}")
+        if not result_df_matched.empty:
+            written_results = _write_result_rows(result_df_matched, out_dir)
+            for result_path in written_results:
+                logger.info("Saved %d ForeTennis result rows to %s", len(result_df_matched), result_path)
 
 if __name__ == "__main__":
     main()

@@ -628,10 +628,21 @@ def run_once(args: argparse.Namespace) -> None:
     else:
         run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_theoddsapi_scores.py --days-from 3 --output-dir localdata", "capture_theoddsapi_scores", env=child_env)
 
-    # 4. Warehouse Resolution & Assembly
+    # 4. Warehouse Resolution & Assembly (initial — for predictions)
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz", "build_warehouse_initial", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/resolve_pending.py --warehouse localdata/warehouse.csv.gz --data-dir localdata", "resolve_pending", env=child_env)
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz", "build_warehouse_final", env=child_env)
+
+    # 4b. Second pass of result backfills AFTER warehouse exists — ensures foretennis/forebet results
+    # are generated from yesterday's actual_result even if initial warehouse was stale.
+    # This is critical for settlement: 3 settled of 45 was because foretennis_results not generated.
+    print("\n>>> Second pass: backfill result sources for settlement (yesterday)")
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet yesterday (results)", env=child_env)
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_foretennis.py --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_foretennis second pass (results)", env=child_env)
+    if os.getenv("RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES", "").strip().lower() not in {"1", "true", "yes", "on"}:
+        run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_theoddsapi_scores.py --days-from 3 --output-dir localdata", "capture_theoddsapi_scores second pass (results)", env=child_env)
+    # Rebuild warehouse with new result rows so audit can settle
+    run(f"{env_prefix} PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz", "build_warehouse_with_results", env=child_env)
 
     # 5. Mine Edges
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --bet-side prediction --date {target}", "mine_edges", env=child_env)
