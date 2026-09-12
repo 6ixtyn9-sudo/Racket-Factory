@@ -36,6 +36,7 @@ jobs:
       THE_ODDS_API_SPORTS: tennis,tennis_atp_us_open,tennis_wta_us_open,tennis_atp_french_open,tennis_wta_french_open,tennis_atp_australian_open,tennis_wta_australian_open,tennis_atp_wimbledon,tennis_wta_wimbledon
       THE_ODDS_API_REGIONS: uk,eu,us,au
       THE_ODDS_API_CACHE_TTL_MINUTES: '30'
+      BZZOIRO_TOKEN: ${{ secrets.BZZOIRO_TOKEN }}
       THE_ODDS_API_DISABLE_CACHE: '0'
       RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES: '0'
       RACKET_FACTORY_REFRESH_ODDSPORTAL: '1'
@@ -63,13 +64,21 @@ jobs:
           pip install -r requirements.txt
           pip install supabase
 
+      - name: Install Playwright Chromium
+        run: |
+          python -m playwright install --with-deps chromium
+          python -m playwright install-deps || true
+
       - name: Restore localdata state (cache)
         uses: actions/cache/restore@v4
         with:
-          path: localdata
-          key: localdata-v2-main-${{ github.run_id }}
+          path: |
+            localdata/theoddsapi_cache
+            localdata/oddsportal_cache
+            localdata/*.csv.gz
+          key: localdata-v3-cache-${{ github.run_id }}
           restore-keys: |
-            localdata-v2-main-
+            localdata-v3-cache-
 
       - name: Restore committed data (override stale cache)
         run: |
@@ -97,8 +106,11 @@ jobs:
         uses: actions/cache/save@v4
         if: always()
         with:
-          path: localdata
-          key: localdata-v2-main-${{ github.run_id }}
+          path: |
+            localdata/theoddsapi_cache
+            localdata/oddsportal_cache
+            localdata/*.csv.gz
+          key: localdata-v3-cache-${{ github.run_id }}
 
       - name: Persist pipeline state to git (Edge-Factory parity)
         if: always()
@@ -106,12 +118,19 @@ jobs:
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Clean up any untracked legacy files that cache may have restored but are not in repo
+          echo "Cleaning cache-restored legacy files..."
+          rm -f localdata/picks_2026-0[6-8]-*.json localdata/picks_2026-0[6-8]-*.txt localdata/picks_2026-09-0[1-9].json localdata/picks_2026-09-0[1-9].txt localdata/picks_2026-09-10.json localdata/picks_2026-09-10.txt || true
+          rm -f localdata/picks_morning_2026-0[6-8]-*.json localdata/picks_morning_2026-09-0[1-9].json localdata/picks_morning_2026-09-10.json || true
+          rm -f localdata/picks_audit_2026-0[6-8]-*.md localdata/picks_audit_2026-09-0[1-9].md localdata/picks_audit_2026-09-10.md || true
+          rm -f localdata/picks_audit_forecast_*.md localdata/picks_forecast_2026-0[6-8]-*.json localdata/picks_forecast_2026-0[6-8]-*.txt localdata/picks_forecast_2026-09-0[1-9].* localdata/picks_forecast_2026-09-10.* || true
           git add -A localdata/picks_*.json localdata/picks_*.txt localdata/picks_today.json localdata/picks_morning_*.json localdata/picks_next_*.json localdata/picks_forecast_*.json localdata/picks_forecast_*.txt localdata/picks_audit_*.json localdata/picks_audit_*.md localdata/auto_tickets_*.json localdata/auto_tickets_*.txt localdata/auto_tickets_state.json localdata/auto_tickets_performance.json localdata/auto_tickets_today.json localdata/auto_tickets_today.txt localdata/.keepalive 2>/dev/null || true
           git add -A localdata/ 2>/dev/null || true
           git diff --cached --quiet && echo "no changes" && exit 0
           git commit -m "feat: autonomous picks + auto_tickets $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
-          git pull --rebase --autostash || { git rebase --abort; exit 0; }
-          git push || { git pull --rebase --autostash; git push; }
+          git pull --rebase --autostash || { echo "rebase failed, attempting merge"; git rebase --abort; git pull --no-rebase || true; }
+          git push || { echo "push failed, retry after pull"; git pull --rebase --autostash; git push; }
+          echo "persist succeeded" 
 
       - name: Upload pick ledgers & reports as artifacts
         uses: actions/upload-artifact@v4
@@ -122,5 +141,8 @@ jobs:
             localdata/*.txt
             localdata/*.json
             localdata/*.md
+            localdata/*.log
+            localdata/*.csv.gz
+            localdata/*.gz
           retention-days: 14
           if-no-files-found: ignore
