@@ -64,6 +64,10 @@ jobs:
           pip install -r requirements.txt
           pip install supabase
 
+      - name: Run test suite (blocking)
+        run: |
+          PYTHONPATH=src python -m pytest tests/ -q
+
       - name: Install Playwright Chromium
         run: |
           python -m playwright install --with-deps chromium
@@ -88,6 +92,12 @@ jobs:
             git checkout HEAD -- "$f" && echo "restored committed: $f"
           done
 
+      - name: Refresh tennis-data (current year)
+        continue-on-error: true
+        run: |
+          YEAR=$(date +%Y)
+          PYTHONPATH=src python3 scripts/backfill_tennisdata.py --year "$YEAR" --max-age-hours 24 || echo "tennisdata refresh failed (non-blocking; doctor flags staleness)"
+
       - name: Execute autonomous smart schedule
         run: |
           MODE='${{ github.event.inputs.mode }}'
@@ -101,6 +111,10 @@ jobs:
           else
             PYTHONPATH=src python3 scripts/daily.py --auto-once --future-days 2
           fi
+
+      - name: Pipeline health gate (blocking on CRITICAL)
+        run: |
+          PYTHONPATH=src python3 -m racketfactory.doctor --expect-warehouse --write-report
 
       - name: Persist localdata state (cache)
         uses: actions/cache/save@v4
@@ -124,13 +138,13 @@ jobs:
           rm -f localdata/picks_morning_2026-0[6-8]-*.json localdata/picks_morning_2026-09-0[1-9].json localdata/picks_morning_2026-09-10.json || true
           rm -f localdata/picks_audit_2026-0[6-8]-*.md localdata/picks_audit_2026-09-0[1-9].md localdata/picks_audit_2026-09-10.md || true
           rm -f localdata/picks_audit_forecast_*.md localdata/picks_forecast_2026-0[6-8]-*.json localdata/picks_forecast_2026-0[6-8]-*.txt localdata/picks_forecast_2026-09-0[1-9].* localdata/picks_forecast_2026-09-10.* || true
-          git add -A localdata/picks_*.json localdata/picks_*.txt localdata/picks_today.json localdata/picks_morning_*.json localdata/picks_next_*.json localdata/picks_forecast_*.json localdata/picks_forecast_*.txt localdata/picks_audit_*.json localdata/picks_audit_*.md localdata/auto_tickets_*.json localdata/auto_tickets_*.txt localdata/auto_tickets_state.json localdata/auto_tickets_performance.json localdata/auto_tickets_today.json localdata/auto_tickets_today.txt localdata/.keepalive 2>/dev/null || true
+          git add -A localdata/picks_*.json localdata/picks_*.txt localdata/picks_today.json localdata/picks_morning_*.json localdata/picks_next_*.json localdata/picks_forecast_*.json localdata/picks_forecast_*.txt localdata/picks_audit_*.json localdata/picks_audit_*.md localdata/auto_tickets_*.json localdata/auto_tickets_*.txt localdata/auto_tickets_state.json localdata/auto_tickets_performance.json localdata/auto_tickets_today.json localdata/auto_tickets_today.txt localdata/pipeline_health.json localdata/.keepalive 2>/dev/null || true
           git add -A localdata/ 2>/dev/null || true
           git diff --cached --quiet && echo "no changes" && exit 0
           git commit -m "feat: autonomous picks + auto_tickets $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
           git pull --rebase --autostash || { echo "rebase failed, attempting merge"; git rebase --abort; git pull --no-rebase || true; }
           git push || { echo "push failed, retry after pull"; git pull --rebase --autostash; git push; }
-          echo "persist succeeded" 
+          echo "persist succeeded"
 
       - name: Upload pick ledgers & reports as artifacts
         uses: actions/upload-artifact@v4
