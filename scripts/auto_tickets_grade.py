@@ -166,17 +166,11 @@ def names_match(a, b) -> bool:
         if init_a[0] == init_b[0]:
             return True
         return False
-    # One has only surname, other has surname+firstname/initial -> ambiguous, reject unless exact already
-    # e.g., "Cascino" vs "Cascino / Feng" already rejected via slash check, but "Cascino" vs "Cascino" exact would have matched earlier
-    # For single token vs two tokens with same surname but no firstname conflict, we allow? That would cause "Cascino" vs "Cascino / Feng" partial already rejected.
-    # For "Smith" vs "Smith" exact would have matched, but "Smith" vs "Smith J" -> surname same, one has initial, other only surname -> allow? Safer to reject to avoid false positives.
-    # However for cases where one source provides only surname (rare), we should not match.
-    # So if one side is surname-only and other has firstname/initial, reject unless exact match already.
+    # Allow surname-only vs surname+firstname/initial for doubles settlement
+    # e.g., Cascino / Feng (surnames only) vs Cascino E / Feng S. (surname+initial) should match
+    # Full vs full with different firstnames (Alexander vs Mischa) already rejected above
     if (len(ta) == 1 or len(tb) == 1) and sur_a == sur_b:
-        # Both surname-only would have been exact match earlier, so this is surname-only vs surname+firstname
-        # Reject to avoid Alexander Zverev matching Zverev alone incorrectly? Actually Zverev vs Alexander Zverev could be considered match if we want permissive, but to be strict we reject.
-        # For our use case, we want to reject partial.
-        return False
+        return True
 
     return False
 

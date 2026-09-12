@@ -406,17 +406,47 @@ class ForebetPredictor:
     # Low-level fetch
     # ------------------------------------------------------------------
     def _fetch(self, url: str) -> Optional[str]:
+        # Try primary session (curl_cffi with impersonate)
         try:
             resp = self._session.get(url, timeout=20)
+            if resp.status_code == 200:
+                if "Just a moment" in resp.text or "challenge-error" in resp.text:
+                    logger.warning("Forebet Cloudflare challenge for %s", url)
+                else:
+                    return resp.text
+            # Log non-200 but continue to fallback for 403
             if resp.status_code != 200:
                 logger.warning("Forebet returned %d for %s", resp.status_code, url)
-                return None
-            if "Just a moment" in resp.text or "challenge-error" in resp.text:
-                logger.warning("Forebet Cloudflare challenge for %s", url)
+                if resp.status_code == 403:
+                    # Try curl_cffi fallback with different UA
+                    try:
+                        from curl_cffi import requests as curl_requests
+                        # Try chrome and firefox impersonations
+                        for imp in ["chrome124", "firefox133"]:
+                            try:
+                                r = curl_requests.get(url, impersonate=imp, timeout=20)
+                                if r.status_code == 200 and "Just a moment" not in r.text:
+                                    logger.info("Forebet 403 recovered via curl_cffi %s for %s", imp, url)
+                                    return r.text
+                            except Exception:
+                                continue
+                    except ImportError:
+                        pass
+                    # Still blocked - return None, caller should not repeat immediately
+                    return None
+                # For other non-200, return None
                 return None
             return resp.text
         except Exception as e:
             logger.warning("Forebet fetch error for %s: %s", url, e)
+            # Try curl_cffi fallback
+            try:
+                from curl_cffi import requests as curl_requests
+                r = curl_requests.get(url, impersonate="chrome124", timeout=20)
+                if r.status_code == 200:
+                    return r.text
+            except Exception:
+                pass
             return None
 
     # ------------------------------------------------------------------

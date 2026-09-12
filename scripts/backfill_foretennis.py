@@ -43,7 +43,6 @@ def _winner_from_actual_result(actual_result: object) -> str | None:
 
 def _result_rows_from_foretennis(df):
     """Build warehouse-compatible settled result rows from ForeTennis daily output."""
-    import pandas as pd
     from datetime import datetime
 
     if df.empty or "actual_result" not in df.columns:
@@ -97,7 +96,6 @@ def _result_rows_from_foretennis(df):
 
 def _write_result_rows(result_df, output_dir):
     """Append/dedupe ForeTennis result rows into monthly warehouse-compatible files."""
-    import pandas as pd
     from pathlib import Path
 
     if result_df is None or result_df.empty:
@@ -292,7 +290,6 @@ def main():
                 "_score_perspective": "player_a_sets-player_b_sets",
             })
         if all_result_rows:
-            import pandas as pd
             all_result_df = pd.DataFrame(all_result_rows)
             # Merge with matched results, dedupe
             combined_results = pd.concat([result_df_matched, all_result_df], ignore_index=True) if not result_df_matched.empty else all_result_df

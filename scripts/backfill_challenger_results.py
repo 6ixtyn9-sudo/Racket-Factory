@@ -29,6 +29,39 @@ sys.path.insert(0, str(ROOT / "src"))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(message)s")
 logger = logging.getLogger("backfill_challenger")
 
+def is_valid_player_name(name: str) -> bool:
+    """Reject tournament names mistaken as players (e.g., 'Montreux WTA', 'US Open', 'Genoa challenger')"""
+    if not name or len(name.strip()) < 3:
+        return False
+    lower=name.lower()
+    # Reject if contains tournament keywords as standalone and no player-like pattern
+    bad_keywords=[" wta ", " atp ", " challenger", " open", " masters", " cup", " trophy"]
+    # If name is exactly tournament-like and doesn't have player pattern (initial or surname)
+    # Player pattern: at least one token with capital letter and length>1, or contains initial like 'A.'
+    # Reject obvious tournament names
+    if any(kw in f" {lower} " for kw in [" wta ", " atp "]):
+        # Allow if it also has player pattern like 'Cascino E / Feng S.' vs 'Montreux WTA'
+        # 'Montreux WTA' has no slash, no initial, just city + tour
+        if "/" not in name and "." not in name and len(name.split())<=2:
+            # Check if both words are not typical player names (player names usually have at least 2 chars and not all caps tour)
+            if "wta" in lower or "atp" in lower:
+                # If name is like 'Montreux WTA' or 'US Open' - reject if no player-like
+                # Player names rarely contain 'WTA' or 'ATP' as separate word unless doubles?
+                # For safety, reject if lower contains wta/atp and not '/' 
+                return False
+    # Reject if name looks like 'Genoa challenger', 'US Open', etc.
+    if lower in ["us open", "french open", "wimbledon", "australian open"] or "challenger" in lower and len(name.split())<=2:
+        # 'Genoa challenger' -> 2 words, second is challenger
+        if name.split()[-1].lower()=="challenger":
+            return False
+    # Must contain at least one letter and not be all uppercase tournament
+    if name.isupper() and len(name.split())==1:
+        return False
+    # Basic player name: should have at least 2 characters and contain a letter, and not be too long
+    if len(name)>50:
+        return False
+    return True
+
 def parse_tennisexplorer_html(html: str, target_date: str) -> list[dict]:
     """Paired-row parser for TennisExplorer results — tested structure"""
     results=[]
@@ -155,6 +188,11 @@ def parse_tennisexplorer_html(html: str, target_date: str) -> list[dict]:
                                 if s1 and s2:
                                     pairs.append(f"{s1}-{s2}" if winner==p1 else f"{s2}-{s1}")
                             score_str=" ".join(pairs)
+                        # Validate player names to avoid tournament names as players
+                        if not is_valid_player_name(winner) or not is_valid_player_name(loser):
+                            logger.debug(f"Skipping invalid player names: {winner} vs {loser}")
+                            i+=2
+                            continue
                         results.append({
                             "match_date": target_date,
                             "tour": "CHALLENGER" if "challenger" in tournament.lower() else "ATP" if "atp" in tournament.lower() else "UNKNOWN",

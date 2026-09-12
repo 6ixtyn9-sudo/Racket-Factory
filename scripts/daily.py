@@ -614,19 +614,16 @@ def run_once(args: argparse.Namespace) -> None:
         print("\n>>> capture_oddsportal live doubles skipped (optional)")
 
     # Always-on: try to fetch current ATP/WTA/Challenger odds for target date via OddsPortal live pages (soft fail)
-    # This ensures we get odds even when TheOddsAPI has no Challenger coverage
+    # FIX: Broad category pages /tennis/atp/, /tennis/wta/, /tennis/challenger/ have no PageTournament marker
+    # and return 'no PageTournament marker' / 'no page id'. They are category pages, not tournament pages.
+    # The collector expects tournament-page metadata. Installing Chromium fixes crash but not parser compatibility.
+    # For now, skip broad category live capture and rely on TheOddsAPI (Slams/1000/500) + Bzzoiro fallback.
+    # Future: validate tournament URLs or add category-page discovery step.
     if not disable_oddsportal:
-        for tour_url, tour_name in [
-            ("https://www.oddsportal.com/tennis/atp/", "ATP"),
-            ("https://www.oddsportal.com/tennis/wta/", "WTA"),
-            ("https://www.oddsportal.com/tennis/challenger/", "CHALLENGER"),
-        ]:
-            run_soft(
-                f"{env_prefix} PYTHONPATH=src python3 scripts/capture_oddsportal.py "
-                f"--url {tour_url} --tour {tour_name} --tournament '{tour_name} Live' --date {target} --pages 2",
-                f"capture_oddsportal live {tour_name} current odds",
-                env=child_env,
-            )
+        print("\n>>> capture_oddsportal live broad category capture disabled — category pages lack PageTournament marker")
+        print("    Relying on TheOddsAPI + Bzzoiro for live odds; OddsPortal bulk historical still runs if REFRESH enabled")
+        # Optionally try specific validated tournament URLs if needed
+        # Example: US Open, French Open etc have known tournament pages that work with parser
     else:
         print("\n>>> capture_oddsportal live current odds skipped (disabled)")
 
