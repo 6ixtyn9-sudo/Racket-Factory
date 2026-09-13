@@ -52,8 +52,12 @@ def test_challenge_page_yields_no_rows():
 def test_page_routing_today_tomorrow_only():
     today = date.today().isoformat()
     tomorrow = (date.today() + timedelta(days=1)).isoformat()
-    assert opup._page_for_target(today) == (opup.TODAY_PATH, "oddsportal_upcoming_today")
-    assert opup._page_for_target(tomorrow) == (opup.TOMORROW_PATH, "oddsportal_upcoming_tomorrow")
+    path_today, key_today = opup._page_for_target(today)
+    path_tom, key_tom = opup._page_for_target(tomorrow)
+    assert path_today == opup.TODAY_PATH
+    assert path_tom == opup.TOMORROW_PATH
+    assert key_today.startswith("oddsportal_upcoming_today")
+    assert key_tom.startswith("oddsportal_upcoming_tomorrow")
     assert opup._page_for_target("2000-01-01") is None
     assert opup.fetch_oddsportal_upcoming_rows("2000-01-01") == []
 

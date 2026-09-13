@@ -341,9 +341,9 @@ def _page_for_target(target: str) -> tuple[str, str] | None:
     """(page path, cache key) or None when the target is out of range."""
     today = date.today()
     if target == today.isoformat():
-        return TODAY_PATH, "oddsportal_upcoming_today"
+        return TODAY_PATH, "oddsportal_upcoming_today_v6"
     if target == (today + timedelta(days=1)).isoformat():
-        return TOMORROW_PATH, "oddsportal_upcoming_tomorrow"
+        return TOMORROW_PATH, "oddsportal_upcoming_tomorrow_v6"
     return None
 
 

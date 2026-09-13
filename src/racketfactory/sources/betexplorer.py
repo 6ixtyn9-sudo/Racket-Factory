@@ -364,7 +364,7 @@ def fetch_betexplorer_rows(target_date: str) -> list[dict[str, Any]]:
     except Exception:
         return []
     try:
-        rows = cached_fetch(f"betexplorer_{target}", lambda: _fetch_live(target))
+        rows = cached_fetch(f"betexplorer_v6_{target}", lambda: _fetch_live(target))
     except Exception as exc:
         logger.warning("BetExplorer fetch failed: %s", exc)
         return []
