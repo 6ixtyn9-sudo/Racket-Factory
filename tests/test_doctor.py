@@ -27,12 +27,12 @@ def test_fresh_results_pass_and_stale_warn(tmp_path, monkeypatch):
     _write_results(tmp_path / "challenger_results_tennis_2026-09.csv.gz", [
         {"match_date": "2026-09-12", "player_a": "A", "player_b": "B",
          "winner": "A", "score": "6-0 6-0"}])
-    _write_results(tmp_path / "tennisdata_tennis_2026-01.csv.gz", [
+    _write_results(tmp_path / "foretennis_results_tennis_2026-01.csv.gz", [
         {"match_date": "2026-01-04", "player_a": "A", "player_b": "B",
          "winner": "A", "score": "6-0 6-0"}])
     res = doc.run_health_checks(as_of="2026-09-12")
     assert res["results:challenger_results"]["status"] == "OK"
-    assert res["results:tennisdata"]["status"] == "WARN"
+    assert res["results:foretennis_results"]["status"] == "WARN"
     assert res["results:any_rows"]["status"] == "OK"
 
 

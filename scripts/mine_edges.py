@@ -1839,7 +1839,7 @@ def main() -> int:
                 # Automated fallback: use locally captured OddsPortal odds when
                 # live/API odds are missing. This solves doubles markets where
                 # bookies/OddsPortal have prices but The Odds API returns singles only.
-                # FIX: Also try Bzzoiro odds best for Challenger/ITF coverage (pre-era had tennisdata odds, now need OddsPortal+Bzzoiro)
+                # FIX: Also try Bzzoiro odds best for Challenger/ITF coverage (no odds-carrying history for recent months; need OddsPortal+Bzzoiro)
                 if odds_val is None:
                     local_op = lookup_local_oddsportal_selected_odds(target_date, base)
                     if local_op is not None:

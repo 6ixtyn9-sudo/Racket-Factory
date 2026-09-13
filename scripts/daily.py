@@ -513,7 +513,7 @@ def run_smart_auto(args: argparse.Namespace) -> None:
     hours by CI (GitHub Actions) or a cron/`--auto-run` loop:
 
       * Case 1 — no official archive yet for today (typically the first wake-up
-        of the day): run the FULL heavy pipeline (OddsPortal + TennisData + Daily).
+        of the day): run the FULL heavy pipeline (OddsPortal + prediction captures + Daily).
 
       * Case 2 — today's archive already exists (every later wake-up): run a
         LIGHT intraday discovery pass that just fetches daily predictions and
@@ -550,7 +550,7 @@ def run_once(args: argparse.Namespace) -> None:
     child_env.setdefault("RACKET_FACTORY_TZ", DEFAULT_LOCAL_TZ)
     env_prefix = f"RACKET_FACTORY_RUN_AS_OF={shlex.quote(run_as_of)}"
     oddsportal_delay = float(os.getenv("RACKET_FACTORY_ODDSPORTAL_DELAY", "5"))
-    # FIX: Enable OddsPortal by default — pre-era had tennisdata odds, current regime needs OddsPortal for recent months
+    # FIX: Enable OddsPortal by default — recent months need OddsPortal for current odds (no odds-carrying history source remains)
     # Only disable if explicitly set RACKET_FACTORY_DISABLE_ODDSPORTAL=1
     disable_oddsportal = os.getenv("RACKET_FACTORY_DISABLE_ODDSPORTAL", "").strip().lower() in {"1", "true", "yes", "on"}
     refresh_oddsportal_env = os.getenv("RACKET_FACTORY_REFRESH_ODDSPORTAL", "").strip().lower()
@@ -572,7 +572,7 @@ def run_once(args: argparse.Namespace) -> None:
         # each failing after 120s Playwright wait (no PageTournament marker, 503) -> 45m+ run with 0 rows.
         # For current regime, we don't need 2026 bulk historical — we need recent results and live odds via TheOddsAPI/Bzzoiro.
         # So skip bulk --all for current year, only run if explicitly forced via REFRESH_ODDSPORTAL=1 and not current year,
-        # or via manual mode. Keep tennisdata for lightweight results.
+        # or via manual mode.
         current_year = 2026
         if refresh_oddsportal and year != current_year:
             run_soft(
@@ -583,26 +583,18 @@ def run_once(args: argparse.Namespace) -> None:
             )
         else:
             if year == current_year:
-                print(f"\n>>> capture_oddsportal bulk {year} skipped — current year has no historical bulk, use live API/Bzzoiro + tennisdata")
+                print(f"\n>>> capture_oddsportal bulk {year} skipped — current year has no historical bulk, use live API/Bzzoiro")
             else:
                 print("\n>>> capture_oddsportal skipped (disabled via RACKET_FACTORY_DISABLE_ODDSPORTAL)")
-        run_soft(
-            f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_tennisdata.py --year {year}",
-            f"backfill_tennisdata {year}",
-            env=child_env,
-        )
     else:
         # REDTEAM Finding #6: in intraday mode we still need yesterday's
         # results to flow into the warehouse so the audit can measure
         # settled picks. However heavy OddsPortal bulk capture (--all) can timeout CI (30 min).
         # FIX: intraday skips heavy bulk, only does lightweight live odds below. Full bulk only in full morning run.
         print("\n>>> intraday mode: skipping heavy OddsPortal bulk capture (lightweight live odds below)")
-        # Still try tennisdata for current year (lightweight)
-        if not disable_oddsportal:
-            print(">>> intraday: tennisdata results refresh only")
 
     # 2. Targeted live odds capture for known API coverage gaps + always-on current odds.
-    # FIX: Pre-era had tennisdata odds Jan-Jun, current regime Sep has NaN odds because tennisdata stopped and OddsPortal was disabled.
+    # FIX: Recent months have NaN odds in history feeds; OddsPortal live capture fills current gaps.
     # Now we always try to fetch current odds for ATP/WTA/Challenger via OddsPortal (soft fail, uses curl_cffi to bypass CF)
     # The Odds API only covers Slams/1000/500, not Challenger/ITF, so OddsPortal is critical.
     refresh_live_doubles_odds = os.getenv("RACKET_FACTORY_REFRESH_LIVE_DOUBLES_ODDS", "").strip().lower() in {"1", "true", "yes", "on"}
