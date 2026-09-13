@@ -679,6 +679,8 @@ def run_once(args: argparse.Namespace) -> None:
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_clv.py --days 30", "audit_clv", env=child_env)
 
     # 8b. Auto Tickets (Edge-Factory parity) — tennis accas from playable picks
+    # ML self-monitor: BetExplorer consensus is REAL price (fixed bad=10), ML chooses winners
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 -c \"from racketfactory.ml import monitor_performance; import json; print(json.dumps(monitor_performance(), indent=2))\"", "ml_monitor (self-check)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets.py --date {target}", "auto_tickets (generate/freeze)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets_grade.py", "auto_tickets_grade (settle past slips)", env=child_env)
 

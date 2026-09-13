@@ -76,49 +76,81 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
         if not dt_raw:
             continue
         n_dt += 1
-        # Robust: find the first anchor in the row whose href matches and whose text splits into players
-        # Handles empty anchors (e.g. icon-only) by also checking parent td text
-        chosen = None
-        chosen_home = chosen_away = ""
-        chosen_ctx = None
-        chosen_href = ""
+        # Collect all match-link anchors in this row
+        candidates: list[tuple] = []
         for a in tr.find_all("a", href=True):
             href = str(a.get("href") or "")
             ctx = _is_match_link(href)
             if ctx is None:
                 continue
             txt = a.get_text(" ", strip=True)
-            # If anchor text empty, try parent td / container text as fallback
             if not txt or len(txt) < 2:
                 parent_td = a.find_parent("td")
                 if parent_td is not None:
-                    # Use td text but remove any nested score-like tokens
-                    parent_txt = parent_td.get_text(" ", strip=True)
-                    # If parent contains the anchor href text plus players, try it
-                    txt = parent_txt
+                    txt = parent_td.get_text(" ", strip=True)
+            if txt:
+                candidates.append((a, txt, ctx, href))
+
+        chosen = None
+        chosen_home = chosen_away = ""
+        chosen_ctx = None
+        chosen_href = ""
+
+        # 1) Try single anchor that contains both players (dash or fused)
+        for a, txt, ctx, href in candidates:
             h, aw = po.split_match_names(txt)
-            if not h or not aw:
-                # Last resort: try to extract from the whole row text
-                # Row often contains time + names + odds, e.g. "09:30 Rouvroy M. - Johnson S. 3.61 1.26"
-                # We can attempt to find a player-like substring via the generic splitter
-                # by scanning row_text for dash separator
-                row_tmp = tr.get_text(" ", strip=True)
-                # Remove time and odds to isolate names
-                # Simple heuristic: find first occurrence of ' - ' and take surrounding words
-                # Use split_match_names on row_tmp directly
-                h2, aw2 = po.split_match_names(row_tmp)
-                if h2 and aw2:
-                    # Ensure this row_tmp split isn't just picking up random text;
-                    # require that the anchor href still corresponds to those names
-                    # (we already have a valid href, so accept)
-                    h, aw = h2, aw2
-                if not h or not aw:
-                    continue
-            chosen = a
-            chosen_home, chosen_away = h, aw
-            chosen_ctx = ctx
-            chosen_href = href
-            break
+            if h and aw:
+                chosen = a
+                chosen_home, chosen_away = h, aw
+                chosen_ctx = ctx
+                chosen_href = href
+                break
+            row_tmp = tr.get_text(" ", strip=True)
+            h2, aw2 = po.split_match_names(row_tmp)
+            if h2 and aw2:
+                chosen = a
+                chosen_home, chosen_away = h2, aw2
+                chosen_ctx = ctx
+                chosen_href = href
+                break
+
+        # 2) Fallback: two separate anchors, each a single player / doubles team
+        # Handles <a>Borisiouk M.</a> vs <a>Kim D. J.</a> or <a>Collins K.</a> vs <a>Yashina E.</a>
+        if chosen is None and len(candidates) >= 2:
+            def _looks_like_player_or_team(t: str) -> bool:
+                tt = t.strip()
+                if not tt or len(tt) < 2:
+                    return False
+                if re.fullmatch(r"\d+:\d+", tt):
+                    return False
+                try:
+                    if po._looks_like_player(tt):
+                        return True
+                except Exception:
+                    pass
+                if "/" in tt:
+                    try:
+                        if po._looks_like_doubles_team(tt):
+                            return True
+                    except Exception:
+                        pass
+                    # Fallback: slash with dot or space
+                    if "." in tt or " " in tt:
+                        return len(tt) >= 5
+                # Single player heuristic
+                return len(tt) >= 3 and tt[0].isupper() and ("." in tt or " " in tt)
+
+            player_cands = [(a, txt, ctx, href) for a, txt, ctx, href in candidates if _looks_like_player_or_team(txt)]
+            if len(player_cands) >= 2:
+                a1, txt1, ctx1, href1 = player_cands[0]
+                a2, txt2, ctx2, href2 = player_cands[1]
+                if txt1 != txt2 and len(txt1) >= 2 and len(txt2) >= 2:
+                    chosen = a1
+                    chosen_home = txt1
+                    chosen_away = txt2
+                    chosen_ctx = ctx1 or ctx2
+                    chosen_href = href1 or href2
+
         if chosen is None:
             n_bad += 1
             continue

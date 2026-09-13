@@ -57,11 +57,13 @@ def test_late_start_forces_paper():
 
 
 def test_short_odds_excluded_from_priced():
-    pool = [_pick("A1 vs B1", "A1", odds=1.2, src="TheOddsAPI"),
+    # Super-short <1.10 should be excluded even for BOOST unless calib prob >=85%
+    # Use 1.05 with low prob 0.65 -> should be excluded
+    pool = [_pick("A1 vs B1", "A1", odds=1.05, src="TheOddsAPI", conf=60, verdict="ALLOW"),
             _pick("A2 vs B2", "A2", odds=2.1, src="TheOddsAPI"),
-            _pick("A3 vs B3", "A3", odds=1.2, src="TheOddsAPI")]
+            _pick("A3 vs B3", "A3", odds=1.05, src="TheOddsAPI", conf=60, verdict="ALLOW")]
     priced, paper, _ = at.build_accas(pool)
-    # Only one priced-eligible leg -> no priced acca possible
+    # Only one priced-eligible leg (2.1) -> no priced acca possible (needs 2 legs)
     assert priced == []
 
 

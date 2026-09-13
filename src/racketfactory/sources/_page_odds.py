@@ -365,14 +365,14 @@ def _split_fused_names(text: str) -> tuple[str, str]:
                     continue
                 if "." not in left or "." not in right:
                     continue
-                # Avoid splitting inside multi-initial sequence: right starting with initial like "H." is likely same player
-                if re.match(r"^[A-Z]\.", right):
+                # For doubles, allow right starting with initial (e.g. "H. Tosetto R. / ...")
+                # Only skip pure-initial fragments that are not a team.
+                if "/" not in right and re.match(r"^[A-Z]\.\s*$", right):
                     continue
                 if _looks_like_doubles_team(left) and _looks_like_doubles_team(right):
                     best = (left, right)
                     if left.count("/") == 1 and right.count("/") == 1 and len(left) > 5 and len(right) > 5:
                         if right and right[0].isupper():
-                            # Ensure right does not start with initial (already checked)
                             break
             if best[0]:
                 return best
@@ -381,7 +381,7 @@ def _split_fused_names(text: str) -> tuple[str, str]:
                 left = clean[: m.start()].strip()
                 right = clean[m.end():].strip()
                 if left.count("/") == 1 and right.count("/") == 1 and len(left) > 5 and len(right) > 5:
-                    if re.match(r"^[A-Z]\.", right):
+                    if "/" not in right and re.match(r"^[A-Z]\.\s*$", right):
                         continue
                     if _looks_like_doubles_team(left) and _looks_like_doubles_team(right):
                         return (left, right)
