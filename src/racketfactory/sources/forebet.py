@@ -328,6 +328,11 @@ def name_signature_strict(name: str) -> str:
     initial from either layout (``Zverev A.`` -> ``zverev|a``,
     ``Alexander Zverev`` -> ``zverev|a``), keeping brothers apart while
     still joining ``Bergs Z.`` to ``Zizou Bergs``.
+
+    Improvement (v5-matching): for multi-initial names like
+    ``D. E. Galan`` vs ``Galan D. E.`` we now consistently pick the *first*
+    single-letter token as the given initial, so both map to ``galan|d``
+    instead of ``galan|d`` vs ``galan|e``.
     """
     words = re.findall(r"[a-zA-Z]+", str(name or ""))
     if not words:
@@ -335,11 +340,12 @@ def name_signature_strict(name: str) -> str:
     long_words = [w for w in words if len(w) > 1]
     surname = long_words[-1].lower() if long_words else "".join(sorted(w.lower() for w in words))
     given = ""
-    if len(words[0]) == 1:
-        given = words[0].lower()
-    elif len(words[-1]) == 1:
-        given = words[-1].lower()
-    elif long_words:
+    # First single-letter token anywhere is the most stable given initial
+    for w in words:
+        if len(w) == 1:
+            given = w.lower()
+            break
+    if not given and long_words:
         given = long_words[0][0].lower()
     return f"{surname}|{given}" if given else surname
 
