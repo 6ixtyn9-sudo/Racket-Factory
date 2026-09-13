@@ -160,13 +160,31 @@ _CLIMB_MAX_LEVELS = 3
 _CLIMB_MAX_CHARS = 4000
 
 
+def _is_player_anchor(anchor: Tag, is_match_link: Callable[[str], dict[str, Any] | None]) -> tuple[str, str, dict[str, Any]] | None:
+    """Return (home, away, ctx) if anchor looks like a player-vs-player link."""
+    href = str(anchor.get("href") or "")
+    ctx = is_match_link(href)
+    if ctx is None:
+        return None
+    txt = anchor.get_text(" ", strip=True)
+    # Skip pure score / time anchors that match href pattern but carry no names
+    # e.g. BetExplorer score links like "1:3" or "CAN." etc.
+    if not txt or len(txt) < 5:
+        return None
+    home, away = split_match_names(txt)
+    if not home or not away:
+        return None
+    return home, away, ctx
+
+
 def _match_link_count(container: Tag, is_match_link: Callable[[str], dict[str, Any] | None]) -> int:
     n = 0
     for anchor in container.find_all("a", href=True):
-        if is_match_link(str(anchor.get("href") or "")) is not None:
-            n += 1
-            if n > 1:
-                break
+        if _is_player_anchor(anchor, is_match_link) is None:
+            continue
+        n += 1
+        if n > 1:
+            break
     return n
 
 
@@ -244,12 +262,26 @@ def split_match_names(link_text: str) -> tuple[str, str]:
     """Split 'Home Player - Away Player' on the score-safe separator.
 
     Falls back to fused-name splitting ('Surname I. Surname I.') when no
-    separator is present.
+    separator is present. Leading time and trailing scoreline are stripped
+    first so '19:30 Parks A. - Lepchenko V.' and 'Tiafoe F. - Shelton B. 1:3'
+    both parse as player names.
     """
-    parts = _NAME_SEP_RE.split(link_text.strip(), maxsplit=1)
+    txt = link_text.strip()
+    # Strip leading time like "19:30 " that BetExplorer prefixes on day pages
+    txt = _TIME_RE.sub("", txt, count=1).strip()
+    # Strip trailing scoreline like " 1:3" or " 1:3, 6:2" etc.
+    txt = _TRAIL_SCORE_RE.sub("", txt).strip()
+    parts = _NAME_SEP_RE.split(txt, maxsplit=1)
     if len(parts) == 2:
-        return parts[0].strip(), parts[1].strip()
-    return _split_fused_names(link_text.strip())
+        left, right = parts[0].strip(), parts[1].strip()
+        # Right side may still carry trailing score after dash split
+        right = _TRAIL_SCORE_RE.sub("", right).strip()
+        # Basic sanity: both sides must look at least vaguely like players
+        # (contain a dot for initial, or at least two chars and a space)
+        if left and right:
+            return left, right
+        return "", ""
+    return _split_fused_names(txt)
 
 
 def parse_listing_page(

@@ -91,6 +91,19 @@ def _betslip_decimals(node: Tag) -> list[float]:
     return vals
 
 
+def _row_decimals_generic(text: str) -> list[float]:
+    import re
+    vals: list[float] = []
+    for tok in re.findall(r"\b(\d{1,2}\.\d{1,2})\b", text):
+        try:
+            v = float(tok)
+        except ValueError:
+            continue
+        if MIN_DECIMAL_ODDS <= v <= MAX_DECIMAL_ODDS:
+            vals.append(v)
+    return vals
+
+
 def _betslip_pairs(box: Tag) -> list[tuple[float, float]]:
     """(1, 2) price pairs, grouped by row so sides can never shift.
 
@@ -98,34 +111,65 @@ def _betslip_pairs(box: Tag) -> list[tuple[float, float]]:
     book suspends one side, so pairs only form inside a single row: a ``tr``
     with exactly two betslip prices, or (div-grid markup) the smallest box
     around the link holding exactly two. Rows with any other count are
-    ignored rather than guessed.
+    ignored rather than guessed. Falls back to generic decimal-row scan when
+    betslip links are absent (OddsPortal markup change observed 2026-09-13:
+    Payout marker present but betslip count 0).
     """
     pairs: list[tuple[float, float]] = []
     seen: set[int] = set()
+    has_betslip = False
     for anchor in box.find_all("a", href=True):
-        if _BETSLIP_HREF not in str(anchor.get("href") or ""):
-            continue
-        tr = anchor.find_parent("tr")
-        if tr is not None:
-            if id(tr) in seen:
+        if _BETSLIP_HREF in str(anchor.get("href") or ""):
+            has_betslip = True
+            break
+    if has_betslip:
+        for anchor in box.find_all("a", href=True):
+            if _BETSLIP_HREF not in str(anchor.get("href") or ""):
                 continue
-            seen.add(id(tr))
-            vals = _betslip_decimals(tr)
-            if len(vals) == 2:
-                pairs.append((vals[0], vals[1]))
+            tr = anchor.find_parent("tr")
+            if tr is not None:
+                if id(tr) in seen:
+                    continue
+                seen.add(id(tr))
+                vals = _betslip_decimals(tr)
+                if len(vals) == 2:
+                    pairs.append((vals[0], vals[1]))
+                continue
+            node = anchor.parent
+            for _ in range(4):
+                if node is None or getattr(node, "name", None) in ("html", "body", "[document]"):
+                    break
+                if isinstance(node, Tag) and _betslip_link_count(node) == 2:
+                    if id(node) not in seen:
+                        seen.add(id(node))
+                        vals = _betslip_decimals(node)
+                        if len(vals) == 2:
+                            pairs.append((vals[0], vals[1]))
+                    break
+                node = getattr(node, "parent", None)
+        if pairs:
+            return pairs
+    # Fallback: generic row scan for exactly 2 decimals per row inside the payout box
+    for tr in box.find_all("tr"):
+        if id(tr) in seen:
             continue
-        node = anchor.parent
-        for _ in range(4):
-            if node is None or getattr(node, "name", None) in ("html", "body", "[document]"):
-                break
-            if isinstance(node, Tag) and _betslip_link_count(node) == 2:
-                if id(node) not in seen:
-                    seen.add(id(node))
-                    vals = _betslip_decimals(node)
-                    if len(vals) == 2:
-                        pairs.append((vals[0], vals[1]))
-                break
-            node = getattr(node, "parent", None)
+        txt = tr.get_text(" ", strip=True)
+        if "Payout" in txt or "Bookmaker" in txt:
+            continue
+        vals = _row_decimals_generic(txt)
+        if len(vals) == 2:
+            pairs.append((vals[0], vals[1]))
+    if not pairs:
+        for div in box.find_all("div"):
+            txt = div.get_text(" ", strip=True)
+            if len(txt) > 200:
+                continue
+            vals = _row_decimals_generic(txt)
+            if len(vals) == 2:
+                if id(div) in seen:
+                    continue
+                seen.add(id(div))
+                pairs.append((vals[0], vals[1]))
     return pairs
 
 

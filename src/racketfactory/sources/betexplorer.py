@@ -63,7 +63,7 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
     tournament = tour_hint = ""
-    n_dt = n_finished = 0
+    n_dt = n_finished = n_no_odds = n_bad = 0
     for tr in soup.find_all("tr"):
         classes = tr.get("class") or []
         if "js-tournament" in classes:
@@ -76,24 +76,37 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
         if not dt_raw:
             continue
         n_dt += 1
-        name_cell = tr.find("td", class_="table-main__tt")
-        link = name_cell.find("a", href=True) if name_cell else tr.find("a", href=True)
-        if link is None:
-            continue
-        href = str(link.get("href") or "")
-        ctx = _is_match_link(href)
-        names_text = link.get_text(" ", strip=True)
-        home, away = po.split_match_names(names_text)
-        if not home or not away:
+        # Robust: find the first anchor in the row whose href matches and whose text splits into players
+        chosen = None
+        chosen_home = chosen_away = ""
+        chosen_ctx = None
+        chosen_href = ""
+        for a in tr.find_all("a", href=True):
+            href = str(a.get("href") or "")
+            ctx = _is_match_link(href)
+            if ctx is None:
+                continue
+            txt = a.get_text(" ", strip=True)
+            h, aw = po.split_match_names(txt)
+            if not h or not aw:
+                continue
+            chosen = a
+            chosen_home, chosen_away = h, aw
+            chosen_ctx = ctx
+            chosen_href = href
+            break
+        if chosen is None:
+            n_bad += 1
             continue
         row_text = tr.get_text(" ", strip=True)
         if po._FINISHED_RE.search(row_text):
             n_finished += 1
             continue
-        decimals = po._row_decimals(row_text.replace(names_text, " "))
+        decimals = po._row_decimals(row_text.replace(chosen.get_text(" ", strip=True), " "))
         if len(decimals) < 2:
+            n_no_odds += 1
             continue
-        key = f"{home}\x00{away}"
+        key = f"{chosen_home}\x00{chosen_away}"
         if key in seen:
             continue
         seen.add(key)
@@ -104,16 +117,16 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
         rows.append({
             "match_date": page_date,
             "match_time": ko,
-            "player_home": home,
-            "player_away": away,
+            "player_home": chosen_home,
+            "player_away": chosen_away,
             "odds_home": decimals[0],
             "odds_away": decimals[1],
-            "tournament": (ctx.get("tournament") if ctx else "") or tournament,
-            "tour_hint": (ctx.get("tour_hint") if ctx else "") or tour_hint,
-            "match_url": href,
+            "tournament": (chosen_ctx.get("tournament") if chosen_ctx else "") or tournament,
+            "tour_hint": (chosen_ctx.get("tour_hint") if chosen_ctx else "") or tour_hint,
+            "match_url": chosen_href,
         })
-    logger.info("%s results parse %s: data-dt rows=%d parsed=%d finished=%d",
-                SOURCE_NAME, page_date, n_dt, len(rows), n_finished)
+    logger.info("%s results parse %s: data-dt rows=%d parsed=%d finished=%d no_odds=%d bad=%d",
+                SOURCE_NAME, page_date, n_dt, len(rows), n_finished, n_no_odds, n_bad)
     return rows
 
 
