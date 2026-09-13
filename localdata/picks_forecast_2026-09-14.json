@@ -14,7 +14,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.15200000000000002,
-    "forecast_as_of": "2026-09-13T12:51:54+02:00",
+    "forecast_as_of": "2026-09-13T13:18:06+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": false,
@@ -67,7 +67,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.11833313000000001,
-    "forecast_as_of": "2026-09-13T12:51:54+02:00",
+    "forecast_as_of": "2026-09-13T13:18:06+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": false,
@@ -120,7 +120,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.05525546999999997,
-    "forecast_as_of": "2026-09-13T12:51:54+02:00",
+    "forecast_as_of": "2026-09-13T13:18:06+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": false,
