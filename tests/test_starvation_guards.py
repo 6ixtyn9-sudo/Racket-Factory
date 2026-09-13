@@ -224,3 +224,89 @@ def test_doctor_reports_empty_picks_export(tmp_path, monkeypatch):
     assert checks["picks:priced_share"]["status"] == "WARN"
     assert "0 rows" in checks["picks:priced_share"]["detail"]
     assert "warehouse:live_rows" in checks
+
+
+# ------------------------------------------------ miner candidate coverage --
+
+
+def _settled_row(i, *, day="2026-09-01", won=True):
+    a, b = f"Hist A{i}", f"Hist B{i}"
+    return {"match_date": day, "tour": "ATP", "tournament": "US Open",
+            "_series": "Grand Slam", "player_a": a, "player_b": b,
+            "winner": a if won else b, "odds_a": 1.5, "odds_b": 2.5,
+            "rank_a": 5, "rank_b": 40, "predicted_winner": "player_a",
+            "predicted_winner_market": "player_a",
+            "predicted_winner_foretennis": "player_a",
+            "prediction_prob": 0.75, "_is_live": False, "_comment": ""}
+
+
+def _run_mine(tmp_path, monkeypatch, rows, target):
+    import pandas as pd
+
+    monkeypatch.setattr(mine_edges, "ROOT", tmp_path)
+    wh = tmp_path / "warehouse.csv.gz"
+    pd.DataFrame(rows).to_csv(wh, index=False, compression="gzip")
+    monkeypatch.setattr(
+        mine_edges.sys, "argv",
+        ["mine_edges", "--warehouse", str(wh), "--date", target,
+         "--bet-side", "favorite"],
+    )
+    rc = mine_edges.main()
+    assert rc == 0
+    return json.loads((tmp_path / "localdata" / f"picks_{target}.json").read_text())
+
+
+def test_mine_mines_unsettled_nonlive_row(tmp_path, monkeypatch):
+    target = "2026-09-13"
+    rows = [_settled_row(i) for i in range(5)]  # too few for any slice
+    rows.append({"match_date": target, "tour": "ATP", "tournament": "US Open",
+                 "_series": "Grand Slam", "player_a": "Today A",
+                 "player_b": "Today B", "winner": "", "odds_a": 1.5,
+                 "odds_b": 2.5, "rank_a": 5, "rank_b": 40,
+                 "predicted_winner": "player_a", "prediction_prob": 0.7,
+                 "_is_live": False, "_comment": ""})
+    picks = _run_mine(tmp_path, monkeypatch, rows, target)
+    assert len(picks) == 1
+    assert picks[0]["match"] == "Today A vs Today B"
+    assert picks[0]["bucket"] == "WATCHLIST"
+
+
+def test_mine_logs_today_rows_matching_no_slice(tmp_path, monkeypatch, caplog):
+    target = "2026-09-13"
+    # 60 settled rows, one dominant slice (GOLD: 55/60 @1.5, N>50).
+    rows = [_settled_row(i, won=(i % 12 != 0)) for i in range(60)]
+    # Live today row whose every dim differs from history: matches nothing.
+    rows.append({"match_date": target, "tour": "UTR", "tournament": "Madrid",
+                 "_series": "ITF", "player_a": "Today A", "player_b": "Today B",
+                 "winner": "", "odds_a": 2.5, "odds_b": 3.0, "rank_a": 150,
+                 "rank_b": 160, "predicted_winner_market": "player_a",
+                 "prediction_prob": 0.5, "_is_live": True,
+                 "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    with caplog.at_level("WARNING", logger="edge_miner"):
+        picks = _run_mine(tmp_path, monkeypatch, rows, target)
+    assert picks == []
+    assert "matched no exportable historical slice" in caplog.text
+
+
+# ------------------------------------------------ forebet writer dedup --
+
+
+def test_forebet_writer_dedups_fresh_and_stripped(tmp_path):
+    from scripts import backfill_forebet
+
+    base = {"match_date": "2026-09-12", "tour": "", "tournament": "",
+            "player_a": "J. Reis Da Silva", "player_b": "A. Barrena",
+            "predicted_winner": "player_b", "prediction_prob": 0.56,
+            "source": "Forebet"}
+    dup = dict(base, player_b="A. Barrena  ")  # stray whitespace
+    other = dict(base, player_a="P. Kotov", player_b="M. Sharipov")
+    backfill_forebet._write_predictions([base, dup, other], tmp_path)
+    # Second identical write exercises the append path.
+    backfill_forebet._write_predictions([base, dup, other], tmp_path)
+
+    import pandas as pd
+
+    df = pd.read_csv(tmp_path / "predictions_forebet_2026-09.csv.gz")
+    assert len(df) == 2
+    assert (df["player_b"] == "A. Barrena").sum() == 1

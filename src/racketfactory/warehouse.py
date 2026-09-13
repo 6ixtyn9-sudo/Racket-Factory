@@ -437,14 +437,10 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
             for rr in oriented:
                 oh = rr.get("odds_home")
                 oa = rr.get("odds_away")
-                ch = None
-                ca = None
-                try:
-                    from racketfactory.warehouse import coerce_decimal_odds
-                    ch = coerce_decimal_odds(oh)
-                    ca = coerce_decimal_odds(oa)
-                except:
-                    pass
+                # coerce_decimal_odds is module-level here (no import needed)
+                # and never raises (unparseable -> None).
+                ch = coerce_decimal_odds(oh)
+                ca = coerce_decimal_odds(oa)
                 # If one side valid and other NA/None, allow
                 if (ch is not None and ca is None) or (ca is not None and ch is None):
                     # Single side valid, allow
@@ -489,7 +485,14 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
 
 
 
-def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict]) -> tuple[dict | None, bool]:
+def _parse_iso_date(value: object) -> date | None:
+    try:
+        return date.fromisoformat(str(value or "")[:10])
+    except ValueError:
+        return None
+
+
+def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_drift_days: int = 1) -> tuple[dict | None, bool]:
     """Return matching API odds row and whether it was reversed vs card row.
 
     Date matching is tolerant: first try exact date, then allow ±1 day for
@@ -511,10 +514,18 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict]) -> tuple[dic
             return odds_row, False
         if names_match(home, api_away) and names_match(away, api_home):
             return odds_row, True
-    # Second pass: ignore date if names match strongly (for Slams, timezone drift)
-    # Only for non-doubles to avoid false positives
+    # Second pass: same names within ±max_date_drift_days (singles only).
+    # Slam commence_times can straddle UTC midnight, but anything beyond the
+    # drift budget — e.g. the same matchup meeting again a week later — must
+    # NOT match. Rows with an unparseable date stay fail-open (as in pass 1).
     if "/" not in home and "/" not in away and "&" not in home and "&" not in away:
+        card_dt = _parse_iso_date(card_date)
         for odds_row in odds_rows:
+            odds_date = str(odds_row.get("match_date", "") or "")[:10]
+            if card_dt is not None:
+                odds_dt = _parse_iso_date(odds_date)
+                if odds_dt is not None and abs((odds_dt - card_dt).days) > max_date_drift_days:
+                    continue
             api_home = str(odds_row.get("player_home") or "")
             api_away = str(odds_row.get("player_away") or "")
             if names_match(home, api_home) and names_match(away, api_away):

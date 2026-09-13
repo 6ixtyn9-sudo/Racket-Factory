@@ -46,6 +46,19 @@ logging.basicConfig(
 logger = logging.getLogger("backfill_forebet")
 
 
+def _strip_key_columns(frame, key_cols: list[str]):
+    """Normalize dedup-key columns: NaN -> "" plus whitespace strip.
+
+    A re-read CSV yields NaN for empty cells while fresh parser rows carry
+    ""; without unifying both, cross-run dedup never matches. Empty keys
+    downstream behave identically (all joins normalize first).
+    """
+    for col in key_cols:
+        if col in frame.columns:
+            frame[col] = frame[col].fillna("").astype(str).str.strip()
+    return frame
+
+
 def _write_predictions(predictions: list[dict], output_dir: Path) -> None:
     if not predictions:
         logger.warning("No predictions to write.")
@@ -53,16 +66,24 @@ def _write_predictions(predictions: list[dict], output_dir: Path) -> None:
     out_df = pd.DataFrame(predictions)
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    key_cols = ["match_date", "tour", "tournament", "player_a", "player_b"]
+    out_df = _strip_key_columns(out_df, key_cols)
+    # Always dedup (fresh files too): the parser can emit the same match
+    # twice (HTML + Jina paths) and key columns can carry stray whitespace.
+    out_df = out_df.drop_duplicates(
+        subset=[c for c in key_cols if c in out_df.columns], keep="last"
+    )
     by_month = out_df.groupby(out_df["match_date"].astype(str).str[:7])
     for month, group in by_month:
         path = out_dir / f"predictions_forebet_{month}.csv.gz"
         if path.exists():
             existing = pd.read_csv(path, low_memory=False)
+            existing = _strip_key_columns(existing, key_cols)
             group = pd.concat([existing, group], ignore_index=True)
-            group = group.drop_duplicates(
-                subset=["match_date", "tour", "tournament", "player_a", "player_b"],
-                keep="last",
-            )
+        group = group.drop_duplicates(
+            subset=[c for c in key_cols if c in group.columns],
+            keep="last",
+        )
         group.to_csv(path, index=False, compression="gzip")
         logger.info("Wrote %d predictions to %s", len(group), path)
 
@@ -280,16 +301,19 @@ def _write_forebet_result_rows(predictions: list[dict], output_dir: Path) -> lis
     written = []
 
     result_df["match_date"] = result_df["match_date"].astype(str).str[:10]
+    key_cols = ["match_date", "tour", "tournament", "player_a", "player_b"]
+    result_df = _strip_key_columns(result_df, key_cols)
     for month, group in result_df.groupby(result_df["match_date"].str[:7]):
         path = out_dir / f"forebet_results_tennis_{month}.csv.gz"
         if path.exists():
             old = pd.read_csv(path, low_memory=False)
+            old = _strip_key_columns(old, key_cols)
             combined = pd.concat([old, group], ignore_index=True, sort=False)
         else:
             combined = group.copy()
 
         combined = combined.drop_duplicates(
-            subset=["match_date", "tour", "tournament", "player_a", "player_b"],
+            subset=[c for c in key_cols if c in combined.columns],
             keep="last",
         )
         combined.to_csv(path, index=False, compression="gzip")

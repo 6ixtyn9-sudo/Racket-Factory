@@ -1445,7 +1445,11 @@ def main() -> int:
             n_uns,
         )
 
-    df = df_hist  # downstream code operates on the historical cohort only
+    # Candidate selection below needs the PRE-SPLIT frame: unsettled,
+    # non-live rows (upcoming fixtures carried by results feeds) are excluded
+    # from slice mining but must still be minable as same-day candidates.
+    df_candidates = df
+    df = df_hist  # downstream slice mining operates on the settled cohort only
     # The dimensional derivations (selected_rank_band, fav_odds, fav_odds_band,
     # pred_confidence, cross_source_agree, _surface) were applied to the FULL
     # warehouse above before splitting. Reusing them here on df_hist would
@@ -1565,7 +1569,14 @@ def main() -> int:
     # the same date. We excluded live rows from `df` (the slice-mining
     # cohort), but they still have to participate in pick matching so the
     # operator sees actionable matches for today's slate.
-    today_hist = df[df["match_date"] == target_date].copy() if not df.empty else df.copy()
+    if not df_candidates.empty and "match_date" in df_candidates.columns:
+        _unsettled_hist = (
+            (~live_mask) & (~settled_mask)
+            & (df_candidates["match_date"] == target_date)
+        )
+        today_hist = df_candidates[_unsettled_hist].copy()
+    else:
+        today_hist = df_candidates.copy()
     today_live = (
         df_live_only[df_live_only["match_date"] == target_date].copy()
         if not df_live_only.empty else df_live_only.copy()
@@ -1691,6 +1702,7 @@ def main() -> int:
                 base["skip_reason"] = "no prediction and no odds: selection would be arbitrary"
             picks_to_export.append(base)
 
+    unmatched_slice_rows = 0
     if not today_df.empty and results:
         for _, row in today_df.iterrows():
             best_pick = None
@@ -1833,6 +1845,15 @@ def main() -> int:
                     base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
 
                 picks_to_export.append(base)
+            else:
+                unmatched_slice_rows += 1
+
+    if unmatched_slice_rows:
+        logger.warning(
+            "%d today rows matched no exportable historical slice for %s "
+            "(candidates existed but produced no picks)",
+            unmatched_slice_rows, target_date,
+        )
 
     picks_to_export = sorted(
         picks_to_export,
