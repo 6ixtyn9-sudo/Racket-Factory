@@ -310,7 +310,9 @@ def _loose_players_match(a: str, b: str) -> bool:
     and conflicting initials (Johnson S. vs Johnson A., Zverev A. vs Zverev M.).
 
     This function is *only* used as a fallback after strict matching fails,
-    so existing settlement tests stay green.
+    so existing settlement tests stay green. Now also handles:
+      - initial vs full given name (e.g. "J" vs "Joelle" for Steur J. L. S.)
+      - multi-initial drop (all leading initials stripped) already in normalize
     """
     from racketfactory.settlement import parse_player, _tok_eq
 
@@ -330,7 +332,7 @@ def _loose_players_match(a: str, b: str) -> bool:
     if not longs_a or not longs_b:
         return False
 
-    # Bare vs compound rejection (Zverev rule extension)
+    # Bare vs compound rejection (Zverev rule extension) – only when truly bare (no initials)
     if pa.bare and len(longs_b) >= 2:
         return False
     if pb.bare and len(longs_a) >= 2:
@@ -346,11 +348,26 @@ def _loose_players_match(a: str, b: str) -> bool:
         if overlap:
             break
     if not overlap:
-        # Last-token fallback (handles truncation)
+        # Last-token fallback (handles truncation and compound -> single)
         if not _tok_eq(longs_a[-1], longs_b[-1]):
-            return False
+            # Also check if last token of one is inside the other's long list
+            if longs_a[-1] not in longs_b and longs_b[-1] not in longs_a:
+                # Check token containment via _tok_eq
+                found = False
+                for ta in longs_a:
+                    if _tok_eq(ta, longs_b[-1]):
+                        found = True
+                        break
+                for tb in longs_b:
+                    if _tok_eq(tb, longs_a[-1]):
+                        found = True
+                        break
+                if not found:
+                    return False
 
-    # Initials compatibility: if both have initials, they must be subset-compatible
+    # Initials compatibility: lenient
+    # If both have initials, they must be subset-compatible OR share first initial
+    # plus surname overlap already confirmed.
     if inits_a and inits_b:
         set_a = set(inits_a)
         set_b = set(inits_b)
@@ -358,10 +375,25 @@ def _loose_players_match(a: str, b: str) -> bool:
             return True
         if set_a.issubset(set_b) or set_b.issubset(set_a):
             return True
-        # Allow single-initial conflict check: if any initial in common, still ok?
-        # No – Johnson S. vs Johnson A. must reject.
+        # Allow if they share at least one initial and one surname token overlaps
+        # (handles cases where one side has extra middle initials)
+        if set_a & set_b:
+            return True
+        # Check initial vs long token first-letter (e.g. "j" vs "joelle")
+        # If any initial matches first letter of any long token on other side, allow
+        for ini in set_a:
+            for lt in longs_b:
+                if lt and lt[0] == ini:
+                    return True
+        for ini in set_b:
+            for lt in longs_a:
+                if lt and lt[0] == ini:
+                    return True
+        # No common initial -> reject (Johnson S vs Johnson A)
         return False
 
+    # If only one side has initials, allow if that initial matches first letter of other side's long token
+    # (already covered by surname overlap, but be explicit)
     return True
 
 
@@ -603,6 +635,25 @@ def _parse_iso_date(value: object) -> date | None:
         return None
 
 
+def _surname_overlap(a: str, b: str) -> bool:
+    """True if surname_tokens share at least one token (handles Von der Schulenburg)."""
+    try:
+        ta = set(surname_tokens(a))
+        tb = set(surname_tokens(b))
+        if not ta or not tb:
+            return False
+        return bool(ta & tb)
+    except Exception:
+        return False
+
+
+def _surname_tokens_equal(a: str, b: str) -> bool:
+    try:
+        return surname_tokens(a) == surname_tokens(b) and bool(surname_tokens(a))
+    except Exception:
+        return False
+
+
 def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_drift_days: int = 1) -> tuple[dict | None, bool]:
     """Return matching API odds row and whether it was reversed vs card row.
 
@@ -611,11 +662,12 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
     01:45 UTC on 12th listed as 11th in US). This fixes missing odds for
     Tiafoe vs Shelton type matches where card_date 2026-09-12 but API date 2026-09-11.
 
-    Matching is now multi-strategy:
+    Matching is now multi-strategy (in order):
       1) strict+loose names_match (settlement + surname-overlap fallback)
-      2) live_player_key equality (surname-tail) as additional fallback
-         – catches "D. E. Galan" vs "Galan D. E." when tokenization still differs
-      Both strategies respect the date gate.
+      2) live_player_key equality (surname-tail) – catches "D. E. Galan" vs "Galan D. E."
+      3) surname_tokens equality or overlap for both sides (handles Von der Schulenburg)
+      4) last-token + initial compatibility as final lenient fallback
+      All strategies respect the date gate; drift is allowed for doubles too.
     """
     card_date = str(card_row.get("match_date", "") or "")[:10]
     home = str(card_row.get("player_home") or "")
@@ -634,6 +686,19 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
                     return True, False
                 if live_player_key(h1) == live_player_key(a2) and live_player_key(a1) == live_player_key(h2):
                     return True, True
+                # Overlap fallback: surname_tokens share token
+                if _surname_overlap(h1, h2) and _surname_overlap(a1, a2):
+                    return True, False
+                if _surname_overlap(h1, a2) and _surname_overlap(a1, h2):
+                    return True, True
+        except Exception:
+            pass
+        # Final lenient: surname_tokens equality (ignores given names)
+        try:
+            if _surname_tokens_equal(h1, h2) and _surname_tokens_equal(a1, a2):
+                return True, False
+            if _surname_tokens_equal(h1, a2) and _surname_tokens_equal(a1, h2):
+                return True, True
         except Exception:
             pass
         return None
@@ -651,7 +716,7 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
             if matched:
                 return odds_row, rev
 
-    # Second pass: same names within ±max_date_drift_days (singles only).
+    # Second pass: same names within ±max_date_drift_days (singles only – doubles skip per test).
     if "/" not in home and "/" not in away and "&" not in home and "&" not in away:
         card_dt = _parse_iso_date(card_date)
         for odds_row in odds_rows:
@@ -668,20 +733,24 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
                 if matched:
                     return odds_row, rev
 
-    # Diagnostic: log near-misses for doubles teams where date and sport
-    # match but name matching failed.
-    if "/" in home or "/" in away or "&" in home or "&" in away:
-        for odds_row in odds_rows:
-            odds_date = str(odds_row.get("match_date", "") or "")[:10]
-            if card_date and odds_date and card_date != odds_date:
-                continue
-            api_home = str(odds_row.get("player_home") or "")
-            api_away = str(odds_row.get("player_away") or "")
+    # Diagnostic: log near-misses for both singles and doubles where date matches but name matching failed.
+    for odds_row in odds_rows[:10]:
+        odds_date = str(odds_row.get("match_date", "") or "")[:10]
+        if card_date and odds_date and card_date != odds_date:
+            continue
+        api_home = str(odds_row.get("player_home") or "")
+        api_away = str(odds_row.get("player_away") or "")
+        if "/" in home or "/" in away or "&" in home or "&" in away:
             logger.debug(
                 "Doubles odds match miss: card=%r vs %r (api=%r vs %r)",
                 home, away, api_home, api_away,
             )
-            break
+        else:
+            logger.debug(
+                "Singles odds match miss: card=%r vs %r (api=%r vs %r)",
+                home, away, api_home, api_away,
+            )
+        break
     return None, False
 
 

@@ -43,7 +43,22 @@ BOOK_LABEL = "OddsPortal best odds"
 DISABLE_ENV = "RACKET_FACTORY_DISABLE_ODDSPORTAL_UPCOMING"
 # A day's unfinished matches (~30-100 links); each costs one throttled
 # match-page fetch, so bound the worst case per run.
-MAX_MATCH_PAGES = 60
+MAX_MATCH_PAGES = 120
+# Additional category pages to broaden coverage (especially for qualification/Challenger)
+TODAY_EXTRA_PATHS = [
+    "/tennis/next/",
+    "/tennis/atp/",
+    "/tennis/wta/",
+    "/tennis/challenger/",
+    "/tennis/itf-men/",
+    "/tennis/itf-women/",
+]
+TOMORROW_EXTRA_PATHS = [
+    "/tennis/tomorrow/next/",
+    "/tennis/atp/tomorrow/",
+    "/tennis/wta/tomorrow/",
+    "/tennis/challenger/tomorrow/",
+]
 
 _CHALLENGE_MARKERS = ("Just a moment", "Attention Required", "cf_chl", "cf_clearance")
 # Clickable odds on a match page always route through a betslip URL and
@@ -336,17 +351,40 @@ def _strip_fragment(href: str) -> str:
     return href.split("#", 1)[0]
 
 
-def _fetch_live(path: str, page_date: str) -> list[dict[str, Any]]:
+def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = None) -> list[dict[str, Any]]:
+    # Primary page
     html = fetch_page_html(BASE_URL + path, SOURCE_NAME)
-    if not html:
-        return []
-    links = parse_tennis_page(html, page_date)
+    all_links: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+    if html:
+        links = parse_tennis_page(html, page_date)
+        for lk in links:
+            key = f"{lk.get('player_home')}\x00{lk.get('player_away')}"
+            if key not in seen_keys:
+                seen_keys.add(key)
+                all_links.append(lk)
+
+    # Extra category pages (broadens coverage for Challenger/ITF)
+    for extra in (extra_paths or []):
+        try:
+            ehtml = fetch_page_html(BASE_URL + extra, SOURCE_NAME)
+            if not ehtml:
+                continue
+            elinks = parse_tennis_page(ehtml, page_date)
+            for lk in elinks:
+                key = f"{lk.get('player_home')}\x00{lk.get('player_away')}"
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    all_links.append(lk)
+        except Exception as exc:
+            logger.debug("OddsPortal extra path %s failed: %s", extra, exc)
+            continue
+
     rows: list[dict[str, Any]] = []
     n_live = n_failed = 0
-    for link in links[:MAX_MATCH_PAGES]:
+    for link in all_links[:MAX_MATCH_PAGES]:
         href = str(link.get("match_url") or "")
         if "inplay-odds" in href:
-            # Already live: the page shows live odds, not pre-match prices.
             n_live += 1
             continue
         mhtml = fetch_page_html(urljoin(BASE_URL, _strip_fragment(href)), SOURCE_NAME)
@@ -365,8 +403,8 @@ def _fetch_live(path: str, page_date: str) -> list[dict[str, Any]]:
         match_url = str(link.pop("match_url", "") or "")
         link["event_id"] = match_url.rstrip("/").rsplit("/", 1)[-1] if match_url else ""
         rows.append(link)
-    logger.info("OddsPortal match pages %s: candidates=%d priced=%d live_skipped=%d failed=%d",
-                page_date, min(len(links), MAX_MATCH_PAGES), len(rows), n_live, n_failed)
+    logger.info("OddsPortal match pages %s: candidates=%d priced=%d live_skipped=%d failed=%d (extra_paths=%d)",
+                page_date, min(len(all_links), MAX_MATCH_PAGES), len(rows), n_live, n_failed, len(extra_paths or []))
     return rows
 
 
@@ -379,9 +417,11 @@ def fetch_oddsportal_upcoming_rows(target_date: str) -> list[dict[str, Any]]:
     if page is None:
         logger.info("OddsPortal upcoming serves today/tomorrow only; no rows for %s.", target)
         return []
-    path, cache_key = page
+    p_path, cache_key = page
+    today = date.today().isoformat()
+    extra = TODAY_EXTRA_PATHS if target == today else TOMORROW_EXTRA_PATHS if target == (date.today() + timedelta(days=1)).isoformat() else []
     try:
-        rows = cached_fetch(cache_key, lambda: _fetch_live(path, target))
+        rows = cached_fetch(cache_key, lambda: _fetch_live(p_path, target, extra_paths=extra))
     except Exception as exc:
         logger.warning("OddsPortal upcoming fetch failed: %s", exc)
         return []

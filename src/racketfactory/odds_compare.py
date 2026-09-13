@@ -82,7 +82,7 @@ def merge_comparison_rows(
     oddsportal_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Pure merge of the two legs; matching via shared settlement names."""
-    from racketfactory.warehouse import names_match  # lazy: warehouse enriches via this module
+    from racketfactory.warehouse import names_match, live_player_key, surname_tokens  # lazy: warehouse enriches via this module
 
     def sides(row: dict[str, Any]) -> tuple[float | None, float | None]:
         try:
@@ -96,6 +96,33 @@ def merge_comparison_rows(
 
     def names(row: dict[str, Any]) -> tuple[str, str]:
         return str(row.get("player_home") or ""), str(row.get("player_away") or "")
+
+    def _surname_overlap(a: str, b: str) -> bool:
+        try:
+            ta = set(surname_tokens(a))
+            tb = set(surname_tokens(b))
+            return bool(ta & tb) if ta and tb else False
+        except Exception:
+            return False
+
+    def _pair_matches(h1, a1, h2, a2) -> tuple[bool, bool] | None:
+        if names_match(h1, h2) and names_match(a1, a2):
+            return True, False
+        if names_match(h1, a2) and names_match(a1, h2):
+            return True, True
+        try:
+            if live_player_key(h1) and live_player_key(h2) and live_player_key(a1) and live_player_key(a2):
+                if live_player_key(h1) == live_player_key(h2) and live_player_key(a1) == live_player_key(a2):
+                    return True, False
+                if live_player_key(h1) == live_player_key(a2) and live_player_key(a1) == live_player_key(h2):
+                    return True, True
+                if _surname_overlap(h1, h2) and _surname_overlap(a1, a2):
+                    return True, False
+                if _surname_overlap(h1, a2) and _surname_overlap(a1, h2):
+                    return True, True
+        except Exception:
+            pass
+        return None
 
     merged: list[dict[str, Any]] = []
     used_op: set[int] = set()
@@ -115,11 +142,10 @@ def merge_comparison_rows(
             op_home, op_away = names(op)
             if not op_home or not op_away:
                 continue
-            if names_match(be_home, op_home) and names_match(be_away, op_away):
-                match_idx, reversed_match = i, False
-                break
-            if names_match(be_home, op_away) and names_match(be_away, op_home):
-                match_idx, reversed_match = i, True
+            res = _pair_matches(be_home, be_away, op_home, op_away)
+            if res is not None:
+                _, rev = res
+                match_idx, reversed_match = i, rev
                 break
         row = dict(be)
         row["source"] = "BetExplorer"
