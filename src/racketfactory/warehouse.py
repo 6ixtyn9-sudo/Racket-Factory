@@ -20,6 +20,7 @@ from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.forebet import ForebetPredictor, forebet_cache_key, name_signature, name_signature_strict
 from racketfactory.sources.foretennis import ForeTennisPredictor
 from racketfactory.sources.bzzoiro import BzzoiroPredictor
+from racketfactory.odds_compare import fetch_comparison_rows
 
 logger = logging.getLogger(__name__)
 
@@ -1086,10 +1087,12 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
     """Attach live pricing, preferring The Odds API with guarded scrape fallback.
 
     Scraped BetClan/Forebet prices are preserved in debug columns. If no API
-    match exists for a row, the scraped pair may be promoted only after the same
-    side-alignment and two-way decimal-pair sanity guards used for API prices.
-    Rows promoted this way are explicitly tagged ``ScrapedFallback`` so
-    downstream EV code can distinguish them from The Odds API prices.
+    match exists for a row, the cross-checked comparison leg (BetExplorer x
+    OddsPortal upcoming) is tried next for the tours the API does not cover,
+    and only then the scraped pair — every leg under the same side-alignment
+    and two-way decimal-pair sanity guards used for API prices.
+    Rows promoted from scrapes are explicitly tagged ``ScrapedFallback`` so
+    downstream EV code can distinguish them from market prices.
     """
     if card.empty:
         return card
@@ -1101,17 +1104,22 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
     out["api_odds_away"] = pd.NA
     out["odds_source"] = ""
     out["odds_bookmaker"] = ""
+    out["odds_cross_checked"] = ""
     out["odds_home"] = pd.NA
     out["odds_away"] = pd.NA
 
     odds_rows = fetch_the_odds_api_rows(target_date)
+    compare_rows = fetch_comparison_rows(target_date)
 
     api_matched = 0
-    if not odds_rows:
-        logger.info("No The Odds API rows available for %s; trying validated scraped fallback odds.", target_date)
+    compare_matched = 0
+    if not odds_rows and not compare_rows:
+        logger.info("No The Odds API or comparison rows available for %s; trying validated scraped fallback odds.", target_date)
 
     for idx, row in out.iterrows():
         odds_row, reversed_order = _match_api_odds_row(row, odds_rows) if odds_rows else (None, False)
+        if odds_row is None and compare_rows:
+            odds_row, reversed_order = _match_api_odds_row(row, compare_rows)
         if odds_row is None:
             continue
         if reversed_order:
@@ -1127,18 +1135,23 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
         if not valid_two_way_decimal_pair(api_home, api_away):
             continue
 
+        src_label = str(odds_row.get("source") or "TheOddsAPI")
         out.at[idx, "api_odds_home"] = api_home
         out.at[idx, "api_odds_away"] = api_away
         out.at[idx, "odds_home"] = api_home
         out.at[idx, "odds_away"] = api_away
-        out.at[idx, "odds_source"] = "TheOddsAPI"
-        out.at[idx, "odds_bookmaker"] = odds_row.get("bookmaker") or "The Odds API"
-        api_matched += 1
+        out.at[idx, "odds_source"] = src_label
+        out.at[idx, "odds_cross_checked"] = str(odds_row.get("odds_cross_checked") or "")
+        out.at[idx, "odds_bookmaker"] = odds_row.get("bookmaker") or ("The Odds API" if src_label == "TheOddsAPI" else src_label)
+        if src_label == "TheOddsAPI":
+            api_matched += 1
+        else:
+            compare_matched += 1
 
     fallback_matched = 0
     fallback_invalid = 0
     for idx, row in out.iterrows():
-        if str(row.get("odds_source", "") or "") == "TheOddsAPI":
+        if str(row.get("odds_source", "") or ""):
             continue
 
         scraped_home, scraped_away = align_odds_to_probabilities(
@@ -1178,10 +1191,11 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
         logger.info("Scraped fallback dropped %d rows due to invalid odds (no valid side)", fallback_invalid)
 
     logger.info(
-        "Matched live odds for %d/%d rows: %d The Odds API, %d ScrapedFallback",
-        api_matched + fallback_matched,
+        "Matched live odds for %d/%d rows: %d The Odds API, %d comparison, %d ScrapedFallback",
+        api_matched + compare_matched + fallback_matched,
         len(out),
         api_matched,
+        compare_matched,
         fallback_matched,
     )
     return out

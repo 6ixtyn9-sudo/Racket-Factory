@@ -34,6 +34,7 @@ from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.forebet import ForebetPredictor, forebet_cache_key
 from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice
+from racketfactory.odds_compare import fetch_comparison_rows
 
 logging.basicConfig(
     level=logging.INFO,
@@ -247,10 +248,11 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
     """Attach forecast-card prices, preferring API with guarded scrape fallback.
 
     Tomorrow/future cards are built directly from prediction sources rather than
-    warehouse live injection.  Keep The Odds API as first choice, but when API
-    coverage is missing promote the source scrape pair only if it passes the
-    same side-alignment and two-way sanity checks used for same-day live rows.
-    A lone honest side (Forebet coef on its predicted side) promotes
+    warehouse live injection.  Keep The Odds API as first choice, then the
+    cross-checked comparison leg (BetExplorer x OddsPortal upcoming) for the
+    Challenger/ITF tours the API does not cover, and only then the source
+    scrape pair — every leg under the same side-alignment and two-way sanity
+    checks.  A lone honest side (Forebet coef on its predicted side) promotes
     single-side for paper-track use.
     """
     if card.empty:
@@ -269,20 +271,25 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
         out["odds_b"] = pd.NA
     if "_odds_source" not in out.columns:
         out["_odds_source"] = ""
+    if "odds_cross_checked" not in out.columns:
+        out["odds_cross_checked"] = ""
 
     odds_rows = fetch_the_odds_api_rows(target_date)
     if not odds_rows:
-        logger.info("No The Odds API odds available for fallback card %s; trying validated scraped fallback odds.", target_date)
+        logger.info("No The Odds API odds available for fallback card %s; trying comparison odds, then validated scraped fallback odds.", target_date)
+    compare_rows = fetch_comparison_rows(target_date)
+    priced_rows = list(odds_rows) + list(compare_rows)
 
     api_matched = 0
+    compare_matched = 0
 
     for idx, row in out.iterrows():
         home = str(row.get("player_home") or row.get("player_a") or "").strip()
         away = str(row.get("player_away") or row.get("player_b") or "").strip()
-        if not home or not away or not odds_rows:
+        if not home or not away or not priced_rows:
             continue
 
-        for odds_row in odds_rows:
+        for odds_row in priced_rows:
             api_home = str(odds_row.get("player_home") or "").strip()
             api_away = str(odds_row.get("player_away") or "").strip()
 
@@ -304,19 +311,27 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
             if not valid_two_way_decimal_pair(odds_home, odds_away):
                 continue
 
+            src_label = str(odds_row.get("source") or "TheOddsAPI")
             out.at[idx, "odds_home"] = odds_home
             out.at[idx, "odds_away"] = odds_away
             out.at[idx, "odds_a"] = odds_home
             out.at[idx, "odds_b"] = odds_away
-            out.at[idx, "_odds_source"] = "TheOddsAPI"
+            out.at[idx, "_odds_source"] = src_label
+            out.at[idx, "odds_cross_checked"] = str(odds_row.get("odds_cross_checked") or "")
             out.at[idx, "_is_live"] = True
-            out.at[idx, "_comment"] = "forecast_upcoming_api_priced"
-            api_matched += 1
+            out.at[idx, "_comment"] = (
+                "forecast_upcoming_api_priced" if src_label == "TheOddsAPI"
+                else "forecast_upcoming_compare_priced"
+            )
+            if src_label == "TheOddsAPI":
+                api_matched += 1
+            else:
+                compare_matched += 1
             break
 
     fallback_matched = 0
     for idx, row in out.iterrows():
-        if str(row.get("_odds_source", "") or "") == "TheOddsAPI":
+        if str(row.get("_odds_source", "") or ""):
             continue
 
         scraped_home, scraped_away = align_odds_to_probabilities(
@@ -351,11 +366,12 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
         fallback_matched += 1
 
     logger.info(
-        "Matched fallback forecast odds for %d/%d rows on %s: %d The Odds API, %d ScrapedFallback",
-        api_matched + fallback_matched,
+        "Matched fallback forecast odds for %d/%d rows on %s: %d The Odds API, %d comparison, %d ScrapedFallback",
+        api_matched + compare_matched + fallback_matched,
         len(out),
         target_date,
         api_matched,
+        compare_matched,
         fallback_matched,
     )
     return out
@@ -642,7 +658,7 @@ def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: 
 
     if row_has_live_flag(row):
         odds_source = str(row.get("_odds_source", "") or "")
-        usable_live_sources = {"TheOddsAPI", "ScrapedFallback"}
+        usable_live_sources = {"TheOddsAPI", "OddsPortal", "BetExplorer", "ScrapedFallback"}
         if odds_source not in usable_live_sources:
             return None, "missing usable live odds"
         pair_ok = valid_two_way_decimal_pair(row.get("odds_a"), row.get("odds_b"))
@@ -989,13 +1005,13 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
 def market_basis_for_pick(odds_source: str, odds_val: object) -> tuple[str, bool]:
     """Return (market_basis, is_paper) for an emitted pick.
 
-    ``api`` = executable bookmaker price (TheOddsAPI/OddsPortal/Bzzoiro).
+    ``api`` = executable bookmaker price (TheOddsAPI/OddsPortal/Bzzoiro/BetExplorer).
     ``scraped_fallback`` = label-only scrape pair, paper only.
     ``none`` = unpriced.
     """
     if odds_val is None:
         return "none", True
-    if str(odds_source or "").strip() in {"TheOddsAPI", "OddsPortal", "Bzzoiro"}:
+    if str(odds_source or "").strip() in {"TheOddsAPI", "OddsPortal", "Bzzoiro", "BetExplorer"}:
         return "api", False
     if str(odds_source or "").strip() == "ScrapedFallback":
         return "scraped_fallback", True
@@ -1746,6 +1762,7 @@ def main() -> int:
                 "odds": odds_val,
                 "odds_source": odds_source,
                 "odds_bookmaker": odds_bookmaker,
+                "odds_cross_checked": str(row.get("odds_cross_checked") or ""),
                 "odds_reject_reason": odds_reject_reason,
                 "_market_basis": basis,
                 "_is_paper": is_paper,
@@ -1874,6 +1891,7 @@ def main() -> int:
                     "odds": odds_val,
                     "odds_source": odds_source,
                     "odds_bookmaker": odds_bookmaker,
+                    "odds_cross_checked": str(row.get("odds_cross_checked") or ""),
                     "oddsportal_matched_market": oddsportal_match,
                     "odds_reject_reason": odds_reject_reason,
                     "_market_basis": basis,

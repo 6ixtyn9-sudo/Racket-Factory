@@ -139,7 +139,9 @@ def load_picks(target_date: str) -> list[dict]:
 
 # Market prices only: anything else (scraped fallback, ML estimates, blanks)
 # is paper-track, never staked. Mirrors market_basis_for_pick's api set.
-_TRUSTED_MARKET_SOURCES = {"theoddsapi", "oddsportal", "bzzoiro"}
+# BetExplorer legs quote the bookmaker consensus (indicative, not the ticket
+# price at any single book) — staked because EV gating runs on the same leg.
+_TRUSTED_MARKET_SOURCES = {"theoddsapi", "oddsportal", "bzzoiro", "betexplorer"}
 
 
 def _leg_real_odds(pick: dict):
