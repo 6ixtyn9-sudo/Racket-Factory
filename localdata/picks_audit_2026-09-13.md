@@ -2,7 +2,7 @@
 
 ## Overall
 
-- archived pick rows: 3
+- archived pick rows: 4
 - archived pick dates: 1
 - settled picks: 0
 - wins: 0
@@ -11,10 +11,10 @@
 - ROI: None
 - ROI (real-priced): None (n=0)
 - ROI (paper-priced): None (n=0)
-- pending picks: 3
+- pending picks: 4
 - void picks: 0
 - conflict picks: 0
-- total picks: 3
+- total picks: 4
 - set diagnostic picks: 0
 - selected won any set: 0 (None)
 - selected won set 1: 0 (None)
@@ -36,6 +36,7 @@
 ## Per-pick audit (won/lost/pending)
 
 - 2026-09-13 J. Von der Schulenburg vs R. Molleker selected=R. Molleker winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-13 D. Martin vs A. Rybakov selected=A. Rybakov winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 D. E. Galan vs M. Vrbensky selected=D. E. Galan winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 A. Parks vs M. Sherif selected=M. Sherif winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 

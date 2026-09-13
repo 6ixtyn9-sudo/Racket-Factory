@@ -19,6 +19,22 @@
     {
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-13",
+      "match": "D. Martin vs A. Rybakov",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "A. Rybakov",
+      "series": "Challenger",
+      "settle_date": "2026-09-13",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "Forebet",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "CHALLENGER",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_DEAD_EDGE",
+      "date": "2026-09-13",
       "match": "D. E. Galan vs M. Vrbensky",
       "reason": "result not final: live/in-progress markers present",
       "selected_player": "D. E. Galan",
@@ -52,7 +68,7 @@
   "archived_pick_dates": [
     "2026-09-13"
   ],
-  "archived_pick_rows": 3,
+  "archived_pick_rows": 4,
   "by_bucket": {},
   "by_ledger_kind": {},
   "by_series": {},
@@ -65,7 +81,7 @@
   "overall": {
     "conflict_picks": 0,
     "hit_rate": null,
-    "pending_picks": 3,
+    "pending_picks": 4,
     "priced_paper": 0,
     "priced_picks": 0,
     "priced_real": 0,
@@ -82,7 +98,7 @@
     "selected_won_set3_rate": null,
     "set_diagnostic_picks": 0,
     "settled_picks": 0,
-    "total_picks": 3,
+    "total_picks": 4,
     "void_picks": 0,
     "wins": 0
   },
