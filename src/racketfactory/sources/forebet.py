@@ -1068,7 +1068,8 @@ class ForebetPredictor:
         Fetch all predictions for a given day across ALL tournaments.
         day: 'yesterday', 'today', or 'tomorrow'
         Returns list of raw prediction dicts.
-        Tries HTML first, then Jina markdown fallback.
+        Tries HTML first, then Jina markdown fallback, then Playwright.
+        Handles empty Jina (9310 bytes, 0 parsed) by falling back to Playwright.
         """
         html = self._fetch_daily_page(day)
         if not html:
@@ -1079,14 +1080,40 @@ class ForebetPredictor:
                     parsed = self.parse_jina_markdown(jina_md)
                     if parsed:
                         return parsed
+                    else:
+                        logger.warning(f"Forebet {day} Jina returned {len(jina_md)} bytes but parsed 0, trying Playwright")
+                        # Fallback to Playwright if Jina empty
+                        pw_html = self._fetch_via_playwright(url)
+                        if pw_html:
+                            pw_parsed = self.parse_page(pw_html)
+                            if pw_parsed:
+                                logger.info(f"Forebet {day} recovered via Playwright with {len(pw_parsed)} rows after Jina empty")
+                                return pw_parsed
                 except Exception as e:
                     logger.warning(f"Jina markdown parse failed for {day}: {e}")
+            # Try Playwright directly if Jina failed
+            pw_html = self._fetch_via_playwright(f"{self.BASE_URL}/predictions-{day}")
+            if pw_html:
+                try:
+                    pw_parsed = self.parse_page(pw_html)
+                    if pw_parsed:
+                        return pw_parsed
+                except Exception as e:
+                    logger.warning(f"Playwright parse failed for {day}: {e}")
             return []
         if "Markdown Content:" in html or "URL Source:" in html or "Tennis predictions for" in html and "[" in html and "/tennis/matches/" in html:
             try:
                 parsed = self.parse_jina_markdown(html)
                 if parsed:
                     return parsed
+                else:
+                    # Jina from _fetch returned markdown but parsed 0 - try Playwright
+                    logger.warning(f"Forebet {day} Jina from _fetch {len(html)} bytes parsed 0, trying Playwright")
+                    pw_html = self._fetch_via_playwright(f"{self.BASE_URL}/predictions-{day}")
+                    if pw_html:
+                        pw_parsed = self.parse_page(pw_html)
+                        if pw_parsed:
+                            return pw_parsed
             except Exception as e:
                 logger.warning(f"Jina markdown parse failed for {day} (from _fetch): {e}")
         parsed = self.parse_page(html)
@@ -1099,8 +1126,26 @@ class ForebetPredictor:
                     if jparsed:
                         logger.info(f"Forebet {day} recovered via Jina markdown with {len(jparsed)} rows")
                         return jparsed
+                    else:
+                        logger.warning(f"Forebet {day} Jina fallback {len(jina_md)} bytes parsed 0, trying Playwright")
+                        pw_html = self._fetch_via_playwright(url)
+                        if pw_html:
+                            pw_parsed = self.parse_page(pw_html)
+                            if pw_parsed:
+                                logger.info(f"Forebet {day} recovered via Playwright after Jina empty with {len(pw_parsed)} rows")
+                                return pw_parsed
                 except Exception as e:
                     logger.warning(f"Jina fallback parse failed for {day}: {e}")
+            # Final Playwright fallback
+            pw_html = self._fetch_via_playwright(url)
+            if pw_html:
+                try:
+                    pw_parsed = self.parse_page(pw_html)
+                    if pw_parsed:
+                        logger.info(f"Forebet {day} recovered via Playwright final with {len(pw_parsed)} rows")
+                        return pw_parsed
+                except Exception as e:
+                    logger.warning(f"Playwright final parse failed for {day}: {e}")
         return parsed
 
     # ------------------------------------------------------------------
