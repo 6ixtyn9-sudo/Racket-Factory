@@ -35,7 +35,7 @@
 
 ## Per-pick audit (won/lost/pending)
 
-- 2026-09-13 G. Grumet vs D. Ostapenkov selected=D. Ostapenkov winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-13 J. Von der Schulenburg vs R. Molleker selected=R. Molleker winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 D. E. Galan vs M. Vrbensky selected=D. E. Galan winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 J. Boulais vs Arribage / Cornea selected=J. Boulais winner=? status=pending_no_result reason=no matching result rows found
 - 2026-09-13 T. Legout vs E. Bynoe selected=T. Legout winner=? status=pending_no_result reason=result not final: live/in-progress markers present
