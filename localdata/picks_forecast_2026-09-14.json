@@ -14,7 +14,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.061999999999999944,
-    "forecast_as_of": "2026-09-13T23:07:46+02:00",
+    "forecast_as_of": "2026-09-13T23:27:57+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -69,7 +69,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T23:07:46+02:00",
+    "forecast_as_of": "2026-09-13T23:27:57+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,

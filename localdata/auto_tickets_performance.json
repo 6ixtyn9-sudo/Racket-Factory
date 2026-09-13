@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T23:13:23",
+  "generated_at": "2026-09-13T23:29:45",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 100.0,
@@ -19,8 +19,6 @@
   },
   "open_slips": [
     {
-      "date": "2026-09-13",
-      "generated_at": "2026-09-13T08:46:45+02:00",
       "accas": [
         {
           "legs": [
@@ -142,8 +140,10 @@
           "type": "value_2leg_mutual_paper"
         }
       ],
-      "staked_pct": 6.25,
-      "stake_per_acca_pct": 0.0
+      "date": "2026-09-13",
+      "generated_at": "2026-09-13T08:46:45+02:00",
+      "stake_per_acca_pct": 0.0,
+      "staked_pct": 6.25
     }
   ],
   "events": [],
@@ -436,22 +436,8 @@
       "staked_pct": 0.0
     },
     {
-      "date": "2026-09-13",
-      "staked_pct": 0.0,
-      "return_pct": 0.0,
-      "pnl_pct": 0.0,
-      "bank_pct": 100.0,
-      "paper_staked_pct": 0.0,
-      "paper_return_pct": 0.0,
-      "paper_pnl_pct": 0.0,
-      "paper_bank_pct": 100.0,
       "accas": [
         {
-          "odds": 0.0,
-          "won": true,
-          "stake_pct": 6.25,
-          "return_pct": null,
-          "type": "value_2leg_mutual_paper",
           "legs": [
             {
               "_is_paper": true,
@@ -459,13 +445,13 @@
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-13",
-                "score": "6-2 6-3",
-                "winner": "Arseneault A.",
                 "result_id": "3322203.0",
+                "score": "6-2 6-3",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Arseneault A."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-13 6-2 6-3",
@@ -517,13 +503,13 @@
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Forebet_results",
                 "match_date": "2026-09-13",
-                "score": "6-3 1-6 60-50",
-                "winner": "Alycia Parks",
                 "result_id": "",
+                "score": "6-3 1-6 60-50",
+                "source": "Forebet_results",
+                "status": "",
                 "tournament": "WTA Guadalajara Prediction",
-                "status": ""
+                "winner": "Alycia Parks"
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Forebet_results 2026-09-13 6-3 1-6 60-50",
@@ -569,13 +555,27 @@
               "tournament": "WTA Guadalajara Prediction"
             }
           ],
+          "odds": 0.0,
           "paper": true,
           "refunded": false,
-          "unpriced": true
+          "return_pct": null,
+          "stake_pct": 6.25,
+          "type": "value_2leg_mutual_paper",
+          "unpriced": true,
+          "won": true
         }
       ],
+      "bank_pct": 100.0,
+      "date": "2026-09-13",
+      "paper_bank_pct": 100.0,
+      "paper_pnl_pct": 0.0,
+      "paper_return_pct": 0.0,
+      "paper_staked_pct": 0.0,
       "partial": true,
-      "pending_accas": 1
+      "pending_accas": 1,
+      "pnl_pct": 0.0,
+      "return_pct": 0.0,
+      "staked_pct": 0.0
     }
   ]
 }
