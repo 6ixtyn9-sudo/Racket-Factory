@@ -81,9 +81,9 @@ jobs:
             localdata/oddsportal_cache
             localdata/fetch_cache
             localdata/*.csv.gz
-          key: localdata-v3-cache-${{ github.run_id }}
+          key: localdata-v4-cache-${{ github.run_id }}
           restore-keys: |
-            localdata-v3-cache-
+            localdata-v4-cache-
 
       - name: Restore committed data (override stale cache)
         run: |
@@ -120,7 +120,7 @@ jobs:
             localdata/oddsportal_cache
             localdata/fetch_cache
             localdata/*.csv.gz
-          key: localdata-v3-cache-${{ github.run_id }}
+          key: localdata-v4-cache-${{ github.run_id }}
 
       - name: Persist pipeline state to git (Edge-Factory parity)
         if: always()
@@ -162,6 +162,8 @@ jobs:
           done || true
           # No morning files per user request (focus on autobets only)
           rm -f localdata/picks_morning_*.json || true
+          # Dead-source guard: tennisdata files must never be recommitted (cache resurrection, run #214)
+          rm -f localdata/tennisdata_tennis_*.csv.gz || true
           git add -A localdata/picks_*.json localdata/picks_*.txt localdata/picks_today.json localdata/picks_next_*.json localdata/picks_forecast_*.json localdata/picks_forecast_*.txt localdata/picks_audit_*.json localdata/picks_audit_*.md localdata/auto_tickets_*.json localdata/auto_tickets_*.txt localdata/auto_tickets_state.json localdata/auto_tickets_performance.json localdata/auto_tickets_today.json localdata/auto_tickets_today.txt localdata/pipeline_health.json localdata/.keepalive 2>/dev/null || true
           git add -A localdata/ 2>/dev/null || true
           git diff --cached --quiet && echo "no changes" && exit 0
