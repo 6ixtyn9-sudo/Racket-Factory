@@ -650,7 +650,7 @@ def test_jina_decimal_coef_still_parses():
     assert rows[0]["odds_away"] is None
 
 
-def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch):
+def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch, caplog):
     import urllib.error
     import urllib.request
 
@@ -659,6 +659,9 @@ def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch):
     full = ("<html><head><title>Tennis predictions for Today | Forebet</title></head><body>"
             '<a class="tnmscn" href="/en/tennis/matches/atp-singles/us-open/x/">x</a>'
             + "rows " * 800 + "</body></html>")
+    md_full = ("Title: Tennis predictions\nURL Source: https://www.forebet.com/en/tennis/x\n"
+               "Markdown Content:\n[Zverev](https://www.forebet.com/en/tennis/matches/x/)\n"
+               + "rows " * 800)
 
     class FakeResponse:
         def __init__(self, body):
@@ -673,6 +676,9 @@ def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch):
         def read(self):
             return self._body
 
+    def sent_headers(request):
+        return {k.lower(): v for k, v in request.header_items()}
+
     def fake_urlopen(request, timeout=None):
         calls.append(request)
         return FakeResponse(full.encode())
@@ -684,12 +690,13 @@ def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch):
     # Slumdog header set on the relay request.
     assert len(calls) == 1
     assert calls[0].full_url.startswith("https://r.jina.ai/https://www.forebet.com/")
-    sent = {k.lower(): v for k, v in calls[0].header_items()}
+    sent = sent_headers(calls[0])
     assert sent.get("x-no-cache") == "true"
     assert sent.get("x-return-format") == "html"
 
-    # Stub (no match links) -> None, with no cache-buster retry (X-No-Cache
-    # replaces the old ?fb= workaround).
+    # Stub in both flavors -> None after exactly one reader-mode retry (no
+    # ?fb= cache-buster: X-No-Cache replaces that workaround), and the
+    # discard logs the snapshot head for forensics.
     calls.clear()
 
     def fake_stub_urlopen(request, timeout=None):
@@ -697,11 +704,29 @@ def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch):
         return FakeResponse(stub.encode())
 
     monkeypatch.setattr(urllib.request, "urlopen", fake_stub_urlopen)
-    assert ForebetPredictor()._fetch_via_relay("https://www.forebet.com/en/tennis/x") is None
-    assert len(calls) == 1
+    with caplog.at_level("WARNING", logger="racketfactory.sources.forebet"):
+        assert ForebetPredictor()._fetch_via_relay("https://www.forebet.com/en/tennis/x") is None
+    assert len(calls) == 2
+    assert sent_headers(calls[0]).get("x-return-format") == "html"
+    assert "x-return-format" not in sent_headers(calls[1])
     assert all("?fb=" not in c.full_url for c in calls)
+    assert "head=" in caplog.text
 
-    # Relay 403 -> None with a single attempt (never retried).
+    # Html stub + markdown board -> the markdown body is returned.
+    calls.clear()
+
+    def fake_mode_urlopen(request, timeout=None):
+        calls.append(request)
+        body = stub if sent_headers(request).get("x-return-format") == "html" else md_full
+        return FakeResponse(body.encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_mode_urlopen)
+    got = ForebetPredictor()._fetch_via_relay("https://www.forebet.com/en/tennis/x")
+    assert got is not None and "Markdown Content:" in got
+    assert len(calls) == 2
+
+    # Relay 403 -> None with a single attempt: transport failures get no
+    # reader-mode retry.
     calls.clear()
 
     def fake_403_urlopen(request, timeout=None):
@@ -709,6 +734,32 @@ def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch):
         raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, None)
 
     monkeypatch.setattr(urllib.request, "urlopen", fake_403_urlopen)
+    assert ForebetPredictor()._fetch_via_relay("https://www.forebet.com/en/tennis/x") is None
+    assert len(calls) == 1
+
+
+def test_fetch_via_relay_skips_reader_retry_on_forebet_404(monkeypatch):
+    import urllib.request
+
+    calls = []
+    not_found = ("<html><head><title>404 - Error: 404</title></head><body>"
+                 "<h1>Forebet 404 Error</h1>Not what you were looking for?</body></html>")
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return not_found.encode()
+
+    def fake_urlopen(request, timeout=None):
+        calls.append(request)
+        return FakeResponse()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     assert ForebetPredictor()._fetch_via_relay("https://www.forebet.com/en/tennis/x") is None
     assert len(calls) == 1
 

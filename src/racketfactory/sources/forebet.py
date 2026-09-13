@@ -537,6 +537,15 @@ RELAY_HEADERS = {
     "X-No-Cache": "true",
     "X-Return-Format": "html",
 }
+# Reader-mode header set (no X-Return-Format): the single fallback flavor when
+# html-mode returns a stub. Morning runs historically parsed full boards out
+# of reader-mode markdown, so a page that stubs in one flavor may serve in
+# the other.
+RELAY_HEADERS_MARKDOWN = {
+    "User-Agent": "RacketFactory/1.0",
+    "Accept": "text/plain",
+    "X-No-Cache": "true",
+}
 # Relay statuses worth retrying (Slumdog _RETRY_STATUS). Any other 4xx
 # (401/403/404) is deterministic per context and is never retried.
 _RETRY_STATUS = {408, 425, 429, 500, 502, 503, 504}
@@ -558,16 +567,19 @@ def _sleep_with_jitter(attempt: int, base: float = 4.0, cap: float = 40.0) -> No
     time.sleep(delay)
 
 
-def relay_get(url: str, timeout: int = 45, max_retries: int = 3) -> bytes:
+def relay_get(url: str, timeout: int = 45, max_retries: int = 3,
+              headers: dict[str, str] | None = None) -> bytes:
     """GET a relay URL with bounded retry/backoff for transient failures only.
 
     Port of Slumdog's relay_get: plain urllib (the relay is not
     Cloudflare-protected), Slumdog-validated headers, hard client errors
-    (401/403/404) raised immediately without retry.
+    (401/403/404) raised immediately without retry. ``headers`` overrides the
+    default html-mode set (used once for the reader-mode fallback).
     """
+    send = dict(RELAY_HEADERS) if headers is None else dict(headers)
     last_error: Exception | None = None
     for attempt in range(max_retries):
-        request = urllib.request.Request(url, headers=dict(RELAY_HEADERS))
+        request = urllib.request.Request(url, headers=send)
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 return response.read()
@@ -602,39 +614,75 @@ class ForebetPredictor:
     # Low-level fetch (Slumdog-style: relay first, direct local-only)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _is_forebet_404(text: str) -> bool:
+        lower = text.lower()
+        return "not what you were looking for" in lower or "forebet 404 error" in lower
+
+    def _relay_body(self, url: str, headers: dict[str, str], mode: str,
+                    max_retries: int) -> Optional[str]:
+        """One raw relay GET in the given header flavor; None on transport failure."""
+        try:
+            body = relay_get(RELAY_BASE + url, timeout=45, max_retries=max_retries,
+                             headers=headers)
+        except urllib.error.HTTPError as exc:
+            logger.warning("Forebet relay (%s) HTTP %s for %s (not retried)", mode, exc.code, url)
+            return None
+        except Exception as exc:
+            logger.warning("Forebet relay (%s) failed for %s: %s: %s",
+                           mode, url, type(exc).__name__, exc)
+            return None
+        return body.decode("utf-8", "replace")
+
+    def _looks_like_board(self, text: str, url: str, expect_matches: bool, mode: str) -> bool:
+        """True when a relay snapshot looks like a real board.
+
+        Discards log the snapshot head (~300 chars) so the next run identifies
+        stub species from evidence instead of guessing (run #220: identical
+        5919-byte stubs for two different dates).
+        """
+        if self._is_forebet_404(text):
+            logger.warning("Forebet relay (%s) returned a 404 content page for %s", mode, url)
+            return False
+        if "tennis" not in text.lower():
+            logger.warning("Forebet relay (%s) snapshot for %s lacks the sport label "
+                           "(%d bytes) — discarded; head=%r",
+                           mode, url, len(text), text[:300])
+            return False
+        if expect_matches and "/tennis/matches/" not in text:
+            logger.warning("Forebet relay (%s) snapshot for %s lacks match links "
+                           "(%d bytes) — discarded; head=%r",
+                           mode, url, len(text), text[:300])
+            return False
+        return True
+
     def _fetch_via_relay(self, url: str, expect_matches: bool = True) -> Optional[str]:
         """Fetch a Forebet page through the Jina reader relay (Slumdog route).
 
         The relay's servers fetch the page, not the GitHub runner IP, so the
-        runner 403 is avoided. Returns decoded body text, or None when the
-        relay fails or returns a stub/404 page. ``expect_matches`` requires
-        /tennis/matches/ links (daily boards always have matches); tournament
-        pages pass with the looser sport-label check since an empty board is
-        legitimate there.
+        runner 403 is avoided. Html-mode first; a stub (not a transport
+        failure, not a Forebet 404) gets ONE reader-mode retry, since morning
+        runs parsed full boards out of reader-mode markdown. Returns decoded
+        body text, or None. ``expect_matches`` requires /tennis/matches/
+        links (daily boards always have matches); tournament pages pass with
+        the looser sport-label check since an empty board is legitimate there.
         """
-        try:
-            body = relay_get(RELAY_BASE + url, timeout=45, max_retries=3)
-        except urllib.error.HTTPError as exc:
-            logger.warning("Forebet relay HTTP %s for %s (not retried)", exc.code, url)
+        html = self._relay_body(url, RELAY_HEADERS, "html", max_retries=3)
+        if html is None:
             return None
-        except Exception as exc:
-            logger.warning("Forebet relay failed for %s: %s: %s", url, type(exc).__name__, exc)
+        if self._looks_like_board(html, url, expect_matches, "html"):
+            logger.info("Forebet fetched via relay (html) for %s (%d bytes)", url, len(html))
+            return html
+        if self._is_forebet_404(html):
+            return None  # genuine Forebet 404: reader mode would 404 too
+        logger.info("Forebet relay html-mode stub for %s — retrying once in reader mode", url)
+        md = self._relay_body(url, RELAY_HEADERS_MARKDOWN, "markdown", max_retries=2)
+        if md is None:
             return None
-        text = body.decode("utf-8", "replace")
-        lower = text.lower()
-        if "not what you were looking for" in lower or "forebet 404 error" in lower:
-            logger.warning("Forebet relay returned a 404 content page for %s", url)
-            return None
-        if "tennis" not in lower:
-            logger.warning("Forebet relay snapshot for %s lacks the sport label (%d bytes) — discarded",
-                           url, len(text))
-            return None
-        if expect_matches and "/tennis/matches/" not in text:
-            logger.warning("Forebet relay snapshot for %s lacks match links (%d bytes) — discarded",
-                           url, len(text))
-            return None
-        logger.info("Forebet fetched via relay for %s (%d bytes)", url, len(text))
-        return text
+        if self._looks_like_board(md, url, expect_matches, "markdown"):
+            logger.info("Forebet fetched via relay (markdown) for %s (%d bytes)", url, len(md))
+            return md
+        return None
 
     def parse_jina_markdown(self, md_text: str, expected_day: str | None = None) -> list[dict[str, Any]]:
         """Parse Jina markdown output for Forebet predictions-today/yesterday/tomorrow.
