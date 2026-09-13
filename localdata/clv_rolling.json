@@ -4,28 +4,28 @@
   "audit_roi_by_tour": {},
   "calibration_by_confidence": {
     "High (70%+)": {
-      "calibration_error": 0.2286,
+      "calibration_error": 0.2412,
       "expected": 0.7,
-      "hit_rate": 0.9286,
-      "n": 14,
-      "wilson_lb": 0.6853,
-      "wins": 13
+      "hit_rate": 0.9412,
+      "n": 17,
+      "wilson_lb": 0.7302,
+      "wins": 16
     },
     "Low (<60%)": {
-      "calibration_error": 0.1316,
+      "calibration_error": 0.1087,
       "expected": 0.5,
-      "hit_rate": 0.6316,
-      "n": 57,
-      "wilson_lb": 0.5018,
-      "wins": 36
+      "hit_rate": 0.6087,
+      "n": 69,
+      "wilson_lb": 0.4907,
+      "wins": 42
     },
     "Medium (60-70%)": {
-      "calibration_error": 0.1857,
+      "calibration_error": 0.1627,
       "expected": 0.6,
-      "hit_rate": 0.7857,
-      "n": 56,
-      "wilson_lb": 0.6618,
-      "wins": 44
+      "hit_rate": 0.7627,
+      "n": 59,
+      "wilson_lb": 0.6403,
+      "wins": 45
     }
   },
   "calibration_by_source": {
@@ -38,10 +38,10 @@
     },
     "market": {
       "expected": null,
-      "hit_rate": 0.6964,
-      "n": 56,
-      "wilson_lb": 0.5666,
-      "wins": 39
+      "hit_rate": 0.6622,
+      "n": 74,
+      "wilson_lb": 0.5488,
+      "wins": 49
     }
   },
   "calibration_by_tour": {
@@ -54,10 +54,10 @@
     },
     "UNKNOWN": {
       "expected": null,
-      "hit_rate": 0.7412,
-      "n": 85,
-      "wilson_lb": 0.6391,
-      "wins": 63
+      "hit_rate": 0.7087,
+      "n": 103,
+      "wilson_lb": 0.6148,
+      "wins": 73
     },
     "WTA": {
       "expected": null,

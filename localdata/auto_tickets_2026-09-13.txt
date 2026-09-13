@@ -1,5 +1,5 @@
 Racket Factory Auto Tickets — 2026-09-13
-Generated at: 2026-09-13T08:18:56+02:00
+Generated at: 2026-09-13T08:46:45+02:00
 Bank: 100.00% (cycle base 100.00%)
 Take profit target: 200.00%
 
@@ -7,4 +7,21 @@ Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 2.0)
 Stake: 25% of bank per day (priced track only; paper is hit-rate only)
 
 NO BET — no priced legs available (zero qualifying bets is a valid outcome)
-Playable buckets: {'CERTIFIED_CLEAN', 'WATCHLIST', 'CAUTION'} + ML NO_ODDS BOOST (paper track)
+Playable buckets: {'CAUTION', 'WATCHLIST', 'CERTIFIED_CLEAN'} + ML NO_ODDS BOOST (paper track)
+
+PAPER TRACK — 4 acca(s), hit-rate only, never staked:
+PAPER 1 [value_2leg_mutual_paper] — unpriced — 2 legs
+  - Ekaterina Yashina vs Kylie Collins -> Kylie Collins @ unpriced (no trusted market price)
+  - Nastasja Schunk vs Ekaterina Kazionova -> Nastasja Schunk @ unpriced (no trusted market price)
+
+PAPER 2 [value_2leg_mutual_paper] — unpriced — 2 legs
+  - Margaux Rouvroy vs Sofia Johnson -> Sofia Johnson @ unpriced (no trusted market price)
+  - Joelle Lilly Sophie Steur vs Neus Torner Sensano -> Joelle Lilly Sophie Steur @ unpriced (no trusted market price)
+
+PAPER 3 [value_2leg_mutual_paper] — unpriced — 2 legs
+  - Zhibek Kulambayeva vs Malaika Rapolu -> Malaika Rapolu @ unpriced (no trusted market price)
+  - Kozyreva / Lumsden vs Day / Zarazua -> Kozyreva / Lumsden @ unpriced (no trusted market price)
+
+PAPER 4 [value_2leg_mutual_paper] — unpriced — 2 legs
+  - Georgina Garcia-Perez vs Ariana Arseneault -> Ariana Arseneault @ unpriced (no trusted market price)
+  - Alycia Parks vs Varvara Lepchenko -> Alycia Parks @ unpriced (no trusted market price)
