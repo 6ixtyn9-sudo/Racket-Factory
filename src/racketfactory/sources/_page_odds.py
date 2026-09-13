@@ -156,8 +156,8 @@ def _row_decimals(row_text: str) -> list[float]:
     return vals
 
 
-_CLIMB_MAX_LEVELS = 3
-_CLIMB_MAX_CHARS = 4000
+_CLIMB_MAX_LEVELS = 6
+_CLIMB_MAX_CHARS = 8000
 
 
 def _is_player_anchor(anchor: Tag, is_match_link: Callable[[str], dict[str, Any] | None]) -> tuple[str, str, dict[str, Any]] | None:
@@ -215,6 +215,23 @@ def _row_container(link: Tag, names_text: str,
             break
         node = node.parent if isinstance(node.parent, Tag) else None
     return best
+
+
+def _find_odds_near(link: Tag, names_text: str, is_match_link) -> list[float]:
+    """Search for 2 decimals near the link within same tr only (conservative).
+
+    Used as fallback when the immediate container has no odds. Searches the
+    parent tr only, not siblings, to avoid misattributing odds from neighboring
+    matches (which broke test_climb_never_enters_multi_match_box).
+    """
+    tr = link.find_parent("tr")
+    if tr is None:
+        return []
+    txt = tr.get_text(" ", strip=True).replace(names_text, " ")
+    vals = _row_decimals(txt)
+    if len(vals) >= 2:
+        return vals[:2]
+    return []
 
 
 _FUSED_SPLIT_MAX_TOKENS = 4
@@ -338,6 +355,10 @@ def parse_listing_page(
         if require_odds:
             scan_text = row_text.replace(names_text, " ")
             decimals = _row_decimals(scan_text)
+            if len(decimals) < 2:
+                # Fallback: search nearby (parent, siblings) for odds — BetExplorer day pages
+                # sometimes render odds outside the immediate link container.
+                decimals = _find_odds_near(link, names_text, is_match_link)
             if len(decimals) < 2:
                 n_few_decimals += 1
                 if len(few_samples) < 3:

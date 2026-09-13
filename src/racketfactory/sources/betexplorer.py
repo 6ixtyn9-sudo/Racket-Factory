@@ -104,6 +104,12 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
             continue
         decimals = po._row_decimals(row_text.replace(chosen.get_text(" ", strip=True), " "))
         if len(decimals) < 2:
+            # Fallback: search nearby for odds (parent, siblings)
+            try:
+                decimals = po._find_odds_near(chosen, chosen.get_text(" ", strip=True), _is_match_link)
+            except Exception:
+                decimals = []
+        if len(decimals) < 2:
             n_no_odds += 1
             continue
         key = f"{chosen_home}\x00{chosen_away}"
