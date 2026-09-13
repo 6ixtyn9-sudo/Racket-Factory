@@ -439,6 +439,17 @@ def _expected_iso_for_day(day: str) -> str | None:
     return None
 
 
+# Bump when the Jina/HTML row parser changes shape or semantics: fetch_cache
+# stores PARSED rows, so without a key change a parser upgrade keeps serving
+# stale parses until TTL expiry (run #208 served #207's pre-rewrite rows).
+FOREBET_CACHE_VERSION = "j2"
+
+
+def forebet_cache_key(day: str) -> str:
+    """Cross-stage fetch_cache key for one Forebet daily page."""
+    return f"forebet_{day}_{FOREBET_CACHE_VERSION}"
+
+
 def _apply_page_day(rows: list[dict[str, Any]], expected_day: str | None, day_label: str) -> list[dict[str, Any]]:
     """Fill missing match dates with the daily page's own calendar day.
 
@@ -1237,6 +1248,10 @@ class ForebetPredictor:
                         return _apply_page_day(pw_parsed, expected_day, day)
                 except Exception as e:
                     logger.warning(f"Playwright parse failed for {day}: {e}")
+            if day in ("yesterday", "today", "tomorrow") and expected_day:
+                logger.info("Forebet %s: label URL failed everywhere, trying explicit date URL %s",
+                            day, expected_day)
+                return self.fetch_daily_predictions(expected_day)
             return []
         if "Markdown Content:" in html or "URL Source:" in html or "Tennis predictions for" in html and "[" in html and "/tennis/matches/" in html:
             try:
@@ -1285,6 +1300,10 @@ class ForebetPredictor:
                         return _apply_page_day(pw_parsed, expected_day, day)
                 except Exception as e:
                     logger.warning(f"Playwright final parse failed for {day}: {e}")
+        if not parsed and day in ("yesterday", "today", "tomorrow") and expected_day:
+            logger.info("Forebet %s: label URL failed everywhere, trying explicit date URL %s",
+                        day, expected_day)
+            return self.fetch_daily_predictions(expected_day)
         return _apply_page_day(parsed, expected_day, day)
 
     # ------------------------------------------------------------------

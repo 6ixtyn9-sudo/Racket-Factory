@@ -711,3 +711,99 @@ def test_fetch_via_jina_rejects_stub_and_busts_cache(monkeypatch):
     monkeypatch.setattr(std_requests, "get",
                         lambda url, *a, **k: SimpleNamespace(status_code=200, text=stub))
     assert ForebetPredictor()._fetch_via_jina("https://www.forebet.com/en/tennis/x") is None
+
+
+# ------------------------------------------------ run #208 repairs --
+
+
+def test_forebet_cache_key_is_versioned():
+    from racketfactory.sources.forebet import FOREBET_CACHE_VERSION, forebet_cache_key
+
+    assert forebet_cache_key("today") == f"forebet_today_{FOREBET_CACHE_VERSION}"
+    assert forebet_cache_key("2026-09-13") == f"forebet_2026-09-13_{FOREBET_CACHE_VERSION}"
+
+
+def test_mode_daily_uses_versioned_forebet_cache_key(tmp_path, monkeypatch):
+    import pandas as pd
+    from types import SimpleNamespace
+    from scripts import backfill_forebet
+    from racketfactory.sources.forebet import forebet_cache_key
+
+    wh = tmp_path / "warehouse.csv.gz"
+    pd.DataFrame([{"match_date": "2026-09-13", "tour": "ATP",
+                   "tournament": "US Open", "player_a": "N. Djokovic",
+                   "player_b": "C. Alcaraz"}]).to_csv(wh, index=False,
+                                                       compression="gzip")
+    keys = []
+    canned = [{"match_date": "2026-09-13", "match_time": "",
+               "player_home": "Novak Djokovic", "player_away": "Carlos Alcaraz",
+               "prob_home": 70, "prob_away": 30,
+               "odds_home": 1.5, "odds_away": 2.5, "predicted_winner": "1",
+               "tournament": "US Open", "result_status": None,
+               "result_score": None, "result_winner": None,
+               "result_winner_name": None, "result_sets_home": None,
+               "result_sets_away": None}]
+
+    def fake_cached_fetch(key, thunk):
+        keys.append(key)
+        return canned
+
+    monkeypatch.setattr(backfill_forebet, "cached_fetch", fake_cached_fetch)
+    args = SimpleNamespace(days=["today", "tomorrow"], warehouse=str(wh),
+                           output_dir=str(tmp_path / "out"), delay=0)
+    assert backfill_forebet.mode_daily(args) == 0
+    assert keys == [forebet_cache_key("today"), forebet_cache_key("tomorrow")]
+
+
+def test_write_predictions_collapses_identity_twins(tmp_path):
+    import pandas as pd
+    from scripts import backfill_forebet
+
+    # Pass 1 (no warehouse): tour-less, Jina spelling. Pass 2 (warehouse
+    # matched): filled tour, warehouse spelling. Same match -> one row.
+    unattributed = {"match_date": "2026-09-12", "tour": "", "tournament": "Unknown",
+                    "player_a": "A. Sabalenka", "player_b": "E. Rybakina",
+                    "predicted_winner": "player_b", "prediction_prob": 0.54,
+                    "source": "Forebet"}
+    attributed = {"match_date": "2026-09-12", "tour": "WTA", "tournament": "US Open",
+                  "player_a": "Aryna Sabalenka", "player_b": "Elena Rybakina",
+                  "predicted_winner": "player_b", "prediction_prob": 0.54,
+                  "source": "Forebet"}
+    backfill_forebet._write_predictions([unattributed], tmp_path)
+    backfill_forebet._write_predictions([attributed], tmp_path)
+
+    path = tmp_path / "predictions_forebet_2026-09.csv.gz"
+    df = pd.read_csv(path)
+    assert len(df) == 1
+    assert df.iloc[0]["tour"] == "WTA"
+
+    # Reverse insertion order: the attributed twin must still win.
+    backfill_forebet._write_predictions([unattributed], tmp_path)
+    df2 = pd.read_csv(path)
+    assert len(df2) == 1
+    assert df2.iloc[0]["tour"] == "WTA"
+
+
+def test_fetch_daily_falls_back_to_explicit_date_url(monkeypatch, caplog):
+    from racketfactory.sources.forebet import _expected_iso_for_day
+
+    days = []
+
+    def fake_fetch_daily_page(self, day="today"):
+        days.append(day)
+        return None if day == "today" else "<html>sentinel</html>"
+
+    sentinel = [{"match_date": "2026-09-13", "player_home": "A. Player",
+                 "player_away": "B. Opp"}]
+    monkeypatch.setattr(ForebetPredictor, "_fetch_daily_page", fake_fetch_daily_page)
+    monkeypatch.setattr(ForebetPredictor, "_fetch_via_jina", lambda self, url: None)
+    monkeypatch.setattr(ForebetPredictor, "_fetch_via_playwright",
+                        lambda self, url, timeout_ms=120000: None)
+    monkeypatch.setattr(ForebetPredictor, "parse_page",
+                        lambda self, html, expected_day=None: list(sentinel))
+
+    with caplog.at_level("INFO", logger="racketfactory.sources.forebet"):
+        got = ForebetPredictor().fetch_daily_predictions("today")
+    assert days == ["today", _expected_iso_for_day("today")]
+    assert [r["player_home"] for r in got] == ["A. Player"]
+    assert "explicit date URL" in caplog.text

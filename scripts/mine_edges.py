@@ -32,7 +32,7 @@ from racketfactory.warehouse import (
 )
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
-from racketfactory.sources.forebet import ForebetPredictor
+from racketfactory.sources.forebet import ForebetPredictor, forebet_cache_key
 from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice
 
 logging.basicConfig(
@@ -354,7 +354,7 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
     for source_name, cache_key, predictor, fetcher in [
         ("PredixSport", "predixsport", PredixSportPredictor(), lambda p: p.fetch_daily()),
         ("BetClan", "betclan", BetClanPredictor(), lambda p: p.fetch_daily()),
-        ("Forebet", f"forebet_{forebet_day}", ForebetPredictor(), lambda p: p.fetch_daily_predictions(forebet_day)),
+        ("Forebet", forebet_cache_key(forebet_day), ForebetPredictor(), lambda p: p.fetch_daily_predictions(forebet_day)),
     ]:
         try:
             preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p))

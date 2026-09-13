@@ -38,7 +38,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from racketfactory.fetch_cache import cached_fetch
-from racketfactory.sources.forebet import ForebetPredictor, name_signature
+from racketfactory.sources.forebet import (
+    ForebetPredictor,
+    forebet_cache_key,
+    name_signature,
+    name_signature_strict,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,6 +64,42 @@ def _strip_key_columns(frame, key_cols: list[str]):
         if col in frame.columns:
             frame[col] = frame[col].fillna("").astype(str).str.strip()
     return frame
+
+
+def _collapse_identity_twins(frame):
+    """Collapse same-match rows that differ only in attribution.
+
+    Pass 1 (no warehouse yet) stores tour-less Jina-spelled rows; pass 2
+    stores warehouse-matched twins (filled tour, warehouse name spelling).
+    Both share (date, name-signature pair) but differ on the 5-key, so plain
+    dedup keeps both (run #208: 4 twin pairs). Keep the best-attributed twin
+    (filled tour, then filled tournament), newest on ties.
+    """
+    if frame.empty or not {"match_date", "player_a", "player_b"}.issubset(frame.columns):
+        return frame
+    sig_a = frame["player_a"].astype(str).map(name_signature_strict)
+    sig_b = frame["player_b"].astype(str).map(name_signature_strict)
+    twin_key = (
+        frame["match_date"].astype(str)
+        + "|" + pd.Series(
+            [f"{min(x, y)}|{max(x, y)}" for x, y in zip(sig_a, sig_b)],
+            index=frame.index,
+        )
+    )
+    if "tour" in frame.columns:
+        tour_empty = frame["tour"].fillna("").astype(str).str.strip().eq("")
+    else:
+        tour_empty = pd.Series(True, index=frame.index)
+    if "tournament" in frame.columns:
+        tourn = frame["tournament"].fillna("").astype(str).str.strip()
+        tourn_empty = tourn.eq("") | tourn.eq("Unknown")
+    else:
+        tourn_empty = pd.Series(True, index=frame.index)
+    ranked = frame.assign(_twin_key=twin_key, _s1=tour_empty, _s2=tourn_empty)
+    # Stable sort: emptiest first, best-attributed last; keep=last wins ties by recency.
+    ranked = ranked.sort_values(["_twin_key", "_s1", "_s2"], ascending=[True, False, False], kind="mergesort")
+    ranked = ranked.drop_duplicates(subset=["_twin_key"], keep="last")
+    return ranked.drop(columns=["_twin_key", "_s1", "_s2"])
 
 
 def _write_predictions(predictions: list[dict], output_dir: Path) -> None:
@@ -86,6 +127,7 @@ def _write_predictions(predictions: list[dict], output_dir: Path) -> None:
             subset=[c for c in key_cols if c in group.columns],
             keep="last",
         )
+        group = _collapse_identity_twins(group)
         group.to_csv(path, index=False, compression="gzip")
         logger.info("Wrote %d predictions to %s", len(group), path)
 
@@ -321,6 +363,7 @@ def _write_forebet_result_rows(predictions: list[dict], output_dir: Path) -> lis
             subset=[c for c in key_cols if c in combined.columns],
             keep="last",
         )
+        combined = _collapse_identity_twins(combined)
         combined.to_csv(path, index=False, compression="gzip")
         written.append(path)
 
@@ -396,7 +439,7 @@ def mode_daily(args) -> int:
 
     for day in args.days:
         logger.info("Fetching predictions-%s ...", day)
-        preds = cached_fetch(f"forebet_{day}", lambda: predictor.fetch_daily_predictions(day))
+        preds = cached_fetch(forebet_cache_key(day), lambda: predictor.fetch_daily_predictions(day))
         if not preds:
             logger.warning("No predictions returned for %s.", day)
             continue

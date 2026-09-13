@@ -17,7 +17,7 @@ from racketfactory.entities import player_key
 from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
-from racketfactory.sources.forebet import ForebetPredictor, name_signature, name_signature_strict
+from racketfactory.sources.forebet import ForebetPredictor, forebet_cache_key, name_signature, name_signature_strict
 from racketfactory.sources.foretennis import ForeTennisPredictor
 from racketfactory.sources.bzzoiro import BzzoiroPredictor
 
@@ -1200,9 +1200,9 @@ def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
     ]:
         try:
             if source_name == "Forebet":
-                preds = cached_fetch("forebet_today", lambda: predictor.fetch_daily_predictions("today"))
+                preds = cached_fetch(forebet_cache_key("today"), lambda: predictor.fetch_daily_predictions("today"))
                 if include_tomorrow:
-                    preds = list(preds) + list(cached_fetch("forebet_tomorrow", lambda: predictor.fetch_daily_predictions("tomorrow")))
+                    preds = list(preds) + list(cached_fetch(forebet_cache_key("tomorrow"), lambda: predictor.fetch_daily_predictions("tomorrow")))
             else:
                 preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p))
         except Exception as e:
