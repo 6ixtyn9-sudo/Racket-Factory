@@ -93,7 +93,7 @@ def test_listing_without_odds_requirement_emits_link_rows():
         page_date="2026-09-13") == []
 
 
-def test_fetch_live_prices_unfinished_skips_live(monkeypatch):
+def test_fetch_live_prices_unfinished_skips_live(monkeypatch, caplog):
     def fake_fetch(url, source_label, **kwargs):
         if url == op.BASE_URL + op.TODAY_PATH:
             return LISTING
@@ -104,10 +104,13 @@ def test_fetch_live_prices_unfinished_skips_live(monkeypatch):
         raise AssertionError(f"unexpected fetch {url}")
 
     monkeypatch.setattr(op, "fetch_page_html", fake_fetch)
-    rows = op._fetch_live(op.TODAY_PATH, "2026-09-13")
+    with caplog.at_level("INFO", logger="racketfactory.sources.oddsportal_upcoming"):
+        rows = op._fetch_live(op.TODAY_PATH, "2026-09-13")
     assert len(rows) == 1
     row = rows[0]
     assert (row["player_home"], row["player_away"]) == ("Zverev A.", "Shelton B.")
     assert (row["odds_home"], row["odds_away"]) == (1.70, 2.30)
     assert row["bookmaker"] == op.BOOK_LABEL
     assert row["source"] == op.SOURCE_NAME
+    assert "OddsPortal match Zverev A. - Shelton B.: " in caplog.text
+    assert "betslip=" in caplog.text

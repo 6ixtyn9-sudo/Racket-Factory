@@ -197,6 +197,10 @@ def _fetch_live(path: str, page_date: str) -> list[dict[str, Any]]:
             n_live += 1
             continue
         mhtml = fetch_page_html(urljoin(BASE_URL, _strip_fragment(href)), SOURCE_NAME)
+        logger.info("OddsPortal match %s - %s: %d bytes payout=%s betslip=%d challenged=%s",
+                    link.get("player_home"), link.get("player_away"), len(mhtml),
+                    "Payout" in mhtml, mhtml.count(_BETSLIP_HREF),
+                    _is_challenge_page(mhtml))
         best = parse_match_page_odds(mhtml) if mhtml else (None, None)
         if best[0] is None or best[1] is None:
             n_failed += 1

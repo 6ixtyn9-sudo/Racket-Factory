@@ -56,6 +56,31 @@ def test_bad_name_anchors_are_sampled_in_logs(caplog):
     assert "1.57" in caplog.text
 
 
+def test_split_match_names_handles_separator():
+    assert po.split_match_names("Alpha B. - Beta C.") == ("Alpha B.", "Beta C.")
+
+
+def test_split_match_names_handles_fused_names():
+    # Run #222: BetExplorer runner markup joins names with a bare space.
+    assert po.split_match_names("Tiafoe F. Shelton B.") == ("Tiafoe F.", "Shelton B.")
+    assert po.split_match_names("Lepchenko V. Melichar-Martinez N.") == (
+        "Lepchenko V.", "Melichar-Martinez N.")
+    assert po.split_match_names("Del Potro J. M. Smith J.") == (
+        "Del Potro J. M.", "Smith J.")
+    assert po.split_match_names("Van De Zandschulp B. Jones A.") == (
+        "Van De Zandschulp B.", "Jones A.")
+
+
+def test_split_match_names_rejects_scores_and_doubles():
+    assert po.split_match_names("1:3") == ("", "")
+    assert po.split_match_names("6:1, 6:3") == ("", "")
+    assert po.split_match_names(
+        "Britto L./Remondy Pagotto V. H. Tosetto R./Zanellato N.") == ("", "")
+    assert po.split_match_names("Winner") == ("", "")
+    # Trailing score is stripped so finished rows reach the finished check.
+    assert po.split_match_names("Tiafoe F. Shelton B. 1:3") == ("Tiafoe F.", "Shelton B.")
+
+
 def test_retry_after_429_then_success(monkeypatch):
     calls = []
 

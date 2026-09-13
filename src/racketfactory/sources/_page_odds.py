@@ -199,12 +199,57 @@ def _row_container(link: Tag, names_text: str,
     return best
 
 
-def split_match_names(link_text: str) -> tuple[str, str]:
-    """Split 'Home Player - Away Player' on the score-safe separator."""
-    parts = _NAME_SEP_RE.split(link_text.strip(), maxsplit=1)
-    if len(parts) != 2:
+_FUSED_SPLIT_MAX_TOKENS = 4
+_TRAIL_SCORE_RE = re.compile(r"\s+\d+\s*:\s*\d+(?:\s*[,\s]\s*\d+\s*:\s*\d+)*\s*$")
+
+
+def _looks_like_player(text: str) -> bool:
+    """'Surname I.' shape check (multi-word surnames / multi-initials allowed)."""
+    toks = text.split()
+    if not 2 <= len(toks) <= _FUSED_SPLIT_MAX_TOKENS:
+        return False
+    if not re.fullmatch(r"[A-Z]\.", toks[-1]):
+        return False
+    if len(re.sub(r"[^A-Za-z]", "", toks[0])) < 2 or not toks[0][:1].isupper():
+        return False
+    for tok in toks[1:-1]:
+        if re.fullmatch(r"[A-Z]\.", tok):
+            continue
+        if tok[:1].isupper() and len(re.sub(r"[^A-Za-z]", "", tok)) >= 2:
+            continue
+        return False
+    return True
+
+
+def _split_fused_names(text: str) -> tuple[str, str]:
+    """Split 'Surname I. Surname I.' when no dash separator is present.
+
+    BetExplorer's runner-served day/results pages join both names with a bare
+    space ('Tiafoe F. Shelton B.', run #222). A trailing scoreline is
+    stripped first so finished rows still reach the finished check; doubles
+    ('/' present) and score-only texts are rejected rather than guessed.
+    """
+    if "/" in text:
         return "", ""
-    return parts[0].strip(), parts[1].strip()
+    clean = _TRAIL_SCORE_RE.sub("", text.strip()).strip()
+    best: tuple[str, str] = ("", "")
+    for m in re.finditer(r"\. ", clean):
+        left, right = clean[: m.end()].strip(), clean[m.end():].strip()
+        if _looks_like_player(left) and _looks_like_player(right):
+            best = (left, right)
+    return best
+
+
+def split_match_names(link_text: str) -> tuple[str, str]:
+    """Split 'Home Player - Away Player' on the score-safe separator.
+
+    Falls back to fused-name splitting ('Surname I. Surname I.') when no
+    separator is present.
+    """
+    parts = _NAME_SEP_RE.split(link_text.strip(), maxsplit=1)
+    if len(parts) == 2:
+        return parts[0].strip(), parts[1].strip()
+    return _split_fused_names(link_text.strip())
 
 
 def parse_listing_page(
