@@ -532,39 +532,6 @@ def test_mode_daily_counts_dateless_rows(tmp_path, monkeypatch, caplog):
             "1 skipped (no date)") in caplog.text
 
 
-def test_tennisdata_download_retries_transient_503(tmp_path, monkeypatch):
-    import time as _time
-    import urllib.error
-    from racketfactory.sources import tennisdata
-
-    calls = []
-
-    def flaky(url, dest):
-        calls.append(url)
-        if len(calls) < 3:
-            raise urllib.error.HTTPError(url, 503, "Service Unavailable",
-                                         None, None)
-        Path(dest).write_bytes(b"fake-xlsx")
-        return (str(dest), None)
-
-    monkeypatch.setattr(tennisdata.urllib.request, "urlretrieve", flaky)
-    monkeypatch.setattr(_time, "sleep", lambda s: None)
-    out = tennisdata.download_yearly_excel(2026, "ATP", tmp_path, force=True)
-    assert out is not None and out.exists() and len(calls) == 3
-
-    calls2 = []
-
-    def dead(url, dest):
-        calls2.append(url)
-        Path(dest).write_bytes(b"partial")
-        raise urllib.error.HTTPError(url, 503, "Service Unavailable", None, None)
-
-    monkeypatch.setattr(tennisdata.urllib.request, "urlretrieve", dead)
-    out2 = tennisdata.download_yearly_excel(2026, "WTA", tmp_path, force=True)
-    assert out2 is None and len(calls2) == 3
-    assert not (tmp_path / "2026w.xlsx").exists()
-
-
 # ------------------------------------------------ forebet Jina ground truth --
 
 

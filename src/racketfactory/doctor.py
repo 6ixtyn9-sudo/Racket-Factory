@@ -29,7 +29,6 @@ RESULT_GROUPS = {
     "forebet_results": ("forebet_results_*.csv.gz", 3),
     "challenger_results": ("challenger_results_*.csv.gz", 3),
     "theoddsapi_scores": ("theoddsapi_scores_*.csv.gz", 3),
-    "tennisdata": ("tennisdata_tennis_*.csv.gz", 45),
 }
 PREDICTION_PATTERNS = (
     "predictions_*.csv.gz",

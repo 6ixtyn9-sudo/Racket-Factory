@@ -47,18 +47,7 @@ if [[ "${RACKET_FACTORY_REFRESH_ODDSPORTAL:-}" =~ ^(1|true|yes|on)$ ]]; then
     fi
 else
     step "1/5" "Skipping OddsPortal capture."
-    log "[1/5] RACKET_FACTORY_REFRESH_ODDSPORTAL not set; using source/TennisData result refresh for daily run."
-fi
-
-# ---------------------------------------------------------------------------
-# [2/5] tennis-data.co.uk — current year metadata
-# ---------------------------------------------------------------------------
-step "2/5" "Downloading tennis-data.co.uk for $YEAR..."
-if PYTHONPATH="$ROOT/src" python3 "$SCRIPT_DIR/backfill_tennisdata.py" \
-        --year "$YEAR" 2>&1; then
-    log "[2/5] Tennis-data download complete."
-else
-    log "[2/5] WARNING: Tennis-data download failed. Continuing."
+    log "[1/5] RACKET_FACTORY_REFRESH_ODDSPORTAL not set; using prediction-source captures for daily run."
 fi
 
 # ---------------------------------------------------------------------------
