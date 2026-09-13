@@ -8,17 +8,17 @@
       "roi": null,
       "roi_paper": null,
       "roi_real": null,
-      "selected_won_any_set": 3,
+      "selected_won_any_set": 4,
       "selected_won_any_set_rate": 1.0,
-      "selected_won_set1": 3,
+      "selected_won_set1": 4,
       "selected_won_set1_rate": 1.0,
-      "selected_won_set2": 2,
-      "selected_won_set2_rate": 0.666667,
+      "selected_won_set2": 3,
+      "selected_won_set2_rate": 0.75,
       "selected_won_set3": 1,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 3,
-      "settled_picks": 3,
-      "wins": 3
+      "set_diagnostic_picks": 4,
+      "settled_picks": 4,
+      "wins": 4
     }
   },
   "audit_roi_by_surface": {
@@ -50,17 +50,17 @@
       "roi": null,
       "roi_paper": null,
       "roi_real": null,
-      "selected_won_any_set": 1,
+      "selected_won_any_set": 2,
       "selected_won_any_set_rate": 1.0,
-      "selected_won_set1": 1,
+      "selected_won_set1": 2,
       "selected_won_set1_rate": 1.0,
-      "selected_won_set2": 1,
+      "selected_won_set2": 2,
       "selected_won_set2_rate": 1.0,
       "selected_won_set3": 0,
       "selected_won_set3_rate": null,
-      "set_diagnostic_picks": 1,
-      "settled_picks": 1,
-      "wins": 1
+      "set_diagnostic_picks": 2,
+      "settled_picks": 2,
+      "wins": 2
     }
   },
   "audit_roi_by_tour": {
@@ -92,17 +92,17 @@
       "roi": null,
       "roi_paper": null,
       "roi_real": null,
-      "selected_won_any_set": 1,
+      "selected_won_any_set": 2,
       "selected_won_any_set_rate": 1.0,
-      "selected_won_set1": 1,
+      "selected_won_set1": 2,
       "selected_won_set1_rate": 1.0,
-      "selected_won_set2": 1,
+      "selected_won_set2": 2,
       "selected_won_set2_rate": 1.0,
       "selected_won_set3": 0,
       "selected_won_set3_rate": null,
-      "set_diagnostic_picks": 1,
-      "settled_picks": 1,
-      "wins": 1
+      "set_diagnostic_picks": 2,
+      "settled_picks": 2,
+      "wins": 2
     }
   },
   "calibration_by_confidence": {
@@ -170,5 +170,5 @@
       "wins": 17
     }
   },
-  "total_settled": 4744
+  "total_settled": 1862
 }

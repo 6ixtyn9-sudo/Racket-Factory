@@ -4,21 +4,21 @@
 
 - archived pick rows: 24
 - archived pick dates: 1
-- settled picks: 3
-- wins: 3
+- settled picks: 4
+- wins: 4
 - hit rate: 1.0
 - priced picks: 0
 - ROI: None
 - ROI (real-priced): None (n=0)
 - ROI (paper-priced): None (n=0)
-- pending picks: 21
+- pending picks: 20
 - void picks: 0
 - conflict picks: 0
 - total picks: 24
-- set diagnostic picks: 3
-- selected won any set: 3 (1.0)
-- selected won set 1: 3 (1.0)
-- selected won set 2: 2 (0.666667)
+- set diagnostic picks: 4
+- selected won any set: 4 (1.0)
+- selected won set 1: 4 (1.0)
+- selected won set 2: 3 (0.75)
 - selected won set 3: 1 (1.0)
 
 ## Settlement policy
@@ -55,7 +55,7 @@
 - 2026-09-13 Oceane Dodin vs Reese Brantmeier selected=Reese Brantmeier winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Panna Udvardy vs Lois Boisson selected=Lois Boisson winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Peyton Stearns vs Emiliana Arango selected=Peyton Stearns winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-13 Rositsa Dencheva vs Alevtina Ibragimova selected=Rositsa Dencheva winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-13 Rositsa Dencheva vs Alevtina Ibragimova selected=Rositsa Dencheva winner=Dencheva R. status=won basis=Challenger_results@2026-09-13:7-5 6-4
 - 2026-09-13 Tena Lukas vs Madison Sieg selected=Tena Lukas winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Tessa Johanna Brockmann vs Aran Teixido Garcia selected=Tessa Johanna Brockmann winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Zhibek Kulambayeva vs Malaika Rapolu selected=Malaika Rapolu winner=? status=pending_no_result reason=result not final: live/in-progress markers present
@@ -63,22 +63,22 @@
 ## By Tour
 
 - `CHALLENGER`: settled=2, wins=2, hit_rate=1.0, ROI=None
-- `WTA`: settled=1, wins=1, hit_rate=1.0, ROI=None
+- `WTA`: settled=2, wins=2, hit_rate=1.0, ROI=None
 
 ## By Series
 
 - `Challenger`: settled=2, wins=2, hit_rate=1.0, ROI=None
-- `International`: settled=1, wins=1, hit_rate=1.0, ROI=None
+- `International`: settled=2, wins=2, hit_rate=1.0, ROI=None
 
 ## By Surface
 
 - `Grass`: settled=2, wins=2, hit_rate=1.0, ROI=None
-- `Hard`: settled=1, wins=1, hit_rate=1.0, ROI=None
+- `Hard`: settled=2, wins=2, hit_rate=1.0, ROI=None
 
 ## By Bucket
 
-- `WATCHLIST_NO_ODDS`: settled=3, wins=3, hit_rate=1.0, ROI=None
+- `WATCHLIST_NO_ODDS`: settled=4, wins=4, hit_rate=1.0, ROI=None
 
 ## By Source
 
-- `BetClan`: settled=3, wins=3, hit_rate=1.0, ROI=None
+- `BetClan`: settled=4, wins=4, hit_rate=1.0, ROI=None
