@@ -14,7 +14,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.4335,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -68,7 +68,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.3986000000000002,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -122,7 +122,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.3860000000000001,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -176,7 +176,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.1940594,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -230,7 +230,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.15200000000000002,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -284,7 +284,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.11833313000000001,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -338,7 +338,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.05525546999999997,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -392,7 +392,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -406,11 +406,9 @@
     "match": "Angelina Voloshchuk vs Ariana Arseneault",
     "match_time": "09:00",
     "ml_boost_reasons": [],
-    "ml_strength_score": -0.35,
-    "ml_verdict": "VETO",
-    "ml_veto_reasons": [
-      "surface Hard CAUTION"
-    ],
+    "ml_strength_score": -0.2,
+    "ml_verdict": "ALLOW",
+    "ml_veto_reasons": [],
     "ml_w_score": 1.0,
     "odds": null,
     "odds_bookmaker": "",
@@ -448,7 +446,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -462,11 +460,9 @@
     "match": "Cristina Bucsa vs Bianca Andreescu",
     "match_time": "00:00",
     "ml_boost_reasons": [],
-    "ml_strength_score": -0.25,
+    "ml_strength_score": -0.1,
     "ml_verdict": "ALLOW",
-    "ml_veto_reasons": [
-      "surface Hard CAUTION"
-    ],
+    "ml_veto_reasons": [],
     "ml_w_score": 1.0,
     "odds": null,
     "odds_bookmaker": "",
@@ -504,7 +500,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -558,7 +554,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -614,7 +610,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -628,11 +624,9 @@
     "match": "Deborah Chiesa vs Lucija Ciric Bagaric",
     "match_time": "09:00",
     "ml_boost_reasons": [],
-    "ml_strength_score": -0.35,
-    "ml_verdict": "VETO",
-    "ml_veto_reasons": [
-      "surface Hard CAUTION"
-    ],
+    "ml_strength_score": -0.2,
+    "ml_verdict": "ALLOW",
+    "ml_veto_reasons": [],
     "ml_w_score": 1.0,
     "odds": null,
     "odds_bookmaker": "",
@@ -670,7 +664,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -684,11 +678,9 @@
     "match": "E. Kalieva vs K. Day",
     "match_time": "18:00",
     "ml_boost_reasons": [],
-    "ml_strength_score": -0.35,
-    "ml_verdict": "VETO",
-    "ml_veto_reasons": [
-      "surface Hard CAUTION"
-    ],
+    "ml_strength_score": -0.2,
+    "ml_verdict": "ALLOW",
+    "ml_veto_reasons": [],
     "ml_w_score": 1.0,
     "odds": null,
     "odds_bookmaker": "",
@@ -726,7 +718,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -740,11 +732,9 @@
     "match": "Elena Malygina vs Gabriella Da Silva Fick",
     "match_time": "09:00",
     "ml_boost_reasons": [],
-    "ml_strength_score": -0.25,
+    "ml_strength_score": -0.1,
     "ml_verdict": "ALLOW",
-    "ml_veto_reasons": [
-      "surface Hard CAUTION"
-    ],
+    "ml_veto_reasons": [],
     "ml_w_score": 1.0,
     "odds": null,
     "odds_bookmaker": "",
@@ -782,7 +772,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -836,7 +826,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -890,7 +880,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -944,7 +934,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -998,7 +988,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -1052,7 +1042,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -1066,11 +1056,9 @@
     "match": "Lea Boskovic vs Raluca G Serban",
     "match_time": "09:00",
     "ml_boost_reasons": [],
-    "ml_strength_score": -0.25,
+    "ml_strength_score": -0.1,
     "ml_verdict": "ALLOW",
-    "ml_veto_reasons": [
-      "surface Hard CAUTION"
-    ],
+    "ml_veto_reasons": [],
     "ml_w_score": 1.0,
     "odds": null,
     "odds_bookmaker": "",
@@ -1108,7 +1096,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -1162,7 +1150,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -1178,11 +1166,9 @@
     "ml_boost_reasons": [
       "High conf 76%"
     ],
-    "ml_strength_score": -0.1,
+    "ml_strength_score": 0.05,
     "ml_verdict": "ALLOW",
-    "ml_veto_reasons": [
-      "surface Hard CAUTION"
-    ],
+    "ml_veto_reasons": [],
     "ml_w_score": 1.0,
     "odds": null,
     "odds_bookmaker": "",
@@ -1220,7 +1206,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -1274,7 +1260,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -1328,7 +1314,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -1382,7 +1368,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-13T19:51:29+02:00",
+    "forecast_as_of": "2026-09-13T20:24:09+02:00",
     "forecast_for": "2026-09-14",
     "forecast_hygiene": {
       "include_no_odds": true,
