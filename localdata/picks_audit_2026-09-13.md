@@ -4,22 +4,22 @@
 
 - archived pick rows: 24
 - archived pick dates: 1
-- settled picks: 0
-- wins: 0
-- hit rate: None
+- settled picks: 2
+- wins: 2
+- hit rate: 1.0
 - priced picks: 0
 - ROI: None
 - ROI (real-priced): None (n=0)
 - ROI (paper-priced): None (n=0)
-- pending picks: 24
+- pending picks: 22
 - void picks: 0
 - conflict picks: 0
 - total picks: 24
-- set diagnostic picks: 0
-- selected won any set: 0 (None)
-- selected won set 1: 0 (None)
-- selected won set 2: 0 (None)
-- selected won set 3: 0 (None)
+- set diagnostic picks: 2
+- selected won any set: 2 (1.0)
+- selected won set 1: 2 (1.0)
+- selected won set 2: 1 (0.5)
+- selected won set 3: 1 (1.0)
 
 ## Settlement policy
 
@@ -40,11 +40,11 @@
 - 2026-09-13 Dalila Spiteri vs Mell Elizabeth Reasco Gonzalez selected=Dalila Spiteri winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Darja Vidmanova vs Janice Tjen selected=Janice Tjen winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Diletta Cherubini vs Isabella Shinikova selected=Diletta Cherubini winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-13 Ekaterina Yashina vs Kylie Collins selected=Kylie Collins winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-13 Ekaterina Yashina vs Kylie Collins selected=Kylie Collins winner=Collins K. status=won basis=Challenger_results@2026-09-13:6-2 6-2
 - 2026-09-13 Fiona Ferro vs Noma Noha Akugue selected=Fiona Ferro winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Gabriella Da Silva Fick vs Stephanie Judith Visscher selected=Stephanie Judith Visscher winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Georgina Garcia-Perez vs Ariana Arseneault selected=Ariana Arseneault winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-13 Ilya Ivashka vs Marat Sharipov selected=Ilya Ivashka winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-13 Ilya Ivashka vs Marat Sharipov selected=Ilya Ivashka winner=Ivashka I. status=won basis=Challenger_results@2026-09-13:6-4 3-6 7-6
 - 2026-09-13 Jessica Pieri vs Ruth Roura Llaverias selected=Jessica Pieri winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Joao Lucas Reis da Silva vs Mika Brunold selected=Mika Brunold winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-13 Joelle Lilly Sophie Steur vs Neus Torner Sensano selected=Joelle Lilly Sophie Steur winner=? status=pending_no_result reason=result not final: live/in-progress markers present
@@ -62,20 +62,23 @@
 
 ## By Tour
 
-- none
+- `CHALLENGER`: settled=1, wins=1, hit_rate=1.0, ROI=None
+- `WTA`: settled=1, wins=1, hit_rate=1.0, ROI=None
 
 ## By Series
 
-- none
+- `Challenger`: settled=1, wins=1, hit_rate=1.0, ROI=None
+- `International`: settled=1, wins=1, hit_rate=1.0, ROI=None
 
 ## By Surface
 
-- none
+- `Grass`: settled=1, wins=1, hit_rate=1.0, ROI=None
+- `Hard`: settled=1, wins=1, hit_rate=1.0, ROI=None
 
 ## By Bucket
 
-- none
+- `WATCHLIST_NO_ODDS`: settled=2, wins=2, hit_rate=1.0, ROI=None
 
 ## By Source
 
-- none
+- `BetClan`: settled=2, wins=2, hit_rate=1.0, ROI=None

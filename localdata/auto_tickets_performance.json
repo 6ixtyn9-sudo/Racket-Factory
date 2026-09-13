@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T12:06:16",
+  "generated_at": "2026-09-13T13:03:41",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 100.0,
@@ -28,11 +28,16 @@
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
               "_settle_basis": {
+                "source": "Challenger_results",
                 "match_date": "2026-09-13",
-                "score": ""
+                "score": "6-2 6-2",
+                "winner": "Collins K.",
+                "result_id": "3322195.0",
+                "tournament": "",
+                "status": ""
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-13 6-2 6-2",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 89.0,
               "context_used": "WTA Caldas Da Rainha Prediction",

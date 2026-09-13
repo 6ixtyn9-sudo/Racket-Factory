@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-14
 ============================================================
-Generated at: 2026-09-13 12:06:12
-Snapshot as of: 2026-09-13T11:54:17+02:00
+Generated at: 2026-09-13 13:03:37
+Snapshot as of: 2026-09-13T12:51:54+02:00
 Ledger kind: forecast
 
 
@@ -15,11 +15,11 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] C. Tabur vs H. Mayot                       KO 08:00 -> H. MAYOT  conf 64% @1.79  EV +0.14u
+  [live_only_fallback] C. Tabur vs H. Mayot                       KO 10:00 -> H. MAYOT  conf 64% @1.80  EV +0.15u
      bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] T. Monteiro vs S. Travaglia                KO 08:30 -> T. MONTEIRO  conf 61% @1.82  EV +0.11u
+  [live_only_fallback] T. Monteiro vs S. Travaglia                KO 10:30 -> T. MONTEIRO  conf 61% @1.83  EV +0.12u
      bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] M. Moeller vs D. Michalski                 KO 08:30 -> M. MOELLER  conf 61% @1.74  EV +0.06u
+  [live_only_fallback] M. Moeller vs D. Michalski                 KO 10:30 -> M. MOELLER  conf 61% @1.73  EV +0.06u
      bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
 
 WATCHLIST — NO MATCHED ODDS
