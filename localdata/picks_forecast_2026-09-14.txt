@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-14
 ============================================================
-Generated at: 2026-09-13 09:24:36
-Snapshot as of: 2026-09-13T09:18:19+02:00
+Generated at: 2026-09-13 09:49:02
+Snapshot as of: 2026-09-13T09:35:34+02:00
 Ledger kind: forecast
 
 
@@ -15,12 +15,7 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] C. Tabur vs H. Mayot                       KO 08:00 -> H. MAYOT  conf 64% @1.90  EV +0.22u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] H. Stewart vs D. Rincon                    KO 08:00 -> D. RINCON  conf 63% @2.26  EV +0.42u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] T. Monteiro vs S. Travaglia                KO 08:30 -> T. MONTEIRO  conf 61% @1.83  EV +0.12u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  (none)
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================

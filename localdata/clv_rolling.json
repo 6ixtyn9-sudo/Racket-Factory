@@ -12,20 +12,20 @@
       "wins": 16
     },
     "Low (<60%)": {
-      "calibration_error": 0.1087,
+      "calibration_error": 0.1377,
       "expected": 0.5,
-      "hit_rate": 0.6087,
+      "hit_rate": 0.6377,
       "n": 69,
-      "wilson_lb": 0.4907,
-      "wins": 42
+      "wilson_lb": 0.5198,
+      "wins": 44
     },
     "Medium (60-70%)": {
-      "calibration_error": 0.1627,
+      "calibration_error": 0.1458,
       "expected": 0.6,
-      "hit_rate": 0.7627,
+      "hit_rate": 0.7458,
       "n": 59,
-      "wilson_lb": 0.6403,
-      "wins": 45
+      "wilson_lb": 0.622,
+      "wins": 44
     }
   },
   "calibration_by_source": {
@@ -38,10 +38,10 @@
     },
     "market": {
       "expected": null,
-      "hit_rate": 0.6622,
+      "hit_rate": 0.6757,
       "n": 74,
-      "wilson_lb": 0.5488,
-      "wins": 49
+      "wilson_lb": 0.5627,
+      "wins": 50
     }
   },
   "calibration_by_tour": {
@@ -54,17 +54,17 @@
     },
     "UNKNOWN": {
       "expected": null,
-      "hit_rate": 0.7087,
+      "hit_rate": 0.699,
       "n": 103,
-      "wilson_lb": 0.6148,
-      "wins": 73
+      "wilson_lb": 0.6046,
+      "wins": 72
     },
     "WTA": {
       "expected": null,
-      "hit_rate": 0.75,
+      "hit_rate": 0.85,
       "n": 20,
-      "wilson_lb": 0.5313,
-      "wins": 15
+      "wilson_lb": 0.6396,
+      "wins": 17
     }
   },
   "total_settled": 4705
