@@ -8,7 +8,7 @@
   "by_source": {},
   "by_surface": {},
   "by_tour": {},
-  "end": "2026-09-12",
+  "end": "2026-09-13",
   "include_same_day": true,
   "ledger_kind": "official",
   "overall": {
@@ -35,7 +35,7 @@
     "void_picks": 0,
     "wins": 0
   },
-  "same_day_cutoff": "2026-09-12",
+  "same_day_cutoff": "2026-09-13",
   "same_day_excluded": 0,
-  "start": "2026-08-14"
+  "start": "2026-08-15"
 }
