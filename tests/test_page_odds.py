@@ -60,6 +60,54 @@ def test_retry_after_429_then_success(monkeypatch):
     assert sleeps == [7]  # honors Retry-After
 
 
+def test_prefer_plain_tries_plain_first(monkeypatch):
+    calls = []
+
+    def fake_plain(url, source_label, timeout=30):
+        calls.append("plain")
+        return "<html></html>", 200, 0
+
+    def fake_curl(url, source_label, timeout=30):
+        calls.append("curl")
+        return "", None, 0
+
+    monkeypatch.setattr(po, "_curl_fetch", fake_curl)
+    monkeypatch.setattr(po, "_plain_fetch", fake_plain)
+    assert po.fetch_page_html("http://x/", "T", prefer_plain=True) == "<html></html>"
+    assert calls == ["plain"]
+
+
+def test_curl_first_by_default(monkeypatch):
+    calls = []
+
+    def fake_plain(url, source_label, timeout=30):
+        calls.append("plain")
+        return "", None, 0
+
+    def fake_curl(url, source_label, timeout=30):
+        calls.append("curl")
+        return "<html></html>", 200, 0
+
+    monkeypatch.setattr(po, "_curl_fetch", fake_curl)
+    monkeypatch.setattr(po, "_plain_fetch", fake_plain)
+    assert po.fetch_page_html("http://x/", "T") == "<html></html>"
+    assert calls == ["curl"]
+
+
+def test_throttle_enforces_per_host_interval(monkeypatch):
+    now = [1000.0]
+    sleeps = []
+    monkeypatch.setattr(po.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(po.time, "sleep", lambda s: (sleeps.append(s), now.__setitem__(0, now[0] + s)))
+    po._last_request_time.clear()
+    po._throttle("example.com")
+    po._throttle("example.com")
+    assert len(sleeps) == 1
+    assert abs(sleeps[0] - 3.0) < 0.01
+    po._throttle("other.com")
+    assert len(sleeps) == 1  # separate host: no wait
+
+
 def test_no_retry_without_429(monkeypatch):
     def fake_curl(url, source_label, timeout=30):
         return "", 403, 0

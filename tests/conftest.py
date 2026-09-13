@@ -19,6 +19,11 @@ def _bypass_fetch_cache(monkeypatch, tmp_path):
         "RACKET_FACTORY_ODDS_COMPARE_STATUS_PATH",
         str(tmp_path / "odds_compare_status.json"),
     )
+    # Comparison legs must never hit the live web from unit tests (enrich
+    # paths under test call them with fixture dates); adapter tests that
+    # need the fetch layer re-enable per-test with monkeypatch.delenv.
+    monkeypatch.setenv("RACKET_FACTORY_DISABLE_BETEXPLORER", "1")
+    monkeypatch.setenv("RACKET_FACTORY_DISABLE_ODDSPORTAL_UPCOMING", "1")
     yield
     # Defensive cleanup: no test should create the real cache dir, but if one
     # does (explicit ttl override without tmp dir), remove it afterwards.

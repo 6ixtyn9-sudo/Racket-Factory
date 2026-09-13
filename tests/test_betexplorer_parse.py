@@ -59,9 +59,44 @@ def test_empty_page_yields_no_rows():
     assert be.parse_tennis_page("<html><body>no tennis here</body></html>", "2026-09-13") == []
 
 
-def test_out_of_range_target_returns_no_rows_without_network():
-    # Day page only: any non-today target short-circuits before any fetch.
-    assert be.fetch_betexplorer_rows("2000-01-01") == []
+RESULTS_FIXTURE = """
+<html><body><table>
+<tr class="js-tournament"><td colspan="9"><a class="table-main__tournament">Portugal: Caldas da Rainha, hard</a></td></tr>
+<tr data-dt="13,09,2026,09,30"><td>09:30</td>
+  <td class="table-main__tt"><a href="/tennis/challenger-women-singles/caldas-da-rainha/rouvroy-margaux-johnson-sofia/pUUHFqo4/">Rouvroy M. - Johnson S.</a></td>
+  <td>3.61</td><td>1.26</td></tr>
+<tr data-dt="13,09,2026,10,00"><td>Finished</td>
+  <td class="table-main__tt"><a href="/tennis/challenger-women-singles/caldas-da-rainha/done-match/AAAAAAAA/">Done A. - Over B.</a></td>
+  <td>2:0</td><td>1.50</td><td>2.50</td></tr>
+</table></body></html>
+"""
+
+
+def test_results_parse_uses_data_dt_rows():
+    rows = be.parse_results_page(RESULTS_FIXTURE, "2026-09-13")
+    assert len(rows) == 1
+    row = rows[0]
+    assert (row["player_home"], row["player_away"]) == ("Rouvroy M.", "Johnson S.")
+    assert (row["odds_home"], row["odds_away"]) == (3.61, 1.26)
+    assert row["match_time"] == "09:30"
+    assert row["tournament"] == "caldas da rainha"
+
+
+def test_fetch_uses_dated_url_for_any_date(monkeypatch):
+    monkeypatch.delenv("RACKET_FACTORY_DISABLE_BETEXPLORER")
+    seen: list[str] = []
+
+    def fake_fetch(url, label, **kwargs):
+        seen.append(url)
+        assert kwargs.get("prefer_plain") is True
+        return RESULTS_FIXTURE
+
+    monkeypatch.setattr(be, "fetch_page_html", fake_fetch)
+    rows = be.fetch_betexplorer_rows("2026-09-14")
+    assert seen == ["https://www.betexplorer.com/tennis/results/?year=2026&month=09&day=14"]
+    assert len(rows) == 1
+    assert rows[0]["source"] == "BetExplorer"
+    assert rows[0]["match_date"] == "2026-09-14"
 
 
 def test_disable_env_short_circuits(monkeypatch):

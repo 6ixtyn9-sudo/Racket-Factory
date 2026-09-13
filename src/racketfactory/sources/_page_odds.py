@@ -17,6 +17,7 @@ import logging
 import re
 import time
 from typing import Any, Callable
+from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
@@ -27,6 +28,23 @@ BROWSER_UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/126.0.0.0 Safari/537.36"
 )
+# Edge-Factory parity: plain simple UA works for BetExplorer (no impersonation).
+EDGE_SIMPLE_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 Chrome/124 Safari/537.36"
+)
+
+# Edge parity: minimum seconds between consecutive requests per host.
+_MIN_INTERVAL = 3.0
+_last_request_time: dict[str, float] = {}
+
+
+def _throttle(host: str) -> None:
+    now = time.monotonic()
+    elapsed = now - _last_request_time.get(host, 0.0)
+    if elapsed < _MIN_INTERVAL:
+        time.sleep(_MIN_INTERVAL - elapsed)
+    _last_request_time[host] = time.monotonic()
 
 _DECIMAL_RE = re.compile(r"\b(\d{1,2}\.\d{1,2})\b")
 _DATE_DMY_RE = re.compile(r"\b\d{1,2}\.\d{1,2}\.\d{4}\b")
@@ -38,35 +56,40 @@ MIN_DECIMAL_ODDS = 1.01
 MAX_DECIMAL_ODDS = 51.0
 
 
-def fetch_page_html(url: str, source_label: str, *, timeout: int = 30) -> str:
+def fetch_page_html(url: str, source_label: str, *, timeout: int = 30,
+                    prefer_plain: bool = False) -> str:
     """GET a listing page; "" on any failure (fail-soft by contract).
 
-    Uses the repo-standard chrome133a impersonation (the only confirmed
-    Cloudflare bypass); falls back to plain requests for non-CF hosts.
-    On HTTP 429, honors Retry-After (capped) once, then retries a final time.
+    Transport order per host: Cloudflare-hard hosts try curl impersonation
+    (repo-standard chrome133a) first; BetExplorer-class hosts try plain
+    requests with a simple UA first (Edge-Factory parity — proven working).
+    Throttled to one request per 3s per host; on HTTP 429, honors
+    Retry-After (capped 60s) with one delayed second pass.
     """
-    html, status, retry_after = _attempt_fetch(url, source_label, timeout=timeout)
+    order = (_plain_fetch, _curl_fetch) if prefer_plain else (_curl_fetch, _plain_fetch)
+    html, status, retry_after = _run_order(order, url, source_label, timeout=timeout)
     if html or status != 429:
         return html
-    wait = max(5, min(retry_after or 25, 60))
+    wait = max(5, min(retry_after or 10, 60))
     logger.warning("%s rate-limited (429) for %s; retrying once after %ds",
                    source_label, url, wait)
     time.sleep(wait)
-    html, _, _ = _attempt_fetch(url, source_label, timeout=timeout)
+    html, _, _ = _run_order(order, url, source_label, timeout=timeout)
     return html
 
 
-def _attempt_fetch(url: str, source_label: str, *,
-                   timeout: int) -> tuple[str, int | None, int]:
-    html, status, retry_after = _curl_fetch(url, source_label, timeout=timeout)
+def _run_order(order, url: str, source_label: str, *,
+               timeout: int) -> tuple[str, int | None, int]:
+    html, status, retry_after = order[0](url, source_label, timeout=timeout)
     if html or status not in (None, 429):
         return html, status, retry_after
-    # curl path failed or was limited: one plain-requests attempt.
-    html2, status2, retry_after2 = _plain_fetch(url, source_label, timeout=timeout)
+    # First transport failed or was limited: try the other once.
+    html2, status2, retry_after2 = order[1](url, source_label, timeout=timeout)
     return html2, status2, max(retry_after, retry_after2)
 
 
 def _curl_fetch(url: str, source_label: str, *, timeout: int) -> tuple[str, int | None, int]:
+    _throttle(urlsplit(url).netloc)
     try:
         from curl_cffi import requests as curl_requests
         resp = curl_requests.get(
@@ -80,11 +103,12 @@ def _curl_fetch(url: str, source_label: str, *, timeout: int) -> tuple[str, int 
 
 
 def _plain_fetch(url: str, source_label: str, *, timeout: int) -> tuple[str, int | None, int]:
+    _throttle(urlsplit(url).netloc)
     try:
         import requests as std_requests
         resp = std_requests.get(
             url, timeout=timeout,
-            headers={"User-Agent": BROWSER_UA, "Accept-Language": "en-US,en;q=0.9"},
+            headers={"User-Agent": EDGE_SIMPLE_UA, "Accept-Language": "en-US,en;q=0.9"},
         )
     except Exception as exc:
         logger.warning("%s plain fetch failed for %s: %s", source_label, url, exc)
