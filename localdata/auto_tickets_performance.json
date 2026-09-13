@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T08:56:42",
+  "generated_at": "2026-09-13T09:24:40",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 100.0,
@@ -27,6 +27,12 @@
               "_market_basis": "none",
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-13",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 89.0,
               "context_used": "WTA Caldas Da Rainha Prediction",
@@ -67,19 +73,19 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Caldas Da Rainha Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-13",
-                "score": ""
-              }
+              "tournament": "WTA Caldas Da Rainha Prediction"
             },
             {
               "_is_paper": true,
               "_market_basis": "none",
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-13",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 87.0,
               "context_used": "WTA Valencia Prediction",
@@ -120,13 +126,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Valencia Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-13",
-                "score": ""
-              }
+              "tournament": "WTA Valencia Prediction"
             }
           ],
           "odds": null,
@@ -141,6 +141,12 @@
               "_market_basis": "none",
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-13",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 85.0,
               "context_used": "WTA Caldas Da Rainha Prediction",
@@ -181,19 +187,19 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Caldas Da Rainha Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-13",
-                "score": ""
-              }
+              "tournament": "WTA Caldas Da Rainha Prediction"
             },
             {
               "_is_paper": true,
               "_market_basis": "none",
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-13",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 83.0,
               "context_used": "WTA Valencia Prediction",
@@ -234,13 +240,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Valencia Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-13",
-                "score": ""
-              }
+              "tournament": "WTA Valencia Prediction"
             }
           ],
           "odds": null,
@@ -255,6 +255,12 @@
               "_market_basis": "none",
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-13",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 83.0,
               "context_used": "WTA Caldas Da Rainha Prediction",
@@ -295,19 +301,19 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Caldas Da Rainha Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-13",
-                "score": ""
-              }
+              "tournament": "WTA Caldas Da Rainha Prediction"
             },
             {
               "_is_paper": true,
               "_market_basis": "none",
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-13",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 75.0,
               "context_used": "WTA Guadalajara WD Prediction",
@@ -348,13 +354,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Guadalajara WD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-13",
-                "score": ""
-              }
+              "tournament": "WTA Guadalajara WD Prediction"
             }
           ],
           "odds": null,
@@ -369,6 +369,12 @@
               "_market_basis": "none",
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-13",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 71.0,
               "context_used": "WTA Caldas Da Rainha Prediction",
@@ -409,19 +415,19 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Caldas Da Rainha Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-13",
-                "score": ""
-              }
+              "tournament": "WTA Caldas Da Rainha Prediction"
             },
             {
               "_is_paper": true,
               "_market_basis": "none",
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-13",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 69.0,
               "context_used": "WTA Guadalajara Prediction",
@@ -461,13 +467,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Guadalajara Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-13",
-                "score": ""
-              }
+              "tournament": "WTA Guadalajara Prediction"
             }
           ],
           "odds": null,
