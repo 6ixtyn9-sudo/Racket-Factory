@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-14
 ============================================================
-Generated at: 2026-09-13 20:28:25
-Snapshot as of: 2026-09-13T20:24:09+02:00
+Generated at: 2026-09-13 20:49:33
+Snapshot as of: 2026-09-13T20:44:18+02:00
 Ledger kind: forecast
 
 
@@ -15,8 +15,14 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] M. Schoenhaus vs P. Brady                  KO 10:00 -> P. BRADY  conf 66% @2.10  EV +0.39u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  [live_only_fallback] M. Brunold vs M. Giunta                    KO 10:00 -> M. BRUNOLD  conf 75% @1.50  EV +0.12u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] D. Jorda Sanchis vs L. Poullain            KO 10:00 -> L. POULLAIN  conf 72% @2.00  EV +0.44u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] N. Slavic vs Y. Ghazouani Durand           KO 10:00 -> Y. GHAZOUANI DURAND  conf 68% @2.00  EV +0.36u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] M. Schoenhaus vs P. Brady                  KO 10:00 -> P. BRADY  conf 66% @2.00  EV +0.32u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] C. Tabur vs H. Mayot                       KO 10:00 -> H. MAYOT  conf 64% @1.80  EV +0.15u
      bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
   [live_only_fallback] A. Mintegi Del Olmo vs A. Geerlings Martin KO 10:00 -> A. MINTEGI DEL OLMO  conf 63% @2.22  EV +0.40u
@@ -27,8 +33,10 @@ WATCHLIST PICKS
      bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
   [live_only_fallback] M. Moeller vs D. Michalski                 KO 10:30 -> M. MOELLER  conf 61% @1.73  EV +0.06u
      bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] L. Romero Gormaz vs M. Trevisan            KO 10:00 -> L. ROMERO GORMAZ  conf 60% @1.99  EV +0.19u
+  [live_only_fallback] L. Romero Gormaz vs M. Trevisan            KO 10:00 -> L. ROMERO GORMAZ  conf 60% @2.01  EV +0.21u
      bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  [live_only_fallback] M. Cassone vs I. Montes-De La Torre        KO 10:00 -> I. MONTES-DE LA TORRE  conf 60% @2.00  EV +0.20u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
@@ -44,13 +52,11 @@ WATCHLIST — NO MATCHED ODDS
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
   [live_only_fallback] Cristina Bucsa vs Bianca Andreescu         KO 00:00 -> BIANCA ANDREESCU  conf 60% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] M. Cassone vs I. Montes-De La Torre        KO 10:00 -> I. MONTES-DE LA TORRE  conf 60% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
   [live_only_fallback] R. Roura Llaverias vs M. Sieg              KO 12:00 -> M. SIEG  conf 60% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] D. Blanch vs I. Gakhov                     KO 10:30 -> D. BLANCH  conf 59% @n/a
+  [live_only_fallback] A. Marti Pujolras vs D. Sakellaridis       KO 10:00 -> D. SAKELLARIDIS  conf 59% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] R. Carpano vs T. Compagnucci               KO 10:00 -> T. COMPAGNUCCI  conf 58% @n/a
+  [live_only_fallback] D. Blanch vs I. Gakhov                     KO 10:30 -> D. BLANCH  conf 59% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
   [live_only_fallback] R. Strombachs vs S. Rodriguez Taverna      KO 10:30 -> S. RODRIGUEZ TAVERNA  conf 58% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
@@ -60,12 +66,6 @@ WATCHLIST — NO MATCHED ODDS
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
   [live_only_fallback] E. Kalieva vs K. Day                       KO 18:00 -> K. DAY  conf 56% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] F. Pieczonka vs N. Mashtakov               KO 10:30 -> N. MASHTAKOV  conf 55% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] G. Oradini vs P. Basile                    KO 10:00 -> G. ORADINI  conf 54% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] P. Zahraj vs M. Janvier                    KO 10:00 -> M. JANVIER  conf 54% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
   [live_only_fallback] J. C. Martin Manzano vs G. Campana Lee     KO 10:00 -> G. CAMPANA LEE  conf 53% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
   [live_only_fallback] I. Marcondes vs N. Basavareddy             KO 19:00 -> I. MARCONDES  conf 52% @n/a
