@@ -38,25 +38,53 @@ MAX_DECIMAL_ODDS = 51.0
 
 
 def fetch_page_html(url: str, source_label: str, *, timeout: int = 30) -> str:
-    """GET a listing page; "" on any failure (fail-soft by contract)."""
+    """GET a listing page; "" on any failure (fail-soft by contract).
+
+    Uses the repo-standard chrome133a impersonation (the only confirmed
+    Cloudflare bypass); falls back to plain requests for non-CF hosts.
+    """
+    html = _curl_fetch(url, source_label, timeout=timeout)
+    if html:
+        return html
+    return _plain_fetch(url, source_label, timeout=timeout)
+
+
+def _curl_fetch(url: str, source_label: str, *, timeout: int) -> str:
     try:
         from curl_cffi import requests as curl_requests
         resp = curl_requests.get(
-            url, timeout=timeout, impersonate="chrome",
+            url, timeout=timeout, impersonate="chrome133a",
             headers={"User-Agent": BROWSER_UA, "Accept-Language": "en-US,en;q=0.9"},
         )
     except Exception as exc:
-        logger.warning("%s fetch failed for %s: %s", source_label, url, exc)
+        logger.warning("%s curl fetch failed for %s: %s", source_label, url, exc)
         return ""
+    return _response_text(resp, url, source_label)
+
+
+def _plain_fetch(url: str, source_label: str, *, timeout: int) -> str:
     try:
-        status = resp.status_code
+        import requests as std_requests
+        resp = std_requests.get(
+            url, timeout=timeout,
+            headers={"User-Agent": BROWSER_UA, "Accept-Language": "en-US,en;q=0.9"},
+        )
+    except Exception as exc:
+        logger.warning("%s plain fetch failed for %s: %s", source_label, url, exc)
+        return ""
+    return _response_text(resp, url, source_label)
+
+
+def _response_text(resp: object, url: str, source_label: str) -> str:
+    try:
+        status = resp.status_code  # type: ignore[union-attr]
     except Exception:
         return ""
     if status != 200:
         logger.warning("%s fetch %s: HTTP %s", source_label, url, status)
         return ""
     try:
-        return resp.text or ""
+        return resp.text or ""  # type: ignore[union-attr]
     except Exception:
         return ""
 

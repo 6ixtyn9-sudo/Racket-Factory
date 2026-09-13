@@ -21,12 +21,50 @@ existing enrich/match/EV machinery consumes them unchanged.
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 AGREE_TOLERANCE = 0.10
+ROOT = Path(__file__).resolve().parents[2]
+STATUS_ENV = "RACKET_FACTORY_ODDS_COMPARE_STATUS_PATH"
+
+
+def _status_path() -> Path:
+    override = os.getenv(STATUS_ENV, "").strip()
+    if override:
+        return Path(override)
+    return ROOT / "localdata" / "odds_compare_status.json"
+
+
+def _write_status(entries: dict[str, Any]) -> None:
+    """Best-effort leg-health snapshot (committed; lets git verify the legs).
+
+    Merged per target date so the today-card and forecast calls in one job
+    do not overwrite each other; only the freshest 7 dates are kept.
+    """
+    try:
+        path = _status_path()
+        existing: dict[str, Any] = {}
+        if path.exists():
+            try:
+                loaded = json.loads(path.read_text())
+                if isinstance(loaded, dict):
+                    existing = loaded
+            except Exception:
+                pass
+        existing.update(entries)
+        for stale in sorted(existing)[:-7]:
+            del existing[stale]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(existing, indent=2, sort_keys=True))
+    except Exception as exc:
+        logger.warning("Could not write odds-compare status: %s", exc)
 
 
 def _sides_agree(a_home: float, a_away: float, b_home: float, b_away: float) -> bool:
@@ -136,20 +174,38 @@ def fetch_comparison_rows(target_date: str) -> list[dict[str, Any]]:
     from racketfactory.sources import betexplorer
     from racketfactory.sources import oddsportal_upcoming
 
+    errors: dict[str, str] = {}
     try:
         be_rows = betexplorer.fetch_betexplorer_rows(target_date)
     except Exception as exc:
         logger.warning("BetExplorer leg failed: %s", exc)
+        errors["betexplorer"] = f"{type(exc).__name__}: {exc}"
         be_rows = []
     try:
         op_rows = oddsportal_upcoming.fetch_oddsportal_upcoming_rows(target_date)
     except Exception as exc:
         logger.warning("OddsPortal upcoming leg failed: %s", exc)
+        errors["oddsportal_upcoming"] = f"{type(exc).__name__}: {exc}"
         op_rows = []
-    if not be_rows and not op_rows:
-        return []
-    try:
-        return merge_comparison_rows(be_rows or [], op_rows or [])
-    except Exception as exc:
-        logger.warning("Odds compare merge failed: %s", exc)
-        return []
+    merged: list[dict[str, Any]] = []
+    if be_rows or op_rows:
+        try:
+            merged = merge_comparison_rows(be_rows or [], op_rows or [])
+        except Exception as exc:
+            logger.warning("Odds compare merge failed: %s", exc)
+            errors["merge"] = f"{type(exc).__name__}: {exc}"
+    flags: dict[str, int] = {}
+    for row in merged:
+        flag = str(row.get("odds_cross_checked") or "missing")
+        flags[flag] = flags.get(flag, 0) + 1
+    _write_status({
+        str(target_date)[:10]: {
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "betexplorer_rows": len(be_rows),
+            "oddsportal_upcoming_rows": len(op_rows),
+            "merged_rows": len(merged),
+            "cross_checked": flags,
+            "errors": errors,
+        },
+    })
+    return merged

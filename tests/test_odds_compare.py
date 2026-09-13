@@ -1,6 +1,14 @@
 """Tests for the BetExplorer x OddsPortal cross-check merger."""
 
-from racketfactory.odds_compare import AGREE_TOLERANCE, merge_comparison_rows
+import json
+
+from racketfactory.odds_compare import (
+    AGREE_TOLERANCE,
+    STATUS_ENV,
+    _write_status,
+    fetch_comparison_rows,
+    merge_comparison_rows,
+)
 
 
 def _row(home, away, h, a, source="BetExplorer"):
@@ -73,3 +81,27 @@ def test_junk_rows_dropped():
     be = [_row("", "Nope N.", 1.50, 2.50), _row("Bad B.", "Odds O.", None, 2.50)]
     op = [_row("Ghost G.", "Missing M.", 0.99, 2.00, "OddsPortal")]
     assert merge_comparison_rows(be, op) == []
+
+
+def test_status_snapshot_written_per_date(tmp_path, monkeypatch):
+    status = tmp_path / "odds_compare_status.json"
+    monkeypatch.setenv(STATUS_ENV, str(status))
+    # Out-of-range date: both legs short-circuit (no network), zeros recorded.
+    assert fetch_comparison_rows("2000-01-01") == []
+    payload = json.loads(status.read_text())
+    assert payload["2000-01-01"]["merged_rows"] == 0
+    assert payload["2000-01-01"]["errors"] == {}
+    # A second date merges instead of overwriting.
+    _write_status({"2000-01-02": {"merged_rows": 5}})
+    payload = json.loads(status.read_text())
+    assert set(payload) == {"2000-01-01", "2000-01-02"}
+
+
+def test_status_keeps_freshest_7_dates(tmp_path, monkeypatch):
+    status = tmp_path / "odds_compare_status.json"
+    monkeypatch.setenv(STATUS_ENV, str(status))
+    _write_status({f"2000-01-{d:02d}": {"merged_rows": d} for d in range(1, 10)})
+    payload = json.loads(status.read_text())
+    assert len(payload) == 7
+    assert "2000-01-01" not in payload
+    assert "2000-01-09" in payload
