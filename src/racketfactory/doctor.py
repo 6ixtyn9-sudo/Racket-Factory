@@ -69,6 +69,28 @@ def _read_match_dates(path: Path) -> tuple[int, str]:
     return rows, latest
 
 
+def count_live_rows(path: Path) -> int | None:
+    """Count live-injected rows (``_is_live`` true) in a warehouse file.
+
+    Returns None when the file/column is missing or unreadable. Stdlib-only
+    (no pandas) so the doctor stays dependency-light.
+    """
+    if not path.exists():
+        return None
+    opener = gzip.open if path.suffix == ".gz" else open
+    try:
+        with opener(path, "rt", newline="") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames or "_is_live" not in reader.fieldnames:
+                return None
+            return sum(
+                1 for row in reader
+                if str(row.get("_is_live", "")).strip().lower() in {"true", "1", "yes"}
+            )
+    except Exception:
+        return None
+
+
 def check_localdata_exists() -> bool:
     """Ensure localdata directory exists."""
     return LOCALDATA.exists()
@@ -167,8 +189,19 @@ def run_health_checks(*, expect_warehouse: bool = False,
         n, mx = _read_match_dates(wh)
         add("warehouse", "OK" if n > 0 else "WARN",
             f"{n} rows, max_date {mx or '?'}")
+        live = count_live_rows(wh)
+        if live is None:
+            add("warehouse:live_rows", "WARN", "no _is_live column/unreadable")
+        elif live == 0:
+            add("warehouse:live_rows", "WARN",
+                "0 live-injected rows — same-day mining starved "
+                "(all live prediction fetches failed/filtered)")
+        else:
+            add("warehouse:live_rows", "OK", f"{live} live-injected rows")
     else:
         add("warehouse", "CRITICAL" if expect_warehouse else "WARN",
+            "warehouse.csv.gz missing")
+        add("warehouse:live_rows", "CRITICAL" if expect_warehouse else "WARN",
             "warehouse.csv.gz missing")
 
     # Picks pricing: 100% unpriced means the odds pipeline is down.
@@ -183,7 +216,17 @@ def run_health_checks(*, expect_warehouse: bool = False,
             except Exception:
                 pass
     if picks is None:
-        add("picks:priced_share", "WARN", "no picks file for " + today_s)
+        dated = LOCALDATA / f"picks_{today_s}.json"
+        try:
+            empty_export = dated.exists() and json.loads(dated.read_text()) == []
+        except Exception:
+            empty_export = False
+        if empty_export:
+            add("picks:priced_share", "WARN",
+                f"picks_{today_s}.json exists but has 0 rows "
+                f"(miner found no candidates)")
+        else:
+            add("picks:priced_share", "WARN", "no picks file for " + today_s)
     else:
         name, data = picks
         rows = [r for r in data if isinstance(r, dict)

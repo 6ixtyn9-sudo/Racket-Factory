@@ -13,6 +13,7 @@ import os
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources.betclan import BetClanPredictor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s")
@@ -29,7 +30,7 @@ def main():
     
     bc = BetClanPredictor()
     logger.info("Fetching BetClan daily predictions...")
-    preds = bc.fetch_daily()
+    preds = cached_fetch("betclan", bc.fetch_daily)
     
     if not preds:
         logger.warning("No BetClan predictions fetched.")

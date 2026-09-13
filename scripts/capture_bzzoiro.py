@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources.bzzoiro import BzzoiroPredictor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s")
@@ -23,7 +24,7 @@ def main():
     out_file = Path(args.output_dir) / "archive_bzzoiro.csv"
     bp = BzzoiroPredictor()
     logger.info("Fetching Bzzoiro daily predictions (today+tomorrow)...")
-    preds = bp.fetch_daily(include_tomorrow=True)
+    preds = cached_fetch("bzzoiro_2day", lambda: bp.fetch_daily(include_tomorrow=True))
     if not preds:
         logger.warning("No Bzzoiro predictions fetched.")
         return

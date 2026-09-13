@@ -35,6 +35,7 @@ from collections import defaultdict
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources.forebet import ForebetPredictor, name_signature
 
 logging.basicConfig(
@@ -310,7 +311,7 @@ def mode_daily(args) -> int:
 
     for day in args.days:
         logger.info("Fetching predictions-%s ...", day)
-        preds = predictor.fetch_daily_predictions(day)
+        preds = cached_fetch(f"forebet_{day}", lambda: predictor.fetch_daily_predictions(day))
         if not preds:
             logger.warning("No predictions returned for %s.", day)
             continue

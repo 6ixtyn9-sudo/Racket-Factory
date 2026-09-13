@@ -13,6 +13,7 @@ import os
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources.predixsport import PredixSportPredictor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s")
@@ -29,7 +30,7 @@ def main():
     
     px = PredixSportPredictor()
     logger.info("Fetching PredixSport daily predictions...")
-    preds = px.fetch_daily()
+    preds = cached_fetch("predixsport", px.fetch_daily)
     
     if not preds:
         logger.warning("No PredixSport predictions fetched.")

@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from racketfactory.assay import assay_segment
+from racketfactory.fetch_cache import cached_fetch
 from racketfactory.warehouse import (
     align_odds_to_probabilities,
     coerce_decimal_odds,
@@ -347,13 +348,16 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
 def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
     rows = []
     forebet_day = forebet_day_for_target(target_date)
-    for source_name, predictor, fetcher in [
-        ("PredixSport", PredixSportPredictor(), lambda p: p.fetch_daily()),
-        ("BetClan", BetClanPredictor(), lambda p: p.fetch_daily()),
-        ("Forebet", ForebetPredictor(), lambda p: p.fetch_daily_predictions(forebet_day)),
+    # Same-job fetch cache: reuse the site crawls already done by the capture
+    # steps / warehouse builds instead of re-hitting the sites (rate-limit
+    # protection). Empty results are never cached, so failures keep retrying.
+    for source_name, cache_key, predictor, fetcher in [
+        ("PredixSport", "predixsport", PredixSportPredictor(), lambda p: p.fetch_daily()),
+        ("BetClan", "betclan", BetClanPredictor(), lambda p: p.fetch_daily()),
+        ("Forebet", f"forebet_{forebet_day}", ForebetPredictor(), lambda p: p.fetch_daily_predictions(forebet_day)),
     ]:
         try:
-            preds = fetcher(predictor)
+            preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p))
         except Exception as e:
             logger.warning("Upcoming fallback source %s failed: %s", source_name, e)
             preds = []
@@ -940,14 +944,48 @@ def market_basis_for_pick(odds_source: str, odds_val: object) -> tuple[str, bool
     return "none", True
 
 
+def _existing_pick_rows(path: Path) -> list | None:
+    """Read an existing picks ledger; None when missing/unreadable."""
+    try:
+        if path.exists():
+            data = json.loads(path.read_text())
+            if isinstance(data, list):
+                return data
+    except Exception:
+        pass
+    return None
+
+
+def should_write_pick_outputs(picks: list[dict], existing: list | None) -> bool:
+    """No-clobber rule: an empty mine must never blank a non-empty ledger.
+
+    Late-day re-runs (or live-fetch outages) legitimately mine zero rows;
+    overwriting the day's good ledger with ``[]`` destroys the betting record
+    and the audit trail (observed 2026-09-12 evening: 15 rows -> []).
+    """
+    if picks:
+        return True
+    if existing:
+        return False
+    return True
+
+
 def write_official_pick_outputs(target_date: str, picks: list[dict]) -> None:
     out_dir = ROOT / "localdata"
     out_dir.mkdir(parents=True, exist_ok=True)
     today_path = out_dir / "picks_today.json"
     archive_path = out_dir / f"picks_{target_date}.json"
     payload = json.dumps(picks, indent=2)
-    today_path.write_text(payload)
-    archive_path.write_text(payload)
+    for path in (today_path, archive_path):
+        existing = _existing_pick_rows(path)
+        if not should_write_pick_outputs(picks, existing):
+            logger.error(
+                "REFUSING to overwrite non-empty %s (%d rows) with 0 pick rows "
+                "(live-fetch starvation guard; keeping existing ledger).",
+                path.name, len(existing or []),
+            )
+            continue
+        path.write_text(payload)
     bucket_counts = {}
     for pick in picks:
         bucket = str(pick.get("bucket") or "UNKNOWN")

@@ -14,6 +14,7 @@ import re
 from typing import Optional
 from datetime import date, datetime, timedelta, timezone
 from racketfactory.entities import player_key
+from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.forebet import ForebetPredictor, name_signature, name_signature_strict
@@ -1176,14 +1177,23 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
 
 def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
     rows = []
-    for source_name, predictor, fetcher in [
-        ("PredixSport", PredixSportPredictor(), lambda p: p.fetch_daily()),
-        ("BetClan", BetClanPredictor(), lambda p: p.fetch_daily()),
-        ("Forebet", ForebetPredictor(), lambda p: p.fetch_daily_predictions("today") + (p.fetch_daily_predictions("tomorrow") if include_tomorrow else [])),
-        ("Bzzoiro", BzzoiroPredictor(), lambda p: p.fetch_daily(include_tomorrow=include_tomorrow)),
+    # Live fetches are shared via the same-job fetch cache: the first caller
+    # crawls the site, later warehouse builds / the miner fallback reuse the
+    # rows instead of hammering the site again (rate-limit protection).
+    bzzoiro_key = "bzzoiro_2day" if include_tomorrow else "bzzoiro_1day"
+    for source_name, cache_key, predictor, fetcher in [
+        ("PredixSport", "predixsport", PredixSportPredictor(), lambda p: p.fetch_daily()),
+        ("BetClan", "betclan", BetClanPredictor(), lambda p: p.fetch_daily()),
+        ("Forebet", "", ForebetPredictor(), None),
+        ("Bzzoiro", bzzoiro_key, BzzoiroPredictor(), lambda p: p.fetch_daily(include_tomorrow=include_tomorrow)),
     ]:
         try:
-            preds = fetcher(predictor)
+            if source_name == "Forebet":
+                preds = cached_fetch("forebet_today", lambda: predictor.fetch_daily_predictions("today"))
+                if include_tomorrow:
+                    preds = list(preds) + list(cached_fetch("forebet_tomorrow", lambda: predictor.fetch_daily_predictions("tomorrow")))
+            else:
+                preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p))
         except Exception as e:
             logger.warning("Live source %s failed during warehouse build: %s", source_name, e)
             preds = []

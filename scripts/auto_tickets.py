@@ -514,10 +514,44 @@ def format_tickets_txt(target_date, accas, state, skipped_info):
     return "\n".join(lines)
 
 
+def _existing_ticket_ledger(path) -> dict | None:
+    """Read an existing dated ticket ledger; None when missing/unreadable."""
+    try:
+        if path.exists():
+            data = json.loads(path.read_text())
+            if isinstance(data, dict):
+                return data
+    except Exception:
+        pass
+    return None
+
+
+def should_write_ticket_files(existing: dict | None, new_acca_count: int,
+                              *, force: bool = False) -> bool:
+    """No-clobber rule for ticket ledgers.
+
+    * Frozen ledgers are immutable (the day is closed; regeneration is
+      meaningless) unless ``--force`` is passed.
+    * An empty regeneration must never blank a ledger that has booked accas
+      (observed 2026-09-12 evening: 1 acca -> 0 accas after picks starved).
+    """
+    if force:
+        return True
+    if not existing:
+        return True
+    if existing.get("frozen") is True:
+        return False
+    if new_acca_count == 0 and existing.get("accas"):
+        return False
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", default=None)
     ap.add_argument("--ignore-kickoff", action="store_true")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite frozen/non-empty ticket files (default: never clobber)")
     args = ap.parse_args()
     target_date = args.date or today_str()
     now = now_local()
@@ -563,10 +597,17 @@ def main():
         "frozen": is_frozen,
     }
     LOCALDATA.mkdir(parents=True, exist_ok=True)
-    (LOCALDATA / f"auto_tickets_{target_date}.json").write_text(json.dumps(out, indent=2))
-    (LOCALDATA / f"auto_tickets_{target_date}.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
-    (LOCALDATA / "auto_tickets_today.json").write_text(json.dumps(out, indent=2))
-    (LOCALDATA / "auto_tickets_today.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
+    if not should_write_ticket_files(
+        _existing_ticket_ledger(LOCALDATA / f"auto_tickets_{target_date}.json"),
+        len(accas_out), force=args.force,
+    ):
+        print(f"REFUSING to overwrite auto_tickets_{target_date}.* "
+              f"(frozen/non-empty ledger guard; keeping existing files).")
+    else:
+        (LOCALDATA / f"auto_tickets_{target_date}.json").write_text(json.dumps(out, indent=2))
+        (LOCALDATA / f"auto_tickets_{target_date}.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
+        (LOCALDATA / "auto_tickets_today.json").write_text(json.dumps(out, indent=2))
+        (LOCALDATA / "auto_tickets_today.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
     # --- RECONSTRUCT missing historical open_slips (Edge parity) ---
     try:
         from datetime import timedelta
@@ -633,18 +674,23 @@ def main():
         save_state(state)
         return 0
     else:
-        state["open_slips"] = [s for s in state.get("open_slips", []) if s.get("date") != target_date]
-        if accas_out:
-            new_slip = {
-                "date": target_date,
-                "generated_at": now.isoformat(),
-                "accas": accas_out,
-                "staked_pct": round(total_stake, 4),
-                "stake_per_acca_pct": round(total_stake / len(accas), 4) if accas else 0,
-            }
-            state["open_slips"].append(new_slip)
-            print(f"Added open slip for {target_date} with {len(accas_out)} accas to state")
-        save_state(state)
+        booked_accas = [a for s in (existing_today or []) for a in s.get("accas", [])]
+        if accas_out or not booked_accas:
+            state["open_slips"] = [s for s in state.get("open_slips", []) if s.get("date") != target_date]
+            if accas_out:
+                new_slip = {
+                    "date": target_date,
+                    "generated_at": now.isoformat(),
+                    "accas": accas_out,
+                    "staked_pct": round(total_stake, 4),
+                    "stake_per_acca_pct": round(total_stake / len(accas), 4) if accas else 0,
+                }
+                state["open_slips"].append(new_slip)
+                print(f"Added open slip for {target_date} with {len(accas_out)} accas to state")
+            save_state(state)
+        else:
+            print(f"Keeping existing open slip for {target_date} ({len(booked_accas)} accas); "
+                  f"empty regen must not drop booked slips")
     print(f"Auto tickets for {target_date}: {len(accas)} accas, {len(kept)} playable, {len(playable)} total playable, {len(picks)} total picks")
     for acca in accas:
         print(f"  {acca.get('type')} @ {acca.get('odds')} legs {len(acca.get('legs',[]))}")

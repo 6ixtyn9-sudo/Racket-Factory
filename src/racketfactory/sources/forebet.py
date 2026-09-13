@@ -504,7 +504,11 @@ class ForebetPredictor:
                         date_str = date_match.group(1)
                         time_str = date_match.group(2)
                         players_part = link_text[:date_match.start()].strip()
-                        for fmt in ("%d/%m/%Y", "%m/%d/%Y"):
+                        # Forebet renders US MM/DD/YYYY (e.g. 09/11/2026 = Sep 11).
+                        # MM/DD MUST be tried first: DD/MM-first misreads Sep 11/12
+                        # as Nov/Dec 9 (observed: Sept matches filed under
+                        # predictions_forebet_2026-11/2026-12.csv.gz).
+                        for fmt in ("%m/%d/%Y", "%d/%m/%Y"):
                             try:
                                 dt = datetime.strptime(date_str, fmt)
                                 match_date = dt.strftime("%Y-%m-%d")
