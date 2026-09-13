@@ -99,9 +99,19 @@ def merge_comparison_rows(
 
     def _surname_overlap(a: str, b: str) -> bool:
         try:
-            ta = set(surname_tokens(a))
-            tb = set(surname_tokens(b))
-            return bool(ta & tb) if ta and tb else False
+            from racketfactory.settlement import _tok_eq
+
+            ta = surname_tokens(a)
+            tb = surname_tokens(b)
+            if not ta or not tb:
+                return False
+            if set(ta) & set(tb):
+                return True
+            for x in ta:
+                for y in tb:
+                    if _tok_eq(x, y):
+                        return True
+            return False
         except Exception:
             return False
 
