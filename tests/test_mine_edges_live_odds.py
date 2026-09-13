@@ -82,3 +82,36 @@ def test_selection_basis_tracked():
     })
     base = select_player_from_row(row, "2026-06-30")
     assert base["_selection_basis"] == "arbitrary_default"
+
+
+def test_selected_odds_accepts_single_side_scraped_fallback():
+    # Forebet publishes one honest coef on its predicted side: usable for
+    # the selected side (paper track downstream).
+    odds, reason = selected_odds_is_usable(_live_row(odds_a=1.78, odds_b=None), "player_a", 0.64)
+
+    assert odds == 1.78
+    assert reason is None
+
+
+def test_selected_odds_rejects_single_side_scraped_when_selected_missing():
+    odds, reason = selected_odds_is_usable(_live_row(odds_a=1.78, odds_b=None), "player_b", 0.36)
+
+    assert odds is None
+    assert reason == "missing selected-side odds"
+
+
+def test_selected_odds_rejects_incoherent_scraped_pair_with_both_sides():
+    # Both sides present but incoherent (implied 0.66): a corrupt pair, not
+    # an honest single side.
+    odds, reason = selected_odds_is_usable(_live_row(odds_a=1.78, odds_b=9.70), "player_a", 0.64)
+
+    assert odds is None
+    assert reason == "incomplete/invalid ScrapedFallback live odds pair"
+
+
+def test_selected_odds_keeps_api_strict_pair():
+    odds, reason = selected_odds_is_usable(
+        _live_row(source="TheOddsAPI", odds_a=1.78, odds_b=None), "player_a", 0.64)
+
+    assert odds is None
+    assert reason == "incomplete/invalid TheOddsAPI live odds pair"

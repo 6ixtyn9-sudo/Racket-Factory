@@ -162,3 +162,54 @@ def test_build_upcoming_fallback_card_handles_reversed_source_row(monkeypatch):
     assert card.loc[0, "odds_b"] == 2.45
     assert card.loc[0, "debug_scraped_odds_home"] == 1.55
     assert card.loc[0, "debug_scraped_odds_away"] == 2.45
+
+
+def test_forecast_fallback_promotes_single_side_scraped_odds(monkeypatch):
+    monkeypatch.setattr(mine_edges, "fetch_the_odds_api_rows", lambda target_date: [])
+
+    enriched = mine_edges.enrich_fallback_card_with_api_odds(_forecast_card(1.78, None), "2026-06-30")
+
+    assert len(enriched) == 1
+    assert enriched.loc[0, "_odds_source"] == "ScrapedFallback"
+    assert enriched.loc[0, "odds_a"] == 1.78
+    assert pd.isna(enriched.loc[0, "odds_b"])
+    assert enriched.loc[0, "_comment"] == "forecast_upcoming_scraped_fallback_priced"
+
+
+def test_build_upcoming_fallback_card_prices_single_side_forebet_row(monkeypatch):
+    # Run-#209 class: fresh Forebet rows carry one honest coef (away side
+    # here). The grouped card must keep it and price the pick (paper).
+    class EmptyPredictor:
+        def fetch_daily(self):
+            return []
+        def fetch_daily_predictions(self, day):
+            return []
+
+    class ForebetRows:
+        def fetch_daily_predictions(self, day):
+            return [{
+                "match_date": "2026-06-30",
+                "match_time": "13:30",
+                "match_type": "Singles",
+                "player_home": "C. Tabur",
+                "player_away": "H. Mayot",
+                "tournament": "Challenger Blois",
+                "surface": "Clay",
+                "predicted_winner": "2",
+                "prob_home": 36,
+                "prob_away": 64,
+                "odds_home": None,
+                "odds_away": 1.78,
+            }]
+
+    monkeypatch.setattr(mine_edges, "PredixSportPredictor", EmptyPredictor)
+    monkeypatch.setattr(mine_edges, "BetClanPredictor", EmptyPredictor)
+    monkeypatch.setattr(mine_edges, "ForebetPredictor", ForebetRows)
+    monkeypatch.setattr(mine_edges, "fetch_the_odds_api_rows", lambda target_date: [])
+
+    card = mine_edges.build_upcoming_fallback_card("2026-06-30")
+
+    assert len(card) == 1
+    assert card.loc[0, "_odds_source"] == "ScrapedFallback"
+    assert pd.isna(card.loc[0, "odds_a"])
+    assert card.loc[0, "odds_b"] == 1.78

@@ -250,6 +250,8 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
     warehouse live injection.  Keep The Odds API as first choice, but when API
     coverage is missing promote the source scrape pair only if it passes the
     same side-alignment and two-way sanity checks used for same-day live rows.
+    A lone honest side (Forebet coef on its predicted side) promotes
+    single-side for paper-track use.
     """
     if card.empty:
         return card
@@ -324,7 +326,20 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
             row.get("debug_scraped_odds_away"),
         )
         if not valid_two_way_decimal_pair(scraped_home, scraped_away):
-            continue
+            ch = coerce_decimal_odds(scraped_home)
+            ca = coerce_decimal_odds(scraped_away)
+            # Both sides present but incoherent -> reject (e.g. 9.50/9.70).
+            if ch is not None and ca is not None:
+                continue
+            # Nothing usable -> reject.
+            if ch is None and ca is None:
+                continue
+            # One honest side (Forebet coef on its predicted side): promote
+            # single-side. Paper track downstream; API stays strict-pair.
+            if ch is None:
+                scraped_home = pd.NA
+            if ca is None:
+                scraped_away = pd.NA
 
         out.at[idx, "odds_home"] = scraped_home
         out.at[idx, "odds_away"] = scraped_away
@@ -479,12 +494,16 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
         if pd.isna(selected_prob):
             selected_prob = max_prob
 
+        selected_odds_key = "odds_home" if selected_pick == "player_a" else "odds_away"
+        # A row is usable when it carries a valid pair OR a valid selected-side
+        # price (Forebet publishes a single honest coef on its predicted side;
+        # EV/pricing downstream consume the selected side only).
         usable_odds_rows = [
             rr for rr in oriented_rows
             if valid_two_way_decimal_pair(rr.get("odds_home"), rr.get("odds_away"))
+            or coerce_decimal_odds(rr.get(selected_odds_key)) is not None
         ]
         if usable_odds_rows:
-            selected_odds_key = "odds_home" if selected_pick == "player_a" else "odds_away"
             best_odds_row = max(
                 usable_odds_rows,
                 key=lambda rr: coerce_decimal_odds(rr.get(selected_odds_key)) or 0.0,
@@ -626,8 +645,18 @@ def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: 
         usable_live_sources = {"TheOddsAPI", "ScrapedFallback"}
         if odds_source not in usable_live_sources:
             return None, "missing usable live odds"
-        if not valid_two_way_decimal_pair(row.get("odds_a"), row.get("odds_b")):
+        pair_ok = valid_two_way_decimal_pair(row.get("odds_a"), row.get("odds_b"))
+        if not pair_ok and odds_source != "ScrapedFallback":
             return None, f"incomplete/invalid {odds_source} live odds pair"
+        if not pair_ok:
+            # Single-side scraped fallback (Forebet coef): usable for the
+            # selected side only, and only when the other side is absent (a
+            # present-but-incoherent other side means a corrupt pair).
+            # Paper track downstream; API prices stay strict-pair.
+            side_tok = normalize_side_token(selected_side)
+            other_raw = row.get("odds_b" if side_tok == "player_a" else "odds_a")
+            if coerce_decimal_odds(other_raw) is not None:
+                return None, f"incomplete/invalid {odds_source} live odds pair"
         side = normalize_side_token(selected_side)
         other_odds = coerce_decimal_odds(row.get("odds_b" if side == "player_a" else "odds_a"))
         if (

@@ -63,3 +63,20 @@ def test_short_odds_excluded_from_priced():
     priced, paper, _ = at.build_accas(pool)
     # Only one priced-eligible leg -> no priced acca possible
     assert priced == []
+
+
+def test_scraped_fallback_never_real_odds():
+    assert at._leg_real_odds({"odds": 1.78, "odds_source": "ScrapedFallback"}) is None
+    assert at._leg_real_odds({"odds": 1.78, "odds_source": "TheOddsAPI",
+                              "_is_paper": True}) is None
+    assert at._leg_real_odds({"odds": 1.78, "odds_source": "OddsPortal"}) == 1.78
+    assert at._leg_real_odds({"odds": 1.78, "odds_source": "Bzzoiro"}) == 1.78
+
+
+def test_scraped_leg_forced_to_paper_track():
+    pool = [_pick("A1 vs B1", "A1", odds=1.78, src="ScrapedFallback"),
+            _pick("A2 vs B2", "A2", odds=2.10, src="ScrapedFallback")]
+    priced, paper, _ = at.build_accas(pool)
+    assert priced == []
+    assert paper and all(a["paper"] for a in paper)
+    assert all(a["odds"] is None for a in paper)

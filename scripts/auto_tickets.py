@@ -137,7 +137,9 @@ def load_picks(target_date: str) -> list[dict]:
             continue
     return []
 
-_UNTRUSTED_ODDS_SOURCES = {"", "nan", "none", "ml_estimated", "<na>"}
+# Market prices only: anything else (scraped fallback, ML estimates, blanks)
+# is paper-track, never staked. Mirrors market_basis_for_pick's api set.
+_TRUSTED_MARKET_SOURCES = {"theoddsapi", "oddsportal", "bzzoiro"}
 
 
 def _leg_real_odds(pick: dict):
@@ -148,8 +150,10 @@ def _leg_real_odds(pick: dict):
     """
     if pick.get("odds_reject_reason"):
         return None
+    if pick.get("_is_paper"):
+        return None
     src = str(pick.get("odds_source") or "").strip().lower()
-    if src in _UNTRUSTED_ODDS_SOURCES:
+    if src not in _TRUSTED_MARKET_SOURCES:
         return None
     try:
         o = float(pick.get("odds"))
