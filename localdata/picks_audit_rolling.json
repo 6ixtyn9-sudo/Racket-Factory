@@ -33,22 +33,6 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_DEAD_EDGE",
-      "date": "2026-09-13",
-      "match": "T. Legout vs E. Bynoe",
-      "reason": "result not final: live/in-progress markers present",
-      "selected_player": "T. Legout",
-      "series": "Challenger",
-      "settle_date": "2026-09-13",
-      "settle_score": "",
-      "settle_source": "",
-      "source": "Forebet",
-      "status": "pending_no_result",
-      "surface": "Hard",
-      "tour": "CHALLENGER",
-      "won": null
-    },
-    {
       "bucket": "WATCHLIST_NO_ODDS",
       "date": "2026-09-13",
       "match": "A. Parks vs M. Sherif",
@@ -68,7 +52,7 @@
   "archived_pick_dates": [
     "2026-09-13"
   ],
-  "archived_pick_rows": 4,
+  "archived_pick_rows": 3,
   "by_bucket": {},
   "by_ledger_kind": {},
   "by_series": {},
@@ -81,7 +65,7 @@
   "overall": {
     "conflict_picks": 0,
     "hit_rate": null,
-    "pending_picks": 4,
+    "pending_picks": 3,
     "priced_paper": 0,
     "priced_picks": 0,
     "priced_real": 0,
@@ -98,7 +82,7 @@
     "selected_won_set3_rate": null,
     "set_diagnostic_picks": 0,
     "settled_picks": 0,
-    "total_picks": 4,
+    "total_picks": 3,
     "void_picks": 0,
     "wins": 0
   },

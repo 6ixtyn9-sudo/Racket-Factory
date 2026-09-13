@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-14
 ============================================================
-Generated at: 2026-09-13 22:52:47
-Snapshot as of: 2026-09-13T22:52:06+02:00
+Generated at: 2026-09-13 23:13:21
+Snapshot as of: 2026-09-13T23:07:46+02:00
 Ledger kind: forecast
 
 
@@ -16,14 +16,12 @@ CAUTION PICKS
 WATCHLIST PICKS
 ============================================================
   [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] Cristina Bucsa vs Bianca Andreescu         KO 00:00 -> BIANCA ANDREESCU  conf 60% @1.77  EV +0.06u
-     bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=55  roi=37.12%
+     bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=56  roi=36.53%
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] Lea Boskovic vs Raluca G Serban            KO 09:00 -> LEA BOSKOVIC  conf 63% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=55  roi=37.12%
   [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] Elena Malygina vs Gabriella Da Silva Fick  KO 09:00 -> ELENA MALYGINA  conf 61% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=55  roi=37.12%
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=56  roi=36.53%
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
