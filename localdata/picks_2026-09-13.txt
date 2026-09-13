@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-13
 ============================================================
-Generated at: 2026-09-13 20:46:56
+Generated at: 2026-09-13 21:01:36
 
 
 CERTIFIED CLEAN PICKS
@@ -13,47 +13,12 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] L. Staeheli vs M. Exsted                   KO 22:25 -> L. STAEHELI  conf 72% @1.80  EV +0.30u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] B. N. Nakashima vs K. Bigun                KO 22:25 -> K. BIGUN  conf 55% @2.20  EV +0.21u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Fenty vs R. Seggerman                   KO 23:55 -> A. FENTY  conf 54% @2.00  EV +0.08u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  (none)
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  [live_only_fallback] Ekaterina Yashina vs Kylie Collins         KO 10:00 -> KYLIE COLLINS  conf 89% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Margaux Rouvroy vs Sofia Johnson           KO 13:00 -> SOFIA JOHNSON  conf 85% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Zhibek Kulambayeva vs Malaika Rapolu       KO 14:30 -> MALAIKA RAPOLU  conf 83% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Kozyreva / Lumsden vs Day / Zarazua        KO 20:00 -> KOZYREVA / LUMSDEN  conf 75% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Georgina Garcia-Perez vs Ariana Arseneault KO 13:00 -> ARIANA ARSENEAULT  conf 71% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Tena Lukas vs Madison Sieg                 KO 12:30 -> TENA LUKAS  conf 67% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Kucmova / Laboutkova vs Ibragimova / Zayts KO 13:00 -> KUCMOVA / LABOUTKOVA  conf 65% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Parks vs M. Sherif                      KO 20:00 -> M. SHERIF  conf 65% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] D. Spiteri vs M. E. Reasco Gonzalez        KO 18:00 -> D. SPITERI  conf 63% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Rositsa Dencheva vs Alevtina Ibragimova    KO 11:30 -> ROSITSA DENCHEVA  conf 63% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Oceane Dodin vs Reese Brantmeier           KO 14:30 -> REESE BRANTMEIER  conf 61% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Gabriella Da Silva Fick vs Stephanie Judit KO 11:30 -> STEPHANIE JUDITH VISSCHER  conf 60% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Jessica Pieri vs Ruth Roura Llaverias      KO 12:30 -> JESSICA PIERI  conf 60% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Fiona Ferro vs Noma Noha Akugue            KO 13:00 -> FIONA FERRO  conf 57% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] F. Lechno-Wasiutynski vs E. Zhu            KO 20:55 -> E. ZHU  conf 57% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Diletta Cherubini vs Isabella Shinikova    KO 14:00 -> DILETTA CHERUBINI  conf 53% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] A. Parks vs M. Sherif                      KO 20:00 -> M. SHERIF  conf 65% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=54  roi=37.65%
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -65,28 +30,14 @@ SKIPPED — VETO CONTEXT
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
-  [live_only_fallback] J. Von der Schulenburg vs R. Molleker      KO 13:30 -> R. MOLLEKER  conf 73% @1.33  EV -0.03u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] G. Grumet vs D. Ostapenkov                 KO 23:55 -> D. OSTAPENKOV  conf 66% @1.17  EV -0.23u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] D. E. Galan vs M. Vrbensky                 KO 11:00 -> D. E. GALAN  conf 65% @1.14  EV -0.26u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] J. Boulais vs Arribage / Cornea            KO 21:15 -> J. BOULAIS  conf 64% @1.11  EV -0.29u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] T. Legout vs E. Bynoe                      KO 23:00 -> T. LEGOUT  conf 63% @1.07  EV -0.33u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Darja Vidmanova vs Janice Tjen             KO 20:30 -> JANICE TJEN  conf 56% @1.73  EV -0.03u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Panna Udvardy vs Lois Boisson              KO 21:30 -> LOIS BOISSON  conf 54% @1.62  EV -0.12u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Alycia Parks vs Varvara Lepchenko          KO 19:00 -> ALYCIA PARKS  conf 54% @1.44  EV -0.22u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] O. Baris vs L. Claverie                    KO 20:55 -> O. BARIS  conf 54% @1.22  EV -0.34u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Peyton Stearns vs Emiliana Arango          KO 20:00 -> PEYTON STEARNS  conf 53% @1.50  EV -0.20u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] N. Schunk vs E. Kazionova                  KO 12:10 -> N. SCHUNK  conf 53% @1.14  EV -0.40u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] G. Grumet vs D. Ostapenkov                 KO 23:55 -> D. OSTAPENKOV  conf 66% @1.17  EV -0.23u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=54  roi=37.65%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] D. E. Galan vs M. Vrbensky                 KO 11:00 -> D. E. GALAN  conf 65% @1.14  EV -0.26u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=54  roi=37.65%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] J. Boulais vs Arribage / Cornea            KO 21:15 -> J. BOULAIS  conf 64% @1.11  EV -0.29u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=54  roi=37.65%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] T. Legout vs E. Bynoe                      KO 23:00 -> T. LEGOUT  conf 63% @1.07  EV -0.33u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=54  roi=37.65%
 
 ⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
 ⚠️  Bet only what you can afford to lose.
