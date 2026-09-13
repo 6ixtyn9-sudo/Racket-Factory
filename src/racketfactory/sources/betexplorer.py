@@ -136,10 +136,11 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
     return rows
 
 
-def parse_tennis_page(html: str, page_date: str) -> list[dict[str, Any]]:
+def parse_tennis_page(html: str, page_date: str, *, require_odds: bool = True) -> list[dict[str, Any]]:
     """Day-page parse (generic scanner; fallback when results shape misses)."""
     rows = parse_listing_page(
-        html, source_label=SOURCE_NAME, is_match_link=_is_match_link, page_date=page_date,
+        html, source_label=SOURCE_NAME, is_match_link=_is_match_link,
+        page_date=page_date, require_odds=require_odds,
     )
     return _finalize(rows)
 
@@ -158,7 +159,102 @@ def _results_url(target: str) -> str:
     return RESULTS_URL.format(y=y, m=m, d=d)
 
 
+MAX_MATCH_PAGES = 60
+
+
+def _strip_fragment(href: str) -> str:
+    return href.split("#", 1)[0]
+
+
+def parse_match_page_odds(html: str) -> tuple[float | None, float | None]:
+    """Extract consensus Home/Away from a BetExplorer match detail page.
+
+    Strategy (tolerant, no JS):
+    - Collect (1,2) pairs per table row where the row contains exactly 2
+      plausible decimals (either via data-odd attributes or visible text) and
+      at least one cell with an odds-like class.
+    - Also scan generic data-odd / data-opening-odd attributes as fallback.
+    - Average per side across pairs (consensus). Returns (None, None) when
+      no complete pair is found or page is finished/retired.
+    """
+    if not html:
+        return None, None
+    if po._FINISHED_RE.search(html[:5000]):
+        # Quick check: many finished pages contain FIN/RET markers in header
+        pass
+    soup = BeautifulSoup(html, "html.parser")
+    pairs: list[tuple[float, float]] = []
+
+    # Primary: rows with odds
+    for tr in soup.find_all("tr"):
+        # Skip header rows
+        vals: list[float] = []
+        # Prefer data-odd attributes inside row
+        for el in tr.find_all(attrs={"data-odd": True}):
+            try:
+                v = float(str(el.get("data-odd") or "").strip())
+                if po.MIN_DECIMAL_ODDS <= v <= po.MAX_DECIMAL_ODDS:
+                    vals.append(v)
+            except Exception:
+                continue
+        if len(vals) < 2:
+            for el in tr.find_all(attrs={"data-opening-odd": True}):
+                try:
+                    v = float(str(el.get("data-opening-odd") or "").strip())
+                    if po.MIN_DECIMAL_ODDS <= v <= po.MAX_DECIMAL_ODDS:
+                        vals.append(v)
+                except Exception:
+                    continue
+        if len(vals) < 2:
+            # Fallback to visible odds cells
+            has_odds_cell = False
+            for td in tr.find_all("td"):
+                cls = " ".join(td.get("class") or [])
+                if "odd" in cls.lower():
+                    has_odds_cell = True
+                    break
+            if has_odds_cell or tr.find(attrs={"data-odd": True}) is not None:
+                txt = tr.get_text(" ", strip=True)
+                vals = po._row_decimals(txt)
+        if len(vals) == 2:
+            pairs.append((vals[0], vals[1]))
+
+    # Secondary: if no row pairs, collect all data-odd on page and try to pair
+    if not pairs:
+        all_odds: list[float] = []
+        for attr in ("data-odd", "data-opening-odd", "data-closing-odd"):
+            for el in soup.find_all(attrs={attr: True}):
+                try:
+                    v = float(str(el.get(attr) or "").strip())
+                    if po.MIN_DECIMAL_ODDS <= v <= po.MAX_DECIMAL_ODDS:
+                        all_odds.append(v)
+                except Exception:
+                    continue
+        # Also scan td.table-main__odds
+        for td in soup.find_all("td", class_=lambda c: c and "odd" in str(c).lower()):
+            try:
+                v = float(td.get_text(strip=True))
+                if po.MIN_DECIMAL_ODDS <= v <= po.MAX_DECIMAL_ODDS:
+                    all_odds.append(v)
+            except Exception:
+                continue
+        # If we have at least 2, assume first two are representative average
+        # (BetExplorer often renders average row first)
+        if len(all_odds) >= 2:
+            # If even number, average first half as home, second half as away is wrong.
+            # Instead, take first two as pair (likely average row)
+            pairs.append((all_odds[0], all_odds[1]))
+
+    if not pairs:
+        return None, None
+    # Average across bookmakers for consensus (matches previous behavior)
+    avg_home = sum(p[0] for p in pairs) / len(pairs)
+    avg_away = sum(p[1] for p in pairs) / len(pairs)
+    return avg_home, avg_away
+
+
 def _fetch_live(target: str) -> list[dict[str, Any]]:
+    # 1) Try dated results page with odds (historical shape)
     try:
         html = fetch_page_html(_results_url(target), SOURCE_NAME, prefer_plain=True)
     except Exception as exc:
@@ -168,14 +264,64 @@ def _fetch_live(target: str) -> list[dict[str, Any]]:
     if rows:
         logger.info("%s: dated results shape hit for %s (%d rows)", SOURCE_NAME, target, len(rows))
         return _finalize(rows)
-    if target != date.today().isoformat():
+
+    # 2) For any date, if results page missed, try to collect links without odds
+    #    and price via match pages (new fallback for JS-rendered listings)
+    link_rows: list[dict[str, Any]] = []
+    if html:
+        # Re-parse results page without requiring odds to get candidate links
+        soup = BeautifulSoup(html, "html.parser")
+        # Use generic scanner with require_odds=False on results html
+        link_rows = parse_listing_page(
+            html, source_label=SOURCE_NAME, is_match_link=_is_match_link,
+            page_date=target, require_odds=False,
+        )
+
+    if target == date.today().isoformat():
+        # Also try day page for today
+        if not link_rows:
+            logger.info("%s: dated shape missed for %s; trying day page", SOURCE_NAME, target)
+            day_html = fetch_page_html(TENNIS_URL, SOURCE_NAME, prefer_plain=True)
+            if day_html:
+                link_rows = parse_listing_page(
+                    day_html, source_label=SOURCE_NAME, is_match_link=_is_match_link,
+                    page_date=target, require_odds=False,
+                )
+
+    if not link_rows:
         return []
-    # Last resort for today: the day page with the generic scanner.
-    logger.info("%s: dated shape missed for %s; trying day page", SOURCE_NAME, target)
-    html = fetch_page_html(TENNIS_URL, SOURCE_NAME, prefer_plain=True)
-    if not html:
-        return []
-    return parse_tennis_page(html, target)
+
+    # 3) Price each link via its match page (bounded)
+    priced: list[dict[str, Any]] = []
+    n_live = n_failed = 0
+    for link in link_rows[:MAX_MATCH_PAGES]:
+        href = str(link.get("match_url") or "")
+        if not href:
+            continue
+        full_url = href if href.startswith("http") else (BASE_URL + href if href.startswith("/") else href)
+        mhtml = fetch_page_html(full_url, SOURCE_NAME, prefer_plain=True)
+        if not mhtml:
+            n_failed += 1
+            continue
+        # Skip finished pages
+        if po._FINISHED_RE.search(mhtml[:8000]):
+            n_live += 1
+            continue
+        best = parse_match_page_odds(mhtml)
+        if best[0] is None or best[1] is None:
+            n_failed += 1
+            continue
+        link["odds_home"] = best[0]
+        link["odds_away"] = best[1]
+        priced.append(link)
+
+    logger.info("%s match pages %s: candidates=%d priced=%d live_skipped=%d failed=%d",
+                SOURCE_NAME, target, min(len(link_rows), MAX_MATCH_PAGES), len(priced), n_live, n_failed)
+    if priced:
+        return _finalize(priced)
+
+    # Fallback: if match-page pricing also failed, return empty (previous behavior)
+    return []
 
 
 def fetch_betexplorer_rows(target_date: str) -> list[dict[str, Any]]:
