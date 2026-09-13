@@ -81,9 +81,9 @@ jobs:
             localdata/oddsportal_cache
             localdata/fetch_cache
             localdata/*.csv.gz
-          key: localdata-v5-cache-${{ github.run_id }}
+          key: localdata-v6-cache-${{ github.run_id }}
           restore-keys: |
-            localdata-v5-cache-
+            localdata-v6-cache-
 
       - name: Restore committed data (override stale cache)
         run: |
@@ -120,7 +120,7 @@ jobs:
             localdata/oddsportal_cache
             localdata/fetch_cache
             localdata/*.csv.gz
-          key: localdata-v5-cache-${{ github.run_id }}
+          key: localdata-v6-cache-${{ github.run_id }}
 
       - name: Persist pipeline state to git (Edge-Factory parity)
         if: always()
