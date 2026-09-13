@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from typing import Any, Callable
 
 from bs4 import BeautifulSoup, Tag
@@ -42,14 +43,30 @@ def fetch_page_html(url: str, source_label: str, *, timeout: int = 30) -> str:
 
     Uses the repo-standard chrome133a impersonation (the only confirmed
     Cloudflare bypass); falls back to plain requests for non-CF hosts.
+    On HTTP 429, honors Retry-After (capped) once, then retries a final time.
     """
-    html = _curl_fetch(url, source_label, timeout=timeout)
-    if html:
+    html, status, retry_after = _attempt_fetch(url, source_label, timeout=timeout)
+    if html or status != 429:
         return html
-    return _plain_fetch(url, source_label, timeout=timeout)
+    wait = max(5, min(retry_after or 25, 60))
+    logger.warning("%s rate-limited (429) for %s; retrying once after %ds",
+                   source_label, url, wait)
+    time.sleep(wait)
+    html, _, _ = _attempt_fetch(url, source_label, timeout=timeout)
+    return html
 
 
-def _curl_fetch(url: str, source_label: str, *, timeout: int) -> str:
+def _attempt_fetch(url: str, source_label: str, *,
+                   timeout: int) -> tuple[str, int | None, int]:
+    html, status, retry_after = _curl_fetch(url, source_label, timeout=timeout)
+    if html or status not in (None, 429):
+        return html, status, retry_after
+    # curl path failed or was limited: one plain-requests attempt.
+    html2, status2, retry_after2 = _plain_fetch(url, source_label, timeout=timeout)
+    return html2, status2, max(retry_after, retry_after2)
+
+
+def _curl_fetch(url: str, source_label: str, *, timeout: int) -> tuple[str, int | None, int]:
     try:
         from curl_cffi import requests as curl_requests
         resp = curl_requests.get(
@@ -58,11 +75,11 @@ def _curl_fetch(url: str, source_label: str, *, timeout: int) -> str:
         )
     except Exception as exc:
         logger.warning("%s curl fetch failed for %s: %s", source_label, url, exc)
-        return ""
+        return "", None, 0
     return _response_text(resp, url, source_label)
 
 
-def _plain_fetch(url: str, source_label: str, *, timeout: int) -> str:
+def _plain_fetch(url: str, source_label: str, *, timeout: int) -> tuple[str, int | None, int]:
     try:
         import requests as std_requests
         resp = std_requests.get(
@@ -71,22 +88,30 @@ def _plain_fetch(url: str, source_label: str, *, timeout: int) -> str:
         )
     except Exception as exc:
         logger.warning("%s plain fetch failed for %s: %s", source_label, url, exc)
-        return ""
+        return "", None, 0
     return _response_text(resp, url, source_label)
 
 
-def _response_text(resp: object, url: str, source_label: str) -> str:
+def _response_text(resp: object, url: str, source_label: str) -> tuple[str, int | None, int]:
     try:
         status = resp.status_code  # type: ignore[union-attr]
     except Exception:
-        return ""
+        return "", None, 0
     if status != 200:
         logger.warning("%s fetch %s: HTTP %s", source_label, url, status)
-        return ""
+        return "", status if isinstance(status, int) else None, _retry_after(resp)
     try:
-        return resp.text or ""  # type: ignore[union-attr]
+        return resp.text or "", status, 0  # type: ignore[union-attr]
     except Exception:
-        return ""
+        return "", status if isinstance(status, int) else None, 0
+
+
+def _retry_after(resp: object) -> int:
+    try:
+        headers = resp.headers  # type: ignore[union-attr]
+        return int(str(headers.get("Retry-After", "") or "0").strip() or "0")
+    except Exception:
+        return 0
 
 
 def _sanitize_row_text(text: str) -> str:
@@ -107,12 +132,47 @@ def _row_decimals(row_text: str) -> list[float]:
     return vals
 
 
-def _row_container(link: Tag) -> Tag | None:
+_CLIMB_MAX_LEVELS = 3
+_CLIMB_MAX_CHARS = 4000
+
+
+def _match_link_count(container: Tag, is_match_link: Callable[[str], dict[str, Any] | None]) -> int:
+    n = 0
+    for anchor in container.find_all("a", href=True):
+        if is_match_link(str(anchor.get("href") or "")) is not None:
+            n += 1
+            if n > 1:
+                break
+    return n
+
+
+def _row_container(link: Tag, names_text: str,
+                   is_match_link: Callable[[str], dict[str, Any] | None]) -> Tag | None:
+    """Smallest box holding this match alone with (hopefully) its prices.
+
+    Tables/lists give the row directly. For Next.js div soup, climb from the
+    link's parent while the box holds <=1 match and no prices yet. Never
+    return a box holding 2+ matches (sibling prices would misattribute).
+    """
     for tag in ("tr", "li"):
         parent = link.find_parent(tag)
         if parent is not None:
-            return parent
-    return link.parent if isinstance(link.parent, Tag) else None
+            return parent if _match_link_count(parent, is_match_link) <= 1 else None
+    node = link.parent if isinstance(link.parent, Tag) else None
+    best: Tag | None = None
+    for _ in range(_CLIMB_MAX_LEVELS + 1):
+        if node is None or node.name in ("html", "body", "[document]"):
+            break
+        if len(node.get_text(" ", strip=True)) > _CLIMB_MAX_CHARS:
+            break
+        if _match_link_count(node, is_match_link) > 1:
+            break
+        best = node
+        scan = node.get_text(" ", strip=True).replace(names_text, " ")
+        if len(_row_decimals(scan)) >= 2:
+            break
+        node = node.parent if isinstance(node.parent, Tag) else None
+    return best
 
 
 def split_match_names(link_text: str) -> tuple[str, str]:
@@ -141,29 +201,41 @@ def parse_listing_page(
     soup = BeautifulSoup(html, "html.parser")
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
-    skipped_finished = 0
+    n_links = n_match = n_bad_names = n_no_box = 0
+    n_finished = n_few_decimals = n_dupes = 0
+    few_samples: list[str] = []
     for link in soup.find_all("a", href=True):
+        n_links += 1
         href = str(link.get("href") or "")
         ctx = is_match_link(href)
         if ctx is None:
             continue
+        n_match += 1
         names_text = link.get_text(" ", strip=True)
         home, away = split_match_names(names_text)
         if not home or not away:
+            n_bad_names += 1
             continue
-        container = _row_container(link)
-        row_text = container.get_text(" ", strip=True) if container else names_text
+        container = _row_container(link, names_text, is_match_link)
+        if container is None:
+            n_no_box += 1
+            continue
+        row_text = container.get_text(" ", strip=True)
         if _FINISHED_RE.search(row_text):
-            skipped_finished += 1
+            n_finished += 1
             continue
         # Remove the names themselves so hyphenated/second-decimal name parts
         # can never leak into the odds scan; then take the first two decimals.
         scan_text = row_text.replace(names_text, " ")
         decimals = _row_decimals(scan_text)
         if len(decimals) < 2:
+            n_few_decimals += 1
+            if len(few_samples) < 3:
+                few_samples.append(row_text)
             continue
         key = f"{home}\x00{away}"
         if key in seen:
+            n_dupes += 1
             continue
         seen.add(key)
         ko = _TIME_RE.search(row_text)
@@ -178,7 +250,12 @@ def parse_listing_page(
             "tour_hint": str(ctx.get("tour_hint") or ""),
             "match_url": href,
         })
-    if skipped_finished:
-        logger.info("%s: skipped %d finished rows on %s", source_label, skipped_finished, page_date)
-    logger.info("%s: parsed %d upcoming priced rows for %s", source_label, len(rows), page_date)
+    logger.info(
+        "%s scan %s: links=%d match_links=%d parsed=%d finished=%d "
+        "few_decimals=%d bad_names=%d no_box=%d dupes=%d",
+        source_label, page_date, n_links, n_match, len(rows), n_finished,
+        n_few_decimals, n_bad_names, n_no_box, n_dupes,
+    )
+    for sample in few_samples:
+        logger.info("%s few-decimals sample: %r", source_label, sample[:180])
     return rows
