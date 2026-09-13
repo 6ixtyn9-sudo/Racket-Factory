@@ -8,17 +8,17 @@
       "roi": null,
       "roi_paper": null,
       "roi_real": null,
-      "selected_won_any_set": 2,
+      "selected_won_any_set": 3,
       "selected_won_any_set_rate": 1.0,
-      "selected_won_set1": 2,
+      "selected_won_set1": 3,
       "selected_won_set1_rate": 1.0,
-      "selected_won_set2": 1,
-      "selected_won_set2_rate": 0.5,
+      "selected_won_set2": 2,
+      "selected_won_set2_rate": 0.666667,
       "selected_won_set3": 1,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 2,
-      "settled_picks": 2,
-      "wins": 2
+      "set_diagnostic_picks": 3,
+      "settled_picks": 3,
+      "wins": 3
     }
   },
   "audit_roi_by_surface": {
@@ -30,17 +30,17 @@
       "roi": null,
       "roi_paper": null,
       "roi_real": null,
-      "selected_won_any_set": 1,
+      "selected_won_any_set": 2,
       "selected_won_any_set_rate": 1.0,
-      "selected_won_set1": 1,
+      "selected_won_set1": 2,
       "selected_won_set1_rate": 1.0,
-      "selected_won_set2": 0,
-      "selected_won_set2_rate": 0.0,
+      "selected_won_set2": 1,
+      "selected_won_set2_rate": 0.5,
       "selected_won_set3": 1,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 1,
-      "settled_picks": 1,
-      "wins": 1
+      "set_diagnostic_picks": 2,
+      "settled_picks": 2,
+      "wins": 2
     },
     "Hard": {
       "hit_rate": 1.0,
@@ -72,17 +72,17 @@
       "roi": null,
       "roi_paper": null,
       "roi_real": null,
-      "selected_won_any_set": 1,
+      "selected_won_any_set": 2,
       "selected_won_any_set_rate": 1.0,
-      "selected_won_set1": 1,
+      "selected_won_set1": 2,
       "selected_won_set1_rate": 1.0,
-      "selected_won_set2": 0,
-      "selected_won_set2_rate": 0.0,
+      "selected_won_set2": 1,
+      "selected_won_set2_rate": 0.5,
       "selected_won_set3": 1,
       "selected_won_set3_rate": 1.0,
-      "set_diagnostic_picks": 1,
-      "settled_picks": 1,
-      "wins": 1
+      "set_diagnostic_picks": 2,
+      "settled_picks": 2,
+      "wins": 2
     },
     "WTA": {
       "hit_rate": 1.0,
@@ -170,5 +170,5 @@
       "wins": 17
     }
   },
-  "total_settled": 4732
+  "total_settled": 4744
 }

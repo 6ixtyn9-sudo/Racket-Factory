@@ -78,10 +78,10 @@
               "_selection_basis": "prediction",
               "_settle_basis": {
                 "match_date": "2026-09-13",
-                "score": ""
+                "score": "6-2 1-5"
               },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_reason": "result not final: score not final: incomplete final set 1-5",
               "bucket": "WATCHLIST_NO_ODDS",
               "confidence": 87.0,
               "context_used": "WTA Valencia Prediction",

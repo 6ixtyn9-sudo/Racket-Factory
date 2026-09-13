@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-13
 ============================================================
-Generated at: 2026-09-13 13:29:01
+Generated at: 2026-09-13 14:14:56
 
 
 CERTIFIED CLEAN PICKS
@@ -13,7 +13,7 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] Alexander Zverev vs Ben Shelton            KO 19:00 -> ALEXANDER ZVEREV  conf 61% @1.70  EV +0.04u
+  [live_only_fallback] Alexander Zverev vs Ben Shelton            KO 19:00 -> ALEXANDER ZVEREV  conf 61% @1.69  EV +0.03u
      bucket=WATCHLIST  tour=ATP  series=Grand Slam  surface=Hard  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
 
 WATCHLIST — NO MATCHED ODDS
