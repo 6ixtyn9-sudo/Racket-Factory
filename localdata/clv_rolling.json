@@ -4,44 +4,44 @@
   "audit_roi_by_tour": {},
   "calibration_by_confidence": {
     "High (70%+)": {
-      "calibration_error": 0.2231,
+      "calibration_error": 0.2286,
       "expected": 0.7,
-      "hit_rate": 0.9231,
-      "n": 13,
-      "wilson_lb": 0.6669,
-      "wins": 12
+      "hit_rate": 0.9286,
+      "n": 14,
+      "wilson_lb": 0.6853,
+      "wins": 13
     },
     "Low (<60%)": {
-      "calibration_error": 0.1296,
+      "calibration_error": 0.1316,
       "expected": 0.5,
-      "hit_rate": 0.6296,
-      "n": 54,
-      "wilson_lb": 0.4963,
-      "wins": 34
+      "hit_rate": 0.6316,
+      "n": 57,
+      "wilson_lb": 0.5018,
+      "wins": 36
     },
     "Medium (60-70%)": {
-      "calibration_error": 0.1636,
+      "calibration_error": 0.1857,
       "expected": 0.6,
-      "hit_rate": 0.7636,
-      "n": 55,
-      "wilson_lb": 0.6365,
-      "wins": 42
+      "hit_rate": 0.7857,
+      "n": 56,
+      "wilson_lb": 0.6618,
+      "wins": 44
     }
   },
   "calibration_by_source": {
     "foretennis": {
       "expected": null,
-      "hit_rate": 0.7671,
-      "n": 73,
-      "wilson_lb": 0.6583,
-      "wins": 56
+      "hit_rate": 0.7606,
+      "n": 71,
+      "wilson_lb": 0.6496,
+      "wins": 54
     },
     "market": {
       "expected": null,
-      "hit_rate": 0.6531,
-      "n": 49,
-      "wilson_lb": 0.5131,
-      "wins": 32
+      "hit_rate": 0.6964,
+      "n": 56,
+      "wilson_lb": 0.5666,
+      "wins": 39
     }
   },
   "calibration_by_tour": {
@@ -54,10 +54,10 @@
     },
     "UNKNOWN": {
       "expected": null,
-      "hit_rate": 0.725,
-      "n": 80,
-      "wilson_lb": 0.6186,
-      "wins": 58
+      "hit_rate": 0.7412,
+      "n": 85,
+      "wilson_lb": 0.6391,
+      "wins": 63
     },
     "WTA": {
       "expected": null,
@@ -67,5 +67,5 @@
       "wins": 15
     }
   },
-  "total_settled": 4699
+  "total_settled": 4702
 }
