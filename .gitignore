@@ -58,6 +58,7 @@ data/cache/
 !localdata/auto_tickets_performance.json
 !localdata/auto_tickets_today.json
 !localdata/auto_tickets_today.txt
+!localdata/odds_compare_status.json
 !localdata/clv_*.json
 !localdata/clv_*.md
 !localdata/.keepalive

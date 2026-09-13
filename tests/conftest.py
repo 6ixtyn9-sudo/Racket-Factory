@@ -11,8 +11,14 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _bypass_fetch_cache(monkeypatch):
+def _bypass_fetch_cache(monkeypatch, tmp_path):
     monkeypatch.setenv("RACKET_FACTORY_FETCH_CACHE_TTL_MINUTES", "0")
+    # Same isolation for the odds-compare leg-health snapshot: enrich paths
+    # under test must not write the real committed status file.
+    monkeypatch.setenv(
+        "RACKET_FACTORY_ODDS_COMPARE_STATUS_PATH",
+        str(tmp_path / "odds_compare_status.json"),
+    )
     yield
     # Defensive cleanup: no test should create the real cache dir, but if one
     # does (explicit ttl override without tmp dir), remove it afterwards.
