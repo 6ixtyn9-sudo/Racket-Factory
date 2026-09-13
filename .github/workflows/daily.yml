@@ -93,12 +93,6 @@ jobs:
             git checkout HEAD -- "$f" && echo "restored committed: $f"
           done
 
-      - name: Refresh tennis-data (current year)
-        continue-on-error: true
-        run: |
-          YEAR=$(date +%Y)
-          PYTHONPATH=src python3 scripts/backfill_tennisdata.py --year "$YEAR" --max-age-hours 24 || echo "tennisdata refresh failed (non-blocking; doctor flags staleness)"
-
       - name: Execute autonomous smart schedule
         run: |
           MODE='${{ github.event.inputs.mode }}'
