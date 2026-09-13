@@ -563,3 +563,151 @@ def test_tennisdata_download_retries_transient_503(tmp_path, monkeypatch):
     out2 = tennisdata.download_yearly_excel(2026, "WTA", tmp_path, force=True)
     assert out2 is None and len(calls2) == 3
     assert not (tmp_path / "2026w.xlsx").exists()
+
+
+# ------------------------------------------------ forebet Jina ground truth --
+
+
+def test_jina_fused_names_split():
+    from racketfactory.sources.forebet import _split_jina_players
+
+    # Jina fuses home/away without spaces; players carry multiple initials.
+    assert _split_jina_players("A. ZverevB. Shelton") == ("A. Zverev", "B. Shelton")
+    assert _split_jina_players("J. D. Hara FriendM. Basing") == ("J. D. Hara Friend", "M. Basing")
+    assert _split_jina_players("L. S. SteurJ. N. Torner Sensano") == ("L. S. Steur", "J. N. Torner Sensano")
+    assert _split_jina_players("G. Garcia-PerezA. Arseneault") == ("G. Garcia-Perez", "A. Arseneault")
+    assert _split_jina_players("D. SpiteriM. E. Reasco Gonzalez") == ("D. Spiteri", "M. E. Reasco Gonzalez")
+    # Spaced links keep working (regression).
+    assert _split_jina_players("F. Tiafoe B. Shelton") == ("F. Tiafoe", "B. Shelton")
+    assert _split_jina_players("") == ("", "")
+
+
+JINA_GROUND_TRUTH_MD = """\
+Tennis predictions for Today
+ATP US Open - Final
+[A. ZverevB. Shelton13/09/2026 20:00](https://www.forebet.com/en/tennis/matches/atp-singles/us-open/358444)
+![Image 4](https://www.forebet.com/images/fc/us.png)
+61 39
+1 3-1
+**3**
+1
+10.4
+-152
+WTA Guadalajara - 1/16-finals
+[A. ParksM. Sherif13/09/2026 20:00](https://www.forebet.com/en/tennis/matches/wta-singles/guadalajara/a-parks-m-sherif/358449)
+![Image 5](https://www.forebet.com/images/fc/mx.png)
+35 65
+2 0-2
+0
+**2**
+9.3
++220
+[P. UdvardyL. Boisson13/09/2026 22:30](https://www.forebet.com/en/tennis/matches/wta-singles/guadalajara/x/358451)
+46 54
+2 0-2
+0
+**2**
+9.2
+-149
+[O. SterniczukI. Gakhov13/09/2026 13:30](https://www.forebet.com/en/tennis/matches/challenger-men/szczecin/x/358475)
+27 73
+2 0-2
+0
+**2**
+8.3
+-5000
+[I. IvashkaM. Sharipov13/09/2026 10:00](https://www.forebet.com/en/tennis/matches/challenger-men/shanghai/x/358455)
+58 42
+1 2-0
+**2**
+0
+11.2
+-
+"""
+
+
+def _ground_truth_rows():
+    return {r["player_home"]: r
+            for r in ForebetPredictor().parse_jina_markdown(JINA_GROUND_TRUTH_MD, "2026-09-13")}
+
+
+def test_jina_ground_truth_names_probs_pred():
+    by_home = _ground_truth_rows()
+    assert len(by_home) == 5
+    assert by_home["A. Zverev"]["player_away"] == "B. Shelton"
+    assert by_home["A. Zverev"]["match_date"] == "2026-09-13"
+    assert (by_home["A. Zverev"]["prob_home"], by_home["A. Zverev"]["prob_away"]) == (61, 39)
+    assert by_home["A. Zverev"]["predicted_winner"] == "1"
+    assert by_home["A. Parks"]["predicted_winner"] == "2"
+
+
+def test_jina_positional_coef_one_sided():
+    by_home = _ground_truth_rows()
+    # American coef attributed to the matching side; avg-games never a price.
+    assert by_home["A. Zverev"]["odds_home"] == pytest.approx(1.6579, abs=1e-4)
+    assert by_home["A. Zverev"]["odds_away"] is None
+    assert by_home["A. Parks"]["odds_home"] == pytest.approx(3.2)
+    assert by_home["A. Parks"]["odds_away"] is None
+    # Closest-side attribution (away here).
+    assert by_home["P. Udvardy"]["odds_home"] is None
+    assert by_home["P. Udvardy"]["odds_away"] == pytest.approx(1.6711, abs=1e-4)
+
+
+def test_jina_coef_rejects_avg_games_pollution():
+    rows = ForebetPredictor().parse_jina_markdown(
+        "Tennis predictions for Today\n"
+        "[I. SimakinM. Purcell12/09/2026 10:00](https://www.forebet.com/en/tennis/matches/x/y/1/)\n"
+        "54 46\n1 2-0\n**2**\n0\n10.4\n+110\n", "2026-09-12")
+    assert len(rows) == 1
+    # Old code stored [10.4, 2.10]; avg-games must never be a price again.
+    assert rows[0]["odds_home"] is None
+    assert rows[0]["odds_away"] == pytest.approx(2.10)
+
+
+def test_jina_coef_stale_and_missing_discarded():
+    by_home = _ground_truth_rows()
+    # -5000 (1.02) on a 27/73 match matches neither side: stale garbage.
+    assert by_home["O. Sterniczuk"]["odds_home"] is None
+    assert by_home["O. Sterniczuk"]["odds_away"] is None
+    # "-" means no market; the avg line (11.2) must not become a price.
+    assert by_home["I. Ivashka"]["odds_home"] is None
+    assert by_home["I. Ivashka"]["odds_away"] is None
+
+
+def test_jina_decimal_coef_still_parses():
+    rows = ForebetPredictor().parse_jina_markdown(
+        "Tennis predictions for Today\n"
+        "[A. ZverevB. Shelton13/09/2026 20:00](https://www.forebet.com/en/tennis/matches/x/y/1/)\n"
+        "61 39\n1 3-1\n**3**\n1\n10.4\n1.66\n", "2026-09-13")
+    assert rows[0]["odds_home"] == pytest.approx(1.66)
+    assert rows[0]["odds_away"] is None
+
+
+def test_fetch_via_jina_rejects_stub_and_busts_cache(monkeypatch):
+    from types import SimpleNamespace
+
+    requested = []
+    stub = "Tennis predictions for Today\n" + "nav " * 800  # >2000 chars, no match links
+    full = ("Tennis predictions for Today\n[Zverev](https://www.forebet.com/en/tennis/matches/x/)\n"
+            + "rows " * 800)
+
+    def fake_get(url, *args, **kwargs):
+        requested.append(url)
+        text = full if "?fb=" in url else stub
+        return SimpleNamespace(status_code=200, text=text)
+
+    import curl_cffi.requests
+    monkeypatch.setattr(curl_cffi.requests, "get", fake_get)
+    import requests as std_requests
+    monkeypatch.setattr(std_requests, "get", fake_get)
+
+    got = ForebetPredictor()._fetch_via_jina("https://www.forebet.com/en/tennis/predictions-today")
+    assert got is not None and "/tennis/matches/" in got
+    assert any("?fb=" in u for u in requested)
+
+    # Stub on both attempts -> None (falls through to Playwright upstream).
+    monkeypatch.setattr(curl_cffi.requests, "get",
+                        lambda url, *a, **k: SimpleNamespace(status_code=200, text=stub))
+    monkeypatch.setattr(std_requests, "get",
+                        lambda url, *a, **k: SimpleNamespace(status_code=200, text=stub))
+    assert ForebetPredictor()._fetch_via_jina("https://www.forebet.com/en/tennis/x") is None

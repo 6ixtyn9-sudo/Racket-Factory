@@ -467,6 +467,40 @@ def _apply_page_day(rows: list[dict[str, Any]], expected_day: str | None, day_la
     return rows
 
 
+def _split_jina_players(players_part: str) -> tuple[str, str]:
+    """Split a Jina link-text player field into (home, away).
+
+    Jina fuses names without spaces ("A. ZverevB. Shelton") and players
+    carry multiple initials ("J. D. Hara FriendM. Basing"), so whitespace
+    token splitting misfires (it produced home="J." / home="A."). Split
+    before the first initial (after the start) that leaves a surname token
+    on both sides; fall back to the whitespace midpoint for initial-less
+    full-name links.
+    """
+    text = str(players_part or "").strip()
+    if not text:
+        return "", ""
+
+    def _has_surname(fragment: str) -> bool:
+        for tok in re.split(r"\s+", fragment.strip()):
+            if len(re.sub(r"[^A-Za-z]", "", tok)) > 1:
+                return True
+        return False
+
+    for m in re.finditer(r"[A-Z]\.", text):
+        if m.start() == 0:
+            continue
+        home, away = text[:m.start()].strip(), text[m.start():].strip()
+        if _has_surname(home) and _has_surname(away):
+            return home, away
+
+    tokens = text.split()
+    if len(tokens) >= 2:
+        mid = len(tokens) // 2
+        return " ".join(tokens[:mid]), " ".join(tokens[mid:])
+    return text, ""
+
+
 class ForebetPredictor:
     """
     Handles extraction of pre-match predictions from Forebet.
@@ -485,12 +519,8 @@ class ForebetPredictor:
     # Low-level fetch (curl_cffi + Playwright fallback)
     # ------------------------------------------------------------------
 
-    def _fetch_via_jina(self, url: str) -> Optional[str]:
-        """Lightweight fallback via Jina AI Reader (https://r.jina.ai/) which bypasses Cloudflare.
-        Jina's servers fetch the page, not the GitHub runner IP, so 403 is avoided.
-        Returns markdown text if successful, else None.
-        """
-        jina_url = f"https://r.jina.ai/{url}"
+    def _fetch_jina_snapshot(self, jina_url: str, url: str) -> Optional[str]:
+        """One Jina reader attempt: curl_cffi impersonations, then std requests."""
         # Try curl_cffi first (Jina is not CF protected, but use impersonation for safety)
         try:
             from curl_cffi import requests as curl_requests
@@ -513,6 +543,29 @@ class ForebetPredictor:
                 return r.text
         except Exception as e:
             logger.warning(f"Forebet Jina std failed for {url}: {e}")
+        return None
+
+    def _fetch_via_jina(self, url: str) -> Optional[str]:
+        """Lightweight fallback via Jina AI Reader (https://r.jina.ai/) which bypasses Cloudflare.
+        Jina's servers fetch the page, not the GitHub runner IP, so 403 is avoided.
+        Returns markdown text if successful, else None.
+
+        Snapshots must contain match links: Jina sometimes returns a
+        header-only stub for predictions-today (9408 bytes, observed runs
+        #206-207) which previously counted as "recovered" and yielded 0
+        rows. On a stub, retry once with a daily cache-buster so a poisoned
+        reader snapshot cannot stick for the whole day.
+        """
+        day_tag = datetime.now().strftime("%Y%m%d")
+        for attempt_url in (url, f"{url}?fb={day_tag}"):
+            text = self._fetch_jina_snapshot(f"https://r.jina.ai/{attempt_url}", url)
+            if text is None:
+                continue
+            if "/tennis/matches/" not in text:
+                logger.warning("Forebet Jina snapshot for %s lacks match links (%d bytes) — retrying",
+                               attempt_url, len(text))
+                continue
+            return text
         return None
 
     def parse_jina_markdown(self, md_text: str, expected_day: str | None = None) -> list[dict[str, Any]]:
@@ -603,22 +656,7 @@ class ForebetPredictor:
                         # downstream name-signature matching).
                         players_part = re.sub(r"\s*\b(today|tomorrow|yesterday)\b\s*$", "", players_part, flags=re.IGNORECASE)
                         players_part = re.sub(r"\s*\b\d{1,2}:\d{2}\b\s*$", "", players_part)
-                    tokens = players_part.split()
-                    init_positions = [idx for idx, tok in enumerate(tokens) if re.match(r"^[A-Z]\.$", tok)]
-                    home = None
-                    away = None
-                    if len(init_positions) >= 2:
-                        split_idx = init_positions[1]
-                        home = " ".join(tokens[:split_idx]).strip()
-                        away = " ".join(tokens[split_idx:]).strip()
-                    else:
-                        if len(tokens) >= 2:
-                            mid = len(tokens)//2
-                            home = " ".join(tokens[:mid])
-                            away = " ".join(tokens[mid:])
-                        else:
-                            home = players_part
-                            away = ""
+                    home, away = _split_jina_players(players_part)
                     tour_slug = ""
                     tournament_slug = ""
                     tm = re.search(r"/tennis/matches/([^/]+)/([^/]+)/", url)
@@ -659,59 +697,58 @@ class ForebetPredictor:
                     result_sets_away = None
                     odds_home = None
                     odds_away = None
-                    # Extract odds from lookahead (Jina markdown contains American odds like -303 +240 or decimal like 1.57 2.35)
-                    # Search up to 15 lines ahead for price tokens, prefer a valid two-way pair
-                    all_prices = []
-                    for k in range(i+1, min(i+15, len(lines))):
-                        line_k = lines[k]
-                        if not line_k or line_k.startswith("[") or line_k == "FT":
+                    # Positional Coef parse: each Jina match block ends its stat
+                    # lines with avg-games-per-set, then the single Coef (an
+                    # American price like -152, a decimal like 1.66, or "-"
+                    # when no market is shown). The old pair-hunt mistook
+                    # avg-games for a price ([10.4, 1.66]) or duplicated one
+                    # coef onto both sides ([1.66, 1.66], which even passes
+                    # two-way validation) — both poison downstream pricing.
+                    coef_val = None
+                    for k in range(i + 1, min(i + 15, len(lines))):
+                        lk = lines[k]
+                        if not lk or lk.startswith("!["):
                             continue
-                        # Skip pure prob lines (e.g. "41 59") and predicted winner lines
-                        if re.match(r"^\d{1,3}\s+\d{1,3}$", line_k):
-                            continue
-                        if re.match(r"^[12]\s+\d+\-\d+", line_k):
-                            continue
-                        prices = _forebet_prices_from_text(line_k)
-                        if prices:
-                            all_prices.extend(prices)
-                        if len(all_prices) >= 2:
-                            # Try to find a valid two-way pair among collected prices
-                            # Prefer pair that forms valid implied probability sum 0.98-1.35
-                            found = False
-                            for a_idx in range(len(all_prices)):
-                                for b_idx in range(a_idx+1, len(all_prices)):
-                                    oh = all_prices[a_idx]
-                                    oa = all_prices[b_idx]
-                                    # Use same validation as warehouse
-                                    try:
-                                        from racketfactory.warehouse import valid_two_way_decimal_pair
-                                        if valid_two_way_decimal_pair(oh, oa):
-                                            odds_home, odds_away = oh, oa
-                                            found = True
-                                            break
-                                    except Exception:
-                                        # Fallback: simple range check
-                                        if 1.01 <= oh <= 51 and 1.01 <= oa <= 51:
-                                            # Check implied sum
-                                            try:
-                                                s = 1.0/oh + 1.0/oa
-                                                if 0.98 <= s <= 1.35:
-                                                    odds_home, odds_away = oh, oa
-                                                    found = True
-                                                    break
-                                            except:
-                                                pass
-                                if found:
-                                    break
-                            if found:
+                        if lk.startswith("[") or lk == "FT":
+                            break
+                        if re.fullmatch(r"\d+\.\d+", lk):
+                            try:
+                                first_decimal = float(lk)
+                            except ValueError:
                                 break
-                            # If no valid pair yet but we have at least 2, keep first two as fallback (will be validated later)
-                            if len(all_prices) >= 2 and odds_home is None:
-                                odds_home, odds_away = all_prices[0], all_prices[1]
-                                # Don't break yet, keep searching for better valid pair
-                    # If we collected prices but didn't find valid pair, use first two
-                    if odds_home is None and len(all_prices) >= 2:
-                        odds_home, odds_away = all_prices[0], all_prices[1]
+                            if 6.0 <= first_decimal <= 12.5:
+                                # Avg-games line: the next significant line is
+                                # the coef (or "-" for no market).
+                                for kk in range(k + 1, min(i + 15, len(lines))):
+                                    cand = lines[kk]
+                                    if not cand or cand.startswith("!["):
+                                        continue
+                                    if cand.strip() in {"-", "–", "—"}:
+                                        coef_val = None
+                                    else:
+                                        coef_val = _forebet_price_to_decimal(cand)
+                                    break
+                            else:
+                                # No avg line (format drift): a lone decimal
+                                # outside avg range is a coef candidate itself.
+                                coef_val = _forebet_price_to_decimal(lk)
+                            break
+                    if coef_val is not None and prob_home is not None and prob_away is not None:
+                        # Attribute the single coef to the side whose model
+                        # probability it matches (tie: home). Beyond 15pts of
+                        # gap the snapshot is stale/structural garbage (e.g.
+                        # 1.02 on a 27/73 match) — discard, don't mislabel.
+                        implied = 1.0 / coef_val
+                        gap_home = abs(implied - prob_home / 100.0)
+                        gap_away = abs(implied - prob_away / 100.0)
+                        if min(gap_home, gap_away) <= 0.15:
+                            if gap_home <= gap_away:
+                                odds_home = coef_val
+                            else:
+                                odds_away = coef_val
+                        else:
+                            logger.debug("Jina coef %s (implied %.1f%%) matches neither side (%s/%s) — discarded",
+                                         coef_val, implied * 100.0, prob_home, prob_away)
                     for k in range(i+1, min(i+20, len(lines))):
                         if lines[k] == "FT":
                             result_status = "FT"
