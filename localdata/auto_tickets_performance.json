@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T00:08:32",
+  "generated_at": "2026-09-14T01:44:34",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 100.0,
@@ -153,6 +153,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-14",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 56.99999999999999,
               "context_used": "Tiburon - 1/16-finals",
@@ -190,18 +196,18 @@
               "source_count": 1,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Tiburon - 1/16-finals",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-14",
-                "score": ""
-              }
+              "tournament": "Tiburon - 1/16-finals"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-14",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 57.99999999999999,
               "context_used": "Tiburon - 1/16-finals",
@@ -239,13 +245,7 @@
               "source_count": 1,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Tiburon - 1/16-finals",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-14",
-                "score": ""
-              }
+              "tournament": "Tiburon - 1/16-finals"
             }
           ],
           "odds": 7.45,
@@ -259,6 +259,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-14",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 54.0,
               "context_used": "Biella - Final qualification",
@@ -296,18 +302,18 @@
               "source_count": 1,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Biella - Final qualification",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-14",
-                "score": ""
-              }
+              "tournament": "Biella - Final qualification"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-14",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 66.0,
               "context_used": "Rennes - Final qualification",
@@ -345,13 +351,7 @@
               "source_count": 1,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Rennes - Final qualification",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-14",
-                "score": ""
-              }
+              "tournament": "Rennes - Final qualification"
             }
           ],
           "odds": 5.45,
@@ -365,6 +365,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-14",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 61.0,
               "context_used": "WTA Caldas Da Rainha Prediction",
@@ -404,18 +410,18 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Caldas Da Rainha Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-14",
-                "score": ""
-              }
+              "tournament": "WTA Caldas Da Rainha Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-14",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 56.99999999999999,
               "context_used": "Biella - 1/16-finals",
@@ -453,13 +459,7 @@
               "source_count": 1,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Biella - 1/16-finals",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-14",
-                "score": ""
-              }
+              "tournament": "Biella - 1/16-finals"
             }
           ],
           "odds": 4.66,
@@ -473,6 +473,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-14",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 60.0,
               "context_used": "Valencia - Final qualification",
@@ -510,18 +516,18 @@
               "source_count": 1,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Valencia - Final qualification",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-14",
-                "score": ""
-              }
+              "tournament": "Valencia - Final qualification"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-14",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 52.0,
               "context_used": "Biella - Final qualification",
@@ -559,13 +565,7 @@
               "source_count": 1,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Biella - Final qualification",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-14",
-                "score": ""
-              }
+              "tournament": "Biella - Final qualification"
             }
           ],
           "odds": 5.3,

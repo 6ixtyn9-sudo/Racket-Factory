@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-15
 ============================================================
-Generated at: 2026-09-14 00:08:23
-Snapshot as of: 2026-09-14T00:00:13+02:00
+Generated at: 2026-09-14 01:44:28
+Snapshot as of: 2026-09-14T01:34:44+02:00
 Ledger kind: forecast
 
 
@@ -15,16 +15,7 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] C. Tabur vs H. Mayot                       KO 08:00 -> H. MAYOT  conf 64% @1.81  EV +0.16u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Mintegi Del Olmo vs A. Geerlings Martin KO 08:00 -> A. MINTEGI DEL OLMO  conf 63% @2.22  EV +0.40u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Fita Boluda vs Y. Kabbaj                KO 08:00 -> Y. KABBAJ  conf 61% @2.41  EV +0.47u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] M. Moeller vs D. Michalski                 KO 08:00 -> M. MOELLER  conf 61% @1.77  EV +0.08u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] L. Romero Gormaz vs M. Trevisan            KO 08:00 -> L. ROMERO GORMAZ  conf 60% @2.02  EV +0.21u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  (none)
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
