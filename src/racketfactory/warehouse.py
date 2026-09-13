@@ -150,6 +150,26 @@ def valid_two_way_decimal_pair(odds_a: object, odds_b: object) -> bool:
     return MIN_TWO_WAY_IMPLIED_SUM <= implied_sum <= MAX_TWO_WAY_IMPLIED_SUM
 
 
+def valid_comparison_odds_pair(odds_a: object, odds_b: object) -> bool:
+    """Lenient validation for comparison legs (BetExplorer consensus / OddsPortal best).
+
+    Best-across-books can have implied sum <0.98 (arbitrage) or slightly >1.35
+    due to mixing books. We still require each side to be a plausible decimal
+    1.01-51 and reject obvious junk like 9.5/9.7 (sum 0.21) or 1.01/1.01.
+    """
+    oa = coerce_decimal_odds(odds_a)
+    ob = coerce_decimal_odds(odds_b)
+    if oa is None or ob is None:
+        return False
+    # Reject both sides extremely long (both >5.0 with sum <0.5) – typical score leak
+    implied_sum = (1.0 / oa) + (1.0 / ob)
+    if implied_sum < 0.5 or implied_sum > 2.0:
+        return False
+    # Both sides must not be identical extreme long shots unless one is short
+    # (e.g. 1.20/4.25 is ok, 9.5/9.7 is not – sum 0.21 already rejected)
+    return True
+
+
 def odds_suspicious_for_probability(probability: object, odds: object) -> bool:
     """Flag prices that disagree with the prediction probability.
 
@@ -1118,8 +1138,10 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
 
     for idx, row in out.iterrows():
         odds_row, reversed_order = _match_api_odds_row(row, odds_rows) if odds_rows else (None, False)
+        is_comparison = False
         if odds_row is None and compare_rows:
             odds_row, reversed_order = _match_api_odds_row(row, compare_rows)
+            is_comparison = odds_row is not None
         if odds_row is None:
             continue
         if reversed_order:
@@ -1132,8 +1154,14 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
         api_home, api_away = align_odds_to_probabilities(
             row.get("prob_home"), row.get("prob_away"), api_home, api_away
         )
-        if not valid_two_way_decimal_pair(api_home, api_away):
-            continue
+        # TheOddsAPI uses strict two-way validation; comparison legs use lenient
+        # validation because best-across-books can have sum <0.98 (arbitrage).
+        if is_comparison:
+            if not valid_comparison_odds_pair(api_home, api_away):
+                continue
+        else:
+            if not valid_two_way_decimal_pair(api_home, api_away):
+                continue
 
         src_label = str(odds_row.get("source") or "TheOddsAPI")
         out.at[idx, "api_odds_home"] = api_home

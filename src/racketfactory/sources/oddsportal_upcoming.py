@@ -104,6 +104,39 @@ def _row_decimals_generic(text: str) -> list[float]:
     return vals
 
 
+def _extract_data_odd_pairs(node: Tag) -> list[tuple[float, float]]:
+    """Extract (1,2) pairs from data-odd attributes grouped by row."""
+    pairs: list[tuple[float, float]] = []
+    seen: set[int] = set()
+    for tr in node.find_all("tr"):
+        if id(tr) in seen:
+            continue
+        vals: list[float] = []
+        for attr in ("data-odd", "data-opening-odd", "data-closing-odd", "data-odd-value"):
+            for el in tr.find_all(attrs={attr: True}):
+                try:
+                    v = float(str(el.get(attr) or "").strip())
+                except Exception:
+                    continue
+                if MIN_DECIMAL_ODDS <= v <= MAX_DECIMAL_ODDS:
+                    vals.append(v)
+        # Also check direct td text if data-odd gave <2
+        if len(vals) < 2:
+            txt = tr.get_text(" ", strip=True)
+            if "Payout" in txt or "Bookmaker" in txt:
+                continue
+            if "Previous Matches" in txt or "Head to Head" in txt:
+                continue
+            generic = _row_decimals_generic(txt)
+            for g in generic:
+                if g not in vals:
+                    vals.append(g)
+        if len(vals) == 2:
+            seen.add(id(tr))
+            pairs.append((vals[0], vals[1]))
+    return pairs
+
+
 def _betslip_pairs(box: Tag) -> list[tuple[float, float]]:
     """(1, 2) price pairs, grouped by row so sides can never shift.
 
@@ -113,7 +146,8 @@ def _betslip_pairs(box: Tag) -> list[tuple[float, float]]:
     around the link holding exactly two. Rows with any other count are
     ignored rather than guessed. Falls back to generic decimal-row scan when
     betslip links are absent (OddsPortal markup change observed 2026-09-13:
-    Payout marker present but betslip count 0).
+    Payout marker present but betslip count 0). Now also scans data-odd
+    attributes and div-based odds grids.
     """
     pairs: list[tuple[float, float]] = []
     seen: set[int] = set()
@@ -149,27 +183,55 @@ def _betslip_pairs(box: Tag) -> list[tuple[float, float]]:
                 node = getattr(node, "parent", None)
         if pairs:
             return pairs
-    # Fallback: generic row scan for exactly 2 decimals per row inside the payout box
+
+    # Fallback 1: data-odd attribute pairs (new markup without betslip href)
+    data_pairs = _extract_data_odd_pairs(box)
+    if data_pairs:
+        return data_pairs
+
+    # Fallback 2: generic row scan for exactly 2 decimals per row inside the payout box
     for tr in box.find_all("tr"):
         if id(tr) in seen:
             continue
         txt = tr.get_text(" ", strip=True)
         if "Payout" in txt or "Bookmaker" in txt:
             continue
+        if "Previous Matches" in txt or "Head to Head" in txt:
+            continue
         vals = _row_decimals_generic(txt)
         if len(vals) == 2:
             pairs.append((vals[0], vals[1]))
-    if not pairs:
-        for div in box.find_all("div"):
-            txt = div.get_text(" ", strip=True)
-            if len(txt) > 200:
+    if pairs:
+        return pairs
+
+    # Fallback 3: div-based odds (OddsPortal div-grid markup)
+    for div in box.find_all("div"):
+        txt = div.get_text(" ", strip=True)
+        if len(txt) > 500:
+            continue
+        if "Payout" in txt or "Bookmaker" in txt or "Previous Matches" in txt:
+            continue
+        if txt.count(".") > 10:
+            continue
+        vals = _row_decimals_generic(txt)
+        if len(vals) == 2:
+            if id(div) in seen:
                 continue
-            vals = _row_decimals_generic(txt)
-            if len(vals) == 2:
-                if id(div) in seen:
-                    continue
-                seen.add(id(div))
-                pairs.append((vals[0], vals[1]))
+            seen.add(id(div))
+            pairs.append((vals[0], vals[1]))
+    if pairs:
+        return pairs
+
+    # Fallback 4: scan any element with class containing 'odd' for 2 decimals
+    for el in box.find_all(class_=lambda c: c and "odd" in str(c).lower()):
+        txt = el.get_text(" ", strip=True)
+        vals = _row_decimals_generic(txt)
+        if len(vals) == 2:
+            parent_tr = el.find_parent("tr")
+            if parent_tr is not None and id(parent_tr) in seen:
+                continue
+            pairs.append((vals[0], vals[1]))
+
     return pairs
 
 
@@ -179,24 +241,71 @@ def parse_match_page_odds(html: str) -> tuple[float | None, float | None]:
     The odds grid is scoped via its ``Payout`` header cell so previous-match
     sections elsewhere on the page can never leak in; without the marker the
     whole page is scanned (row grouping still applies). Best-across-books
-    per side. (None, None) when no complete pair is found.
+    per side. (None, None) when no complete pair is found. Now robust to
+    betslip=0 markup changes: if Payout exists but betslip links are gone,
+    we still locate the odds table via row-decimal heuristics.
     """
     if not html:
         return None, None
     soup = BeautifulSoup(html, "html.parser")
     box: Tag = soup
+    found_payout = False
     for marker in soup.find_all(string=lambda s: isinstance(s, str) and s.strip() == "Payout"):
+        found_payout = True
         node = marker.parent
-        for _ in range(6):
+        for _ in range(8):
             if node is None or getattr(node, "name", None) in ("html", "body", "[document]"):
                 break
-            if isinstance(node, Tag) and _betslip_link_count(node) >= 2:
-                box = node
-                break
+            if isinstance(node, Tag):
+                if _betslip_link_count(node) >= 2:
+                    box = node
+                    break
+                # Fallback: node contains at least 2 rows with 2 decimals each
+                tr_with_odds = 0
+                for tr in node.find_all("tr"):
+                    txt = tr.get_text(" ", strip=True)
+                    if "Payout" in txt or "Bookmaker" in txt:
+                        continue
+                    if len(_row_decimals_generic(txt)) == 2:
+                        tr_with_odds += 1
+                    if tr_with_odds >= 2:
+                        box = node
+                        break
+                if box is not soup:
+                    break
+                if node.name == "table":
+                    cnt = 0
+                    for tr in node.find_all("tr"):
+                        if len(_row_decimals_generic(tr.get_text(" ", strip=True))) == 2:
+                            cnt += 1
+                    if cnt >= 1:
+                        box = node
+                        break
             node = getattr(node, "parent", None)
         if box is not soup:
             break
+
+    # If no Payout marker, try to find any table with many odds rows
+    if box is soup and not found_payout:
+        best_table = None
+        best_count = 0
+        for table in soup.find_all("table"):
+            cnt = 0
+            for tr in table.find_all("tr"):
+                txt = tr.get_text(" ", strip=True)
+                if len(_row_decimals_generic(txt)) == 2:
+                    cnt += 1
+            if cnt > best_count and cnt >= 2:
+                best_count = cnt
+                best_table = table
+        if best_table is not None:
+            box = best_table
+
     pairs = _betslip_pairs(box)
+    if not pairs:
+        # Last resort: scan whole page if Payout box gave nothing but page has odds
+        if box is not soup:
+            pairs = _betslip_pairs(soup)
     if not pairs:
         return None, None
     return max(p[0] for p in pairs), max(p[1] for p in pairs)

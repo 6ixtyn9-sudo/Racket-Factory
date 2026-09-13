@@ -217,21 +217,72 @@ def _row_container(link: Tag, names_text: str,
     return best
 
 
+def _extract_odds_from_tr(tr: Tag, names_text: str = "") -> list[float]:
+    """Extract 1/2 decimals from a <tr> via visible text and data-odd attrs."""
+    # Visible text scan (names removed to avoid leaking into odds)
+    txt = tr.get_text(" ", strip=True)
+    if names_text:
+        txt = txt.replace(names_text, " ")
+    vals = _row_decimals(txt)
+    if len(vals) >= 2:
+        return vals[:2]
+
+    # Data-attribute scan (BetExplorer renders odds in data-odd / data-opening-odd)
+    attr_vals: list[float] = []
+    for attr in ("data-odd", "data-opening-odd", "data-closing-odd", "data-odd-value"):
+        for el in tr.find_all(attrs={attr: True}):
+            try:
+                v = float(str(el.get(attr) or "").strip())
+            except Exception:
+                continue
+            if MIN_DECIMAL_ODDS <= v <= MAX_DECIMAL_ODDS:
+                attr_vals.append(v)
+    if len(attr_vals) >= 2:
+        return attr_vals[:2]
+
+    # Class-based odds cells (td.table-main__odds, etc.)
+    cell_vals: list[float] = []
+    for td in tr.find_all("td"):
+        cls = " ".join(td.get("class") or []).lower()
+        if "odd" not in cls:
+            continue
+        try:
+            v = float(td.get_text(strip=True))
+        except Exception:
+            continue
+        if MIN_DECIMAL_ODDS <= v <= MAX_DECIMAL_ODDS:
+            cell_vals.append(v)
+    if len(cell_vals) >= 2:
+        return cell_vals[:2]
+
+    # Merge any partials found
+    merged = vals + attr_vals + cell_vals
+    # Deduplicate preserving order, keep first two plausible
+    seen: set[float] = set()
+    uniq: list[float] = []
+    for v in merged:
+        if v not in seen:
+            seen.add(v)
+            uniq.append(v)
+        if len(uniq) >= 2:
+            break
+    if len(uniq) >= 2:
+        return uniq[:2]
+    return []
+
+
 def _find_odds_near(link: Tag, names_text: str, is_match_link) -> list[float]:
     """Search for 2 decimals near the link within same tr only (conservative).
 
     Used as fallback when the immediate container has no odds. Searches the
     parent tr only, not siblings, to avoid misattributing odds from neighboring
-    matches (which broke test_climb_never_enters_multi_match_box).
+    matches (which broke test_climb_never_enters_multi_match_box). Now also
+    checks data-odd attributes inside the tr.
     """
     tr = link.find_parent("tr")
     if tr is None:
         return []
-    txt = tr.get_text(" ", strip=True).replace(names_text, " ")
-    vals = _row_decimals(txt)
-    if len(vals) >= 2:
-        return vals[:2]
-    return []
+    return _extract_odds_from_tr(tr, names_text)
 
 
 _FUSED_SPLIT_MAX_TOKENS = 4

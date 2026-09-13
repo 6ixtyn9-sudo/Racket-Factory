@@ -77,6 +77,7 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
             continue
         n_dt += 1
         # Robust: find the first anchor in the row whose href matches and whose text splits into players
+        # Handles empty anchors (e.g. icon-only) by also checking parent td text
         chosen = None
         chosen_home = chosen_away = ""
         chosen_ctx = None
@@ -87,9 +88,32 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
             if ctx is None:
                 continue
             txt = a.get_text(" ", strip=True)
+            # If anchor text empty, try parent td / container text as fallback
+            if not txt or len(txt) < 2:
+                parent_td = a.find_parent("td")
+                if parent_td is not None:
+                    # Use td text but remove any nested score-like tokens
+                    parent_txt = parent_td.get_text(" ", strip=True)
+                    # If parent contains the anchor href text plus players, try it
+                    txt = parent_txt
             h, aw = po.split_match_names(txt)
             if not h or not aw:
-                continue
+                # Last resort: try to extract from the whole row text
+                # Row often contains time + names + odds, e.g. "09:30 Rouvroy M. - Johnson S. 3.61 1.26"
+                # We can attempt to find a player-like substring via the generic splitter
+                # by scanning row_text for dash separator
+                row_tmp = tr.get_text(" ", strip=True)
+                # Remove time and odds to isolate names
+                # Simple heuristic: find first occurrence of ' - ' and take surrounding words
+                # Use split_match_names on row_tmp directly
+                h2, aw2 = po.split_match_names(row_tmp)
+                if h2 and aw2:
+                    # Ensure this row_tmp split isn't just picking up random text;
+                    # require that the anchor href still corresponds to those names
+                    # (we already have a valid href, so accept)
+                    h, aw = h2, aw2
+                if not h or not aw:
+                    continue
             chosen = a
             chosen_home, chosen_away = h, aw
             chosen_ctx = ctx
@@ -102,9 +126,13 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
         if po._FINISHED_RE.search(row_text):
             n_finished += 1
             continue
-        decimals = po._row_decimals(row_text.replace(chosen.get_text(" ", strip=True), " "))
+        # Primary: shared extractor that checks visible text + data-odd attrs + odds cells
+        decimals = po._extract_odds_from_tr(tr, chosen.get_text(" ", strip=True))
         if len(decimals) < 2:
-            # Fallback: search nearby for odds (parent, siblings)
+            # Secondary: legacy row-decimal scan for backward compat
+            decimals = po._row_decimals(row_text.replace(chosen.get_text(" ", strip=True), " "))
+        if len(decimals) < 2:
+            # Tertiary: conservative nearby search (parent tr only)
             try:
                 decimals = po._find_odds_near(chosen, chosen.get_text(" ", strip=True), _is_match_link)
             except Exception:
