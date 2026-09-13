@@ -4,11 +4,11 @@
   "audit_roi_by_tour": {},
   "calibration_by_confidence": {
     "High (70%+)": {
-      "calibration_error": 0.2412,
+      "calibration_error": 0.3,
       "expected": 0.7,
-      "hit_rate": 0.9412,
-      "n": 17,
-      "wilson_lb": 0.7302,
+      "hit_rate": 1.0,
+      "n": 16,
+      "wilson_lb": 0.8064,
       "wins": 16
     },
     "Low (<60%)": {
@@ -20,11 +20,11 @@
       "wins": 44
     },
     "Medium (60-70%)": {
-      "calibration_error": 0.1458,
+      "calibration_error": 0.1586,
       "expected": 0.6,
-      "hit_rate": 0.7458,
-      "n": 59,
-      "wilson_lb": 0.622,
+      "hit_rate": 0.7586,
+      "n": 58,
+      "wilson_lb": 0.6347,
       "wins": 44
     }
   },
@@ -38,18 +38,18 @@
     },
     "market": {
       "expected": null,
-      "hit_rate": 0.6757,
-      "n": 74,
-      "wilson_lb": 0.5627,
+      "hit_rate": 0.6944,
+      "n": 72,
+      "wilson_lb": 0.5805,
       "wins": 50
     }
   },
   "calibration_by_tour": {
     "ATP": {
       "expected": null,
-      "hit_rate": 0.6818,
-      "n": 22,
-      "wilson_lb": 0.4732,
+      "hit_rate": 0.75,
+      "n": 20,
+      "wilson_lb": 0.5313,
       "wins": 15
     },
     "UNKNOWN": {
@@ -67,5 +67,5 @@
       "wins": 17
     }
   },
-  "total_settled": 4706
+  "total_settled": 4718
 }
