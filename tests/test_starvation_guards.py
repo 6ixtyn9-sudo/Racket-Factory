@@ -650,34 +650,107 @@ def test_jina_decimal_coef_still_parses():
     assert rows[0]["odds_away"] is None
 
 
-def test_fetch_via_jina_rejects_stub_and_busts_cache(monkeypatch):
-    from types import SimpleNamespace
+def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch):
+    import urllib.error
+    import urllib.request
 
-    requested = []
+    calls = []
     stub = "Tennis predictions for Today\n" + "nav " * 800  # >2000 chars, no match links
-    full = ("Tennis predictions for Today\n[Zverev](https://www.forebet.com/en/tennis/matches/x/)\n"
-            + "rows " * 800)
+    full = ("<html><head><title>Tennis predictions for Today | Forebet</title></head><body>"
+            '<a class="tnmscn" href="/en/tennis/matches/atp-singles/us-open/x/">x</a>'
+            + "rows " * 800 + "</body></html>")
 
-    def fake_get(url, *args, **kwargs):
-        requested.append(url)
-        text = full if "?fb=" in url else stub
-        return SimpleNamespace(status_code=200, text=text)
+    class FakeResponse:
+        def __init__(self, body):
+            self._body = body
 
-    import curl_cffi.requests
-    monkeypatch.setattr(curl_cffi.requests, "get", fake_get)
-    import requests as std_requests
-    monkeypatch.setattr(std_requests, "get", fake_get)
+        def __enter__(self):
+            return self
 
-    got = ForebetPredictor()._fetch_via_jina("https://www.forebet.com/en/tennis/predictions-today")
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self._body
+
+    def fake_urlopen(request, timeout=None):
+        calls.append(request)
+        return FakeResponse(full.encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    got = ForebetPredictor()._fetch_via_relay(
+        "https://www.forebet.com/en/tennis/predictions/2026-09-13")
     assert got is not None and "/tennis/matches/" in got
-    assert any("?fb=" in u for u in requested)
+    # Slumdog header set on the relay request.
+    assert len(calls) == 1
+    assert calls[0].full_url.startswith("https://r.jina.ai/https://www.forebet.com/")
+    sent = {k.lower(): v for k, v in calls[0].header_items()}
+    assert sent.get("x-no-cache") == "true"
+    assert sent.get("x-return-format") == "html"
 
-    # Stub on both attempts -> None (falls through to Playwright upstream).
-    monkeypatch.setattr(curl_cffi.requests, "get",
-                        lambda url, *a, **k: SimpleNamespace(status_code=200, text=stub))
-    monkeypatch.setattr(std_requests, "get",
-                        lambda url, *a, **k: SimpleNamespace(status_code=200, text=stub))
-    assert ForebetPredictor()._fetch_via_jina("https://www.forebet.com/en/tennis/x") is None
+    # Stub (no match links) -> None, with no cache-buster retry (X-No-Cache
+    # replaces the old ?fb= workaround).
+    calls.clear()
+
+    def fake_stub_urlopen(request, timeout=None):
+        calls.append(request)
+        return FakeResponse(stub.encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_stub_urlopen)
+    assert ForebetPredictor()._fetch_via_relay("https://www.forebet.com/en/tennis/x") is None
+    assert len(calls) == 1
+    assert all("?fb=" not in c.full_url for c in calls)
+
+    # Relay 403 -> None with a single attempt (never retried).
+    calls.clear()
+
+    def fake_403_urlopen(request, timeout=None):
+        calls.append(request)
+        raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, None)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_403_urlopen)
+    assert ForebetPredictor()._fetch_via_relay("https://www.forebet.com/en/tennis/x") is None
+    assert len(calls) == 1
+
+
+def test_relay_get_retries_transient_statuses_only(monkeypatch):
+    import time
+    import urllib.error
+    import urllib.request
+
+    calls = []
+
+    class FakeResponse:
+        def __init__(self, body):
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self._body
+
+    outcomes = [
+        urllib.error.HTTPError("https://r.jina.ai/x", 503, "Unavailable", {}, None),
+        FakeResponse(b"recovered"),
+    ]
+
+    def fake_urlopen(request, timeout=None):
+        calls.append(request)
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+    from racketfactory.sources.forebet import relay_get
+
+    assert relay_get("https://r.jina.ai/x", max_retries=3) == b"recovered"
+    assert len(calls) == 2
 
 
 # ------------------------------------------------ run #208 repairs --
@@ -751,26 +824,28 @@ def test_write_predictions_collapses_identity_twins(tmp_path):
     assert df2.iloc[0]["tour"] == "WTA"
 
 
-def test_fetch_daily_falls_back_to_explicit_date_url(monkeypatch, caplog):
-    from racketfactory.sources.forebet import _expected_iso_for_day
+def test_fetch_daily_fails_fast_on_runner_skips_direct(monkeypatch):
+    relay_calls = []
+    direct_calls = []
 
-    days = []
+    def fake_relay(self, url, expect_matches=True):
+        relay_calls.append(url)
+        return None
 
-    def fake_fetch_daily_page(self, day="today"):
-        days.append(day)
-        return None if day == "today" else "<html>sentinel</html>"
+    def fake_direct(self, url):
+        direct_calls.append(url)
+        return None
 
-    sentinel = [{"match_date": "2026-09-13", "player_home": "A. Player",
-                 "player_away": "B. Opp"}]
-    monkeypatch.setattr(ForebetPredictor, "_fetch_daily_page", fake_fetch_daily_page)
-    monkeypatch.setattr(ForebetPredictor, "_fetch_via_jina", lambda self, url: None)
-    monkeypatch.setattr(ForebetPredictor, "_fetch_via_playwright",
-                        lambda self, url, timeout_ms=120000: None)
-    monkeypatch.setattr(ForebetPredictor, "parse_page",
-                        lambda self, html, expected_day=None: list(sentinel))
+    monkeypatch.setattr(ForebetPredictor, "_fetch_via_relay", fake_relay)
+    monkeypatch.setattr(ForebetPredictor, "_fetch_direct", fake_direct)
 
-    with caplog.at_level("INFO", logger="racketfactory.sources.forebet"):
-        got = ForebetPredictor().fetch_daily_predictions("today")
-    assert days == ["today", _expected_iso_for_day("today")]
-    assert [r["player_home"] for r in got] == ["A. Player"]
-    assert "explicit date URL" in caplog.text
+    # On a GitHub runner: relay failure -> [] with NO direct attempt.
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert ForebetPredictor().fetch_daily_predictions("today") == []
+    assert len(relay_calls) == 1 and "/predictions/" in relay_calls[0]
+    assert direct_calls == []
+
+    # Off-runner: relay failure -> the direct chain is tried.
+    monkeypatch.delenv("GITHUB_ACTIONS")
+    assert ForebetPredictor().fetch_daily_predictions("today") == []
+    assert len(direct_calls) == 1

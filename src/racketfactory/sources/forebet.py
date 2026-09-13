@@ -2,10 +2,20 @@
 Forebet Predictor Adapter
 Extracts mathematical predictions and probabilities from Forebet pages.
 Supports both tournament-specific pages and daily overview pages (yesterday/today/tomorrow).
+
+Transport follows the Slumdog/Edge-Factory pattern: the Jina reader relay
+(with explicit X-No-Cache / X-Return-Format headers) is the only cloud
+transport; direct fetching is local-only; on a GitHub runner a relay failure
+fails fast instead of burning the run on transports the provider blocks.
 """
 from __future__ import annotations
 import logging
+import os
+import random
 import re
+import time
+import urllib.error
+import urllib.request
 from typing import Any, Optional
 from datetime import datetime, timedelta
 from curl_cffi import requests
@@ -512,12 +522,74 @@ def _split_jina_players(players_part: str) -> tuple[str, str]:
     return text, ""
 
 
+# ---------------------------------------------------------------------------
+# Slumdog-style transport: relay first, direct local-only, fail fast on runners
+# ---------------------------------------------------------------------------
+RELAY_BASE = "https://r.jina.ai/"
+# Header set Slumdog validated for tennis HTML via the relay (their 2026-08-23
+# capture froze a 224,013-byte full tennis page with these; our headerless
+# calls were served ~11KB stubs, almost certainly a poisoned reader cache).
+# X-No-Cache defeats stale snapshots; X-Return-Format selects raw HTML so the
+# body goes through parse_page rather than parse_jina_markdown.
+RELAY_HEADERS = {
+    "User-Agent": "RacketFactory/1.0",
+    "Accept": "text/plain",
+    "X-No-Cache": "true",
+    "X-Return-Format": "html",
+}
+# Relay statuses worth retrying (Slumdog _RETRY_STATUS). Any other 4xx
+# (401/403/404) is deterministic per context and is never retried.
+_RETRY_STATUS = {408, 425, 429, 500, 502, 503, 504}
+_RETRYABLE_ERRORS = (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError)
+
+
+def on_github_runner() -> bool:
+    """True on GitHub-hosted runners, where direct Forebet access is blocked.
+
+    Edge-Factory's 2026-08-20 probe showed the provider refuses runner IPs
+    even with browser TLS, so from that network the relay is the only route
+    and a relay failure must fail fast instead of stalling the run.
+    """
+    return os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
+
+
+def _sleep_with_jitter(attempt: int, base: float = 4.0, cap: float = 40.0) -> None:
+    delay = min(cap, base * (2 ** attempt)) * (0.7 + 0.6 * random.random())
+    time.sleep(delay)
+
+
+def relay_get(url: str, timeout: int = 45, max_retries: int = 3) -> bytes:
+    """GET a relay URL with bounded retry/backoff for transient failures only.
+
+    Port of Slumdog's relay_get: plain urllib (the relay is not
+    Cloudflare-protected), Slumdog-validated headers, hard client errors
+    (401/403/404) raised immediately without retry.
+    """
+    last_error: Exception | None = None
+    for attempt in range(max_retries):
+        request = urllib.request.Request(url, headers=dict(RELAY_HEADERS))
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return response.read()
+        except urllib.error.HTTPError as exc:
+            last_error = exc
+            if exc.code not in _RETRY_STATUS:
+                raise  # 401/403/404 are deterministic; do not retry
+        except _RETRYABLE_ERRORS as exc:
+            last_error = exc
+        if attempt + 1 < max_retries:
+            _sleep_with_jitter(attempt)
+    assert last_error is not None
+    raise last_error
+
+
 class ForebetPredictor:
     """
     Handles extraction of pre-match predictions from Forebet.
     Supports two page types:
       1. Tournament pages      — /tennis/{tour}/{tournament}  (all matches for one tournament)
-      2. Daily overview pages  — /predictions-{today|tomorrow|yesterday} (all matches across all tournaments)
+      2. Daily overview pages  — /predictions/YYYY-MM-DD (all matches across all tournaments;
+         yesterday/today/tomorrow labels resolve to calendar dates up front)
     """
     BASE_URL = "https://www.forebet.com/en/tennis"
 
@@ -527,57 +599,42 @@ class ForebetPredictor:
         self._session.impersonate = impersonate
 
     # ------------------------------------------------------------------
-    # Low-level fetch (curl_cffi + Playwright fallback)
+    # Low-level fetch (Slumdog-style: relay first, direct local-only)
     # ------------------------------------------------------------------
 
-    def _fetch_jina_snapshot(self, jina_url: str, url: str) -> Optional[str]:
-        """One Jina reader attempt: curl_cffi impersonations, then std requests."""
-        # Try curl_cffi first (Jina is not CF protected, but use impersonation for safety)
-        try:
-            from curl_cffi import requests as curl_requests
-            for imp in ["chrome133a", "chrome124", "safari18"]:
-                try:
-                    r = curl_requests.get(jina_url, impersonate=imp, timeout=30)
-                    if r.status_code == 200 and len(r.text) > 2000 and "Tennis predictions" in r.text:
-                        logger.info(f"Forebet recovered via Jina {imp} for {url} (len={len(r.text)})")
-                        return r.text
-                except Exception:
-                    continue
-        except Exception:
-            pass
-        # Fallback to standard requests if available
-        try:
-            import requests as std_requests
-            r = std_requests.get(jina_url, timeout=30, headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0.0.0 Safari/537.36"})
-            if r.status_code == 200 and len(r.text) > 2000 and "Tennis predictions" in r.text:
-                logger.info(f"Forebet recovered via Jina std for {url} (len={len(r.text)})")
-                return r.text
-        except Exception as e:
-            logger.warning(f"Forebet Jina std failed for {url}: {e}")
-        return None
+    def _fetch_via_relay(self, url: str, expect_matches: bool = True) -> Optional[str]:
+        """Fetch a Forebet page through the Jina reader relay (Slumdog route).
 
-    def _fetch_via_jina(self, url: str) -> Optional[str]:
-        """Lightweight fallback via Jina AI Reader (https://r.jina.ai/) which bypasses Cloudflare.
-        Jina's servers fetch the page, not the GitHub runner IP, so 403 is avoided.
-        Returns markdown text if successful, else None.
-
-        Snapshots must contain match links: Jina sometimes returns a
-        header-only stub for predictions-today (9408 bytes, observed runs
-        #206-207) which previously counted as "recovered" and yielded 0
-        rows. On a stub, retry once with a daily cache-buster so a poisoned
-        reader snapshot cannot stick for the whole day.
+        The relay's servers fetch the page, not the GitHub runner IP, so the
+        runner 403 is avoided. Returns decoded body text, or None when the
+        relay fails or returns a stub/404 page. ``expect_matches`` requires
+        /tennis/matches/ links (daily boards always have matches); tournament
+        pages pass with the looser sport-label check since an empty board is
+        legitimate there.
         """
-        day_tag = datetime.now().strftime("%Y%m%d")
-        for attempt_url in (url, f"{url}?fb={day_tag}"):
-            text = self._fetch_jina_snapshot(f"https://r.jina.ai/{attempt_url}", url)
-            if text is None:
-                continue
-            if "/tennis/matches/" not in text:
-                logger.warning("Forebet Jina snapshot for %s lacks match links (%d bytes) — retrying",
-                               attempt_url, len(text))
-                continue
-            return text
-        return None
+        try:
+            body = relay_get(RELAY_BASE + url, timeout=45, max_retries=3)
+        except urllib.error.HTTPError as exc:
+            logger.warning("Forebet relay HTTP %s for %s (not retried)", exc.code, url)
+            return None
+        except Exception as exc:
+            logger.warning("Forebet relay failed for %s: %s: %s", url, type(exc).__name__, exc)
+            return None
+        text = body.decode("utf-8", "replace")
+        lower = text.lower()
+        if "not what you were looking for" in lower or "forebet 404 error" in lower:
+            logger.warning("Forebet relay returned a 404 content page for %s", url)
+            return None
+        if "tennis" not in lower:
+            logger.warning("Forebet relay snapshot for %s lacks the sport label (%d bytes) — discarded",
+                           url, len(text))
+            return None
+        if expect_matches and "/tennis/matches/" not in text:
+            logger.warning("Forebet relay snapshot for %s lacks match links (%d bytes) — discarded",
+                           url, len(text))
+            return None
+        logger.info("Forebet fetched via relay for %s (%d bytes)", url, len(text))
+        return text
 
     def parse_jina_markdown(self, md_text: str, expected_day: str | None = None) -> list[dict[str, Any]]:
         """Parse Jina markdown output for Forebet predictions-today/yesterday/tomorrow.
@@ -881,8 +938,13 @@ class ForebetPredictor:
             logger.warning("Forebet Playwright error for %s: %s", url, e)
             return None
 
-    def _fetch(self, url: str) -> Optional[str]:
-        """Fetch with curl_cffi primary, Playwright fallback, robust UA rotation."""
+    def _fetch_direct(self, url: str) -> Optional[str]:
+        """Direct Forebet fetch: curl_cffi impersonations, cloudscraper, Playwright.
+
+        LOCAL-ONLY transport: the provider blocks GitHub runner IPs even with
+        browser TLS, so _fetch only calls this off-runner. On a runner a relay
+        failure fails fast instead of stalling here.
+        """
         # Common headers
         headers = {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -953,16 +1015,6 @@ class ForebetPredictor:
         except Exception as e:
             logger.debug("Forebet cloudscraper failed for %s: %s", url, e)
 
-        # 2.5 Jina AI Reader fallback — lightweight, no browser, bypasses runner IP block
-        logger.info("Forebet trying Jina AI Reader for %s", url)
-        jina = self._fetch_via_jina(url)
-        if jina:
-            # Jina returns markdown; return it so fetch_daily can parse via parse_jina_markdown
-            # For _fetch we return markdown and let caller handle; but to keep HTML path working, return markdown if it looks valid
-            if "Tennis predictions" in jina:
-                logger.info("Forebet fetched via Jina for %s (%d bytes)", url, len(jina))
-                return jina
-
         # 3. Playwright fallback — real browser can clear CF
         logger.info("Forebet falling back to Playwright for %s", url)
         html = self._fetch_via_playwright(url)
@@ -970,8 +1022,27 @@ class ForebetPredictor:
             logger.info("Forebet fetched via Playwright for %s (%d bytes)", url, len(html))
             return html
 
-        logger.error("Forebet failed to fetch %s via all methods", url)
+        logger.error("Forebet failed to fetch %s via all direct methods", url)
         return None
+
+    def _fetch(self, url: str, expect_matches: bool = True) -> Optional[str]:
+        """Relay first; direct is local-only; fail fast on GitHub runners.
+
+        Slumdog route policy: the relay is the only cloud transport. When it
+        fails on a runner there is no second chance (direct is blocked from
+        that network), so return None immediately and let the date stay
+        retryable instead of stalling the run. Off-runner, fall through to
+        the direct transport chain.
+        """
+        text = self._fetch_via_relay(url, expect_matches=expect_matches)
+        if text is not None:
+            return text
+        if on_github_runner():
+            logger.warning("Forebet relay failed on a GitHub runner for %s — "
+                           "failing fast (direct is blocked from this network)", url)
+            return None
+        logger.info("Forebet relay failed locally for %s — trying direct transports", url)
+        return self._fetch_direct(url)
 
 
     # ------------------------------------------------------------------
@@ -979,23 +1050,28 @@ class ForebetPredictor:
     # ------------------------------------------------------------------
     def _fetch_tournament_page(self, tour_slug: str, tournament_slug: str) -> Optional[str]:
         url = f"{self.BASE_URL}/{tour_slug}/{tournament_slug}"
-        return self._fetch(url)
+        return self._fetch(url, expect_matches=False)
 
     # ------------------------------------------------------------------
     # Daily overview page fetch
     # ------------------------------------------------------------------
     def _fetch_daily_page(self, day: str = "today") -> Optional[str]:
-        """Fetch a daily predictions page.
+        """Fetch a daily predictions page via its date-addressable URL.
 
-        ``day`` is ``yesterday``/``today``/``tomorrow`` or an explicit
-        ``YYYY-MM-DD`` calendar date (Forebet serves
-        ``/tennis/predictions/YYYY-MM-DD``).
+        Slumdog rule: always /tennis/predictions/YYYY-MM-DD, never wall-clock
+        labels (the runner's "today" and Forebet's "today" can disagree across
+        timezones). Labels are resolved to calendar dates up front, so the
+        fetched board and ``expected_day`` agree by construction. Note the
+        slash shape: the old dash-shaped explicit URL
+        (/tennis/predictions-YYYY-MM-DD) 404s — verified 2026-09-13.
         """
-        import re as _re
-        if _re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(day or "")):
-            url = f"{self.BASE_URL}/predictions-{day}"
-        elif day in ("yesterday", "today", "tomorrow"):
-            url = f"{self.BASE_URL}/predictions-{day}"
+        label = str(day or "").strip()
+        if label in ("yesterday", "today", "tomorrow"):
+            iso_day = _expected_iso_for_day(label)
+            assert iso_day is not None
+            url = f"{self.BASE_URL}/predictions/{iso_day}"
+        elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", label):
+            url = f"{self.BASE_URL}/predictions/{label}"
         else:
             raise ValueError("day must be 'yesterday', 'today', 'tomorrow' or YYYY-MM-DD")
         return self._fetch(url)
@@ -1212,99 +1288,36 @@ class ForebetPredictor:
     def fetch_daily_predictions(self, day: str = "today") -> list[dict[str, Any]]:
         """
         Fetch all predictions for a given day across ALL tournaments.
-        day: 'yesterday', 'today', or 'tomorrow'
+        day: 'yesterday', 'today', 'tomorrow', or an explicit YYYY-MM-DD.
         Returns list of raw prediction dicts.
-        Tries HTML first, then Jina markdown fallback, then Playwright.
-        Handles empty Jina (9310 bytes, 0 parsed) by falling back to Playwright.
+
+        Transport (_fetch) is relay-first with a local-only direct fallback,
+        so by parse time there is nothing left to retry: a missing body means
+        the date stays empty — and retryable next run, since the fetch cache
+        never stores empty results.
         """
-        html = self._fetch_daily_page(day)
         expected_day = _expected_iso_for_day(day)
-        if not html:
-            url = f"{self.BASE_URL}/predictions-{day}"
-            jina_md = self._fetch_via_jina(url)
-            if jina_md:
-                try:
-                    parsed = self.parse_jina_markdown(jina_md, expected_day)
-                    if parsed:
-                        return _apply_page_day(parsed, expected_day, day)
-                    else:
-                        logger.warning("Forebet %s Jina returned %d bytes but parsed 0, trying Playwright; head=%r",
-                                       day, len(jina_md), jina_md[:300])
-                        # Fallback to Playwright if Jina empty
-                        pw_html = self._fetch_via_playwright(url)
-                        if pw_html:
-                            pw_parsed = self.parse_page(pw_html)
-                            if pw_parsed:
-                                logger.info(f"Forebet {day} recovered via Playwright with {len(pw_parsed)} rows after Jina empty")
-                                return _apply_page_day(pw_parsed, expected_day, day)
-                except Exception as e:
-                    logger.warning(f"Jina markdown parse failed for {day}: {e}")
-            # Try Playwright directly if Jina failed
-            pw_html = self._fetch_via_playwright(f"{self.BASE_URL}/predictions-{day}")
-            if pw_html:
-                try:
-                    pw_parsed = self.parse_page(pw_html)
-                    if pw_parsed:
-                        return _apply_page_day(pw_parsed, expected_day, day)
-                except Exception as e:
-                    logger.warning(f"Playwright parse failed for {day}: {e}")
-            if day in ("yesterday", "today", "tomorrow") and expected_day:
-                logger.info("Forebet %s: label URL failed everywhere, trying explicit date URL %s",
-                            day, expected_day)
-                return self.fetch_daily_predictions(expected_day)
+        if expected_day is None:
+            raise ValueError("day must be 'yesterday', 'today', 'tomorrow' or YYYY-MM-DD")
+        body = self._fetch_daily_page(day)
+        if not body:
+            logger.warning("Forebet %s: no body fetched (relay failed%s)", day,
+                           " — failing fast on runner" if on_github_runner() else "")
             return []
-        if "Markdown Content:" in html or "URL Source:" in html or "Tennis predictions for" in html and "[" in html and "/tennis/matches/" in html:
+        stripped = body.lstrip().lower()
+        if stripped.startswith("<") or "<html" in stripped:
+            return _apply_page_day(self.parse_page(body, expected_day), expected_day, day)
+        if ("Markdown Content:" in body or "URL Source:" in body
+                or ("](" in body and "/tennis/matches/" in body)):
+            # Relay served the reader-mode markdown wrapper (X-Return-Format
+            # ignored) rather than raw HTML.
             try:
-                parsed = self.parse_jina_markdown(html, expected_day)
-                if parsed:
-                    return _apply_page_day(parsed, expected_day, day)
-                else:
-                    # Jina from _fetch returned markdown but parsed 0 - try Playwright
-                    logger.warning("Forebet %s Jina from _fetch %d bytes parsed 0, trying Playwright; head=%r",
-                                   day, len(html), html[:300])
-                    pw_html = self._fetch_via_playwright(f"{self.BASE_URL}/predictions-{day}")
-                    if pw_html:
-                        pw_parsed = self.parse_page(pw_html)
-                        if pw_parsed:
-                            return _apply_page_day(pw_parsed, expected_day, day)
+                parsed = self.parse_jina_markdown(body, expected_day)
             except Exception as e:
-                logger.warning(f"Jina markdown parse failed for {day} (from _fetch): {e}")
-        parsed = self.parse_page(html)
-        if not parsed:
-            url = f"{self.BASE_URL}/predictions-{day}"
-            jina_md = self._fetch_via_jina(url)
-            if jina_md:
-                try:
-                    jparsed = self.parse_jina_markdown(jina_md, expected_day)
-                    if jparsed:
-                        logger.info(f"Forebet {day} recovered via Jina markdown with {len(jparsed)} rows")
-                        return _apply_page_day(jparsed, expected_day, day)
-                    else:
-                        logger.warning("Forebet %s Jina fallback %d bytes parsed 0, trying Playwright; head=%r",
-                                       day, len(jina_md), jina_md[:300])
-                        pw_html = self._fetch_via_playwright(url)
-                        if pw_html:
-                            pw_parsed = self.parse_page(pw_html)
-                            if pw_parsed:
-                                logger.info(f"Forebet {day} recovered via Playwright after Jina empty with {len(pw_parsed)} rows")
-                                return _apply_page_day(pw_parsed, expected_day, day)
-                except Exception as e:
-                    logger.warning(f"Jina fallback parse failed for {day}: {e}")
-            # Final Playwright fallback
-            pw_html = self._fetch_via_playwright(url)
-            if pw_html:
-                try:
-                    pw_parsed = self.parse_page(pw_html)
-                    if pw_parsed:
-                        logger.info(f"Forebet {day} recovered via Playwright final with {len(pw_parsed)} rows")
-                        return _apply_page_day(pw_parsed, expected_day, day)
-                except Exception as e:
-                    logger.warning(f"Playwright final parse failed for {day}: {e}")
-        if not parsed and day in ("yesterday", "today", "tomorrow") and expected_day:
-            logger.info("Forebet %s: label URL failed everywhere, trying explicit date URL %s",
-                        day, expected_day)
-            return self.fetch_daily_predictions(expected_day)
-        return _apply_page_day(parsed, expected_day, day)
+                logger.warning("Jina markdown parse failed for %s: %s", day, e)
+                return []
+            return _apply_page_day(parsed, expected_day, day)
+        return _apply_page_day(self.parse_page(body, expected_day), expected_day, day)
 
     # ------------------------------------------------------------------
     # Mapping: align Forebet prediction to warehouse orientation

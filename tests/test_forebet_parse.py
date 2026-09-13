@@ -75,7 +75,27 @@ def test_calendar_day_accepted():
 
     predictor._fetch = fake_fetch
     predictor.fetch_daily_predictions("2026-09-12")
-    assert seen["url"].endswith("/tennis/predictions-2026-09-12")
+    # Slash shape: the old dash-shaped explicit URL 404s (verified 2026-09-13).
+    assert seen["url"].endswith("/tennis/predictions/2026-09-12")
+
+
+def test_day_labels_resolve_to_dated_urls():
+    from datetime import date, timedelta
+
+    predictor = ForebetPredictor()
+    seen = {}
+
+    def fake_fetch(url):
+        seen["url"] = url
+        return "<html></html>"
+
+    predictor._fetch = fake_fetch
+    predictor.fetch_daily_predictions("today")
+    assert seen["url"].endswith(f"/tennis/predictions/{date.today().isoformat()}")
+    predictor.fetch_daily_predictions("tomorrow")
+    assert seen["url"].endswith(f"/tennis/predictions/{(date.today() + timedelta(days=1)).isoformat()}")
+    predictor.fetch_daily_predictions("yesterday")
+    assert seen["url"].endswith(f"/tennis/predictions/{(date.today() - timedelta(days=1)).isoformat()}")
 
 
 def test_orientation_strict_and_zverev_safe():
