@@ -290,7 +290,13 @@ _TRAIL_SCORE_RE = re.compile(r"\s+\d+\s*:\s*\d+(?:\s*[,\s]\s*\d+\s*:\s*\d+)*\s*$
 
 
 def _looks_like_player(text: str) -> bool:
-    """'Surname I.' shape check (multi-word surnames / multi-initials allowed)."""
+    """'Surname I.' shape check (multi-word surnames / multi-initials allowed).
+
+    Now tolerant to lowercase particles (von, der, van, de, etc.) which appear
+    in compound surnames like 'Von der Schulenburg J.' – observed 2026-09-13
+    in BetExplorer results. Middle tokens may be initials or surname parts
+    regardless of case as long as they are alphabetic length>=2.
+    """
     toks = text.split()
     if not 2 <= len(toks) <= _FUSED_SPLIT_MAX_TOKENS:
         return False
@@ -301,9 +307,26 @@ def _looks_like_player(text: str) -> bool:
     for tok in toks[1:-1]:
         if re.fullmatch(r"[A-Z]\.", tok):
             continue
-        if tok[:1].isupper() and len(re.sub(r"[^A-Za-z]", "", tok)) >= 2:
+        # Allow surname parts and particles in any case (von, der, etc.)
+        cleaned = re.sub(r"[^A-Za-z]", "", tok)
+        if len(cleaned) >= 2:
             continue
         return False
+    return True
+
+
+def _looks_like_doubles_team(text: str) -> bool:
+    """Check if text looks like a doubles team 'A / B' with player-ish parts."""
+    if "/" not in text:
+        return False
+    parts = [p.strip() for p in text.split("/") if p.strip()]
+    if len(parts) != 2:
+        return False
+    for p in parts:
+        if len(p) < 2:
+            return False
+        if "." not in p and " " not in p.strip():
+            return False
     return True
 
 
@@ -311,18 +334,70 @@ def _split_fused_names(text: str) -> tuple[str, str]:
     """Split 'Surname I. Surname I.' when no dash separator is present.
 
     BetExplorer's runner-served day/results pages join both names with a bare
-    space ('Tiafoe F. Shelton B.', run #222). A trailing scoreline is
-    stripped first so finished rows still reach the finished check; doubles
-    ('/' present) and score-only texts are rejected rather than guessed.
+    space ('Tiafoe F. Shelton B.', run #222) and sometimes without any space
+    after the dot ('Zverev A.Shelton B.', 'Baris O.Claverie L.', observed
+    2026-09-13). A trailing scoreline is stripped first so finished rows still
+    reach the finished check; doubles without dash ('Britto L. / Remondy
+    Pagotto V. H.Tosetto R. / Zanellato N.') are also handled when two slashes
+    are present. Score-only texts are rejected rather than guessed.
+
+    The no-space variant is normalized by inserting a space after any dot
+    that is immediately followed by an uppercase letter (e.g. 'A.Shelton' ->
+    'A. Shelton'), then the existing '. ' scan applies.
     """
-    if "/" in text:
-        return "", ""
     clean = _TRAIL_SCORE_RE.sub("", text.strip()).strip()
+    # Strip trailing decimal odds that may leak from row text (e.g. " 1.69 2.21")
+    clean = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", clean).strip()
+    # Normalize fused 'A.Shelton' -> 'A. Shelton' so the '. ' scanner can find it.
+    clean = re.sub(r"\.(?=[A-Z])", ". ", clean)
+    clean = re.sub(r"\s{2,}", " ", clean).strip()
+
+    # Doubles handling: if slash present
+    if "/" in clean:
+        if clean.count("/") >= 2:
+            best: tuple[str, str] = ("", "")
+            for m in re.finditer(r"\. ", clean):
+                left = clean[: m.end()].strip()
+                right = clean[m.end():].strip()
+                if not left or not right:
+                    continue
+                if "/" not in left or "/" not in right:
+                    continue
+                if "." not in left or "." not in right:
+                    continue
+                # Avoid splitting inside multi-initial sequence: right starting with initial like "H." is likely same player
+                if re.match(r"^[A-Z]\.", right):
+                    continue
+                if _looks_like_doubles_team(left) and _looks_like_doubles_team(right):
+                    best = (left, right)
+                    if left.count("/") == 1 and right.count("/") == 1 and len(left) > 5 and len(right) > 5:
+                        if right and right[0].isupper():
+                            # Ensure right does not start with initial (already checked)
+                            break
+            if best[0]:
+                return best
+            # Fallback: try any whitespace split that yields 1 slash per side
+            for m in re.finditer(r"\s+", clean):
+                left = clean[: m.start()].strip()
+                right = clean[m.end():].strip()
+                if left.count("/") == 1 and right.count("/") == 1 and len(left) > 5 and len(right) > 5:
+                    if re.match(r"^[A-Z]\.", right):
+                        continue
+                    if _looks_like_doubles_team(left) and _looks_like_doubles_team(right):
+                        return (left, right)
+        # Single slash = single team, not a match
+        return "", ""
+
     best: tuple[str, str] = ("", "")
     for m in re.finditer(r"\. ", clean):
         left, right = clean[: m.end()].strip(), clean[m.end():].strip()
         if _looks_like_player(left) and _looks_like_player(right):
             best = (left, right)
+    if not best[0]:
+        for m in re.finditer(r"(?<=\.)\s+", clean):
+            left, right = clean[: m.end()].strip(), clean[m.end():].strip()
+            if _looks_like_player(left) and _looks_like_player(right):
+                best = (left, right)
     return best
 
 
@@ -333,8 +408,16 @@ def split_match_names(link_text: str) -> tuple[str, str]:
     separator is present. Leading time and trailing scoreline are stripped
     first so '19:30 Parks A. - Lepchenko V.' and 'Tiafoe F. - Shelton B. 1:3'
     both parse as player names.
+
+    BetExplorer results pages (2026-09-13) also render fused without space
+    after the dot ('Zverev A.Shelton B.', 'Baris O.Claverie L.'). We normalize
+    '.<Upper>' -> '. <Upper>' before any split so both dash and fused paths
+    see the same shape.
     """
     txt = link_text.strip()
+    # Normalize fused dot+Upper (no space) early – helps both dash and fused paths
+    txt = re.sub(r"\.(?=[A-Z])", ". ", txt)
+    txt = re.sub(r"\s{2,}", " ", txt).strip()
     # Strip leading time like "19:30 " that BetExplorer prefixes on day pages
     txt = _TIME_RE.sub("", txt, count=1).strip()
     # Strip trailing scoreline like " 1:3" or " 1:3, 6:2" etc.

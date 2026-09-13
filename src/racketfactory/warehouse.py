@@ -636,20 +636,39 @@ def _parse_iso_date(value: object) -> date | None:
 
 
 def _surname_overlap(a: str, b: str) -> bool:
-    """True if surname_tokens share at least one token (handles Von der Schulenburg)."""
+    """True if surname_tokens share at least one token (handles Von der Schulenburg).
+
+    Now also uses _tok_eq for truncation tolerance (e.g. Montgomer vs Montgomery).
+    """
     try:
-        ta = set(surname_tokens(a))
-        tb = set(surname_tokens(b))
+        from racketfactory.settlement import _tok_eq
+        ta = surname_tokens(a)
+        tb = surname_tokens(b)
         if not ta or not tb:
             return False
-        return bool(ta & tb)
+        # Exact overlap fast path
+        if set(ta) & set(tb):
+            return True
+        # Tolerant overlap via _tok_eq
+        for t1 in ta:
+            for t2 in tb:
+                if _tok_eq(t1, t2):
+                    return True
+        return False
     except Exception:
         return False
 
 
 def _surname_tokens_equal(a: str, b: str) -> bool:
     try:
-        return surname_tokens(a) == surname_tokens(b) and bool(surname_tokens(a))
+        from racketfactory.settlement import _tok_eq
+        sa = surname_tokens(a)
+        sb = surname_tokens(b)
+        if not sa or not sb:
+            return False
+        if len(sa) != len(sb):
+            return False
+        return all(_tok_eq(x, y) for x, y in zip(sa, sb))
     except Exception:
         return False
 
@@ -686,19 +705,35 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
                     return True, False
                 if live_player_key(h1) == live_player_key(a2) and live_player_key(a1) == live_player_key(h2):
                     return True, True
-                # Overlap fallback: surname_tokens share token
+                # Overlap fallback: surname_tokens share token (now _tok_eq tolerant)
                 if _surname_overlap(h1, h2) and _surname_overlap(a1, a2):
                     return True, False
                 if _surname_overlap(h1, a2) and _surname_overlap(a1, h2):
                     return True, True
         except Exception:
             pass
-        # Final lenient: surname_tokens equality (ignores given names)
+        # Final lenient: surname_tokens equality (ignores given names, _tok_eq tolerant)
         try:
             if _surname_tokens_equal(h1, h2) and _surname_tokens_equal(a1, a2):
                 return True, False
             if _surname_tokens_equal(h1, a2) and _surname_tokens_equal(a1, h2):
                 return True, True
+        except Exception:
+            pass
+        # Aggressive key: strip all initials, compare surname-tail only
+        try:
+            def _aggressive_key(n: str) -> str:
+                # surname_tokens already strips initials; join with space
+                return " ".join(surname_tokens(n))
+            hk1 = _aggressive_key(h1)
+            ak1 = _aggressive_key(a1)
+            hk2 = _aggressive_key(h2)
+            ak2 = _aggressive_key(a2)
+            if hk1 and hk2 and ak1 and ak2:
+                if hk1 == hk2 and ak1 == ak2:
+                    return True, False
+                if hk1 == ak2 and ak1 == hk2:
+                    return True, True
         except Exception:
             pass
         return None

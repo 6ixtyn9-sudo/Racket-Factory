@@ -74,8 +74,13 @@ def test_split_match_names_handles_fused_names():
 def test_split_match_names_rejects_scores_and_doubles():
     assert po.split_match_names("1:3") == ("", "")
     assert po.split_match_names("6:1, 6:3") == ("", "")
-    assert po.split_match_names(
-        "Britto L./Remondy Pagotto V. H. Tosetto R./Zanellato N.") == ("", "")
+    # Single-team doubles (one slash) must still be rejected
+    assert po.split_match_names("Britto L./Remondy Pagotto V. H.") == ("", "")
+    # Two-team doubles without dash: now parsed when two slashes present
+    # (BetExplorer results 2026-09-13 fused variant)
+    home, away = po.split_match_names(
+        "Britto L./Remondy Pagotto V. H. Tosetto R./Zanellato N.")
+    assert home and away and "/" in home and "/" in away
     assert po.split_match_names("Winner") == ("", "")
     # Trailing score is stripped so finished rows reach the finished check.
     assert po.split_match_names("Tiafoe F. Shelton B. 1:3") == ("Tiafoe F.", "Shelton B.")
