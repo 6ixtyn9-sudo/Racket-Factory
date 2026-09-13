@@ -12,11 +12,11 @@
       "wins": 30
     },
     "Low (<60%)": {
-      "calibration_error": 0.0905,
+      "calibration_error": 0.0849,
       "expected": 0.5,
-      "hit_rate": 0.5905,
-      "n": 105,
-      "wilson_lb": 0.4948,
+      "hit_rate": 0.5849,
+      "n": 106,
+      "wilson_lb": 0.4897,
       "wins": 62
     },
     "Medium (60-70%)": {
@@ -38,9 +38,9 @@
     },
     "market": {
       "expected": null,
-      "hit_rate": 0.657,
-      "n": 172,
-      "wilson_lb": 0.5833,
+      "hit_rate": 0.6532,
+      "n": 173,
+      "wilson_lb": 0.5796,
       "wins": 113
     }
   },
@@ -61,9 +61,9 @@
     },
     "UNKNOWN": {
       "expected": null,
-      "hit_rate": 0.6783,
-      "n": 143,
-      "wilson_lb": 0.598,
+      "hit_rate": 0.6736,
+      "n": 144,
+      "wilson_lb": 0.5934,
       "wins": 97
     },
     "WTA": {
@@ -81,5 +81,5 @@
       "wins": 0
     }
   },
-  "total_settled": 1993
+  "total_settled": 1997
 }
