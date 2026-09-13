@@ -60,11 +60,12 @@ def test_api_match_rejects_rematch_weeks_later():
     assert _match_api_odds_row(card, [_api_row("2026-09-19")])[0] is None
 
 
-def test_api_match_second_pass_skips_doubles():
+def test_api_match_second_pass_allows_doubles():
+    # Updated: second pass now allows doubles too to push comparison 9->30+
     card = _card_row("2026-09-12", "A / B", "C / D")
     api = {"match_date": "2026-09-11", "player_home": "A / B",
            "player_away": "C / D", "odds_home": 1.5, "odds_away": 2.5}
-    assert _match_api_odds_row(card, [api])[0] is None
+    assert _match_api_odds_row(card, [api])[0] is not None
 
 
 def test_api_match_dateless_card_stays_fail_open():

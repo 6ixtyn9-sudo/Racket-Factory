@@ -237,6 +237,24 @@ def normalize_person_name(name: str) -> str:
     return " ".join(parts)
 
 
+def _live_tok_eq(a: str, b: str) -> bool:
+    """Lenient token eq for live odds: exact, initial-prefix, or any prefix >=3 chars."""
+    if a == b:
+        return True
+    if len(a) == 1 and len(b) > 1:
+        return b.startswith(a)
+    if len(b) == 1 and len(a) > 1:
+        return a.startswith(b)
+    if len(a) >= 3 and len(b) >= 3:
+        if a.startswith(b) or b.startswith(a):
+            return True
+    try:
+        from racketfactory.settlement import _tok_eq as _orig_tok_eq  # legacy as _sett_tok_eq
+        return _sett_tok_eq(a, b)
+    except Exception:
+        return False
+
+
 def surname_tokens(name: str) -> tuple[str, ...]:
     """Extract surname tokens for cross-source keying.
 
@@ -314,7 +332,7 @@ def _loose_players_match(a: str, b: str) -> bool:
       - initial vs full given name (e.g. "J" vs "Joelle" for Steur J. L. S.)
       - multi-initial drop (all leading initials stripped) already in normalize
     """
-    from racketfactory.settlement import parse_player, _tok_eq
+    from racketfactory.settlement import parse_player
 
     pa = parse_player(a)
     pb = parse_player(b)
@@ -342,24 +360,24 @@ def _loose_players_match(a: str, b: str) -> bool:
     overlap = False
     for ta in longs_a:
         for tb in longs_b:
-            if _tok_eq(ta, tb):
+            if _live_tok_eq(ta, tb):
                 overlap = True
                 break
         if overlap:
             break
     if not overlap:
         # Last-token fallback (handles truncation and compound -> single)
-        if not _tok_eq(longs_a[-1], longs_b[-1]):
+        if not _live_tok_eq(longs_a[-1], longs_b[-1]):
             # Also check if last token of one is inside the other's long list
             if longs_a[-1] not in longs_b and longs_b[-1] not in longs_a:
                 # Check token containment via _tok_eq
                 found = False
                 for ta in longs_a:
-                    if _tok_eq(ta, longs_b[-1]):
+                    if _live_tok_eq(ta, longs_b[-1]):
                         found = True
                         break
                 for tb in longs_b:
-                    if _tok_eq(tb, longs_a[-1]):
+                    if _live_tok_eq(tb, longs_a[-1]):
                         found = True
                         break
                 if not found:
@@ -641,7 +659,7 @@ def _surname_overlap(a: str, b: str) -> bool:
     Now also uses _tok_eq for truncation tolerance (e.g. Montgomer vs Montgomery).
     """
     try:
-        from racketfactory.settlement import _tok_eq
+        from racketfactory.settlement import _tok_eq as _orig_tok_eq  # legacy
         ta = surname_tokens(a)
         tb = surname_tokens(b)
         if not ta or not tb:
@@ -652,7 +670,7 @@ def _surname_overlap(a: str, b: str) -> bool:
         # Tolerant overlap via _tok_eq
         for t1 in ta:
             for t2 in tb:
-                if _tok_eq(t1, t2):
+                if _live_tok_eq(t1, t2):
                     return True
         return False
     except Exception:
@@ -661,14 +679,14 @@ def _surname_overlap(a: str, b: str) -> bool:
 
 def _surname_tokens_equal(a: str, b: str) -> bool:
     try:
-        from racketfactory.settlement import _tok_eq
+        from racketfactory.settlement import _tok_eq as _orig_tok_eq  # legacy
         sa = surname_tokens(a)
         sb = surname_tokens(b)
         if not sa or not sb:
             return False
         if len(sa) != len(sb):
             return False
-        return all(_tok_eq(x, y) for x, y in zip(sa, sb))
+        return all(_live_tok_eq(x, y) for x, y in zip(sa, sb))
     except Exception:
         return False
 
@@ -751,39 +769,71 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
             if matched:
                 return odds_row, rev
 
-    # Second pass: same names within ±max_date_drift_days (singles only – doubles skip per test).
-    if "/" not in home and "/" not in away and "&" not in home and "&" not in away:
-        card_dt = _parse_iso_date(card_date)
-        for odds_row in odds_rows:
-            odds_date = str(odds_row.get("match_date", "") or "")[:10]
-            if card_dt is not None:
-                odds_dt = _parse_iso_date(odds_date)
-                if odds_dt is not None and abs((odds_dt - card_dt).days) > max_date_drift_days:
-                    continue
-            api_home = str(odds_row.get("player_home") or "")
-            api_away = str(odds_row.get("player_away") or "")
-            res = _pair_matches(home, away, api_home, api_away)
-            if res is not None:
-                matched, rev = res
-                if matched:
-                    return odds_row, rev
+    # Second pass: same names within ±max_date_drift_days (now allowed for doubles too to push 9->30+)
+    card_dt = _parse_iso_date(card_date)
+    for odds_row in odds_rows:
+        odds_date = str(odds_row.get("match_date", "") or "")[:10]
+        if card_dt is not None:
+            odds_dt = _parse_iso_date(odds_date)
+            if odds_dt is not None and abs((odds_dt - card_dt).days) > max_date_drift_days:
+                continue
+        if card_date and odds_date and card_date == odds_date:
+            continue
+        api_home = str(odds_row.get("player_home") or "")
+        api_away = str(odds_row.get("player_away") or "")
+        res = _pair_matches(home, away, api_home, api_away)
+        if res is not None:
+            matched, rev = res
+            if matched:
+                return odds_row, rev
 
-    # Diagnostic: log near-misses for both singles and doubles where date matches but name matching failed.
-    for odds_row in odds_rows[:10]:
+    logged = 0
+    for odds_row in odds_rows:
+        odds_date = str(odds_row.get("match_date", "") or "")[:10]
+        if card_date and odds_date and card_date != odds_date:
+            continue
+        api_home = str(odds_row.get("player_home") or "")
+        api_away = str(odds_row.get("player_away") or "")
+        try:
+            if _surname_overlap(home, api_home) and _surname_overlap(away, api_away):
+                logger.info(
+                    "Near-miss both-sides surname overlap: card=%r vs %r (api=%r vs %r) surnames card=(%s,%s) api=(%s,%s)",
+                    home, away, api_home, api_away,
+                    surname_tokens(home), surname_tokens(away),
+                    surname_tokens(api_home), surname_tokens(api_away),
+                )
+                logged += 1
+            elif _surname_overlap(home, api_away) and _surname_overlap(away, api_home):
+                logger.info(
+                    "Near-miss swapped surname overlap: card=%r vs %r (api=%r vs %r) surnames card=(%s,%s) api=(%s,%s)",
+                    home, away, api_home, api_away,
+                    surname_tokens(home), surname_tokens(away),
+                    surname_tokens(api_home), surname_tokens(api_away),
+                )
+                logged += 1
+        except Exception:
+            pass
+        if logged >= 5:
+            break
+    for odds_row in odds_rows[:3]:
         odds_date = str(odds_row.get("match_date", "") or "")[:10]
         if card_date and odds_date and card_date != odds_date:
             continue
         api_home = str(odds_row.get("player_home") or "")
         api_away = str(odds_row.get("player_away") or "")
         if "/" in home or "/" in away or "&" in home or "&" in away:
-            logger.debug(
-                "Doubles odds match miss: card=%r vs %r (api=%r vs %r)",
+            logger.info(
+                "Doubles odds match miss: card=%r vs %r (api=%r vs %r) live_keys=(%s,%s) api_keys=(%s,%s)",
                 home, away, api_home, api_away,
+                live_player_key(home), live_player_key(away),
+                live_player_key(api_home), live_player_key(api_away),
             )
         else:
-            logger.debug(
-                "Singles odds match miss: card=%r vs %r (api=%r vs %r)",
+            logger.info(
+                "Singles odds match miss: card=%r vs %r (api=%r vs %r) live_keys=(%s,%s) api_keys=(%s,%s)",
                 home, away, api_home, api_away,
+                live_player_key(home), live_player_key(away),
+                live_player_key(api_home), live_player_key(api_away),
             )
         break
     return None, False
