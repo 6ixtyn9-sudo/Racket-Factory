@@ -213,12 +213,16 @@ def parse_listing_page(
     source_label: str,
     is_match_link: Callable[[str], dict[str, Any] | None],
     page_date: str,
+    require_odds: bool = True,
 ) -> list[dict[str, Any]]:
     """Scan a day-listing page for (names, 1, 2) match rows.
 
     ``is_match_link(href)`` returns a context dict (tournament/tour/...) for
     match-detail links, else None. Odds are the first two plausible decimals
-    in the match's row once the names/date/time text is removed.
+    in the match's row once the names/date/time text is removed. With
+    ``require_odds=False`` the decimals gate is skipped and rows are emitted
+    with ``odds_home``/``odds_away`` None (for legs that price each match
+    from its detail page instead of the listing).
     """
     if not html:
         return []
@@ -228,6 +232,7 @@ def parse_listing_page(
     n_links = n_match = n_bad_names = n_no_box = 0
     n_finished = n_few_decimals = n_dupes = 0
     few_samples: list[str] = []
+    bad_samples: list[str] = []
     for link in soup.find_all("a", href=True):
         n_links += 1
         href = str(link.get("href") or "")
@@ -239,6 +244,8 @@ def parse_listing_page(
         home, away = split_match_names(names_text)
         if not home or not away:
             n_bad_names += 1
+            if len(bad_samples) < 3:
+                bad_samples.append(f"{names_text[:120]} | {href[:150]}")
             continue
         container = _row_container(link, names_text, is_match_link)
         if container is None:
@@ -250,13 +257,15 @@ def parse_listing_page(
             continue
         # Remove the names themselves so hyphenated/second-decimal name parts
         # can never leak into the odds scan; then take the first two decimals.
-        scan_text = row_text.replace(names_text, " ")
-        decimals = _row_decimals(scan_text)
-        if len(decimals) < 2:
-            n_few_decimals += 1
-            if len(few_samples) < 3:
-                few_samples.append(row_text)
-            continue
+        decimals: list[float] = []
+        if require_odds:
+            scan_text = row_text.replace(names_text, " ")
+            decimals = _row_decimals(scan_text)
+            if len(decimals) < 2:
+                n_few_decimals += 1
+                if len(few_samples) < 3:
+                    few_samples.append(row_text)
+                continue
         key = f"{home}\x00{away}"
         if key in seen:
             n_dupes += 1
@@ -268,8 +277,8 @@ def parse_listing_page(
             "match_time": ko.group(0) if ko else "",
             "player_home": home,
             "player_away": away,
-            "odds_home": decimals[0],
-            "odds_away": decimals[1],
+            "odds_home": decimals[0] if decimals else None,
+            "odds_away": decimals[1] if len(decimals) > 1 else None,
             "tournament": str(ctx.get("tournament") or ""),
             "tour_hint": str(ctx.get("tour_hint") or ""),
             "match_url": href,
@@ -282,4 +291,6 @@ def parse_listing_page(
     )
     for sample in few_samples:
         logger.info("%s few-decimals sample: %r", source_label, sample[:180])
+    for sample in bad_samples:
+        logger.info("%s bad-names sample: %r", source_label, sample[:180])
     return rows

@@ -38,6 +38,24 @@ def test_climb_never_enters_multi_match_box():
     assert rows == []
 
 
+BAD_NAMES_PAGE = """
+<html><body><table>
+<tr><td><a href="/m/aaa/">1.57</a></td></tr>
+<tr><td><a href="/m/bbb/">Winner</a></td></tr>
+<tr><td><a href="/m/ccc/">Alpha B. - Beta C.</a><span>1.50</span><span>2.50</span></td></tr>
+</table></body></html>
+"""
+
+
+def test_bad_name_anchors_are_sampled_in_logs(caplog):
+    with caplog.at_level("INFO", logger="racketfactory.sources._page_odds"):
+        rows = po.parse_listing_page(BAD_NAMES_PAGE, source_label="T", is_match_link=_is_match,
+                                     page_date="2026-09-13")
+    assert len(rows) == 1
+    assert "bad-names sample" in caplog.text
+    assert "1.57" in caplog.text
+
+
 def test_retry_after_429_then_success(monkeypatch):
     calls = []
 
