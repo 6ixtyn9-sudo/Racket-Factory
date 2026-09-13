@@ -4,6 +4,7 @@ Downloads yearly Excel files and normalizes them into the Racket Factory contrac
 """
 from __future__ import annotations
 import logging
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -231,14 +232,27 @@ def download_yearly_excel(
         except OSError:
             pass
 
-    try:
-        logger.info("Downloading %s -> %s", url, dest)
-        urllib.request.urlretrieve(url, dest)
-        return dest
-    except Exception as e:
-        logger.error("Failed to download %s: %s", url, e)
-        if dest.exists(): dest.unlink()
-        return None
+    last_err: Exception | None = None
+    for attempt in range(3):
+        try:
+            logger.info("Downloading %s -> %s%s", url, dest,
+                        f" (attempt {attempt + 1}/3)" if attempt else "")
+            urllib.request.urlretrieve(url, dest)
+            return dest
+        except Exception as e:
+            last_err = e
+            logger.warning("Download attempt %d/3 failed for %s: %s", attempt + 1, url, e)
+            if dest.exists():
+                try:
+                    dest.unlink()
+                except OSError:
+                    pass
+            # Transient 503s/connection resets usually clear within seconds
+            # (run #206 lost both tours to a single 503 each); back off
+            # briefly before retrying rather than failing the whole tour.
+            time.sleep(5 * (attempt + 1))
+    logger.error("Failed to download %s after 3 attempts: %s", url, last_err)
+    return None
 
 def write_monthly_csv(
     rows: list[dict[str, Any]],

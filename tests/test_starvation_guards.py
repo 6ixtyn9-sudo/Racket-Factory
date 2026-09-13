@@ -310,3 +310,256 @@ def test_forebet_writer_dedups_fresh_and_stripped(tmp_path):
     df = pd.read_csv(tmp_path / "predictions_forebet_2026-09.csv.gz")
     assert len(df) == 2
     assert (df["player_b"] == "A. Barrena").sum() == 1
+
+
+# ------------------------------------------------ run #206 repairs --
+
+
+JINA_DDMM_MD = """\
+Tennis predictions for yesterday
+ATP US Open - Semi-finals
+[F. Tiafoe B. Shelton 12/09/2026 01:45](https://www.forebet.com/en/tennis/matches/atp-singles/us-open/12345/)
+41 59
+2 1-3
+"""
+
+
+def test_jina_expected_day_disambiguates_ddmm():
+    # predictions-yesterday rendered DD/MM; without the page day this token
+    # misfiles as Dec 9 (run #206: 28 rows under predictions_forebet_2026-12).
+    rows = ForebetPredictor().parse_jina_markdown(JINA_DDMM_MD, "2026-09-12")
+    assert len(rows) == 1
+    assert rows[0]["match_date"] == "2026-09-12"
+
+
+def test_jina_expected_day_keeps_mmdd():
+    rows = ForebetPredictor().parse_jina_markdown(JINA_SEPT_MD, "2026-09-11")
+    by_home = {r["player_home"]: r for r in rows}
+    assert by_home["F. Tiafoe"]["match_date"] == "2026-09-11"
+    # 09/12 offers Sep 12 / Dec 9; expected Sep 11 matches neither, so the
+    # MM/DD-first default applies.
+    assert by_home["J. Reis Da Silva"]["match_date"] == "2026-09-12"
+
+
+def test_jina_no_expected_day_keeps_mmdd_first_default():
+    rows = ForebetPredictor().parse_jina_markdown(JINA_DDMM_MD)
+    assert rows[0]["match_date"] == "2026-12-09"
+
+
+def test_jina_unexpected_date_falls_back_to_mmdd():
+    rows = ForebetPredictor().parse_jina_markdown(JINA_SEPT_MD, "2026-09-12")
+    by_home = {r["player_home"]: r for r in rows}
+    assert by_home["F. Tiafoe"]["match_date"] == "2026-09-11"
+    assert by_home["J. Reis Da Silva"]["match_date"] == "2026-09-12"
+
+
+JINA_LOOSE_MD = """\
+Tennis predictions for tomorrow
+ATP Test Open - Final
+[J. Smith A. Jones 9/14/2026 6:15 AM](https://www.forebet.com/en/tennis/matches/atp-singles/test-open/2/)
+50 50
+1 2-0
+[C. Day D. Foe 14/09/2026](https://www.forebet.com/en/tennis/matches/atp-singles/test-open/3/)
+55 45
+1 2-0
+[A. Player B. Opp Tomorrow](https://www.forebet.com/en/tennis/matches/wta-singles/test-open/4/)
+60 40
+1 2-1
+"""
+
+
+def test_jina_relaxed_time_and_dateless_links():
+    rows = ForebetPredictor().parse_jina_markdown(JINA_LOOSE_MD)
+    assert len(rows) == 3
+    by_home = {r["player_home"]: r for r in rows}
+    assert by_home["J. Smith"]["match_date"] == "2026-09-14"
+    assert by_home["J. Smith"]["match_time"] == "06:15"
+    assert by_home["C. Day"]["match_date"] == "2026-09-14"
+    # Dateless link: no date, but the trailing day-word must not pollute names.
+    assert by_home["A. Player"]["match_date"] is None
+    assert by_home["A. Player"]["player_away"] == "B. Opp"
+
+
+def test_expected_iso_for_day():
+    from datetime import date, timedelta
+    from racketfactory.sources.forebet import _expected_iso_for_day
+
+    today = date.today()
+    assert _expected_iso_for_day("today") == today.isoformat()
+    assert _expected_iso_for_day("yesterday") == (today - timedelta(days=1)).isoformat()
+    assert _expected_iso_for_day("tomorrow") == (today + timedelta(days=1)).isoformat()
+    assert _expected_iso_for_day("2026-09-12") == "2026-09-12"
+    assert _expected_iso_for_day("bogus") is None
+    assert _expected_iso_for_day("") is None
+
+
+def test_fetch_daily_backfills_page_day_for_dateless_rows(monkeypatch):
+    from datetime import date, timedelta
+
+    exp = (date.today() + timedelta(days=1)).isoformat()
+    md = """\
+Tennis predictions for tomorrow
+ATP Test Open - Final
+[A. Player B. Opp](https://www.forebet.com/en/tennis/matches/atp-singles/test-open/4/)
+60 40
+1 2-1
+[C. Dated D. Foe 09/14/2026 18:00](https://www.forebet.com/en/tennis/matches/atp-singles/test-open/5/)
+55 45
+1 2-0
+"""
+    monkeypatch.setattr(ForebetPredictor, "_fetch_daily_page",
+                        lambda self, day="today": md)
+    rows = ForebetPredictor().fetch_daily_predictions("tomorrow")
+    assert len(rows) == 2
+    by_home = {r["player_home"]: r for r in rows}
+    assert by_home["A. Player"]["match_date"] == exp
+    assert by_home["C. Dated"]["match_date"] == "2026-09-14"
+
+
+def test_actionable_slices_gate_mirrors_run_206():
+    results = [
+        {"Slice": "tour:UNKNOWN | x | y", "Verdict": "NO STAT SIG", "Exportable": False},
+        {"Slice": "tour:UNKNOWN | x | z", "Verdict": "WATCHLIST", "Exportable": False},
+        {"Slice": "tour:ATP | a | b", "Verdict": "EDGE CONFIRMED", "Exportable": True},
+        {"Slice": "tour:ATP | a | c", "Verdict": "FADE THIS SIGNAL", "Exportable": False},
+        {"Slice": "tour:ATP | a | d", "Verdict": "WATCHLIST", "Exportable": True},
+    ]
+    got = mine_edges._actionable_slices(results)
+    assert [r["Slice"] for r in got] == ["tour:ATP | a | b", "tour:ATP | a | d"]
+    assert mine_edges._actionable_slices([]) == []
+    assert mine_edges._actionable_slices(None) == []
+
+
+def test_placeholder_dim_values_exclude_unknown_variants():
+    import pandas as pd
+
+    assert mine_edges._is_placeholder_dim_value("Unknown")
+    assert mine_edges._is_placeholder_dim_value("UNKNOWN")
+    assert mine_edges._is_placeholder_dim_value("")
+    assert mine_edges._is_placeholder_dim_value(None)
+    assert mine_edges._is_placeholder_dim_value(float("nan"))
+    assert mine_edges._is_placeholder_dim_value(pd.NA)
+    assert not mine_edges._is_placeholder_dim_value("ATP")
+    assert not mine_edges._is_placeholder_dim_value("Challenger")
+
+
+def test_mine_unactionable_slices_still_exports_live_only(tmp_path, monkeypatch, caplog):
+    target = "2026-09-13"
+    # 20 settled rows: slices mine at N=20 (min-n 15) but stay unexportable
+    # (min-export-n 50) however the verdict lands. Mirrors run #206, where 5
+    # unexportable slices yielded 0 picks despite 26 today candidates.
+    rows = [_settled_row(i) for i in range(20)]
+    rows.append({"match_date": target, "tour": "UTR", "tournament": "Madrid",
+                 "_series": "ITF", "player_a": "Today A", "player_b": "Today B",
+                 "winner": "", "odds_a": 1.5, "odds_b": 2.5, "rank_a": 5,
+                 "rank_b": 40, "predicted_winner": "player_a",
+                 "prediction_prob": 0.7, "_is_live": True,
+                 "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    with caplog.at_level("WARNING", logger="edge_miner"):
+        picks = _run_mine(tmp_path, monkeypatch, rows, target)
+    assert "none are actionable" in caplog.text  # proves slices were mined
+    assert "matched no exportable historical slice" not in caplog.text
+    assert len(picks) == 1
+    assert picks[0]["match"] == "Today A vs Today B"
+    assert picks[0]["bucket"] == "WATCHLIST"
+    assert picks[0]["slice_matched"] == "live_only_fallback"
+
+
+def test_drop_future_garbage_month_files(tmp_path):
+    from datetime import date
+    from scripts import backfill_forebet
+
+    header = "match_date,tour"
+    _write_gz(tmp_path / "predictions_forebet_2026-12.csv.gz", header,
+              ["2026-12-09,ATP"])  # rule 1: month >1 ahead
+    _write_gz(tmp_path / "forebet_results_tennis_2026-11.csv.gz", header,
+              ["2026-11-05,WTA"])  # rule 1
+    _write_gz(tmp_path / "predictions_forebet_2026-10.csv.gz", header,
+              ["2026-10-30,ATP"])  # rule 2: all rows >14d future
+    _write_gz(tmp_path / "forebet_results_tennis_2026-10.csv.gz", header,
+              ["2026-10-30,ATP", "2026-09-13,ATP"])  # mixed: kept
+    _write_gz(tmp_path / "predictions_forebet_2026-09.csv.gz", header,
+              ["2026-09-12,ATP"])  # current: kept
+    _write_gz(tmp_path / "predictions_forebet_2026-08.csv.gz", header,
+              ["2026-08-20,ATP"])  # history: kept
+    (tmp_path / "warehouse.csv.gz").write_bytes(b"untouched")
+
+    dropped = backfill_forebet._drop_future_garbage_month_files(
+        tmp_path, date(2026, 9, 13))
+    assert set(dropped) == {"predictions_forebet_2026-12.csv.gz",
+                            "forebet_results_tennis_2026-11.csv.gz",
+                            "predictions_forebet_2026-10.csv.gz"}
+    assert not (tmp_path / "predictions_forebet_2026-12.csv.gz").exists()
+    assert not (tmp_path / "forebet_results_tennis_2026-11.csv.gz").exists()
+    assert not (tmp_path / "predictions_forebet_2026-10.csv.gz").exists()
+    assert (tmp_path / "forebet_results_tennis_2026-10.csv.gz").exists()
+    assert (tmp_path / "predictions_forebet_2026-09.csv.gz").exists()
+    assert (tmp_path / "predictions_forebet_2026-08.csv.gz").exists()
+    assert (tmp_path / "warehouse.csv.gz").exists()
+
+
+def test_mode_daily_counts_dateless_rows(tmp_path, monkeypatch, caplog):
+    import pandas as pd
+    from types import SimpleNamespace
+    from scripts import backfill_forebet
+
+    wh = tmp_path / "warehouse.csv.gz"
+    pd.DataFrame([{"match_date": "2026-09-13", "tour": "ATP",
+                   "tournament": "US Open", "player_a": "N. Djokovic",
+                   "player_b": "C. Alcaraz"}]).to_csv(wh, index=False,
+                                                       compression="gzip")
+
+    def pred(home, away, dt, winner="1"):
+        return {"match_date": dt, "match_time": "", "player_home": home,
+                "player_away": away, "prob_home": 70, "prob_away": 30,
+                "odds_home": 1.5, "odds_away": 2.5, "predicted_winner": winner,
+                "tournament": "US Open", "result_status": None,
+                "result_score": None, "result_winner": None,
+                "result_winner_name": None, "result_sets_home": None,
+                "result_sets_away": None}
+
+    canned = [pred("Novak Djokovic", "Carlos Alcaraz", "2026-09-13"),
+              pred("Ghost A", "Ghost B", None),
+              pred("Unknown One", "Unknown Two", "2026-09-13", winner="2")]
+    monkeypatch.setattr(backfill_forebet, "cached_fetch",
+                        lambda key, thunk: canned)
+    args = SimpleNamespace(days=["today"], warehouse=str(wh),
+                           output_dir=str(tmp_path / "out"), delay=0)
+    with caplog.at_level("INFO", logger="backfill_forebet"):
+        assert backfill_forebet.mode_daily(args) == 0
+    assert ("1 matched to warehouse, 1 stored as new upcoming matches, "
+            "1 skipped (no date)") in caplog.text
+
+
+def test_tennisdata_download_retries_transient_503(tmp_path, monkeypatch):
+    import time as _time
+    import urllib.error
+    from racketfactory.sources import tennisdata
+
+    calls = []
+
+    def flaky(url, dest):
+        calls.append(url)
+        if len(calls) < 3:
+            raise urllib.error.HTTPError(url, 503, "Service Unavailable",
+                                         None, None)
+        Path(dest).write_bytes(b"fake-xlsx")
+        return (str(dest), None)
+
+    monkeypatch.setattr(tennisdata.urllib.request, "urlretrieve", flaky)
+    monkeypatch.setattr(_time, "sleep", lambda s: None)
+    out = tennisdata.download_yearly_excel(2026, "ATP", tmp_path, force=True)
+    assert out is not None and out.exists() and len(calls) == 3
+
+    calls2 = []
+
+    def dead(url, dest):
+        calls2.append(url)
+        Path(dest).write_bytes(b"partial")
+        raise urllib.error.HTTPError(url, 503, "Service Unavailable", None, None)
+
+    monkeypatch.setattr(tennisdata.urllib.request, "urlretrieve", dead)
+    out2 = tennisdata.download_yearly_excel(2026, "WTA", tmp_path, force=True)
+    assert out2 is None and len(calls2) == 3
+    assert not (tmp_path / "2026w.xlsx").exists()

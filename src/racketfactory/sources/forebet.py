@@ -419,6 +419,54 @@ def _parse_forebet_result_from_row(row) -> dict:
 
     return out
 
+
+def _expected_iso_for_day(day: str) -> str | None:
+    """Calendar date (YYYY-MM-DD) a Forebet daily page is supposed to list.
+
+    ``day`` is yesterday/today/tomorrow or an explicit YYYY-MM-DD (Forebet
+    serves /tennis/predictions/YYYY-MM-DD). Returns None for anything else.
+    """
+    label = str(day or "").strip()
+    today = datetime.now().date()
+    if label == "today":
+        return today.strftime("%Y-%m-%d")
+    if label == "yesterday":
+        return (today - timedelta(days=1)).strftime("%Y-%m-%d")
+    if label == "tomorrow":
+        return (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", label):
+        return label
+    return None
+
+
+def _apply_page_day(rows: list[dict[str, Any]], expected_day: str | None, day_label: str) -> list[dict[str, Any]]:
+    """Fill missing match dates with the daily page's own calendar day.
+
+    Every row on predictions-yesterday/today/tomorrow belongs to that day by
+    construction; when neither the link text (Jina) nor the date span (HTML)
+    yields a date, assigning the page day beats dropping the row (run #206:
+    all 43 predictions-tomorrow rows parsed dateless and were silently
+    skipped downstream). Rows with unusable names are left dateless so the
+    writer still skips them instead of storing garbage.
+    """
+    if not expected_day:
+        return rows
+    filled = 0
+    unfillable = 0
+    for r in rows:
+        if r.get("match_date"):
+            continue
+        if r.get("player_home") and r.get("player_away"):
+            r["match_date"] = expected_day
+            filled += 1
+        else:
+            unfillable += 1
+    if filled or unfillable:
+        logger.info("Forebet %s: assigned page day %s to %d dateless rows (%d unfillable)",
+                    day_label, expected_day, filled, unfillable)
+    return rows
+
+
 class ForebetPredictor:
     """
     Handles extraction of pre-match predictions from Forebet.
@@ -467,8 +515,11 @@ class ForebetPredictor:
             logger.warning(f"Forebet Jina std failed for {url}: {e}")
         return None
 
-    def parse_jina_markdown(self, md_text: str) -> list[dict[str, Any]]:
+    def parse_jina_markdown(self, md_text: str, expected_day: str | None = None) -> list[dict[str, Any]]:
         """Parse Jina markdown output for Forebet predictions-today/yesterday/tomorrow.
+
+        ``expected_day`` is the page's calendar day (YYYY-MM-DD); when given,
+        ambiguous numeric dates prefer the reading that matches it.
         Markdown structure (from r.jina.ai):
           Tournament heading line (e.g. 'ATP US Open - Semi-finals')
           [F. Tiafoe B. Shelton 12/09/2026 01:45](https://www.forebet.com/en/tennis/matches/atp-singles/us-open/...)
@@ -482,6 +533,8 @@ class ForebetPredictor:
         results = []
         lines = [l.strip() for l in md_text.splitlines()]
         current_tournament = None
+        dated_rows = 0
+        date_mismatches = 0
         i = 0
         while i < len(lines):
             line = lines[i]
@@ -496,26 +549,60 @@ class ForebetPredictor:
                 if m:
                     link_text = m.group(1).strip()
                     url = m.group(2).strip()
-                    date_match = re.search(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})", link_text)
+                    date_match = re.search(r"(\d{1,2}/\d{1,2}/\d{4})(?:\s+(\d{1,2}:\d{2})(?:\s*([AP]M))?)?", link_text)
                     match_date = None
                     match_time = ""
                     players_part = link_text
                     if date_match:
                         date_str = date_match.group(1)
-                        time_str = date_match.group(2)
+                        time_str = date_match.group(2) or ""
+                        ampm = (date_match.group(3) or "").upper()
                         players_part = link_text[:date_match.start()].strip()
-                        # Forebet renders US MM/DD/YYYY (e.g. 09/11/2026 = Sep 11).
-                        # MM/DD MUST be tried first: DD/MM-first misreads Sep 11/12
-                        # as Nov/Dec 9 (observed: Sept matches filed under
-                        # predictions_forebet_2026-11/2026-12.csv.gz).
+                        if time_str and ampm in ("AM", "PM"):
+                            try:
+                                _tt = time_str.split(":")
+                                _hh, _mm = int(_tt[0]), _tt[1]
+                                if ampm == "PM" and _hh < 12:
+                                    _hh += 12
+                                elif ampm == "AM" and _hh == 12:
+                                    _hh = 0
+                                time_str = f"{_hh:02d}:{_mm}"
+                            except (ValueError, IndexError):
+                                pass
+                        # Forebet's Jina date rendering is NOT format-stable:
+                        # most pages print US MM/DD/YYYY ("09/11/2026" =
+                        # Sep 11) but predictions-yesterday printed DD/MM
+                        # ("12/09/2026" = Sep 12, observed run #206: 28 rows
+                        # misfiled as 2026-12-09). Collect BOTH readings; when
+                        # the caller passes the page's calendar day, prefer the
+                        # reading that matches it. Without expected_day the
+                        # historical MM/DD-first order is kept.
+                        candidates = []
                         for fmt in ("%m/%d/%Y", "%d/%m/%Y"):
                             try:
-                                dt = datetime.strptime(date_str, fmt)
-                                match_date = dt.strftime("%Y-%m-%d")
-                                match_time = time_str
-                                break
+                                iso = datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
+                                if iso not in candidates:
+                                    candidates.append(iso)
                             except ValueError:
                                 continue
+                        if candidates:
+                            dated_rows += 1
+                            match_time = time_str
+                            if expected_day and expected_day in candidates:
+                                match_date = expected_day
+                            else:
+                                match_date = candidates[0]
+                            if expected_day and match_date != expected_day:
+                                date_mismatches += 1
+                                if date_mismatches <= 3:
+                                    logger.debug("Jina row date %s != page day %s (token %s)",
+                                                 match_date, expected_day, date_str)
+                    else:
+                        # No parseable date: strip trailing date/time words so
+                        # they don't pollute the away name (which would break
+                        # downstream name-signature matching).
+                        players_part = re.sub(r"\s*\b(today|tomorrow|yesterday)\b\s*$", "", players_part, flags=re.IGNORECASE)
+                        players_part = re.sub(r"\s*\b\d{1,2}:\d{2}\b\s*$", "", players_part)
                     tokens = players_part.split()
                     init_positions = [idx for idx, tok in enumerate(tokens) if re.match(r"^[A-Z]\.$", tok)]
                     home = None
@@ -671,6 +758,13 @@ class ForebetPredictor:
                     })
             i+=1
         logger.info("Parsed %d predictions from Jina markdown", len(results))
+        if expected_day and dated_rows:
+            logger.info("Jina row dates vs page day %s: %d/%d match",
+                        expected_day, dated_rows - date_mismatches, dated_rows)
+        dateless = len(results) - dated_rows
+        if dateless:
+            logger.info("Jina markdown: %d/%d rows had no parseable date token",
+                        dateless, len(results))
         return results
 
     def _fetch_via_playwright(self, url: str, timeout_ms: int = 120000) -> Optional[str]:
@@ -1076,23 +1170,25 @@ class ForebetPredictor:
         Handles empty Jina (9310 bytes, 0 parsed) by falling back to Playwright.
         """
         html = self._fetch_daily_page(day)
+        expected_day = _expected_iso_for_day(day)
         if not html:
             url = f"{self.BASE_URL}/predictions-{day}"
             jina_md = self._fetch_via_jina(url)
             if jina_md:
                 try:
-                    parsed = self.parse_jina_markdown(jina_md)
+                    parsed = self.parse_jina_markdown(jina_md, expected_day)
                     if parsed:
-                        return parsed
+                        return _apply_page_day(parsed, expected_day, day)
                     else:
-                        logger.warning(f"Forebet {day} Jina returned {len(jina_md)} bytes but parsed 0, trying Playwright")
+                        logger.warning("Forebet %s Jina returned %d bytes but parsed 0, trying Playwright; head=%r",
+                                       day, len(jina_md), jina_md[:300])
                         # Fallback to Playwright if Jina empty
                         pw_html = self._fetch_via_playwright(url)
                         if pw_html:
                             pw_parsed = self.parse_page(pw_html)
                             if pw_parsed:
                                 logger.info(f"Forebet {day} recovered via Playwright with {len(pw_parsed)} rows after Jina empty")
-                                return pw_parsed
+                                return _apply_page_day(pw_parsed, expected_day, day)
                 except Exception as e:
                     logger.warning(f"Jina markdown parse failed for {day}: {e}")
             # Try Playwright directly if Jina failed
@@ -1101,23 +1197,24 @@ class ForebetPredictor:
                 try:
                     pw_parsed = self.parse_page(pw_html)
                     if pw_parsed:
-                        return pw_parsed
+                        return _apply_page_day(pw_parsed, expected_day, day)
                 except Exception as e:
                     logger.warning(f"Playwright parse failed for {day}: {e}")
             return []
         if "Markdown Content:" in html or "URL Source:" in html or "Tennis predictions for" in html and "[" in html and "/tennis/matches/" in html:
             try:
-                parsed = self.parse_jina_markdown(html)
+                parsed = self.parse_jina_markdown(html, expected_day)
                 if parsed:
-                    return parsed
+                    return _apply_page_day(parsed, expected_day, day)
                 else:
                     # Jina from _fetch returned markdown but parsed 0 - try Playwright
-                    logger.warning(f"Forebet {day} Jina from _fetch {len(html)} bytes parsed 0, trying Playwright")
+                    logger.warning("Forebet %s Jina from _fetch %d bytes parsed 0, trying Playwright; head=%r",
+                                   day, len(html), html[:300])
                     pw_html = self._fetch_via_playwright(f"{self.BASE_URL}/predictions-{day}")
                     if pw_html:
                         pw_parsed = self.parse_page(pw_html)
                         if pw_parsed:
-                            return pw_parsed
+                            return _apply_page_day(pw_parsed, expected_day, day)
             except Exception as e:
                 logger.warning(f"Jina markdown parse failed for {day} (from _fetch): {e}")
         parsed = self.parse_page(html)
@@ -1126,18 +1223,19 @@ class ForebetPredictor:
             jina_md = self._fetch_via_jina(url)
             if jina_md:
                 try:
-                    jparsed = self.parse_jina_markdown(jina_md)
+                    jparsed = self.parse_jina_markdown(jina_md, expected_day)
                     if jparsed:
                         logger.info(f"Forebet {day} recovered via Jina markdown with {len(jparsed)} rows")
-                        return jparsed
+                        return _apply_page_day(jparsed, expected_day, day)
                     else:
-                        logger.warning(f"Forebet {day} Jina fallback {len(jina_md)} bytes parsed 0, trying Playwright")
+                        logger.warning("Forebet %s Jina fallback %d bytes parsed 0, trying Playwright; head=%r",
+                                       day, len(jina_md), jina_md[:300])
                         pw_html = self._fetch_via_playwright(url)
                         if pw_html:
                             pw_parsed = self.parse_page(pw_html)
                             if pw_parsed:
                                 logger.info(f"Forebet {day} recovered via Playwright after Jina empty with {len(pw_parsed)} rows")
-                                return pw_parsed
+                                return _apply_page_day(pw_parsed, expected_day, day)
                 except Exception as e:
                     logger.warning(f"Jina fallback parse failed for {day}: {e}")
             # Final Playwright fallback
@@ -1147,10 +1245,10 @@ class ForebetPredictor:
                     pw_parsed = self.parse_page(pw_html)
                     if pw_parsed:
                         logger.info(f"Forebet {day} recovered via Playwright final with {len(pw_parsed)} rows")
-                        return pw_parsed
+                        return _apply_page_day(pw_parsed, expected_day, day)
                 except Exception as e:
                     logger.warning(f"Playwright final parse failed for {day}: {e}")
-        return parsed
+        return _apply_page_day(parsed, expected_day, day)
 
     # ------------------------------------------------------------------
     # Mapping: align Forebet prediction to warehouse orientation

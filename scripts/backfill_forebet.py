@@ -25,8 +25,10 @@ Usage examples:
 import pandas as pd
 import argparse
 import logging
+import re
 import sys
 import time
+from datetime import date
 from pathlib import Path
 from typing import Optional
 from collections import defaultdict
@@ -120,6 +122,7 @@ def mode_tournament(args) -> int:
     predictor = ForebetPredictor()
     predictions: list[dict] = []
     matched_count = 0
+    dateless_skipped = 0
 
     for i, (tour, tournament) in enumerate(tournament_list): # type: ignore
         group_df = groups.get_group((tour, tournament))
@@ -137,6 +140,7 @@ def mode_tournament(args) -> int:
         pred_index: dict[tuple[str, tuple[str, str]], dict] = {}
         for p in preds:
             if not p.get("match_date"):
+                dateless_skipped += 1
                 continue
             h = name_signature(p["player_home"])
             a = name_signature(p["player_away"])
@@ -191,7 +195,8 @@ def mode_tournament(args) -> int:
             )
         time.sleep(args.delay)
 
-    logger.info("Tournament mode complete: %d matched predictions.", matched_count)
+    logger.info("Tournament mode complete: %d matched predictions, %d skipped (no date).",
+                matched_count, dateless_skipped)
     _write_predictions(predictions, args.output_dir)
     return 0
 
@@ -321,6 +326,62 @@ def _write_forebet_result_rows(predictions: list[dict], output_dir: Path) -> lis
 
     return written
 
+
+def _drop_future_garbage_month_files(output_dir: Path, today: date | None = None) -> list[str]:
+    """Delete Forebet month files that can only be misdate garbage.
+
+    Two rules (either triggers deletion):
+      1. The filename month is more than one month ahead of ``today`` — daily
+         mode only ever writes ±3 days around the run date, and tournament
+         mode only writes past months, so e.g. a December file in September
+         is misdated rows (run #206: Sept-12 rows filed as Dec-9).
+      2. Every row in the file is dated more than 14 days in the FUTURE — no
+         legitimate fetch produces such rows (upcoming fixtures are at most
+         ~1 day out), so the whole month is garbage.
+    Legitimate history is untouched: past/current months keep their rows, and
+    mixed files (any in-window row) are kept. This also kills
+    cache-resurrected garbage: the actions cache can restore month files
+    deleted from git, so the sweep must run on every daily capture.
+    Returns the deleted filenames.
+    """
+    if today is None:
+        today = date.today()
+    out_dir = Path(output_dir)
+    dropped: list[str] = []
+    if not out_dir.is_dir():
+        return dropped
+    file_re = re.compile(r"(?:predictions_forebet_|forebet_results_tennis_)(\d{4})-(\d{2})\.csv\.gz")
+    this_idx = today.year * 12 + today.month
+    cutoff = pd.Timestamp(today) + pd.Timedelta(days=14)
+    for path in sorted(out_dir.glob("*.csv.gz")):
+        m = file_re.fullmatch(path.name)
+        if not m:
+            continue
+        reason = ""
+        if int(m.group(1)) * 12 + int(m.group(2)) > this_idx + 1:
+            reason = f"month {m.group(1)}-{m.group(2)} is >1 month ahead of {today.isoformat()}"
+        else:
+            try:
+                dates = pd.to_datetime(
+                    pd.read_csv(path, usecols=["match_date"])["match_date"],
+                    errors="coerce",
+                ).dropna()
+            except Exception as e:
+                logger.warning("Garbage-month sweep: cannot read %s (%s) — keeping", path.name, e)
+                continue
+            if len(dates) and bool((dates > cutoff).all()):
+                reason = f"all {len(dates)} rows dated >14 days after {today.isoformat()}"
+        if reason:
+            try:
+                path.unlink()
+            except OSError as e:
+                logger.warning("Garbage-month sweep: cannot delete %s (%s)", path.name, e)
+                continue
+            logger.warning("Garbage-month sweep: deleted %s (%s)", path.name, reason)
+            dropped.append(path.name)
+    return dropped
+
+
 def mode_daily(args) -> int:
     """Daily capture using predictions-yesterday / today / tomorrow pages."""
     predictor = ForebetPredictor()
@@ -345,9 +406,11 @@ def mode_daily(args) -> int:
         if warehouse_df is not None and not warehouse_df.empty:
             matched = 0
             unmatched = 0
+            dateless = 0
             for p in preds:
                 match_date = p.get("match_date")
                 if not match_date:
+                    dateless += 1
                     continue
                 h = name_signature(p["player_home"])
                 a = name_signature(p["player_away"])
@@ -404,7 +467,8 @@ def mode_daily(args) -> int:
                     predictions.append(_copy_forebet_result_fields(row_out, p, p["player_home"], p["player_away"]))
                     unmatched += 1
 
-            logger.info("predictions-%s: %d matched to warehouse, %d stored as new upcoming matches.", day, matched, unmatched)
+            logger.info("predictions-%s: %d matched to warehouse, %d stored as new upcoming matches, %d skipped (no date).",
+                        day, matched, unmatched, dateless)
         else:
             for p in preds:
                 row_out = {
@@ -429,6 +493,7 @@ def mode_daily(args) -> int:
     written_results = _write_forebet_result_rows(predictions, Path(args.output_dir))
     for result_path in written_results:
         logger.info("Wrote Forebet result rows to %s", result_path)
+    _drop_future_garbage_month_files(args.output_dir)
     return 0
 
 

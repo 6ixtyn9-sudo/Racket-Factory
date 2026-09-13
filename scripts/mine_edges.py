@@ -552,6 +552,35 @@ def classify_bucket(best_pick: dict) -> str:
     return "WATCHLIST_UNKNOWN_CTX"
 
 
+# Dim values that carry no signal: mining slices on them (e.g. tour:UNKNOWN)
+# can only match other unknown-context rows, which are never actionable.
+PLACEHOLDER_DIM_VALUES = ("Unknown", "UNKNOWN", "")
+
+# Slice verdicts that may promote a today-row to a pick. Exportable neutral
+# slices (NO STAT SIG / NEUTRAL) are diagnostics-only.
+ACTIONABLE_VERDICTS = ("EDGE CONFIRMED", "WATCHLIST")
+
+
+def _is_placeholder_dim_value(x: object) -> bool:
+    """True for dim values that must be excluded from slice mining."""
+    return bool(pd.isna(x)) or x in PLACEHOLDER_DIM_VALUES
+
+
+def _actionable_slices(results: list[dict] | None) -> list[dict]:
+    """Slices that may promote a today-row to a pick.
+
+    Mining emits report-only slices too (NO STAT SIG, N < min-export-n,
+    ROBBER, FADE); those must not block the live-only fallback (run #206:
+    5 unexportable tour:UNKNOWN slices yielded 0 picks despite 26 today
+    candidates). Single source of truth for the export gate.
+    """
+    return [
+        res for res in (results or [])
+        if res.get("Exportable", False)
+        and str(res.get("Verdict", "")).strip() in ACTIONABLE_VERDICTS
+    ]
+
+
 def normalize_side_token(value: object) -> str | None:
     text = str(value or "").strip()
     if text in {"player_a", "1"}:
@@ -1469,7 +1498,7 @@ def main() -> int:
     }
 
     for k, v in dimensions.items():
-        dimensions[k] = [x for x in v if pd.notna(x) and x != "Unknown" and x != ""]
+        dimensions[k] = [x for x in v if not _is_placeholder_dim_value(x)]
 
     logger.info("Mining for Bankers and Robbers across %d dimensions...", len(dimensions))
 
@@ -1486,7 +1515,7 @@ def main() -> int:
             subset = list(subset)
             subset_df = df.copy()
             for d in subset:
-                subset_df = subset_df[~subset_df[d].isin(["Unknown", ""])]
+                subset_df = subset_df[~subset_df[d].isin(PLACEHOLDER_DIM_VALUES)]
                 subset_df = subset_df.dropna(subset=[d])
 
             if subset_df.empty:
@@ -1630,11 +1659,20 @@ def main() -> int:
         logger.info("Today candidate rows after live filtering: %d", len(today_df))
 
     picks_to_export = []
+    # Actionable slices: only exportable EDGE CONFIRMED / WATCHLIST slices can
+    # promote a today-row to a pick. Report-only slices (NO STAT SIG, N <
+    # min-export-n, ROBBER, FADE) must not block the live-only fallback below
+    # (run #206: 5 unexportable slices yielded 0 picks despite 26 candidates).
+    actionable_results = _actionable_slices(results)
+    if results and not actionable_results:
+        logger.warning("Mined %d slices but none are actionable (all NO STAT SIG / "
+                       "N<%d / ROBBER / FADE) — live-only fallback will export today "
+                       "candidates as WATCHLIST", len(results), args.min_export_n)
     # Fallback for live-only mode (no historical edges after cache eviction)
     # If we have today candidates but no certified edges, export them as WATCHLIST
     # using their own prediction confidence — allows factory to recover and
     # generate auto_tickets even before full history backfill.
-    if not results and not today_df.empty:
+    if not actionable_results and not today_df.empty:
         logger.warning("No historical edges found — live-only fallback: exporting today candidates as WATCHLIST")
         for _, row in today_df.iterrows():
             base = select_player_from_row(row, target_date)
@@ -1703,25 +1741,16 @@ def main() -> int:
             picks_to_export.append(base)
 
     unmatched_slice_rows = 0
-    if not today_df.empty and results:
+    if not today_df.empty and actionable_results:
         for _, row in today_df.iterrows():
             best_pick = None
             best_roi = -999.0
 
-            for res in results:
-                # REDTEAM Finding #1: ROBBER/FADE slices never promote a row
-                # to a pick. They are still emitted as SKIPPED_DEAD_EDGE
-                # rows further down so the slice is visible, but they cannot
-                # be the basis of an actionable bet.
-                if not res.get("Exportable", False):
-                    continue
-
-                # Only historically actionable verdicts may become picks.
-                # Exportable neutral slices are useful for diagnostics, but
-                # NO STAT SIG / NEUTRAL must never become WATCHLIST rows.
-                if str(res.get("Verdict", "")).strip() not in {"EDGE CONFIRMED", "WATCHLIST"}:
-                    continue
-
+            # REDTEAM Finding #1: ROBBER/FADE slices never promote a row to a
+            # pick, and exportable neutral slices (NO STAT SIG / NEUTRAL) are
+            # diagnostics-only. `actionable_results` is pre-filtered by
+            # _actionable_slices, the single source of truth for this gate.
+            for res in actionable_results:
                 combo = res["Combo_Dict"]
                 match_all = True
                 for dim_name, dim_val in combo.items():
