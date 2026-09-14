@@ -775,7 +775,7 @@
     "_market_basis": "api",
     "_selection_basis": "prediction",
     "bucket": "SKIPPED_DEAD_EDGE",
-    "confidence": 58.0,
+    "confidence": 57.99999999999999,
     "context_used": "Tiburon - Final qualification",
     "cross_source_agree": "MarketOnly",
     "date": "2026-09-14",
