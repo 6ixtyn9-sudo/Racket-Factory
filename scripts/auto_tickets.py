@@ -78,7 +78,12 @@ MAX_ODDS_PER_LEG_BOOST = 2.8  # BOOST can go slightly higher when high prob
 
 
 def dynamic_max_odds(p: dict) -> float:
-    """Dynamic max leg odds: allow underdogs only when ML 85%+ + high ROI + enough samples."""
+    """Dynamic max leg odds: not restrictive, but no stray dogs.
+
+    - Base 1.8 = user's winning range 1.28-1.88 (stray dogs blocked here)
+    - High prob + proven slice = up to 3.5 (allows 3.23 when 85%+ + 30n + 10% ROI)
+    - Stray dog = low prob (<0.70) or low n (<10) stays 1.8, never chases
+    """
     try:
         prob = float(p.get("ml_calibrated_prob") or p.get("prediction_prob") or 0)
         if prob <= 1.0 and prob > 0:
@@ -98,25 +103,29 @@ def dynamic_max_odds(p: dict) -> float:
         n = 0
     bucket = str(p.get("bucket") or "").upper()
     verdict = str(p.get("ml_verdict") or "")
-    # Base 1.8 = user's winning tickets 1.28-1.88
+    tier = str(p.get("edge_tier") or "")
+    # Stray dog guard: low samples + low prob = never chase
+    if n < 10 and prob < 0.70:
+        return 1.8
+    # Not restrictive: proven high-EV dogs allowed up to 3.5
     if prob >= 0.85 and n >= 30 and roi >= 0.10:
-        # High prob + proven slice: allow underdog like Bobichon 2.28 (85%, 51n, 15.9% ROI)
+        # e.g. Bobichon 2.28 85% 51n 15.9% ROI, or Ostapenkov 3.23 if it proves 85%+
+        cap = 3.5
+    elif prob >= 0.80 and n >= 20 and roi >= 0.05:
         cap = 2.8
-    elif prob >= 0.80 and roi >= 0.05 and n >= 20:
-        cap = 2.4
     elif prob >= 0.75 and n >= 15:
-        cap = 2.2
+        cap = 2.4
     elif prob >= 0.70:
         cap = 2.0
     else:
         cap = 1.8
-    # BANKER gets +0.2, BOOST +0.2, WATCHLIST stays base
-    if "BANKER" in str(p.get("edge_tier") or "") or "CERTIFIED" in bucket:
-        cap += 0.1
+    # BANKER/CERTIFIED +0.2, BOOST +0.2 – rewards proven tiers
+    if "BANKER" in tier or "CERTIFIED" in bucket:
+        cap += 0.2
     if verdict == "BOOST":
         cap += 0.2
-    # Never exceed 3.0, never below 1.8
-    return max(1.8, min(3.0, cap))
+    # Hard bounds: 1.8 min, 3.5 max (allows 3.23 when truly proven, blocks 5.0+ stray)
+    return max(1.8, min(3.5, cap))
 MIN_ACCA_ODDS = 1.5  # Lowered from 2.0 to 1.5 to allow user's winning accas: 1.34*1.22=1.63, 1.40*1.32=1.84, total 4-leg 3.02
 MIN_ACCA_ODDS_BOOST = 1.18  # BOOST can be super-short: 1.05*1.13=1.186 won with void, user ticket 1.70 total
 MAX_ACCA_ODDS = 4.0  # CAP acca odds: user complained 8.06/7.13 high, winners were 1.28-1.88, so cap at 4.0
