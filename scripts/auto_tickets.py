@@ -71,8 +71,52 @@ def _get_min_odds_per_leg() -> float:
 
 MIN_ODDS_PER_LEG = _get_min_odds_per_leg()
 MIN_ODDS_BOOST = 1.10  # BOOST picks can include super-short legs like 1.05 if ML says High conf
-MAX_ODDS_PER_LEG = 2.5  # CAP high odds: user's winners were 1.05-1.40, current 7.45 accas used 2.78*2.68 underdogs -> too high, cap to 2.5
-MAX_ODDS_PER_LEG_BOOST = 2.5
+# DYNAMIC MAX: base 1.8 (winning range 1.28-1.88), scales with prob + ROI + edge_n
+# Static fallback kept for backward compat, but eligible_pool now uses dynamic_max_odds()
+MAX_ODDS_PER_LEG = 2.5  # fallback static
+MAX_ODDS_PER_LEG_BOOST = 2.8  # BOOST can go slightly higher when high prob
+
+
+def dynamic_max_odds(p: dict) -> float:
+    """Dynamic max leg odds: allow underdogs only when ML 85%+ + high ROI + enough samples."""
+    try:
+        prob = float(p.get("ml_calibrated_prob") or p.get("prediction_prob") or 0)
+        if prob <= 1.0 and prob > 0:
+            pass
+        else:
+            prob = prob / 100.0 if prob > 1 else prob
+    except Exception:
+        prob = 0.6
+    try:
+        roi_str = str(p.get("roi_estimate") or "0%")
+        roi = float(roi_str.strip().replace("%", "")) / 100.0
+    except Exception:
+        roi = 0.0
+    try:
+        n = int(p.get("edge_n") or 0)
+    except Exception:
+        n = 0
+    bucket = str(p.get("bucket") or "").upper()
+    verdict = str(p.get("ml_verdict") or "")
+    # Base 1.8 = user's winning tickets 1.28-1.88
+    if prob >= 0.85 and n >= 30 and roi >= 0.10:
+        # High prob + proven slice: allow underdog like Bobichon 2.28 (85%, 51n, 15.9% ROI)
+        cap = 2.8
+    elif prob >= 0.80 and roi >= 0.05 and n >= 20:
+        cap = 2.4
+    elif prob >= 0.75 and n >= 15:
+        cap = 2.2
+    elif prob >= 0.70:
+        cap = 2.0
+    else:
+        cap = 1.8
+    # BANKER gets +0.2, BOOST +0.2, WATCHLIST stays base
+    if "BANKER" in str(p.get("edge_tier") or "") or "CERTIFIED" in bucket:
+        cap += 0.1
+    if verdict == "BOOST":
+        cap += 0.2
+    # Never exceed 3.0, never below 1.8
+    return max(1.8, min(3.0, cap))
 MIN_ACCA_ODDS = 1.5  # Lowered from 2.0 to 1.5 to allow user's winning accas: 1.34*1.22=1.63, 1.40*1.32=1.84, total 4-leg 3.02
 MIN_ACCA_ODDS_BOOST = 1.18  # BOOST can be super-short: 1.05*1.13=1.186 won with void, user ticket 1.70 total
 MAX_ACCA_ODDS = 4.0  # CAP acca odds: user complained 8.06/7.13 high, winners were 1.28-1.88, so cap at 4.0
@@ -452,7 +496,8 @@ def build_accas(pool):
                     continue
                 # Dynamic min odds: BOOST picks allowed down to 1.10 (user's winners 1.05-1.22)
                 min_leg = MIN_ODDS_BOOST if str(p.get("ml_verdict")) == "BOOST" else MIN_ODDS_PER_LEG
-                max_leg = MAX_ODDS_PER_LEG_BOOST if str(p.get("ml_verdict")) == "BOOST" else MAX_ODDS_PER_LEG
+                # DYNAMIC MAX: scales with prob + ROI + edge_n (e.g. Bobichon 2.28 allowed only because 85%+51n+15.9% ROI)
+                max_leg = dynamic_max_odds(p)
                 if o < min_leg:
                     # Allow if ML calibrated prob >=85% and High conf
                     try:
@@ -464,16 +509,8 @@ def build_accas(pool):
                     except Exception:
                         continue
                 if o > max_leg:
-                    # CAP high odds legs – user complained 7.45 (2.78*2.68) too high, winners were 1.05-1.40
-                    # Allow only if prob >=0.80 and BOOST
-                    try:
-                        cp = float(p.get("ml_calibrated_prob") or 0)
-                        if cp >= 0.80 and str(p.get("ml_verdict")) == "BOOST" and o <= 3.0:
-                            pass
-                        else:
-                            continue
-                    except Exception:
-                        continue
+                    # Dynamic cap blocks random underdogs, allows proven high-EV dogs
+                    continue
                 # Require min prob 0.65 for REAL (avoid Low 56% underdogs that made 7.45)
                 try:
                     cp = float(p.get("ml_calibrated_prob") or get_prob(p) or 0)
