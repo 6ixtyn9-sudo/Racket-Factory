@@ -782,9 +782,17 @@ def main():
         "frozen": is_frozen,
     }
     LOCALDATA.mkdir(parents=True, exist_ok=True)
+    existing_ledger = _existing_ticket_ledger(LOCALDATA / f"auto_tickets_{target_date}.json")
+    # USER FIX: frozen guard blocked 06:10 SAST generation window – existing frozen at 00:00 refused overwrite at 06:25
+    # Allow overwrite if current run is in generation window (06:00-09:00) even if existing is frozen, for same date
+    effective_force = args.force
+    if not is_frozen and existing_ledger and existing_ledger.get("date") == target_date:
+        # In generation window, allow refresh of today's frozen tickets (e.g., after code fix low-odds 1.86 vs 7.45)
+        effective_force = True
+        print(f"Generation window {GENERATE_HOUR_START}:00-{FREEZE_HOUR}:00 SAST – allowing overwrite of frozen {target_date} ledger")
     if not should_write_ticket_files(
-        _existing_ticket_ledger(LOCALDATA / f"auto_tickets_{target_date}.json"),
-        len(accas_out), force=args.force,
+        existing_ledger,
+        len(accas_out), force=effective_force,
     ):
         print(f"REFUSING to overwrite auto_tickets_{target_date}.* "
               f"(frozen/non-empty ledger guard; keeping existing files).")

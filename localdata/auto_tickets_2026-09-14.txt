@@ -1,25 +1,25 @@
 Racket Factory Auto Tickets — 2026-09-14
-Generated at: 2026-09-14T00:00:13+02:00
+Generated at: 2026-09-14T06:33:30.982283+02:00
 Bank: 100.00% (cycle base 100.00%)
 Take profit target: 200.00%
 
-Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 2.0), 4 accas max per track, NO SINGLES
+Strategy: strengths-focused, avoid super short odds (min leg 1.2, min acca 1.5), 4 accas max per track, NO SINGLES
 Stake: 25% of bank per day (priced track only; paper is hit-rate only)
 
-ACCA 1 [value_2leg_mutual] — Odds 7.45 — Stake 6.25%
-  - A. Gray vs P. Maloney -> P. Maloney @ 2.78 (conf 56.99999999999999 ml -0.1 ALLOW src Forebet odds_src BetExplorer)
-  - A. Shelbayh vs T. Zink -> T. Zink @ 2.68 (conf 57.99999999999999 ml -0.1 ALLOW src Forebet odds_src BetExplorer)
+ACCA 1 [value_2leg_mutual] — Odds 2.43 — Stake 6.25%
+  - J. Nikles vs M. Cerny -> J. Nikles @ 1.59 (conf 64.0 ml  ALLOW src Forebet odds_src BetExplorer)
+  - L. Boskovic vs R. Serban -> L. Boskovic @ 1.53 (conf 61.0 ml  ALLOW src Forebet odds_src BetExplorer)
 
-ACCA 2 [value_2leg_mutual] — Odds 5.45 — Stake 6.25%
-  - G. Oradini vs P. Basile -> G. Oradini @ 2.74 (conf 54.0 ml -0.1 ALLOW src Forebet odds_src BetExplorer)
-  - M. Schoenhaus vs P. Brady -> P. Brady @ 1.99 (conf 66.0 ml  ALLOW src Forebet odds_src BetExplorer)
+ACCA 2 [value_2leg_mutual] — Odds 1.86 — Stake 6.25%
+  - M. Vrbensky vs K. Wehnelt -> K. Wehnelt @ 1.43 (conf 64.0 ml  ALLOW src Forebet odds_src BetExplorer)
+  - D. Masur vs D. De Jonge -> D. Masur @ 1.3 (conf 66.0 ml  ALLOW src Forebet odds_src BetExplorer)
 
-ACCA 3 [value_2leg_mutual] — Odds 4.66 — Stake 6.25%
-  - Elena Malygina vs Gabriella Da Silva Fick -> Elena Malygina @ 2.0 (conf 61.0 ml 0.4 BOOST src BetClan odds_src BetExplorer)
-  - P. Brunclik vs F. Romano -> F. Romano @ 2.33 (conf 56.99999999999999 ml -0.1 ALLOW src Forebet odds_src BetExplorer)
+ACCA 3 [value_2leg_mutual] — Odds 2.91 — Stake 6.25%
+  - J. Boulais vs M. Bobichon -> M. Bobichon @ 2.27 (conf 60.0 ml  ALLOW src Forebet odds_src BetExplorer)
+  - N. Slavic vs Y. Ghazouani Durand -> Y. Ghazouani Durand @ 1.28 (conf 68.0 ml  ALLOW src Forebet odds_src BetExplorer)
 
-ACCA 4 [value_2leg_mutual] — Odds 5.30 — Stake 6.25%
-  - R. Roura Llaverias vs M. Sieg -> M. Sieg @ 2.12 (conf 60.0 ml  ALLOW src Forebet odds_src BetExplorer)
-  - P. Lagutin vs M. Marterer -> M. Marterer @ 2.5 (conf 52.0 ml -0.1 ALLOW src Forebet odds_src BetExplorer)
+ACCA 4 [value_2leg_mutual] — Odds 2.90 — Stake 6.25%
+  - M. Schoenhaus vs P. Brady -> P. Brady @ 2.06 (conf 66.0 ml  ALLOW src Forebet odds_src BetExplorer)
+  - D. Blanch vs I. Gakhov -> D. Blanch @ 1.41 (conf 59.0 ml -0.1 ALLOW src Forebet odds_src BetExplorer)
 
 Total staked: 25.00% of bank
