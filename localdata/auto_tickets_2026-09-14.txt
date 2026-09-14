@@ -1,5 +1,5 @@
 Racket Factory Auto Tickets — 2026-09-14
-Generated at: 2026-09-14T06:41:07+02:00
+Generated at: 2026-09-14T07:03:58+02:00
 Bank: 100.00% (cycle base 100.00%)
 Take profit target: 200.00%
 
@@ -18,8 +18,8 @@ ACCA 3 [value_2leg_mutual] — Odds 2.91 — Stake 6.25%
   - J. Boulais vs M. Bobichon -> M. Bobichon @ 2.27 (conf 60.0 ml  ALLOW src Forebet odds_src BetExplorer)
   - N. Slavic vs Y. Ghazouani Durand -> Y. Ghazouani Durand @ 1.28 (conf 68.0 ml  ALLOW src Forebet odds_src BetExplorer)
 
-ACCA 4 [value_2leg_mutual] — Odds 2.90 — Stake 6.25%
-  - M. Schoenhaus vs P. Brady -> P. Brady @ 2.06 (conf 66.0 ml  ALLOW src Forebet odds_src BetExplorer)
+ACCA 4 [value_2leg_mutual] — Odds 2.50 — Stake 6.25%
+  - Q. Vandecasteele vs B. N. Nakashima -> Q. Vandecasteele @ 1.77 (conf 57.99999999999999 ml -0.1 ALLOW src Forebet odds_src BetExplorer)
   - D. Blanch vs I. Gakhov -> D. Blanch @ 1.41 (conf 59.0 ml -0.1 ALLOW src Forebet odds_src BetExplorer)
 
 Total staked: 25.00% of bank
