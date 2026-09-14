@@ -71,8 +71,12 @@ def _get_min_odds_per_leg() -> float:
 
 MIN_ODDS_PER_LEG = _get_min_odds_per_leg()
 MIN_ODDS_BOOST = 1.10  # BOOST picks can include super-short legs like 1.05 if ML says High conf
+MAX_ODDS_PER_LEG = 2.5  # CAP high odds: user's winners were 1.05-1.40, current 7.45 accas used 2.78*2.68 underdogs -> too high, cap to 2.5
+MAX_ODDS_PER_LEG_BOOST = 2.5
 MIN_ACCA_ODDS = 1.5  # Lowered from 2.0 to 1.5 to allow user's winning accas: 1.34*1.22=1.63, 1.40*1.32=1.84, total 4-leg 3.02
 MIN_ACCA_ODDS_BOOST = 1.18  # BOOST can be super-short: 1.05*1.13=1.186 won with void, user ticket 1.70 total
+MAX_ACCA_ODDS = 4.0  # CAP acca odds: user complained 8.06/7.13 high, winners were 1.28-1.88, so cap at 4.0
+MAX_ACCA_ODDS_BOOST = 3.0
 TAKE_PROFIT_GAIN = 1.0
 STATE_FILE = LOCALDATA / "auto_tickets_state.json"
 
@@ -204,8 +208,29 @@ def _leg_paper_reason(pick: dict) -> str:
 def is_playable(pick: dict) -> bool:
     bucket = str(pick.get("bucket","")).upper()
     is_no_odds = "NO_ODDS" in bucket
-    if bucket not in PLAYABLE_BUCKETS and not (is_no_odds and bucket in PLAYABLE_BUCKETS_WITH_ML):
-        return False
+    is_dead_edge = "DEAD_EDGE" in bucket
+    # USER FIX: those odds are high because favorites marked SKIPPED_DEAD_EDGE (EV negative via confidence) were excluded,
+    # leaving only underdogs 2.78*2.68=7.45. Allow DEAD_EDGE if ML prob high (>=0.80) or conf >=65 with odds <=2.0
+    # This brings back low-odds winners like 1.28,1.30,1.41 that produce accas 1.28-1.88 like user's tickets
+    if bucket not in PLAYABLE_BUCKETS:
+        if is_no_odds and bucket in PLAYABLE_BUCKETS_WITH_ML:
+            pass
+        elif is_dead_edge:
+            # Allow if ML calibrated prob high or conf high with low odds
+            try:
+                cp = float(pick.get("ml_calibrated_prob") or 0)
+                conf = float(pick.get("confidence") or 0)
+                if conf <= 1.0:
+                    conf *= 100
+                odds_f = float(pick.get("odds") or 0)
+                if cp >= 0.80 or (conf >= 65 and odds_f <= 2.2 and odds_f >= 1.05):
+                    pass
+                else:
+                    return False
+            except Exception:
+                return False
+        else:
+            return False
     if not clean_text(pick.get("selected_player")):
         return False
     if not clean_text(pick.get("match")):
@@ -217,7 +242,9 @@ def is_playable(pick: dict) -> bool:
             weights = source_weights_from_audit(audit)
             scoring = score_pick_strengths(pick, registry, weights)
             if scoring.get("should_veto") and scoring.get("strength_score", 0) < -0.3:
-                return False
+                # But don't veto DEAD_EDGE favorites with high prob – ML chooses winners
+                if not (is_dead_edge and float(pick.get("ml_calibrated_prob") or 0) >= 0.80):
+                    return False
             if is_no_odds:
                 if not (scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.4):
                     return False
@@ -397,8 +424,17 @@ def build_accas(pool):
             except Exception:
                 pass
         source_count = int(p.get("source_count") or 1)
-        value_score = (edge if edge > 0 else 0.02) * (1 + ml_score) * (1 + kelly_f * 2) * (1 + source_count * 0.05)
-        return (-value_score, -ml_score, -conf_f, -kelly_f, odds_f, str(p.get("match", "")))
+        # USER FIX: those odds are high (7.45) – prioritize high prob favorites like user's winning tickets (1.05-1.40)
+        # Penalize high odds >2.5, boost high prob
+        odds_penalty = 1.0
+        if odds_f > 2.5:
+            odds_penalty = 0.5
+        if odds_f > 3.0:
+            odds_penalty = 0.25
+        # Prob-first sorting: prob * 2 + edge, not just edge (which favored underdogs 2.78*2.68)
+        value_score = (prob_f * 2.0 + (edge if edge > 0 else 0.0)) * (1 + ml_score) * (1 + kelly_f) * (1 + source_count * 0.05) * odds_penalty
+        # Prefer lower odds when prob similar (user's winners 1.28-1.88 not 7.45)
+        return (-value_score, -prob_f, -ml_score, -conf_f, odds_f, str(p.get("match", "")))
 
     def match_key(p):
         return normalize_name(p.get("match") or f"{p.get('player_a')} vs {p.get('player_b')}")
@@ -416,6 +452,7 @@ def build_accas(pool):
                     continue
                 # Dynamic min odds: BOOST picks allowed down to 1.10 (user's winners 1.05-1.22)
                 min_leg = MIN_ODDS_BOOST if str(p.get("ml_verdict")) == "BOOST" else MIN_ODDS_PER_LEG
+                max_leg = MAX_ODDS_PER_LEG_BOOST if str(p.get("ml_verdict")) == "BOOST" else MAX_ODDS_PER_LEG
                 if o < min_leg:
                     # Allow if ML calibrated prob >=85% and High conf
                     try:
@@ -426,6 +463,26 @@ def build_accas(pool):
                             continue
                     except Exception:
                         continue
+                if o > max_leg:
+                    # CAP high odds legs – user complained 7.45 (2.78*2.68) too high, winners were 1.05-1.40
+                    # Allow only if prob >=0.80 and BOOST
+                    try:
+                        cp = float(p.get("ml_calibrated_prob") or 0)
+                        if cp >= 0.80 and str(p.get("ml_verdict")) == "BOOST" and o <= 3.0:
+                            pass
+                        else:
+                            continue
+                    except Exception:
+                        continue
+                # Require min prob 0.65 for REAL (avoid Low 56% underdogs that made 7.45)
+                try:
+                    cp = float(p.get("ml_calibrated_prob") or get_prob(p) or 0)
+                    if cp < 0.65 and str(p.get("ml_verdict")) != "BOOST":
+                        # Allow if odds <=2.0 and conf >=60
+                        if not (o <= 2.0 and conf_of(p) >= 60):
+                            continue
+                except Exception:
+                    pass
             bucket = str(p.get("bucket", ""))
             if "NO_ODDS" in bucket and str(p.get("ml_verdict")) != "BOOST":
                 continue
@@ -433,37 +490,94 @@ def build_accas(pool):
         return out
 
     def build_track(pool_sorted, paper, used_matches):
-        """Build 2-leg + 3-leg + fallback accas for one track."""
+        """Build 2-leg + 3-leg + fallback accas – greedy non-overlapping pairs under max (fixes high odds waste)."""
         track = []
         suffix = "_paper" if paper else ""
-        idx = 0
-        while idx < len(pool_sorted) and len(track) < MAX_ACCAS:
-            chunk = []
-            while len(chunk) < 2 and idx < len(pool_sorted):
-                p = pool_sorted[idx]
-                mk = match_key(p)
-                if mk not in used_matches:
-                    chunk.append(p)
-                    used_matches.add(mk)
-                idx += 1
-            if len(chunk) == 2:
-                if paper:
+        # For paper, simple sequential is fine
+        if paper:
+            idx = 0
+            while idx < len(pool_sorted) and len(track) < MAX_ACCAS:
+                chunk = []
+                while len(chunk) < 2 and idx < len(pool_sorted):
+                    p = pool_sorted[idx]
+                    mk = match_key(p)
+                    if mk not in used_matches:
+                        chunk.append(p)
+                        used_matches.add(mk)
+                    idx += 1
+                if len(chunk) == 2:
                     for leg in chunk:
                         leg["_paper_reason"] = _leg_paper_reason(leg)
                     track.append({"legs": chunk, "odds": None, "type": f"value_2leg_mutual{suffix}",
                                   "prob": round(math.prod([get_prob(leg) for leg in chunk]), 4),
                                   "paper": True})
-                else:
-                    prod = math.prod([get_odds(leg) for leg in chunk])
-                    # Dynamic min acca: BOOST legs can have lower total (1.2) because super-short winners like 1.05*1.13=1.18 still won
-                    is_boost_chunk = any(str(leg.get("ml_verdict")) == "BOOST" for leg in chunk)
-                    min_acca = MIN_ACCA_ODDS_BOOST if is_boost_chunk else MIN_ACCA_ODDS
-                    if prod >= min_acca:
-                        prob_prod = math.prod([get_prob(leg) for leg in chunk])
-                        kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod > 1 else 0
-                        kelly_acca = max(0.0, min(0.15, kelly_acca))
-                        track.append({"legs": chunk, "odds": round(prod, 2), "type": "value_2leg_mutual",
-                                      "kelly": round(kelly_acca, 4), "prob": round(prob_prod, 4), "paper": False})
+        else:
+            # REAL: generate all valid pairs under max, greedy pick highest prob*value, mutually exclusive
+            # This avoids wasting picks when sequential prod > max (which caused 1 acca instead of 4)
+            candidates = []
+            n = len(pool_sorted)
+            for i in range(n):
+                pi = pool_sorted[i]
+                mi = match_key(pi)
+                if mi in used_matches:
+                    continue
+                oi = get_odds(pi)
+                if oi is None:
+                    continue
+                for j in range(i+1, n):
+                    pj = pool_sorted[j]
+                    mj = match_key(pj)
+                    if mj in used_matches or mj == mi:
+                        continue
+                    oj = get_odds(pj)
+                    if oj is None:
+                        continue
+                    prod = oi * oj
+                    is_boost = any(str(leg.get("ml_verdict")) == "BOOST" for leg in (pi, pj))
+                    min_acca = MIN_ACCA_ODDS_BOOST if is_boost else MIN_ACCA_ODDS
+                    max_acca = MAX_ACCA_ODDS_BOOST if is_boost else MAX_ACCA_ODDS
+                    # Allow slight overshoot 1.2x if prob high
+                    prob_prod = get_prob(pi) * get_prob(pj)
+                    if prod < min_acca:
+                        continue
+                    if prod > max_acca * 1.2:
+                        continue
+                    if prod > max_acca and prob_prod < 0.65:
+                        continue
+                    # Score: prob product weighted, prefer low odds like user's winners 1.28-1.88, not 7.45
+                    # Strong penalty for high acca odds – user said those odds are high
+                    if prod <= 2.0:
+                        penalty = 1.3  # bonus for super-low accas like 1.28,1.33,1.61,1.88
+                    elif prod <= 2.5:
+                        penalty = 1.2
+                    elif prod <= 3.0:
+                        penalty = 1.0
+                    elif prod <= 3.5:
+                        penalty = 0.6
+                    elif prod <= 4.0:
+                        penalty = 0.35
+                    else:
+                        penalty = 0.15
+                    # Bonus for both legs low odds (<=1.8) – user's winning tickets 1.05-1.40
+                    low_bonus = 1.0
+                    if oi <= 1.8 and oj <= 1.8:
+                        low_bonus = 1.25
+                    score = prob_prod * (1 + ml_score_of(pi) + ml_score_of(pj)) * penalty * low_bonus
+                    candidates.append(( -score, prod, prob_prod, i, j, pi, pj))
+            candidates.sort()
+            for _, prod, prob_prod, i, j, pi, pj in candidates:
+                if len(track) >= MAX_ACCAS:
+                    break
+                mi = match_key(pi)
+                mj = match_key(pj)
+                if mi in used_matches or mj in used_matches:
+                    continue
+                used_matches.add(mi)
+                used_matches.add(mj)
+                kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod > 1 else 0
+                kelly_acca = max(0.0, min(0.15, kelly_acca))
+                track.append({"legs": [pi, pj], "odds": round(prod, 2), "type": "value_2leg_mutual",
+                              "kelly": round(kelly_acca, 4), "prob": round(prob_prod, 4), "paper": False})
         if _ML_AVAILABLE:
             boost_picks = [p for p in pool_sorted if str(p.get("ml_verdict")) == "BOOST"]
             boost_unused = [p for p in boost_picks if match_key(p) not in used_matches]
@@ -479,7 +593,7 @@ def build_accas(pool):
                                   "paper": True})
                 else:
                     prod = math.prod([get_odds(leg) for leg in chunk])
-                    if prod >= MIN_ACCA_ODDS_BOOST:
+                    if prod >= MIN_ACCA_ODDS_BOOST and prod <= MAX_ACCA_ODDS_BOOST * 1.5:
                         prob_prod = math.prod([get_prob(leg) for leg in chunk])
                         kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod > 1 else 0
                         kelly_acca = max(0.0, min(0.10, kelly_acca))
