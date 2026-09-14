@@ -54,24 +54,24 @@
 - 2026-09-14 Q. Vandecasteele vs B. N. Nakashima selected=Q. Vandecasteele winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 J. Nikles vs M. Cerny selected=J. Nikles winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 I. Almazan Valiente vs G. Ferrari selected=G. Ferrari winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-14 R. Seggerman vs A. Rybakov selected=R. Seggerman winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 L. Boskovic vs R. Serban selected=L. Boskovic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-14 R. Seggerman vs A. Rybakov selected=R. Seggerman winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 M. Vrbensky vs K. Wehnelt selected=K. Wehnelt winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 J. Clarke vs J. Forejtek selected=J. Clarke winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 R. Strombachs vs S. Rodriguez Taverna selected=S. Rodriguez Taverna winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 N. Slavic vs Y. Ghazouani Durand selected=Y. Ghazouani Durand winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 J. C. Martin Manzano vs G. Campana Lee selected=G. Campana Lee winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 D. Masur vs D. De Jonge selected=D. Masur winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-14 G. La Vela vs F. Iannaccone selected=F. Iannaccone winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 T. Pereira vs R. Molleker selected=R. Molleker winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 D. Blanch vs I. Gakhov selected=D. Blanch winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-14 G. La Vela vs F. Iannaccone selected=F. Iannaccone winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 F. Bass vs K. De Schepper selected=K. De Schepper winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 F. Diaz Acosta vs M. Alcala Gurri selected=F. Diaz Acosta winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 M. Petkovic vs F. Gill selected=F. Gill winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 A. Moro Canas vs G. Blancaneaux selected=A. Moro Canas winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-14 O. Baris vs E. Zhu selected=O. Baris winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 E. Bennemann vs M. Bassols selected=M. Bassols winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 T. Boyer vs E. Winter selected=T. Boyer winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-14 O. Baris vs E. Zhu selected=O. Baris winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 L. Staeheli vs R. Pascual Ferra selected=R. Pascual Ferra winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 S. Johnson vs E. Arutiunian selected=S. Johnson winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-14 J. Wolf vs L. E. Ambrogi selected=J. Wolf winner=? status=pending_no_result reason=result not final: live/in-progress markers present
