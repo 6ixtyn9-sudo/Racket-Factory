@@ -1225,10 +1225,15 @@
               "_selection_basis": "prediction",
               "_settle_basis": {
                 "match_date": "2026-09-15",
-                "score": ""
+                "result_id": "",
+                "score": "7-6 6-0",
+                "source": "Forebet_results",
+                "status": "",
+                "tournament": "Valencia - 1/16-finals",
+                "winner": "C. Burel"
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Forebet_results 2026-09-15 7-6 6-0",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 89.0,
               "context_used": "WTA Valencia Prediction",
@@ -1296,10 +1301,15 @@
               "_selection_basis": "prediction",
               "_settle_basis": {
                 "match_date": "2026-09-15",
-                "score": ""
+                "result_id": "3323977.0",
+                "score": "6-3 6-4",
+                "source": "Challenger_results",
+                "status": "",
+                "tournament": "",
+                "winner": "Binda A."
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-15 6-3 6-4",
               "bucket": "WATCHLIST",
               "confidence": 75.0,
               "context_used": "Challenger Guangzhou Prediction",
@@ -1431,10 +1441,15 @@
               "_selection_basis": "prediction",
               "_settle_basis": {
                 "match_date": "2026-09-15",
-                "score": ""
+                "result_id": "3323957.0",
+                "score": "6-2 6-4",
+                "source": "Challenger_results",
+                "status": "",
+                "tournament": "",
+                "winner": "Rapolu M."
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-15 6-2 6-4",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 64.0,
               "context_used": "Caldas da Rainha - 1/16-finals",
