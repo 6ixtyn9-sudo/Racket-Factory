@@ -1,0 +1,38 @@
+Racket Factory Picks — 2026-09-16
+============================================================
+Generated at: 2026-09-16 00:07:37
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  (none)
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  (none)
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  (none)
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] K. Day vs L. Samsonova                     KO 16:00 -> L. SAMSONOVA  conf 64% @1.38  EV -0.12u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=117  roi=19.28%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] Z. Sonmez vs I. Jovic                      KO 16:00 -> I. JOVIC  conf 61% @1.24  EV -0.24u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=117  roi=19.28%
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.

@@ -1,110 +1,110 @@
 {
   "audit_roi_by_source": {
     "Forebet": {
-      "hit_rate": 0.459459,
+      "hit_rate": 0.447368,
       "priced_paper": 0,
-      "priced_picks": 34,
-      "priced_real": 34,
-      "roi": -0.247941,
+      "priced_picks": 35,
+      "priced_real": 35,
+      "roi": -0.269429,
       "roi_paper": null,
-      "roi_real": -0.247941,
-      "selected_won_any_set": 25,
-      "selected_won_any_set_rate": 0.675676,
-      "selected_won_set1": 17,
-      "selected_won_set1_rate": 0.459459,
+      "roi_real": -0.269429,
+      "selected_won_any_set": 26,
+      "selected_won_any_set_rate": 0.684211,
+      "selected_won_set1": 18,
+      "selected_won_set1_rate": 0.473684,
       "selected_won_set2": 20,
-      "selected_won_set2_rate": 0.540541,
+      "selected_won_set2_rate": 0.526316,
       "selected_won_set3": 5,
-      "selected_won_set3_rate": 0.384615,
-      "set_diagnostic_picks": 37,
-      "settled_picks": 37,
+      "selected_won_set3_rate": 0.357143,
+      "set_diagnostic_picks": 38,
+      "settled_picks": 38,
       "wins": 17
     }
   },
   "audit_roi_by_surface": {
     "Hard": {
-      "hit_rate": 0.459459,
+      "hit_rate": 0.447368,
       "priced_paper": 0,
-      "priced_picks": 34,
-      "priced_real": 34,
-      "roi": -0.247941,
+      "priced_picks": 35,
+      "priced_real": 35,
+      "roi": -0.269429,
       "roi_paper": null,
-      "roi_real": -0.247941,
-      "selected_won_any_set": 25,
-      "selected_won_any_set_rate": 0.675676,
-      "selected_won_set1": 17,
-      "selected_won_set1_rate": 0.459459,
+      "roi_real": -0.269429,
+      "selected_won_any_set": 26,
+      "selected_won_any_set_rate": 0.684211,
+      "selected_won_set1": 18,
+      "selected_won_set1_rate": 0.473684,
       "selected_won_set2": 20,
-      "selected_won_set2_rate": 0.540541,
+      "selected_won_set2_rate": 0.526316,
       "selected_won_set3": 5,
-      "selected_won_set3_rate": 0.384615,
-      "set_diagnostic_picks": 37,
-      "settled_picks": 37,
+      "selected_won_set3_rate": 0.357143,
+      "set_diagnostic_picks": 38,
+      "settled_picks": 38,
       "wins": 17
     }
   },
   "audit_roi_by_tour": {
     "CHALLENGER": {
-      "hit_rate": 0.459459,
+      "hit_rate": 0.447368,
       "priced_paper": 0,
-      "priced_picks": 34,
-      "priced_real": 34,
-      "roi": -0.247941,
+      "priced_picks": 35,
+      "priced_real": 35,
+      "roi": -0.269429,
       "roi_paper": null,
-      "roi_real": -0.247941,
-      "selected_won_any_set": 25,
-      "selected_won_any_set_rate": 0.675676,
-      "selected_won_set1": 17,
-      "selected_won_set1_rate": 0.459459,
+      "roi_real": -0.269429,
+      "selected_won_any_set": 26,
+      "selected_won_any_set_rate": 0.684211,
+      "selected_won_set1": 18,
+      "selected_won_set1_rate": 0.473684,
       "selected_won_set2": 20,
-      "selected_won_set2_rate": 0.540541,
+      "selected_won_set2_rate": 0.526316,
       "selected_won_set3": 5,
-      "selected_won_set3_rate": 0.384615,
-      "set_diagnostic_picks": 37,
-      "settled_picks": 37,
+      "selected_won_set3_rate": 0.357143,
+      "set_diagnostic_picks": 38,
+      "settled_picks": 38,
       "wins": 17
     }
   },
   "calibration_by_confidence": {
     "High (70%+)": {
-      "calibration_error": 0.0119,
+      "calibration_error": 0.0097,
       "expected": 0.7,
-      "hit_rate": 0.7119,
-      "n": 59,
-      "wilson_lb": 0.5862,
-      "wins": 42
+      "hit_rate": 0.7097,
+      "n": 62,
+      "wilson_lb": 0.5871,
+      "wins": 44
     },
     "Low (<60%)": {
-      "calibration_error": 0.0254,
+      "calibration_error": -0.0156,
       "expected": 0.5,
-      "hit_rate": 0.5254,
-      "n": 236,
-      "wilson_lb": 0.4618,
-      "wins": 124
+      "hit_rate": 0.4844,
+      "n": 289,
+      "wilson_lb": 0.4274,
+      "wins": 140
     },
     "Medium (60-70%)": {
-      "calibration_error": 0.1372,
+      "calibration_error": 0.1055,
       "expected": 0.6,
-      "hit_rate": 0.7372,
-      "n": 156,
-      "wilson_lb": 0.663,
+      "hit_rate": 0.7055,
+      "n": 163,
+      "wilson_lb": 0.6315,
       "wins": 115
     }
   },
   "calibration_by_source": {
     "foretennis": {
       "expected": null,
-      "hit_rate": 0.7458,
-      "n": 59,
-      "wilson_lb": 0.622,
-      "wins": 44
+      "hit_rate": 0.76,
+      "n": 50,
+      "wilson_lb": 0.6259,
+      "wins": 38
     },
     "market": {
       "expected": null,
-      "hit_rate": 0.6046,
-      "n": 392,
-      "wilson_lb": 0.5554,
-      "wins": 237
+      "hit_rate": 0.5625,
+      "n": 464,
+      "wilson_lb": 0.517,
+      "wins": 261
     }
   },
   "calibration_by_tour": {
@@ -117,24 +117,24 @@
     },
     "CHALLENGER": {
       "expected": null,
-      "hit_rate": 0.6337,
-      "n": 101,
-      "wilson_lb": 0.5364,
-      "wins": 64
+      "hit_rate": 0.552,
+      "n": 125,
+      "wilson_lb": 0.4646,
+      "wins": 69
     },
     "UNKNOWN": {
       "expected": null,
-      "hit_rate": 0.6028,
-      "n": 282,
-      "wilson_lb": 0.5447,
-      "wins": 170
+      "hit_rate": 0.5794,
+      "n": 321,
+      "wilson_lb": 0.5248,
+      "wins": 186
     },
     "WTA": {
       "expected": null,
-      "hit_rate": 0.7097,
+      "hit_rate": 0.6129,
       "n": 31,
-      "wilson_lb": 0.5341,
-      "wins": 22
+      "wilson_lb": 0.4382,
+      "wins": 19
     },
     "nan": {
       "expected": null,
@@ -144,5 +144,5 @@
       "wins": 9
     }
   },
-  "total_settled": 2615
+  "total_settled": 2805
 }
