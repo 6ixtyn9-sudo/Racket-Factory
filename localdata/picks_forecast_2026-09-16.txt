@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-16
 ============================================================
-Generated at: 2026-09-15 06:37:47
-Snapshot as of: 2026-09-15T06:26:03+02:00
+Generated at: 2026-09-15 10:31:39
+Snapshot as of: 2026-09-15T10:26:45+02:00
 Ledger kind: forecast
 
 
@@ -15,27 +15,16 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [live_only_fallback] N. V. Leme Da Silva vs A. Sharma           KO 15:00 -> N. V. LEME DA SILVA  conf 72% @1.50  EV +0.08u
-     bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] T. Gentzsch vs M. Krumich                  KO 10:30 -> T. GENTZSCH  conf 71% @1.62  EV +0.15u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  (none)
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  [live_only_fallback] P. Maloney vs M. Mmoh                      KO 19:00 -> M. MMOH  conf 79% @n/a
+  [live_only_fallback] N. V. Leme Da Silva vs A. Sharma           KO 13:00 -> N. V. LEME DA SILVA  conf 72% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  [live_only_fallback] C. Sinclair vs R. Noguchi                  KO 08:00 -> C. SINCLAIR  conf 60% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] K. Day vs L. Samsonova                     KO 18:00 -> L. SAMSONOVA  conf 64% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] T. Boyer vs A. Shelbayh                    KO 19:00 -> A. SHELBAYH  conf 61% @n/a
+  [live_only_fallback] H. Heck vs L. Pavlovic                     KO 03:00 -> L. PAVLOVIC  conf 54% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] Z. Sonmez vs I. Jovic                      KO 18:00 -> I. JOVIC  conf 61% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] C. Sinclair vs R. Noguchi                  KO 10:00 -> C. SINCLAIR  conf 60% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] M. Kostyuk vs T. Townsend                  KO 18:00 -> M. KOSTYUK  conf 56% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] M. Frech vs C. Dolehide                    KO 18:00 -> C. DOLEHIDE  conf 53% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -43,7 +32,18 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [live_only_fallback] P. Maloney vs M. Mmoh                      KO 17:00 -> M. MMOH  conf 79% @1.39  EV +0.10u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Max Schoenhaus vs Matteo Martineau         KO 09:00 -> MAX SCHOENHAUS  conf 75% @1.41  EV +0.06u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] T. Gentzsch vs M. Krumich                  KO 08:30 -> T. GENTZSCH  conf 71% @1.53  EV +0.09u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] K. Miyoshi vs P. Sekulic                   KO 03:00 -> K. MIYOSHI  conf 69% @1.57  EV +0.08u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] M. Dellavedova vs E. Aguiard               KO 03:00 -> E. AGUIARD  conf 68% @2.48  EV +0.69u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] T. Boyer vs A. Shelbayh                    KO 17:00 -> A. SHELBAYH  conf 61% @2.11  EV +0.29u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================

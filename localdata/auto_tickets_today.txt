@@ -1,25 +1,21 @@
 Racket Factory Auto Tickets — 2026-09-15
-Generated at: 2026-09-15T06:26:03+02:00
-Bank: 100.00% (cycle base 100.00%)
+Generated at: 2026-09-15T10:26:45+02:00
+Bank: 119.88% (cycle base 100.00%)
 Take profit target: 200.00%
 
 Strategy: strengths-focused, avoid super short odds (min leg 1.2, min acca 1.5), 4 accas max per track, NO SINGLES
 Stake: 25% of bank per day (priced track only; paper is hit-rate only)
 
-ACCA 1 [value_2leg_mutual] — Odds 1.67 — Stake 6.25%
-  - Jazmin Ortenzi vs Chloe Paquet -> Chloe Paquet @ 1.59 (conf 88.0 ml 0.75 BOOST src BetClan, Forebet odds_src BetExplorer)
-  - Clara Burel vs Aran Teixido Garcia -> Clara Burel @ 1.05 (conf 89.0 ml 0.55 BOOST src BetClan odds_src BetExplorer)
+ACCA 1 [value_2leg_mutual] — Odds 1.57 — Stake 9.99%
+  - Alycia Parks vs Sara Bejlek -> Sara Bejlek @ 1.27 (conf 72.0 ml 0.35 VETO src BetClan, Forebet odds_src BetExplorer)
+  - Vendula Valdmannova vs Laura Pigossi -> Vendula Valdmannova @ 1.24 (conf 77.0 ml 0.15 VETO src BetClan odds_src BetExplorer)
 
-ACCA 2 [value_2leg_mutual] — Odds 1.74 — Stake 6.25%
-  - Alexandr Binda vs Aoran Wang -> Alexandr Binda @ 1.37 (conf 75.0 ml 0.75 BOOST src BetClan, Forebet odds_src BetExplorer)
-  - Alycia Parks vs Sara Bejlek -> Sara Bejlek @ 1.27 (conf 72.0 ml 0.75 BOOST src BetClan, Forebet odds_src BetExplorer)
+ACCA 2 [value_2leg_mutual] — Odds 1.74 — Stake 9.99%
+  - Kucmova / Laboutkova vs Morderger / Morderger -> Kucmova / Laboutkova @ 1.31 (conf 75.0 ml 0.15 VETO src BetClan odds_src BetExplorer)
+  - Berfu Cengiz vs Guiomar Maristany Zuleta De Reales -> Guiomar Maristany Zuleta De Reales @ 1.33 (conf 71.0 ml 0.15 VETO src BetClan odds_src BetExplorer)
 
-ACCA 3 [value_2leg_mutual] — Odds 1.64 — Stake 6.25%
-  - C. Werner vs M. Rapolu -> M. Rapolu @ 1.32 (conf 64.0 ml 0.4 BOOST src Forebet odds_src BetExplorer)
-  - Mickael Kaouk vs Anton Matusevich -> Anton Matusevich @ 1.24 (conf 71.0 ml 0.75 BOOST src BetClan, Forebet odds_src BetExplorer)
+ACCA 3 [value_2leg_mutual] — Odds 1.86 — Stake 9.99%
+  - Ayukawa / Webley-Smith vs Akli / Cross -> Akli / Cross @ 1.44 (conf 69.0 ml  VETO src BetClan odds_src BetExplorer)
+  - Mickael Kaouk vs Anton Matusevich -> Anton Matusevich @ 1.29 (conf 71.0 ml -0.05 VETO src BetClan, Forebet odds_src BetExplorer)
 
-ACCA 4 [value_2leg_mutual] — Odds 1.81 — Stake 6.25%
-  - Madison Sieg vs Irene Burillo -> Irene Burillo @ 1.38 (conf 73.0 ml 0.55 BOOST src BetClan odds_src BetExplorer)
-  - Kucmova / Laboutkova vs Morderger / Morderger -> Kucmova / Laboutkova @ 1.31 (conf 75.0 ml 0.55 BOOST src BetClan odds_src BetExplorer)
-
-Total staked: 25.00% of bank
+Total staked: 29.97% of bank

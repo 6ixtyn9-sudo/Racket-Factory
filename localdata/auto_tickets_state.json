@@ -1160,9 +1160,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-15",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 88.0,
               "context_used": "WTA Sao Paulo Prediction",
@@ -1220,9 +1223,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-15",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 89.0,
               "context_used": "WTA Valencia Prediction",
@@ -1288,9 +1294,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-15",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 75.0,
               "context_used": "Challenger Guangzhou Prediction",
@@ -1348,9 +1357,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-15",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 72.0,
               "context_used": "WTA Guadalajara Prediction",
@@ -1417,9 +1429,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-15",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 64.0,
               "context_used": "Caldas da Rainha - 1/16-finals",
@@ -1476,9 +1491,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-15",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 71.0,
               "context_used": "Challenger Rennes Prediction",
@@ -1545,9 +1563,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-15",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 73.0,
               "context_used": "WTA Valencia Prediction",
@@ -1604,9 +1625,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-15",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 75.0,
               "context_used": "WTA Ljubljana WD Prediction",
