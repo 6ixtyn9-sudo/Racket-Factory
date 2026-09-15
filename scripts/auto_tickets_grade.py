@@ -355,23 +355,57 @@ def write_performance(state):
     paper_bank = state.get("paper_bank")
     paper_pnl_total = round(sum(float(h.get("paper_pnl_pct") or 0) for h in history), 4)
 
+    # Deduplicate history by date for display and counting (avoid 3x 2026-09-13 @0.00W duplicates)
+    seen_dates_all = set()
+    unique_history = []
+    for h in history:
+        d = h.get("date")
+        if d not in seen_dates_all:
+            seen_dates_all.add(d)
+            unique_history.append(h)
+        else:
+            # Keep latest per date (replace)
+            for i, uh in enumerate(unique_history):
+                if uh.get("date") == d:
+                    unique_history[i] = h
+                    break
+    unique_days = len(seen_dates_all)
+
     lines = []
     lines.append("AUTO-TICKETS (TENNIS) PERFORMANCE — percentages of capital only")
     lines.append("="*62)
     lines.append(f"generated {datetime.now().isoformat(timespec='seconds')}")
     lines.append(f"bank {bank:.1f}% of capital (x{multiple:.2f}) · cycle baseline {cycle_base:.1f}% · next take-profit at {next_target:.1f}% (+100% per cycle)")
     if real:
-        lines.append(f"bet-days {len(history)} · REAL accas {wins}W/{losses}L (hit {wins/len(real):.1%})")
+        lines.append(f"bet-days {unique_days} (unique) · REAL accas {wins}W/{losses}L (hit {wins/len(real):.1%})")
     else:
-        lines.append(f"bet-days {len(history)} · no settled REAL accas yet")
+        lines.append(f"bet-days {unique_days} (unique) · no settled REAL accas yet")
     if paper:
         lines.append(f"PAPER accas (phantom odds, excluded from bank): {paper_wins}W/{len(paper)-paper_wins}L  paper-PnL {paper_pnl_total:+.1f}%"
                      + (f"  paper-bank {paper_bank:.1f}%" if paper_bank is not None else ""))
     lines.append(f"open slips {len(state.get('open_slips',[]))} · {len(state.get('events',[]))} take-profit notification(s)")
     lines.append("")
     lines.append("--- bet-days (most recent first) ---")
-    for h in reversed(history[-15:]):
-        acc_str = " ".join(f"@{a['odds']:.2f}{'W' if a['won'] else 'L'}{'●' if a.get('paper') else ''}{'~' if a.get('refunded') else ''}" for a in h.get("accas", []))
+    # For display, latest 15 unique dates
+    seen = set()
+    deduped = []
+    for h in reversed(history):
+        d = h.get("date")
+        if d not in seen:
+            deduped.append(h)
+            seen.add(d)
+        if len(deduped) >= 15:
+            break
+    for h in deduped:
+        def fmt(a):
+            try:
+                o = float(a.get("odds") or 0)
+            except Exception:
+                o = 0
+            if o <= 1.0:
+                return f"PAPER-{'W' if a.get('won') else 'L'}●"
+            return f"@{o:.2f}{'W' if a['won'] else 'L'}{'●' if a.get('paper') else ''}{'~' if a.get('refunded') else ''}"
+        acc_str = " ".join(fmt(a) for a in h.get("accas", []))
         extra = ""
         if h.get("paper_pnl_pct"):
             extra = f" (paper {float(h['paper_pnl_pct']):+.1f}%)"
