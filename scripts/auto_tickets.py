@@ -268,8 +268,16 @@ def is_playable(pick: dict) -> bool:
     is_dead_edge = "DEAD_EDGE" in bucket
     is_veto_bucket = "VETO" in bucket
     ml_verdict = str(pick.get("ml_verdict") or "").upper()
-    # Hard veto: never play SKIPPED_VETO or ml VETO picks (prevents 10:26 VETO accas)
-    if is_veto_bucket or ml_verdict == "VETO":
+    try:
+        ml_strength = float(pick.get("ml_strength_score") or 0)
+    except Exception:
+        ml_strength = 0
+    # VETO bucket hard block, but BOOST with >=0.5 can override (Paquet 0.75)
+    # Also block ml VETO with low strength (<0.5) – prevents 10:26 0.15/-0.05 VETO accas
+    if is_veto_bucket:
+        if not (ml_verdict == "BOOST" and ml_strength >= 0.5):
+            return False
+    if ml_verdict == "VETO" and ml_strength < 0.5:
         return False
     # USER FIX: those odds are high because favorites marked SKIPPED_DEAD_EDGE (EV negative via confidence) were excluded,
     # leaving only underdogs 2.78*2.68=7.45. Allow DEAD_EDGE if ML prob high (>=0.80) or conf >=65 with odds <=2.0
@@ -303,10 +311,17 @@ def is_playable(pick: dict) -> bool:
             registry = build_context_registry(audit)
             weights = source_weights_from_audit(audit)
             scoring = score_pick_strengths(pick, registry, weights)
-            # Any VETO from scoring blocks, not just < -0.3 (fixes 10:26 VETO with 0.35 strength)
+            # Block VETO unless high strength BOOST (>=0.5) – prevents 10:26 low-strength VETO 0.15/-0.05
+            # but allows 06:26 high-strength BOOST 0.75 that user bet and won
             if scoring.get("should_veto"):
-                if not (is_dead_edge and float(pick.get("ml_calibrated_prob") or 0) >= 0.80):
-                    return False
+                strength = scoring.get("strength_score", 0)
+                try:
+                    pick_strength = float(pick.get("ml_strength_score") or strength)
+                except Exception:
+                    pick_strength = strength
+                if pick_strength < 0.5:
+                    if not (is_dead_edge and float(pick.get("ml_calibrated_prob") or 0) >= 0.80):
+                        return False
             if is_no_odds:
                 if not (scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.4):
                     return False
