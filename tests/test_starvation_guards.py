@@ -244,6 +244,9 @@ def _run_mine(tmp_path, monkeypatch, rows, target):
     import pandas as pd
 
     monkeypatch.setattr(mine_edges, "ROOT", tmp_path)
+    # Also patch ml.LOCALDATA so audit registry doesn't leak from real localdata (Hard VETO n=41)
+    from racketfactory import ml as ml_module
+    monkeypatch.setattr(ml_module, "LOCALDATA", tmp_path / "localdata")
     wh = tmp_path / "warehouse.csv.gz"
     pd.DataFrame(rows).to_csv(wh, index=False, compression="gzip")
     monkeypatch.setattr(
