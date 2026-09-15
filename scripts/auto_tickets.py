@@ -266,6 +266,11 @@ def is_playable(pick: dict) -> bool:
     bucket = str(pick.get("bucket","")).upper()
     is_no_odds = "NO_ODDS" in bucket
     is_dead_edge = "DEAD_EDGE" in bucket
+    is_veto_bucket = "VETO" in bucket
+    ml_verdict = str(pick.get("ml_verdict") or "").upper()
+    # Hard veto: never play SKIPPED_VETO or ml VETO picks (prevents 10:26 VETO accas)
+    if is_veto_bucket or ml_verdict == "VETO":
+        return False
     # USER FIX: those odds are high because favorites marked SKIPPED_DEAD_EDGE (EV negative via confidence) were excluded,
     # leaving only underdogs 2.78*2.68=7.45. Allow DEAD_EDGE if ML prob high (>=0.80) or conf >=65 with odds <=2.0
     # This brings back low-odds winners like 1.28,1.30,1.41 that produce accas 1.28-1.88 like user's tickets
@@ -298,8 +303,8 @@ def is_playable(pick: dict) -> bool:
             registry = build_context_registry(audit)
             weights = source_weights_from_audit(audit)
             scoring = score_pick_strengths(pick, registry, weights)
-            if scoring.get("should_veto") and scoring.get("strength_score", 0) < -0.3:
-                # But don't veto DEAD_EDGE favorites with high prob – ML chooses winners
+            # Any VETO from scoring blocks, not just < -0.3 (fixes 10:26 VETO with 0.35 strength)
+            if scoring.get("should_veto"):
                 if not (is_dead_edge and float(pick.get("ml_calibrated_prob") or 0) >= 0.80):
                     return False
             if is_no_odds:
@@ -762,19 +767,27 @@ def _existing_ticket_ledger(path) -> dict | None:
 
 
 def should_write_ticket_files(existing: dict | None, new_acca_count: int,
-                              *, force: bool = False) -> bool:
+                              *, force: bool = False, is_frozen_now: bool = False,
+                              target_date: str | None = None) -> bool:
     """No-clobber rule for ticket ledgers.
 
     * Frozen ledgers are immutable (the day is closed; regeneration is
       meaningless) unless ``--force`` is passed.
     * An empty regeneration must never blank a ledger that has booked accas
       (observed 2026-09-12 evening: 1 acca -> 0 accas after picks starved).
+    * After generation window (06:00-09:00 SAST), same-day tickets are LOCKED
+      – late runs (e.g. 10:26) must not overwrite morning BOOST tickets with
+      VETO picks (user report 2026-09-15: 10:26 VETO overwrote 06:26 BOOST).
     """
     if force:
         return True
     if not existing:
         return True
     if existing.get("frozen") is True:
+        return False
+    # Lock after generation window: if we are now frozen (outside 06-09) and
+    # existing is for same date, keep it (prevents 10:26 overwrite of 06:26)
+    if is_frozen_now and target_date and existing.get("date") == target_date:
         return False
     if new_acca_count == 0 and existing.get("accas"):
         return False
@@ -843,6 +856,7 @@ def main():
     if not should_write_ticket_files(
         existing_ledger,
         len(accas_out), force=effective_force,
+        is_frozen_now=is_frozen, target_date=target_date,
     ):
         print(f"REFUSING to overwrite auto_tickets_{target_date}.* "
               f"(frozen/non-empty ledger guard; keeping existing files).")
