@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-15T06:38:17",
+  "generated_at": "2026-09-15T04:45:38",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 119.875,
@@ -153,6 +153,9 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {},
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "no matching result rows found",
               "bucket": "WATCHLIST",
               "confidence": 88.0,
               "context_used": "WTA Sao Paulo Prediction",
@@ -204,18 +207,15 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Sao Paulo Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-15",
-                "score": ""
-              }
+              "tournament": "WTA Sao Paulo Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {},
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "no matching result rows found",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 89.0,
               "context_used": "WTA Valencia Prediction",
@@ -267,13 +267,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Valencia Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-15",
-                "score": ""
-              }
+              "tournament": "WTA Valencia Prediction"
             }
           ],
           "odds": 1.67,
@@ -287,6 +281,9 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {},
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "no matching result rows found",
               "bucket": "WATCHLIST",
               "confidence": 75.0,
               "context_used": "Challenger Guangzhou Prediction",
@@ -338,18 +335,15 @@
               "source_count": 2,
               "surface": "Grass",
               "tour": "CHALLENGER",
-              "tournament": "Challenger Guangzhou Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-15",
-                "score": ""
-              }
+              "tournament": "Challenger Guangzhou Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {},
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "no matching result rows found",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 72.0,
               "context_used": "WTA Guadalajara Prediction",
@@ -402,13 +396,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Guadalajara Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-15",
-                "score": ""
-              }
+              "tournament": "WTA Guadalajara Prediction"
             }
           ],
           "odds": 1.74,
@@ -422,6 +410,9 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {},
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "no matching result rows found",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 64.0,
               "context_used": "Caldas da Rainha - 1/16-finals",
@@ -472,18 +463,15 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Caldas da Rainha - 1/16-finals",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-15",
-                "score": ""
-              }
+              "tournament": "Caldas da Rainha - 1/16-finals"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {},
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "no matching result rows found",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 71.0,
               "context_used": "Challenger Rennes Prediction",
@@ -536,13 +524,7 @@
               "source_count": 2,
               "surface": "Grass",
               "tour": "CHALLENGER",
-              "tournament": "Challenger Rennes Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-15",
-                "score": ""
-              }
+              "tournament": "Challenger Rennes Prediction"
             }
           ],
           "odds": 1.64,
@@ -556,6 +538,9 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {},
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "no matching result rows found",
               "bucket": "WATCHLIST",
               "confidence": 73.0,
               "context_used": "WTA Valencia Prediction",
@@ -606,18 +591,15 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Valencia Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-15",
-                "score": ""
-              }
+              "tournament": "WTA Valencia Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {},
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "no matching result rows found",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 75.0,
               "context_used": "WTA Ljubljana WD Prediction",
@@ -669,13 +651,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ljubljana WD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-15",
-                "score": ""
-              }
+              "tournament": "WTA Ljubljana WD Prediction"
             }
           ],
           "odds": 1.81,
@@ -1122,35 +1098,21 @@
       "staked_pct": 0.0
     },
     {
-      "date": "2026-09-14",
-      "staked_pct": 25.0,
-      "return_pct": 44.875,
-      "pnl_pct": 19.875,
-      "bank_pct": 119.875,
-      "paper_staked_pct": 0.0,
-      "paper_return_pct": 0.0,
-      "paper_pnl_pct": 0.0,
-      "paper_bank_pct": 100.0,
       "accas": [
         {
-          "odds": 2.43,
-          "won": true,
-          "stake_pct": 6.25,
-          "return_pct": 15.187500000000002,
-          "type": "value_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-14",
-                "score": "6-3 6-2",
-                "winner": "Nikles J.",
                 "result_id": "3322905.0",
+                "score": "6-3 6-2",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Nikles J."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-14 6-3 6-2",
@@ -1209,13 +1171,13 @@
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-14",
-                "score": "6-7 7-6 6-2",
-                "winner": "Boskovic L.",
                 "result_id": "3323029.0",
+                "score": "6-7 7-6 6-2",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Boskovic L."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-14 6-7 7-6 6-2",
@@ -1271,29 +1233,29 @@
               "tournament": "Ljubljana - Final qualification"
             }
           ],
+          "odds": 2.43,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 15.187500000000002,
+          "stake_pct": 6.25,
+          "type": "value_2leg_mutual",
+          "unpriced": false,
+          "won": true
         },
         {
-          "odds": 1.83,
-          "won": true,
-          "stake_pct": 6.25,
-          "return_pct": 11.4375,
-          "type": "value_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-14",
-                "score": "7-5 6-2",
-                "winner": "Wehnelt K.",
                 "result_id": "3322899.0",
+                "score": "7-5 6-2",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Wehnelt K."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-14 7-5 6-2",
@@ -1353,13 +1315,13 @@
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-14",
-                "score": "4-6 6-3 6-2",
-                "winner": "Ghazouani Durand Y.",
                 "result_id": "3322715.0",
+                "score": "4-6 6-3 6-2",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Ghazouani Durand Y."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-14 4-6 6-3 6-2",
@@ -1415,29 +1377,29 @@
               "tournament": "Rennes - Final qualification"
             }
           ],
+          "odds": 1.83,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 11.4375,
+          "stake_pct": 6.25,
+          "type": "value_2leg_mutual",
+          "unpriced": false,
+          "won": true
         },
         {
-          "odds": 2.92,
-          "won": true,
-          "stake_pct": 6.25,
-          "return_pct": 18.25,
-          "type": "value_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-14",
-                "score": "7-6 6-3",
-                "winner": "Bobichon M.",
                 "result_id": "3323235.0",
+                "score": "7-6 6-3",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Bobichon M."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-14 7-6 6-3",
@@ -1496,13 +1458,13 @@
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-14",
-                "score": "7-6 4-6 7-6",
-                "winner": "Masur D.",
                 "result_id": "3323207.0",
+                "score": "7-6 4-6 7-6",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Masur D."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-14 7-6 4-6 7-6",
@@ -1558,29 +1520,29 @@
               "tournament": "Rennes - Final qualification"
             }
           ],
+          "odds": 2.92,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 18.25,
+          "stake_pct": 6.25,
+          "type": "value_2leg_mutual",
+          "unpriced": false,
+          "won": true
         },
         {
-          "odds": 2.79,
-          "won": false,
-          "stake_pct": 6.25,
-          "return_pct": 0.0,
-          "type": "value_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-14",
-                "score": "4-6 6-3 6-1",
-                "winner": "Schoenhaus M.",
                 "result_id": "3322731.0",
+                "score": "4-6 6-3 6-1",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Schoenhaus M."
               },
               "_settle_outcome": "LOST",
               "_settle_reason": "settled from Challenger_results 2026-09-14 4-6 6-3 6-1",
@@ -1639,13 +1601,13 @@
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-14",
-                "score": "6-2 7-6",
-                "winner": "Moro Canas A.",
                 "result_id": "3321913.0",
+                "score": "6-2 7-6",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Moro Canas A."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-14 6-2 7-6",
@@ -1701,11 +1663,25 @@
               "tournament": "Biella - 1/16-finals"
             }
           ],
+          "odds": 2.79,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 0.0,
+          "stake_pct": 6.25,
+          "type": "value_2leg_mutual",
+          "unpriced": false,
+          "won": false
         }
-      ]
+      ],
+      "bank_pct": 119.875,
+      "date": "2026-09-14",
+      "paper_bank_pct": 100.0,
+      "paper_pnl_pct": 0.0,
+      "paper_return_pct": 0.0,
+      "paper_staked_pct": 0.0,
+      "pnl_pct": 19.875,
+      "return_pct": 44.875,
+      "staked_pct": 25.0
     }
   ]
 }
