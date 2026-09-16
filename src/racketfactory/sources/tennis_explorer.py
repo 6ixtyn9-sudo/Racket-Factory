@@ -85,6 +85,15 @@ def tour_from_segment(segment: str, slug: str = "") -> str:
         return "ITF"
     if "challenger" in slug_l:
         return "CHALLENGER"
+    # Fallback: infer from slug containing tour hints
+    if "wta" in slug_l:
+        return "WTA"
+    if "atp" in slug_l:
+        return "ATP"
+    if "challenger" in seg:
+        return "CHALLENGER"
+    if "itf" in seg:
+        return "ITF"
     return base or "UNKNOWN"
 
 
@@ -264,7 +273,21 @@ def _tournament_context(table) -> tuple[str, str, str, bool]:
     m = _TOURNAMENT_HREF_RE.search(href)
     slug, segment = (m.group(1), m.group(3)) if m else ("", "")
     name = link.get_text(separator=" ", strip=True)
-    return name, tour_from_segment(segment, slug), slug, "type=double" in href
+    tour = tour_from_segment(segment, slug)
+    # Fallback: infer tour from tournament name when segment mapping failed (2026-09-16 blind spot: 1776 UNKNOWN)
+    if tour == "UNKNOWN":
+        lower = name.lower()
+        if "wta" in lower or "women" in lower:
+            tour = "WTA"
+        elif "atp" in lower or "men" in lower:
+            tour = "ATP"
+        elif "challenger" in lower:
+            tour = "CHALLENGER"
+        elif "itf" in lower:
+            tour = "ITF-W" if "women" in lower or "wta" in lower else "ITF-M"
+        elif "utr" in lower:
+            tour = "UTR"
+    return name, tour, slug, "type=double" in href
 
 
 def parse_visible_date(html: str) -> str:
@@ -438,6 +461,18 @@ def normalize_row(row: dict[str, Any], *, captured_at: str | None = None) -> dic
     out["_score_perspective"] = "player_a_games-player_b_games"
     if out.get("_odds_source") is None:
         out["_odds_source"] = ""
+    # Fix blind spot: if tour still UNKNOWN after parsing, default to CHALLENGER for this source (2026-09-16: 1589 UNKNOWN)
+    if str(out.get("tour") or "").upper() == "UNKNOWN" or not str(out.get("tour") or "").strip():
+        # Try to infer from tournament name first
+        tname = str(out.get("tournament") or "").lower()
+        if "wta" in tname:
+            out["tour"] = "WTA"
+        elif "atp" in tname:
+            out["tour"] = "ATP"
+        elif "itf" in tname:
+            out["tour"] = "ITF-W" if "women" in tname or "wta" in tname else "ITF-M"
+        else:
+            out["tour"] = "CHALLENGER"
     return out
 
 
