@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-16T09:08:20",
+  "generated_at": "2026-09-16T16:08:44",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 133.5625,
@@ -153,12 +153,9 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {
-                "match_date": "2026-09-16",
-                "score": ""
-              },
+              "_settle_basis": {},
               "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_reason": "no matching result rows found",
               "bucket": "WATCHLIST",
               "confidence": 88.0,
               "context_used": "WTA Sao Paulo Prediction",
@@ -364,11 +361,16 @@
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
+                "source": "Challenger_results",
                 "match_date": "2026-09-16",
-                "score": ""
+                "score": "6-7 6-0 6-3",
+                "winner": "Samson L.",
+                "result_id": "3325197.0",
+                "tournament": "",
+                "status": ""
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-16 6-7 6-0 6-3",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 80.0,
               "context_used": "WTA Ljubljana Prediction",
@@ -640,11 +642,16 @@
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
+                "source": "Challenger_results",
                 "match_date": "2026-09-16",
-                "score": ""
+                "score": "6-0 6-4",
+                "winner": "Barthel M.",
+                "result_id": "3325011.0",
+                "tournament": "",
+                "status": ""
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "LOST",
+              "_settle_reason": "settled from Challenger_results 2026-09-16 6-0 6-4",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 65.0,
               "context_used": "WTA Ljubljana Prediction",

@@ -4,22 +4,22 @@
 
 - archived pick rows: 51
 - archived pick dates: 3
-- settled picks: 38
-- wins: 17
-- hit rate: 0.447368
+- settled picks: 40
+- wins: 18
+- hit rate: 0.45
 - priced picks: 35
 - ROI: -0.268571
 - ROI (real-priced): -0.268571 (n=35)
 - ROI (paper-priced): None (n=0)
-- pending picks: 13
+- pending picks: 11
 - void picks: 0
 - conflict picks: 0
 - total picks: 51
-- set diagnostic picks: 38
-- selected won any set: 26 (0.684211)
-- selected won set 1: 18 (0.473684)
-- selected won set 2: 20 (0.526316)
-- selected won set 3: 5 (0.357143)
+- set diagnostic picks: 40
+- selected won any set: 28 (0.7)
+- selected won set 1: 19 (0.475)
+- selected won set 2: 22 (0.55)
+- selected won set 3: 5 (0.333333)
 
 ## Settlement policy
 
@@ -79,32 +79,35 @@
 - 2026-09-15 B. Cengiz vs G. Maristany selected=G. Maristany winner=G. Maristany status=won basis=Forebet_results@2026-09-15:5-7 5-7
 - 2026-09-15 M. Sharipov vs T. J. Fancutt selected=M. Sharipov winner=M. Sharipov status=won basis=Forebet_results@2026-09-15:6-2 6-3
 - 2026-09-15 P. Basile vs J. C. Martin Manzano selected=P. Basile winner=J. C. Martin Manzano status=lost basis=Forebet_results@2026-09-15:2-6 1-6
-- 2026-09-16 M. Dellavedova vs E. Aguiard selected=E. Aguiard winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 N. Basiletti vs J. Struplova selected=N. Basiletti winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 J. Ruggeri vs D. Papamichail selected=J. Ruggeri winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-16 Palicova / Struplova vs Novak / Sebestova selected=Palicova / Struplova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Cavalle-Reimers / Salden vs Kobori / Plipuech selected=Cavalle-Reimers / Salden winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Brancaccio / Erjavec vs Burillo / Fossa Huergo selected=Brancaccio / Erjavec winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Mikulskyte / Smith vs Strakhova / Tikhonova selected=Strakhova / Tikhonova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Quevedo / Salkova vs Riera / Sierra selected=Quevedo / Salkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-16 Jennifer Ruggeri vs Despina Papamichail selected=Jennifer Ruggeri winner=Papamichail D. status=lost basis=Challenger_results@2026-09-16:6-1 6-7 7-5
+- 2026-09-16 Noemi Basiletti vs Julie Struplova selected=Noemi Basiletti winner=Basiletti N. status=won basis=Challenger_results@2026-09-16:6-2 6-3
 
 ## By Tour
 
 - `CHALLENGER`: settled=38, wins=17, hit_rate=0.447368, ROI=-0.268571
+- `WTA`: settled=2, wins=1, hit_rate=0.5, ROI=None
 
 ## By Series
 
 - `Challenger`: settled=38, wins=17, hit_rate=0.447368, ROI=-0.268571
+- `International`: settled=2, wins=1, hit_rate=0.5, ROI=None
 
 ## By Surface
 
-- `Hard`: settled=38, wins=17, hit_rate=0.447368, ROI=-0.268571
+- `Hard`: settled=40, wins=18, hit_rate=0.45, ROI=-0.268571
 
 ## By Bucket
 
 - `SKIPPED_DEAD_EDGE`: settled=22, wins=12, hit_rate=0.545455, ROI=-0.235909
 - `WATCHLIST`: settled=13, wins=4, hit_rate=0.307692, ROI=-0.323846
-- `WATCHLIST_NO_ODDS`: settled=3, wins=1, hit_rate=0.333333, ROI=None
+- `WATCHLIST_NO_ODDS`: settled=5, wins=2, hit_rate=0.4, ROI=None
 
 ## By Source
 
+- `BetClan`: settled=2, wins=1, hit_rate=0.5, ROI=None
 - `Forebet`: settled=38, wins=17, hit_rate=0.447368, ROI=-0.268571
