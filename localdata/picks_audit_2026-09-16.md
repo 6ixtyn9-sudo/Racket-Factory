@@ -81,8 +81,8 @@
 - 2026-09-15 P. Basile vs J. C. Martin Manzano selected=P. Basile winner=J. C. Martin Manzano status=lost basis=Forebet_results@2026-09-15:2-6 1-6
 - 2026-09-16 M. Dellavedova vs E. Aguiard selected=E. Aguiard winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 N. Basiletti vs J. Struplova selected=N. Basiletti winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 Cavalle-Reimers / Salden vs Kobori / Plipuech selected=Cavalle-Reimers / Salden winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 J. Ruggeri vs D. Papamichail selected=J. Ruggeri winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-16 Cavalle-Reimers / Salden vs Kobori / Plipuech selected=Cavalle-Reimers / Salden winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Brancaccio / Erjavec vs Burillo / Fossa Huergo selected=Brancaccio / Erjavec winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Mikulskyte / Smith vs Strakhova / Tikhonova selected=Strakhova / Tikhonova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Quevedo / Salkova vs Riera / Sierra selected=Quevedo / Salkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present

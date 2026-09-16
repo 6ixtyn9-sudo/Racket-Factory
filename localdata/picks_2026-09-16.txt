@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-16
 ============================================================
-Generated at: 2026-09-16 08:49:11
+Generated at: 2026-09-16 09:07:34
 
 
 CERTIFIED CLEAN PICKS
@@ -13,6 +13,12 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] M. Dellavedova vs E. Aguiard               KO 09:00 -> E. AGUIARD  conf 68% @2.12  EV +0.44u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=56  roi=19.57%
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] N. Basiletti vs J. Struplova               KO 10:00 -> N. BASILETTI  conf 62% @1.76  EV +0.09u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=56  roi=19.57%
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] J. Ruggeri vs D. Papamichail               KO 11:00 -> J. RUGGERI  conf 62% @1.62  EV +0.00u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=56  roi=19.57%
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Cavalle-Reimers / Salden vs Kobori / Plipu KO 21:00 -> CAVALLE-REIMERS / SALDEN  conf 60% @1.67  EV +0.00u
      bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=56  roi=19.57%
 
@@ -26,15 +32,10 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] M. Dellavedova vs E. Aguiard               KO 09:00 -> E. AGUIARD  conf 68% @2.12  EV +0.44u
-     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=56  roi=19.57%
-  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] N. Basiletti vs J. Struplova               KO 10:00 -> N. BASILETTI  conf 62% @1.76  EV +0.09u
-     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=56  roi=19.57%
+  (none)
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
-  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] J. Ruggeri vs D. Papamichail               KO 11:00 -> J. RUGGERI  conf 62% @1.61  EV -0.00u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=56  roi=19.57%
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Brancaccio / Erjavec vs Burillo / Fossa Hu KO 17:00 -> BRANCACCIO / ERJAVEC  conf 60% @1.66  EV -0.00u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=56  roi=19.57%
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Mikulskyte / Smith vs Strakhova / Tikhonov KO 17:00 -> STRAKHOVA / TIKHONOVA  conf 60% @1.66  EV -0.00u

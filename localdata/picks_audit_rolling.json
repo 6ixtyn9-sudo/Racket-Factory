@@ -971,7 +971,7 @@
       "won": false
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "WATCHLIST",
       "date": "2026-09-16",
       "match": "M. Dellavedova vs E. Aguiard",
       "reason": "result not final: live/in-progress markers present",
@@ -987,11 +987,27 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "WATCHLIST",
       "date": "2026-09-16",
       "match": "N. Basiletti vs J. Struplova",
       "reason": "result not final: live/in-progress markers present",
       "selected_player": "N. Basiletti",
+      "series": "Challenger",
+      "settle_date": "2026-09-16",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "Forebet",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "CHALLENGER",
+      "won": null
+    },
+    {
+      "bucket": "WATCHLIST",
+      "date": "2026-09-16",
+      "match": "J. Ruggeri vs D. Papamichail",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "J. Ruggeri",
       "series": "Challenger",
       "settle_date": "2026-09-16",
       "settle_score": "",
@@ -1016,22 +1032,6 @@
       "status": "pending_no_result",
       "surface": "Hard",
       "tour": "WTA",
-      "won": null
-    },
-    {
-      "bucket": "SKIPPED_DEAD_EDGE",
-      "date": "2026-09-16",
-      "match": "J. Ruggeri vs D. Papamichail",
-      "reason": "result not final: live/in-progress markers present",
-      "selected_player": "J. Ruggeri",
-      "series": "Challenger",
-      "settle_date": "2026-09-16",
-      "settle_score": "",
-      "settle_source": "",
-      "source": "Forebet",
-      "status": "pending_no_result",
-      "surface": "Hard",
-      "tour": "CHALLENGER",
       "won": null
     },
     {
