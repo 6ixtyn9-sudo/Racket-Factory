@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-17
 ============================================================
-Generated at: 2026-09-16 08:30:36
-Snapshot as of: 2026-09-16T08:28:15+02:00
+Generated at: 2026-09-16 08:41:59
+Snapshot as of: 2026-09-16T08:39:53+02:00
 Ledger kind: forecast
 
 
@@ -19,22 +19,7 @@ WATCHLIST PICKS
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  [live_only_fallback] K. Collins vs K. Cross                     KO 08:00 -> K. COLLINS  conf 64% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] B. Tomic vs Ja. Delaney                    KO 08:00 -> B. TOMIC  conf 60% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] M. Kouame vs F. Peliwo                     KO 03:00 -> F. PELIWO  conf 60% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Binda vs F. Sun                         KO 08:00 -> A. BINDA  conf 59% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] F. A. Gomez vs D. Blanch                   KO 17:00 -> F. A. GOMEZ  conf 59% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Mannarino vs M. Bobichon                KO 08:00 -> M. BOBICHON  conf 58% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] A. Herrero Linana vs R. Masarova           KO 08:00 -> A. HERRERO LINANA  conf 57% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
-  [live_only_fallback] F. Pieczonka vs M. Trungelliti             KO 08:30 -> F. PIECZONKA  conf 52% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=live_only
+  (none)
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -42,14 +27,7 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  [live_only_fallback] P. Stearns vs S. Stephens                  KO 16:00 -> S. STEPHENS  conf 70% @1.95  EV +0.36u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] D. E. Galan vs N. Sanchez Izquierdo        KO 08:30 -> D. E. GALAN  conf 70% @1.65  EV +0.15u
-     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] F. Jorge vs V. Jimenez Kasintseva          KO 08:00 -> F. JORGE  conf 62% @1.86  EV +0.15u
-     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] R. Seggerman vs M. Krueger                 KO 17:00 -> R. SEGGERMAN  conf 61% @1.98  EV +0.21u
-     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  (none)
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================

@@ -1635,9 +1635,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 88.0,
               "context_used": "WTA Sao Paulo Prediction",

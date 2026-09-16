@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-16T08:31:02",
+  "generated_at": "2026-09-16T08:42:27",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 133.5625,
@@ -153,9 +153,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 88.0,
               "context_used": "WTA Sao Paulo Prediction",
@@ -297,6 +300,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 83.0,
               "context_used": "WTA Ljubljana WD Prediction",
@@ -348,18 +357,18 @@
               "source_count": 2,
               "surface": "Grass",
               "tour": "WTA",
-              "tournament": "WTA Ljubljana WD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-16",
-                "score": ""
-              }
+              "tournament": "WTA Ljubljana WD Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 80.0,
               "context_used": "WTA Ljubljana Prediction",
@@ -413,13 +422,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ljubljana Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-16",
-                "score": ""
-              }
+              "tournament": "WTA Ljubljana Prediction"
             }
           ],
           "odds": 1.48,
@@ -433,6 +436,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 75.0,
               "context_used": "WTA Sao Paulo WD Prediction",
@@ -486,18 +495,18 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Sao Paulo WD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-16",
-                "score": ""
-              }
+              "tournament": "WTA Sao Paulo WD Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 73.0,
               "context_used": "WTA Ljubljana WD Prediction",
@@ -551,13 +560,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ljubljana WD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-16",
-                "score": ""
-              }
+              "tournament": "WTA Ljubljana WD Prediction"
             }
           ],
           "odds": 1.78,
@@ -571,6 +574,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 71.0,
               "context_used": "WTA Caldas Da Rainha WD Prediction",
@@ -624,18 +633,18 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Caldas Da Rainha WD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-16",
-                "score": ""
-              }
+              "tournament": "WTA Caldas Da Rainha WD Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 65.0,
               "context_used": "WTA Ljubljana Prediction",
@@ -688,13 +697,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ljubljana Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-16",
-                "score": ""
-              }
+              "tournament": "WTA Ljubljana Prediction"
             }
           ],
           "odds": 1.82,
@@ -708,6 +711,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 69.0,
               "context_used": "WTA Sao Paulo WD Prediction",
@@ -760,18 +769,18 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Sao Paulo WD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-16",
-                "score": ""
-              }
+              "tournament": "WTA Sao Paulo WD Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-16",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 66.0,
               "context_used": "WTA Sao Paulo WD Prediction",
@@ -824,13 +833,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Sao Paulo WD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-16",
-                "score": ""
-              }
+              "tournament": "WTA Sao Paulo WD Prediction"
             }
           ],
           "odds": 2.17,
