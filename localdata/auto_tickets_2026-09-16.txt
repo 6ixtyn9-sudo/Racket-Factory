@@ -1,10 +1,21 @@
 Racket Factory Auto Tickets — 2026-09-16
-Generated at: 2026-09-16T08:47:25+02:00
+Generated at: 2026-09-16T09:00:10.205031+02:00
 Bank: 133.56% (cycle base 100.00%)
 Take profit target: 200.00%
 
 Strategy: strengths-focused, avoid super short odds (min leg 1.2, min acca 1.5), 4 accas max per track, NO SINGLES
 Stake: 25% of bank per day (priced track only; paper is hit-rate only)
 
-NO BET — no priced legs available (zero qualifying bets is a valid outcome)
-Playable buckets: {'CERTIFIED_CLEAN', 'WATCHLIST', 'CAUTION'} + ML NO_ODDS BOOST (paper track)
+ACCA 1 [value_2leg_mutual] — Odds 2.77 — Stake 11.13%
+  - Cavalle-Reimers / Salden vs Kobori / Plipuech -> Cavalle-Reimers / Salden @ 1.67 (conf 60.0 ml 0.3 ALLOW src BetClan odds_src BetExplorer)
+  - Brancaccio / Erjavec vs Burillo / Fossa Huergo -> Brancaccio / Erjavec @ 1.66 (conf 60.0 ml 0.3 ALLOW src BetClan odds_src BetExplorer)
+
+ACCA 2 [value_2leg_mutual] — Odds 2.74 — Stake 11.13%
+  - Mikulskyte / Smith vs Strakhova / Tikhonova -> Strakhova / Tikhonova @ 1.66 (conf 60.0 ml 0.3 ALLOW src BetClan odds_src BetExplorer)
+  - Quevedo / Salkova vs Riera / Sierra -> Quevedo / Salkova @ 1.65 (conf 60.0 ml 0.3 ALLOW src BetClan odds_src BetExplorer)
+
+ACCA 3 [value_2leg_mutual] — Odds 2.83 — Stake 11.13%
+  - J. Ruggeri vs D. Papamichail -> J. Ruggeri @ 1.61 (conf 62.0 ml  ALLOW src Forebet odds_src BetExplorer)
+  - N. Basiletti vs J. Struplova -> N. Basiletti @ 1.76 (conf 62.0 ml  ALLOW src Forebet odds_src BetExplorer)
+
+Total staked: 33.39% of bank

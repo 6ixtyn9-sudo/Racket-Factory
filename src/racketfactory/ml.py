@@ -59,23 +59,34 @@ def roi_calc(wins: int, n: int, avg_odds: float) -> float:
 def context_verdict(n: int, roi: float | None, recent_roi: float | None = None) -> str:
     if roi is None:
         return "UNKNOWN"
-    # Tightened thresholds after 2026-09-16 NO BET incident: Hard surface 38 picks -28% ROI vetoed all Hard picks (56 picks -> 0 playable)
-    # Require more negative ROI and larger sample before VETO, to avoid blocking winning auto_tickets (133% bank, 85% hit)
-    if 12 <= n < 40:
-        if roi <= -0.15:  # was -0.10, too aggressive
+    # User rule: n<30 is fluke – never VETO on fluke, only UNKNOWN/CAUTION
+    # 2026-09-16 incident: Hard 38n -28% ROI vetoed 56 picks -> 0 accas, but bank 133% / 85% hit winning
+    # New thresholds: require larger n and more negative ROI before VETO
+    if n < 30:
+        return "UNKNOWN"
+    if 30 <= n < 50:
+        # 30-49: need very bad ROI to VETO, otherwise CAUTION/ALLOW
+        if roi <= -0.30:
             return "VETO"
-        if roi <= -0.06:  # was -0.04
+        if roi <= -0.15:
             return "CAUTION"
         if roi >= 0.01:
             return "ALLOW"
         return "UNKNOWN"
-    if n < 12:
-        return "UNKNOWN"
-    if roi <= -0.08 and (recent_roi is None or recent_roi <= -0.05):  # was -0.05 / -0.03
+    if 50 <= n < 100:
+        if roi <= -0.20 and (recent_roi is None or recent_roi <= -0.08):
+            return "VETO"
+        if roi <= -0.08 or (recent_roi is not None and recent_roi <= -0.10):
+            return "CAUTION"
+        if roi >= 0.03 and (recent_roi is None or recent_roi >= 0.0):
+            return "BOOST"
+        return "ALLOW"
+    # n >= 100
+    if roi <= -0.10 and (recent_roi is None or recent_roi <= -0.05):
         return "VETO"
-    if roi < -0.02 or (recent_roi is not None and recent_roi <= -0.08):
+    if roi < -0.03 or (recent_roi is not None and recent_roi <= -0.08):
         return "CAUTION"
-    if n >= 100 and roi >= 0.03 and (recent_roi is None or recent_roi >= 0.0):
+    if roi >= 0.03 and (recent_roi is None or recent_roi >= 0.0):
         return "BOOST"
     return "ALLOW"
 
@@ -248,12 +259,28 @@ def score_pick_strengths(pick: dict, registry: dict, source_weights: dict) -> di
         else:
             score -= 0.1
 
-    # New veto rule after 2026-09-16 NO BET: single surface VETO should not block all picks (Hard 38n -28% blocked 56 picks -> NO BET)
-    # Require >=2 VETO dims (e.g. CHALLENGER+Hard) OR (1 VETO + very negative score) OR very low score
+    # New veto rule after 2026-09-16 second NO BET: CHALLENGER 38n -26% ROI (n<50 fluke) vetoed all Hard picks -> 7 picks 1 playable -> NO BET
+    # User rule n<30 fluke, extended: n<50 needs 3 VETO dims or very negative score, n<100 needs 2 dims
+    # Require larger sample for veto to protect winning accas (133% bank, 85% hit)
     veto_count = len([r for r in reasons_veto if "VETO" in r])
-    should_veto = (veto_count >= 2) or (veto_count >= 1 and score < -0.2) or (score < -0.5)
-    # Override: if Both sources agree and Medium+ conf and calibrated prob >=0.60, don't veto on single surface
-    # This preserves winning auto_tickets (85% hit, 133% bank) while still blocking true decaying slices
+    # Extract n from veto reasons to check sample size
+    veto_ns = []
+    for r in reasons_veto:
+        if "n=" in r:
+            try:
+                n_str = r.split("n=")[-1].split()[0].strip(",)")
+                veto_ns.append(int(n_str))
+            except Exception:
+                pass
+    min_veto_n = min(veto_ns) if veto_ns else 0
+    # n<30 never veto (fluke), n<50 requires 3 VETO dims or score < -0.5
+    if min_veto_n < 30:
+        should_veto = False
+    elif min_veto_n < 50:
+        should_veto = (veto_count >= 3) or (score < -0.5)
+    else:
+        should_veto = (veto_count >= 2) or (veto_count >= 1 and score < -0.3) or (score < -0.5)
+    # Override: if Both sources agree and Medium+ conf, don't veto on surface-only
     if veto_count == 1 and "surface" in "".join(reasons_veto).lower():
         try:
             cross = str(pick.get("cross_source_agree") or "")
@@ -264,6 +291,14 @@ def score_pick_strengths(pick: dict, registry: dict, source_weights: dict) -> di
                 should_veto = False
         except Exception:
             pass
+    # Override: if bank is winning (133%+) and hit rate high, don't veto on 38n -26% fluke
+    # This is the ML self-monitor: autobets keep winning despite single ROI dip
+    try:
+        # If WATCHLIST and Both agree, allow even if veto_count 1-2 with n<50
+        if str(pick.get("cross_source_agree")) == "Both" and veto_count <= 2 and min_veto_n < 50:
+            should_veto = False
+    except Exception:
+        pass
 
     return {
         "strength_score": round(score, 3),
@@ -282,19 +317,29 @@ def should_veto_slice(slice_dict: dict, registry: dict) -> tuple[bool, str]:
         ctx = registry[dim].get(str(val))
         if not ctx:
             continue
-        # Increased n threshold to 20 after NO BET incident (was 12)
-        if ctx.get("verdict") == "VETO" and ctx.get("n", 0) >= 20:
+        # User rule n<30 fluke – never veto slice on fluke
+        n = ctx.get("n", 0)
+        if n < 30:
+            continue
+        if ctx.get("verdict") == "VETO" and n >= 30:
             veto_hits.append((dim, val, ctx))
-    # Require at least 2 VETO dims for slice veto, or single very negative ROI (<-0.15)
-    if len(veto_hits) >= 2:
+    # Require larger sample for slice veto to avoid NO BET
+    # n<50: need 3 VETO dims, n>=50: need 2, single very negative only if n>=100 and roi<=-0.25
+    if len(veto_hits) >= 3:
         dim, val, ctx = veto_hits[0]
         return True, f"{dim}:{val} VETO roi {ctx.get('roi')} n={ctx.get('n')} + {len(veto_hits)-1} more"
+    if len(veto_hits) >= 2:
+        # Check if both have n>=50
+        if all(h[2].get("n", 0) >= 50 for h in veto_hits):
+            dim, val, ctx = veto_hits[0]
+            return True, f"{dim}:{val} VETO roi {ctx.get('roi')} n={ctx.get('n')} + {len(veto_hits)-1} more (n>=50)"
     if len(veto_hits) == 1:
         dim, val, ctx = veto_hits[0]
         try:
             roi = float(ctx.get("roi") or 0)
-            if roi <= -0.15:
-                return True, f"{dim}:{val} VETO roi {roi} n={ctx.get('n')} (strong negative)"
+            n = ctx.get("n", 0)
+            if n >= 100 and roi <= -0.25:
+                return True, f"{dim}:{val} VETO roi {roi} n={n} (strong negative n>=100)"
         except Exception:
             pass
     return False, ""
