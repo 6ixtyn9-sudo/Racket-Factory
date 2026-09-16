@@ -2,24 +2,24 @@
 
 ## Overall
 
-- archived pick rows: 59
+- archived pick rows: 51
 - archived pick dates: 3
-- settled picks: 39
+- settled picks: 38
 - wins: 17
-- hit rate: 0.435897
-- priced picks: 36
-- ROI: -0.288889
-- ROI (real-priced): -0.288889 (n=36)
+- hit rate: 0.447368
+- priced picks: 35
+- ROI: -0.268571
+- ROI (real-priced): -0.268571 (n=35)
 - ROI (paper-priced): None (n=0)
-- pending picks: 20
+- pending picks: 13
 - void picks: 0
 - conflict picks: 0
-- total picks: 59
-- set diagnostic picks: 39
-- selected won any set: 27 (0.692308)
-- selected won set 1: 19 (0.487179)
-- selected won set 2: 20 (0.512821)
-- selected won set 3: 5 (0.333333)
+- total picks: 51
+- set diagnostic picks: 38
+- selected won any set: 26 (0.684211)
+- selected won set 1: 18 (0.473684)
+- selected won set 2: 20 (0.526316)
+- selected won set 3: 5 (0.357143)
 
 ## Settlement policy
 
@@ -80,40 +80,31 @@
 - 2026-09-15 M. Sharipov vs T. J. Fancutt selected=M. Sharipov winner=M. Sharipov status=won basis=Forebet_results@2026-09-15:6-2 6-3
 - 2026-09-15 P. Basile vs J. C. Martin Manzano selected=P. Basile winner=J. C. Martin Manzano status=lost basis=Forebet_results@2026-09-15:2-6 1-6
 - 2026-09-16 M. Dellavedova vs E. Aguiard selected=E. Aguiard winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 T. Boyer vs A. Shelbayh selected=A. Shelbayh winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 N. Basiletti vs J. Struplova selected=N. Basiletti winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 K. Miyoshi vs P. Sekulic selected=K. Miyoshi winner=Sekulic P. status=lost basis=Challenger_results@2026-09-16:6-7 7-6 6-3
-- 2026-09-16 A. Soboleva vs D. Zoldakova selected=A. Soboleva winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Cavalle-Reimers / Salden vs Kobori / Plipuech selected=Cavalle-Reimers / Salden winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 J. Ruggeri vs D. Papamichail selected=J. Ruggeri winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Brancaccio / Erjavec vs Burillo / Fossa Huergo selected=Brancaccio / Erjavec winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Mikulskyte / Smith vs Strakhova / Tikhonova selected=Strakhova / Tikhonova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Quevedo / Salkova vs Riera / Sierra selected=Quevedo / Salkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 S. Bandecchi vs V. Hruncakova selected=S. Bandecchi winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 Z. Sonmez vs I. Jovic selected=I. Jovic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 S. Lamens vs C. Alves selected=S. Lamens winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 E. Lys vs G. Ce selected=E. Lys winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-16 J. Mikulskyte vs P. Badosa selected=P. Badosa winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 
 ## By Tour
 
-- `CHALLENGER`: settled=39, wins=17, hit_rate=0.435897, ROI=-0.288889
+- `CHALLENGER`: settled=38, wins=17, hit_rate=0.447368, ROI=-0.268571
 
 ## By Series
 
-- `Challenger`: settled=39, wins=17, hit_rate=0.435897, ROI=-0.288889
+- `Challenger`: settled=38, wins=17, hit_rate=0.447368, ROI=-0.268571
 
 ## By Surface
 
-- `Hard`: settled=39, wins=17, hit_rate=0.435897, ROI=-0.288889
+- `Hard`: settled=38, wins=17, hit_rate=0.447368, ROI=-0.268571
 
 ## By Bucket
 
 - `SKIPPED_DEAD_EDGE`: settled=22, wins=12, hit_rate=0.545455, ROI=-0.235909
-- `SKIPPED_VETO`: settled=1, wins=0, hit_rate=0.0, ROI=-1.0
 - `WATCHLIST`: settled=13, wins=4, hit_rate=0.307692, ROI=-0.323846
 - `WATCHLIST_NO_ODDS`: settled=3, wins=1, hit_rate=0.333333, ROI=None
 
 ## By Source
 
-- `Forebet`: settled=39, wins=17, hit_rate=0.435897, ROI=-0.288889
+- `Forebet`: settled=38, wins=17, hit_rate=0.447368, ROI=-0.268571
