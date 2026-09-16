@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-09-16",
+  "as_of": "2026-09-17",
   "checks": {
     "localdata_exists": {
       "status": "OK",
@@ -11,47 +11,47 @@
     },
     "results:foretennis_results": {
       "status": "OK",
-      "detail": "4 files, 1079 rows, max_date 2026-09-16 (lag 0d, budget 3d)"
+      "detail": "4 files, 1089 rows, max_date 2026-09-16 (lag 1d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "OK",
-      "detail": "1 files, 311 rows, max_date 2026-09-16 (lag 0d, budget 3d)"
+      "detail": "1 files, 311 rows, max_date 2026-09-16 (lag 1d, budget 3d)"
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "1 files, 2568 rows, max_date 2026-09-16 (lag 0d, budget 3d)"
+      "detail": "1 files, 2681 rows, max_date 2026-09-17 (lag 0d, budget 3d)"
     },
     "results:theoddsapi_scores": {
-      "status": "OK",
-      "detail": "1 files, 9 rows, max_date 2026-09-13 (lag 3d, budget 3d)"
+      "status": "WARN",
+      "detail": "1 files, 9 rows, max_date 2026-09-13 (lag 4d, budget 3d)"
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "3967 result rows across all sources"
+      "detail": "4090 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "5 files, 968 rows, max_date 2026-09-18"
+      "detail": "5 files, 874 rows, max_date 2026-09-18"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "3157 rows, max_date 2026-09-16"
+      "detail": "3338 rows, max_date 2026-09-17"
     },
     "warehouse:live_rows": {
       "status": "OK",
-      "detail": "55 live-injected rows"
+      "detail": "68 live-injected rows"
     },
     "picks:priced_share": {
       "status": "OK",
-      "detail": "picks_2026-09-16.json: 2/4 priced"
+      "detail": "picks_2026-09-17.json: 3/3 priced"
     },
     "audit:rolling": {
       "status": "OK",
-      "detail": "settled 40 conflicts 0 pending 11"
+      "detail": "settled 42 conflicts 0 pending 12"
     },
     "tickets:bank": {
       "status": "OK",
-      "detail": "bank 133.5625% paper 100.0% open 3 history 6"
+      "detail": "bank 114.623996% paper 100.0% open 2 history 8"
     }
   }
 }

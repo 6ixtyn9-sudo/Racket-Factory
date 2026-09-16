@@ -1,0 +1,40 @@
+Racket Factory Picks — 2026-09-17
+============================================================
+Generated at: 2026-09-17 00:06:18
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] E. Avanesyan vs A. Charaeva                KO 13:00 -> A. CHARAEVA  conf 62% @2.23  EV +0.38u
+     bucket=CERTIFIED_CLEAN  tour=WTA  series=International  surface=Hard  source=Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=54  roi=17.12%
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Francisca Jorge vs Victoria Jimenez Kasint KO 10:00 -> FRANCISCA JORGE  conf 62% @2.03  EV +0.26u
+     bucket=CERTIFIED_CLEAN  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=54  roi=17.12%
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Samira De Stefano vs Alice Tubello         KO 09:00 -> SAMIRA DE STEFANO  conf 60% @1.68  EV +0.01u
+     bucket=CERTIFIED_CLEAN  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=54  roi=17.12%
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  (none)
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  (none)
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  (none)
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  (none)
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.
