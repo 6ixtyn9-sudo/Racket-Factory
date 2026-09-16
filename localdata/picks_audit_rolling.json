@@ -964,7 +964,7 @@
       "won": false
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "WATCHLIST",
       "date": "2026-09-16",
       "match": "Noemi Basiletti vs Julie Struplova",
       "reason": "result not final: live/in-progress markers present",
@@ -996,7 +996,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "WATCHLIST",
       "date": "2026-09-16",
       "match": "Whitney Osuigwe vs Kaitlin Quevedo",
       "reason": "result not final: live/in-progress markers present",
@@ -1028,7 +1028,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "WATCHLIST",
       "date": "2026-09-16",
       "match": "Anastasiia Sobolieva vs Denisa Zoldakova",
       "reason": "result not final: live/in-progress markers present",
@@ -1060,7 +1060,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "WATCHLIST",
       "date": "2026-09-16",
       "match": "Cavalle-Reimers / Salden vs Kobori / Plipuech",
       "reason": "result not final: live/in-progress markers present",

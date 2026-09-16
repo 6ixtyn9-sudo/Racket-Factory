@@ -14,7 +14,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -31,12 +31,12 @@
     "ml_calibrated_prob": 0.51,
     "ml_ev": null,
     "ml_fair_odds": 1.96,
-    "ml_strength_score": -1.4,
+    "ml_strength_score": -0.8,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": null,
@@ -75,7 +75,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -92,12 +92,12 @@
     "ml_calibrated_prob": 0.51,
     "ml_ev": null,
     "ml_fair_odds": 1.96,
-    "ml_strength_score": -1.4,
+    "ml_strength_score": -0.8,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": null,
@@ -136,7 +136,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -153,12 +153,12 @@
     "ml_calibrated_prob": 0.51,
     "ml_ev": null,
     "ml_fair_odds": 1.96,
-    "ml_strength_score": -1.4,
+    "ml_strength_score": -0.8,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": null,
@@ -197,7 +197,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -214,12 +214,12 @@
     "ml_calibrated_prob": 0.51,
     "ml_ev": null,
     "ml_fair_odds": 1.96,
-    "ml_strength_score": -1.3,
+    "ml_strength_score": -0.7,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": null,
@@ -258,7 +258,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -275,12 +275,12 @@
     "ml_calibrated_prob": 0.51,
     "ml_ev": null,
     "ml_fair_odds": 1.96,
-    "ml_strength_score": -1.4,
+    "ml_strength_score": -0.8,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": null,
@@ -319,7 +319,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -336,12 +336,12 @@
     "ml_calibrated_prob": 0.51,
     "ml_ev": null,
     "ml_fair_odds": 1.96,
-    "ml_strength_score": -1.4,
+    "ml_strength_score": -0.8,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": null,
@@ -380,7 +380,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -397,12 +397,12 @@
     "ml_calibrated_prob": 0.51,
     "ml_ev": null,
     "ml_fair_odds": 1.96,
-    "ml_strength_score": -1.3,
+    "ml_strength_score": -0.7,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": null,
@@ -441,7 +441,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -458,12 +458,12 @@
     "ml_calibrated_prob": 0.51,
     "ml_ev": null,
     "ml_fair_odds": 1.96,
-    "ml_strength_score": -1.3,
+    "ml_strength_score": -0.7,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": null,
@@ -502,7 +502,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.3649999999999999,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -518,21 +518,21 @@
     "ml_boost_reasons": [
       "High conf 70%"
     ],
-    "ml_calibrated_prob": 0.5239,
-    "ml_ev": 0.0215,
-    "ml_fair_odds": 1.91,
+    "ml_calibrated_prob": 0.5601,
+    "ml_ev": 0.0923,
+    "ml_fair_odds": 1.79,
     "ml_odds_answer": {
-      "edge_pct": 2.15,
-      "ev": 0.0215,
-      "explanation": "Odds 1.95 value vs fair 1.91, EV +2.2%",
-      "fair_odds": 1.91,
+      "edge_pct": 9.23,
+      "ev": 0.0923,
+      "explanation": "Odds 1.95 value vs fair 1.79, EV +9.2%",
+      "fair_odds": 1.79,
       "verdict": "VALUE"
     },
-    "ml_strength_score": -0.65,
+    "ml_strength_score": -0.25,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": 1.95,
@@ -549,7 +549,7 @@
     "selected_player": "S. Stephens",
     "selected_side": "player_b",
     "series": "International",
-    "skip_reason": "surface Hard VETO roi -0.269429 n=38; source Forebet VETO roi -0.269429 n=38",
+    "skip_reason": "surface Hard VETO roi -0.286176 n=38; source Forebet VETO roi -0.286176 n=37",
     "slice_matched": "live_only_fallback",
     "source": "Forebet",
     "source_count": 1,
@@ -572,7 +572,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.20779999999999998,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -596,12 +596,12 @@
       "fair_odds": 1.96,
       "verdict": "FAIR"
     },
-    "ml_strength_score": -1.2,
+    "ml_strength_score": -0.6,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": 1.98,
@@ -618,7 +618,7 @@
     "selected_player": "R. Seggerman",
     "selected_side": "player_a",
     "series": "Challenger",
-    "skip_reason": "tour CHALLENGER VETO roi -0.269429 n=38; series Challenger VETO roi -0.269429 n=38",
+    "skip_reason": "tour CHALLENGER VETO roi -0.286176 n=38; series Challenger VETO roi -0.286176 n=38",
     "slice_matched": "live_only_fallback",
     "source": "Forebet",
     "source_count": 1,
@@ -641,7 +641,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.15499999999999986,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -657,23 +657,23 @@
     "ml_boost_reasons": [
       "High conf 70%"
     ],
-    "ml_calibrated_prob": 0.51,
-    "ml_ev": -0.1585,
-    "ml_fair_odds": 1.96,
+    "ml_calibrated_prob": 0.5153,
+    "ml_ev": -0.1497,
+    "ml_fair_odds": 1.94,
     "ml_odds_answer": {
-      "edge_pct": -15.85,
-      "ev": -0.1585,
-      "explanation": "Odds 1.65 short vs fair 1.96, EV -15.9% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.96,
+      "edge_pct": -14.97,
+      "ev": -0.1497,
+      "explanation": "Odds 1.65 short vs fair 1.94, EV -15.0% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.94,
       "verdict": "SHORT"
     },
-    "ml_strength_score": -1.05,
+    "ml_strength_score": -0.45,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38",
-      "ML EV -0.159 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37",
+      "ML EV -0.150 negative with low strength"
     ],
     "ml_w_score": 1.0,
     "odds": 1.65,
@@ -690,7 +690,7 @@
     "selected_player": "D. E. Galan",
     "selected_side": "player_a",
     "series": "Challenger",
-    "skip_reason": "tour CHALLENGER VETO roi -0.269429 n=38; series Challenger VETO roi -0.269429 n=38",
+    "skip_reason": "tour CHALLENGER VETO roi -0.286176 n=38; series Challenger VETO roi -0.286176 n=38",
     "slice_matched": "live_only_fallback",
     "source": "Forebet",
     "source_count": 1,
@@ -713,7 +713,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.1532,
-    "forecast_as_of": "2026-09-16T08:01:24+02:00",
+    "forecast_as_of": "2026-09-16T08:28:15+02:00",
     "forecast_for": "2026-09-17",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -737,13 +737,12 @@
       "fair_odds": 1.96,
       "verdict": "SHORT"
     },
-    "ml_strength_score": -1.2,
+    "ml_strength_score": -0.6,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "source Forebet VETO roi -0.269429 n=38",
-      "ML EV -0.051 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
+      "source Forebet VETO roi -0.286176 n=37"
     ],
     "ml_w_score": 1.0,
     "odds": 1.86,
@@ -760,7 +759,7 @@
     "selected_player": "F. Jorge",
     "selected_side": "player_a",
     "series": "Challenger",
-    "skip_reason": "tour CHALLENGER VETO roi -0.269429 n=38; series Challenger VETO roi -0.269429 n=38",
+    "skip_reason": "tour CHALLENGER VETO roi -0.286176 n=38; series Challenger VETO roi -0.286176 n=38",
     "slice_matched": "live_only_fallback",
     "source": "Forebet",
     "source_count": 1,

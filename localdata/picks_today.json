@@ -18,7 +18,7 @@
     "context_used": "WTA Ljubljana Prediction",
     "player_home": "Noemi Basiletti",
     "player_away": "Julie Struplova",
-    "bucket": "SKIPPED_VETO",
+    "bucket": "WATCHLIST",
     "pick": "WATCHLIST",
     "odds": 1.76,
     "odds_source": "BetExplorer",
@@ -36,26 +36,25 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6047,
-    "ml_ev": 0.0642,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6057,
+    "ml_ev": 0.066,
     "ml_fair_odds": 1.65,
     "ml_odds_answer": {
       "verdict": "VALUE",
       "fair_odds": 1.65,
-      "ev": 0.0642,
-      "edge_pct": 6.42,
-      "explanation": "Odds 1.76 value vs fair 1.65, EV +6.4%"
-    },
-    "skip_reason": "surface Hard VETO roi -0.269429 n=38"
+      "ev": 0.066,
+      "edge_pct": 6.6,
+      "explanation": "Odds 1.76 value vs fair 1.65, EV +6.6%"
+    }
   },
   {
     "match": "Tom Gentzsch vs Martin Krumich",
@@ -94,11 +93,10 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": -0.25,
+    "ml_strength_score": 0.15,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.128 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
@@ -106,17 +104,17 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5702,
-    "ml_ev": -0.1275,
-    "ml_fair_odds": 1.75,
+    "ml_calibrated_prob": 0.5456,
+    "ml_ev": -0.1652,
+    "ml_fair_odds": 1.83,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.75,
-      "ev": -0.1275,
-      "edge_pct": -12.75,
-      "explanation": "Odds 1.53 short vs fair 1.75, EV -12.8% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.83,
+      "ev": -0.1652,
+      "edge_pct": -16.52,
+      "explanation": "Odds 1.53 short vs fair 1.83, EV -16.5% \u2013 negative, avoid unless boosting acca"
     },
-    "skip_reason": "tour CHALLENGER VETO roi -0.269429 n=38; series Challenger VETO roi -0.269429 n=38"
+    "skip_reason": "tour CHALLENGER VETO roi -0.286176 n=38; series Challenger VETO roi -0.286176 n=38"
   },
   {
     "match": "Whitney Osuigwe vs Kaitlin Quevedo",
@@ -137,7 +135,7 @@
     "context_used": "WTA Sao Paulo Prediction",
     "player_home": "Whitney Osuigwe",
     "player_away": "Kaitlin Quevedo",
-    "bucket": "SKIPPED_VETO",
+    "bucket": "WATCHLIST",
     "pick": "WATCHLIST",
     "odds": 1.43,
     "odds_source": "BetExplorer",
@@ -155,27 +153,26 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": 0.15,
+    "ml_strength_score": 0.35,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
       "High conf 73%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6777,
-    "ml_ev": -0.0309,
-    "ml_fair_odds": 1.48,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6486,
+    "ml_ev": -0.0725,
+    "ml_fair_odds": 1.54,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.48,
-      "ev": -0.0309,
-      "edge_pct": -3.09,
-      "explanation": "Odds 1.43 short vs fair 1.48, EV -3.1% \u2013 negative, avoid unless boosting acca"
-    },
-    "skip_reason": "surface Hard VETO roi -0.269429 n=38"
+      "fair_odds": 1.54,
+      "ev": -0.0725,
+      "edge_pct": -7.25,
+      "explanation": "Odds 1.43 short vs fair 1.54, EV -7.2% \u2013 negative, avoid unless boosting acca"
+    }
   },
   {
     "match": "Sascha Gueymard Wayenburg vs Ugo Blanchet",
@@ -214,11 +211,10 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": -0.5,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.082 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -235,7 +231,7 @@
       "edge_pct": -8.2,
       "explanation": "Odds 1.80 short vs fair 1.96, EV -8.2% \u2013 negative, avoid unless boosting acca"
     },
-    "skip_reason": "tour CHALLENGER VETO roi -0.269429 n=38; series Challenger VETO roi -0.269429 n=38"
+    "skip_reason": "tour CHALLENGER VETO roi -0.286176 n=38; series Challenger VETO roi -0.286176 n=38"
   },
   {
     "match": "Anastasiia Sobolieva vs Denisa Zoldakova",
@@ -256,7 +252,7 @@
     "context_used": "WTA Ljubljana Prediction",
     "player_home": "Anastasiia Sobolieva",
     "player_away": "Denisa Zoldakova",
-    "bucket": "SKIPPED_VETO",
+    "bucket": "WATCHLIST",
     "pick": "WATCHLIST",
     "odds": 1.55,
     "odds_source": "BetExplorer",
@@ -274,26 +270,25 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6149,
-    "ml_ev": -0.0469,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6117,
+    "ml_ev": -0.0519,
     "ml_fair_odds": 1.63,
     "ml_odds_answer": {
       "verdict": "SHORT",
       "fair_odds": 1.63,
-      "ev": -0.0469,
-      "edge_pct": -4.69,
-      "explanation": "Odds 1.55 short vs fair 1.63, EV -4.7% \u2013 negative, avoid unless boosting acca"
-    },
-    "skip_reason": "surface Hard VETO roi -0.269429 n=38"
+      "ev": -0.0519,
+      "edge_pct": -5.19,
+      "explanation": "Odds 1.55 short vs fair 1.63, EV -5.2% \u2013 negative, avoid unless boosting acca"
+    }
   },
   {
     "match": "Diego Dedura vs Kilian Feldbausch",
@@ -332,28 +327,27 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": -0.4,
+    "ml_strength_score": 0.0,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.190 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5226,
-    "ml_ev": -0.1899,
-    "ml_fair_odds": 1.91,
+    "ml_calibrated_prob": 0.5177,
+    "ml_ev": -0.1975,
+    "ml_fair_odds": 1.93,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.91,
-      "ev": -0.1899,
-      "edge_pct": -18.99,
-      "explanation": "Odds 1.55 short vs fair 1.91, EV -19.0% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.93,
+      "ev": -0.1975,
+      "edge_pct": -19.75,
+      "explanation": "Odds 1.55 short vs fair 1.93, EV -19.8% \u2013 negative, avoid unless boosting acca"
     },
-    "skip_reason": "tour CHALLENGER VETO roi -0.269429 n=38; series Challenger VETO roi -0.269429 n=38"
+    "skip_reason": "tour CHALLENGER VETO roi -0.286176 n=38; series Challenger VETO roi -0.286176 n=38"
   },
   {
     "match": "Cavalle-Reimers / Salden vs Kobori / Plipuech",
@@ -374,7 +368,7 @@
     "context_used": "WTA Guadalajara WD Prediction",
     "player_home": "Cavalle-Reimers / Salden",
     "player_away": "Kobori / Plipuech",
-    "bucket": "SKIPPED_VETO",
+    "bucket": "WATCHLIST",
     "pick": "WATCHLIST",
     "odds": 1.67,
     "odds_source": "BetExplorer",
@@ -392,26 +386,25 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5979,
-    "ml_ev": -0.0016,
-    "ml_fair_odds": 1.67,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6017,
+    "ml_ev": 0.0048,
+    "ml_fair_odds": 1.66,
     "ml_odds_answer": {
       "verdict": "FAIR",
-      "fair_odds": 1.67,
-      "ev": -0.0016,
-      "edge_pct": -0.16,
-      "explanation": "Odds 1.67 fair vs 1.67, EV -0.2%"
-    },
-    "skip_reason": "surface Hard VETO roi -0.269429 n=38"
+      "fair_odds": 1.66,
+      "ev": 0.0048,
+      "edge_pct": 0.48,
+      "explanation": "Odds 1.67 fair vs 1.66, EV +0.5%"
+    }
   },
   {
     "match": "Jennifer Ruggeri vs Despina Papamichail",
@@ -451,24 +444,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.002 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6047,
-    "ml_ev": -0.0265,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6057,
+    "ml_ev": -0.0248,
     "ml_fair_odds": 1.65,
     "ml_odds_answer": {
       "verdict": "SHORT",
       "fair_odds": 1.65,
-      "ev": -0.0265,
-      "edge_pct": -2.65,
-      "explanation": "Odds 1.61 short vs fair 1.65, EV -2.6% \u2013 negative, avoid unless boosting acca"
+      "ev": -0.0248,
+      "edge_pct": -2.48,
+      "explanation": "Odds 1.61 short vs fair 1.65, EV -2.5% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -509,25 +502,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.003 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.066 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6183,
-    "ml_ev": -0.0664,
-    "ml_fair_odds": 1.62,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6137,
+    "ml_ev": -0.0733,
+    "ml_fair_odds": 1.63,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.62,
-      "ev": -0.0664,
-      "edge_pct": -6.64,
-      "explanation": "Odds 1.51 short vs fair 1.62, EV -6.6% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.63,
+      "ev": -0.0733,
+      "edge_pct": -7.33,
+      "explanation": "Odds 1.51 short vs fair 1.63, EV -7.3% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -568,24 +560,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.004 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5979,
-    "ml_ev": -0.0075,
-    "ml_fair_odds": 1.67,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6017,
+    "ml_ev": -0.0012,
+    "ml_fair_odds": 1.66,
     "ml_odds_answer": {
       "verdict": "FAIR",
-      "fair_odds": 1.67,
-      "ev": -0.0075,
-      "edge_pct": -0.75,
-      "explanation": "Odds 1.66 fair vs 1.67, EV -0.8%"
+      "fair_odds": 1.66,
+      "ev": -0.0012,
+      "edge_pct": -0.12,
+      "explanation": "Odds 1.66 fair vs 1.66, EV -0.1%"
     }
   },
   {
@@ -626,24 +618,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.004 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5979,
-    "ml_ev": -0.0075,
-    "ml_fair_odds": 1.67,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6017,
+    "ml_ev": -0.0012,
+    "ml_fair_odds": 1.66,
     "ml_odds_answer": {
       "verdict": "FAIR",
-      "fair_odds": 1.67,
-      "ev": -0.0075,
-      "edge_pct": -0.75,
-      "explanation": "Odds 1.66 fair vs 1.67, EV -0.8%"
+      "fair_odds": 1.66,
+      "ev": -0.0012,
+      "edge_pct": -0.12,
+      "explanation": "Odds 1.66 fair vs 1.66, EV -0.1%"
     }
   },
   {
@@ -684,25 +676,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.005 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.059 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6149,
-    "ml_ev": -0.0592,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6117,
+    "ml_ev": -0.0641,
     "ml_fair_odds": 1.63,
     "ml_odds_answer": {
       "verdict": "SHORT",
       "fair_odds": 1.63,
-      "ev": -0.0592,
-      "edge_pct": -5.92,
-      "explanation": "Odds 1.53 short vs fair 1.63, EV -5.9% \u2013 negative, avoid unless boosting acca"
+      "ev": -0.0641,
+      "edge_pct": -6.41,
+      "explanation": "Odds 1.53 short vs fair 1.63, EV -6.4% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -743,25 +734,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.005 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.059 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6149,
-    "ml_ev": -0.0592,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6117,
+    "ml_ev": -0.0641,
     "ml_fair_odds": 1.63,
     "ml_odds_answer": {
       "verdict": "SHORT",
       "fair_odds": 1.63,
-      "ev": -0.0592,
-      "edge_pct": -5.92,
-      "explanation": "Odds 1.53 short vs fair 1.63, EV -5.9% \u2013 negative, avoid unless boosting acca"
+      "ev": -0.0641,
+      "edge_pct": -6.41,
+      "explanation": "Odds 1.53 short vs fair 1.63, EV -6.4% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -802,26 +792,25 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.006 < 0.000)",
-    "ml_strength_score": 0.15,
+    "ml_strength_score": 0.35,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.061 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
       "High conf 71%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6709,
-    "ml_ev": -0.0608,
-    "ml_fair_odds": 1.49,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6446,
+    "ml_ev": -0.0975,
+    "ml_fair_odds": 1.55,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.49,
-      "ev": -0.0608,
-      "edge_pct": -6.08,
-      "explanation": "Odds 1.40 short vs fair 1.49, EV -6.1% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.55,
+      "ev": -0.0975,
+      "edge_pct": -9.75,
+      "explanation": "Odds 1.40 short vs fair 1.55, EV -9.8% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -862,25 +851,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.006 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.095 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6285,
-    "ml_ev": -0.095,
-    "ml_fair_odds": 1.59,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6197,
+    "ml_ev": -0.1076,
+    "ml_fair_odds": 1.61,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.59,
-      "ev": -0.095,
-      "edge_pct": -9.5,
-      "explanation": "Odds 1.44 short vs fair 1.59, EV -9.5% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.61,
+      "ev": -0.1076,
+      "edge_pct": -10.76,
+      "explanation": "Odds 1.44 short vs fair 1.61, EV -10.8% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -921,26 +909,25 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.007 < 0.000)",
-    "ml_strength_score": 0.15,
+    "ml_strength_score": 0.35,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.078 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
       "High conf 73%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6777,
-    "ml_ev": -0.0784,
-    "ml_fair_odds": 1.48,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6486,
+    "ml_ev": -0.1179,
+    "ml_fair_odds": 1.54,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.48,
-      "ev": -0.0784,
-      "edge_pct": -7.84,
-      "explanation": "Odds 1.36 short vs fair 1.48, EV -7.8% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.54,
+      "ev": -0.1179,
+      "edge_pct": -11.79,
+      "explanation": "Odds 1.36 short vs fair 1.54, EV -11.8% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -981,26 +968,25 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.008 < 0.000)",
-    "ml_strength_score": 0.15,
+    "ml_strength_score": 0.35,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.130 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
       "High conf 80%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.7015,
-    "ml_ev": -0.1302,
-    "ml_fair_odds": 1.43,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6626,
+    "ml_ev": -0.1783,
+    "ml_fair_odds": 1.51,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.43,
-      "ev": -0.1302,
-      "edge_pct": -13.02,
-      "explanation": "Odds 1.24 short vs fair 1.43, EV -13.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.51,
+      "ev": -0.1783,
+      "edge_pct": -17.83,
+      "explanation": "Odds 1.24 short vs fair 1.51, EV -17.8% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -1041,26 +1027,25 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.008 < 0.000)",
-    "ml_strength_score": 0.15,
+    "ml_strength_score": 0.35,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.173 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
       "High conf 87%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.7253,
-    "ml_ev": -0.1732,
-    "ml_fair_odds": 1.38,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6766,
+    "ml_ev": -0.2286,
+    "ml_fair_odds": 1.48,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.38,
-      "ev": -0.1732,
-      "edge_pct": -17.32,
-      "explanation": "Odds 1.14 short vs fair 1.38, EV -17.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.48,
+      "ev": -0.2286,
+      "edge_pct": -22.86,
+      "explanation": "Odds 1.14 short vs fair 1.48, EV -22.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -1101,11 +1086,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.008 < 0.000)",
-    "ml_strength_score": -0.5,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.113 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -1161,24 +1145,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.010 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5979,
-    "ml_ev": -0.0135,
-    "ml_fair_odds": 1.67,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6017,
+    "ml_ev": -0.0072,
+    "ml_fair_odds": 1.66,
     "ml_odds_answer": {
       "verdict": "FAIR",
-      "fair_odds": 1.67,
-      "ev": -0.0135,
-      "edge_pct": -1.35,
-      "explanation": "Odds 1.65 fair vs 1.67, EV -1.4%"
+      "fair_odds": 1.66,
+      "ev": -0.0072,
+      "edge_pct": -0.72,
+      "explanation": "Odds 1.65 fair vs 1.66, EV -0.7%"
     }
   },
   {
@@ -1226,15 +1210,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.7154,
-    "ml_ev": 0.1231,
-    "ml_fair_odds": 1.4,
+    "ml_calibrated_prob": 0.6077,
+    "ml_ev": -0.0459,
+    "ml_fair_odds": 1.65,
     "ml_odds_answer": {
-      "verdict": "HIGH_VALUE",
-      "fair_odds": 1.4,
-      "ev": 0.1231,
-      "edge_pct": 12.31,
-      "explanation": "Odds 1.57 HIGH value vs fair 1.40 (prob 72%), EV +12.3%, edge +12.3%"
+      "verdict": "SHORT",
+      "fair_odds": 1.65,
+      "ev": -0.0459,
+      "edge_pct": -4.59,
+      "explanation": "Odds 1.57 short vs fair 1.65, EV -4.6% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -1275,24 +1259,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.011 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6081,
-    "ml_ev": -0.0453,
-    "ml_fair_odds": 1.64,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6077,
+    "ml_ev": -0.0459,
+    "ml_fair_odds": 1.65,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.64,
-      "ev": -0.0453,
-      "edge_pct": -4.53,
-      "explanation": "Odds 1.57 short vs fair 1.64, EV -4.5% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.65,
+      "ev": -0.0459,
+      "edge_pct": -4.59,
+      "explanation": "Odds 1.57 short vs fair 1.65, EV -4.6% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -1341,15 +1325,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.8373,
-    "ml_ev": -0.0037,
-    "ml_fair_odds": 1.19,
+    "ml_calibrated_prob": 0.6686,
+    "ml_ev": -0.2043,
+    "ml_fair_odds": 1.5,
     "ml_odds_answer": {
-      "verdict": "FAIR",
-      "fair_odds": 1.19,
-      "ev": -0.0037,
-      "edge_pct": -0.37,
-      "explanation": "Odds 1.19 fair vs 1.19, EV -0.4% | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "verdict": "SHORT",
+      "fair_odds": 1.5,
+      "ev": -0.2043,
+      "edge_pct": -20.43,
+      "explanation": "Odds 1.19 short vs fair 1.50, EV -20.4% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -1390,26 +1374,25 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.017 < 0.000)",
-    "ml_strength_score": 0.15,
+    "ml_strength_score": 0.35,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.103 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
       "High conf 75%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6845,
-    "ml_ev": -0.1033,
-    "ml_fair_odds": 1.46,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6526,
+    "ml_ev": -0.1451,
+    "ml_fair_odds": 1.53,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.46,
-      "ev": -0.1033,
-      "edge_pct": -10.33,
-      "explanation": "Odds 1.31 short vs fair 1.46, EV -10.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.53,
+      "ev": -0.1451,
+      "edge_pct": -14.51,
+      "explanation": "Odds 1.31 short vs fair 1.53, EV -14.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -1450,16 +1433,15 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.020 < 0.000)",
-    "ml_strength_score": -0.1,
+    "ml_strength_score": 0.1,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.123 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
+    "ml_verdict": "ALLOW",
     "ml_calibrated_prob": 0.51,
     "ml_ev": -0.1228,
     "ml_fair_odds": 1.96,
@@ -1509,16 +1491,15 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.054 < 0.000)",
-    "ml_strength_score": -0.1,
+    "ml_strength_score": 0.1,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.072 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
+    "ml_verdict": "ALLOW",
     "ml_calibrated_prob": 0.51,
     "ml_ev": -0.0718,
     "ml_fair_odds": 1.96,
@@ -1568,16 +1549,15 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.054 < 0.000)",
-    "ml_strength_score": -0.1,
+    "ml_strength_score": 0.1,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.153 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
+    "ml_verdict": "ALLOW",
     "ml_calibrated_prob": 0.51,
     "ml_ev": -0.1534,
     "ml_fair_odds": 1.96,
@@ -1627,26 +1607,25 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.074 < 0.000)",
-    "ml_strength_score": 0.15,
+    "ml_strength_score": 0.35,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.239 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
       "High conf 89%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.7321,
-    "ml_ev": -0.2386,
-    "ml_fair_odds": 1.37,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6806,
+    "ml_ev": -0.2921,
+    "ml_fair_odds": 1.47,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.37,
-      "ev": -0.2386,
-      "edge_pct": -23.86,
-      "explanation": "Odds 1.04 short vs fair 1.37, EV -23.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.47,
+      "ev": -0.2921,
+      "edge_pct": -29.21,
+      "explanation": "Odds 1.04 short vs fair 1.47, EV -29.2% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -1687,26 +1666,25 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.080 < 0.000)",
-    "ml_strength_score": -0.4,
+    "ml_strength_score": 0.0,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.245 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5169,
-    "ml_ev": -0.2454,
-    "ml_fair_odds": 1.93,
+    "ml_calibrated_prob": 0.5143,
+    "ml_ev": -0.2491,
+    "ml_fair_odds": 1.94,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.93,
-      "ev": -0.2454,
-      "edge_pct": -24.54,
-      "explanation": "Odds 1.46 short vs fair 1.93, EV -24.5% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.94,
+      "ev": -0.2491,
+      "edge_pct": -24.91,
+      "explanation": "Odds 1.46 short vs fair 1.94, EV -24.9% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -1747,11 +1725,11 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.083 < 0.000)",
-    "ml_strength_score": -1.0,
+    "ml_strength_score": -0.6,
     "ml_veto_reasons": [
       "Sources disagree",
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
       "ML EV -0.118 negative with low strength"
     ],
     "ml_boost_reasons": [],
@@ -1806,10 +1784,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.115 < 0.000)",
-    "ml_strength_score": -0.6,
+    "ml_strength_score": -0.4,
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.269429 n=38",
+      "surface Hard VETO roi -0.286176 n=38",
       "ML EV -0.194 negative with low strength"
     ],
     "ml_boost_reasons": [],
@@ -1864,25 +1842,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.121 < 0.000)",
-    "ml_strength_score": -0.1,
+    "ml_strength_score": 0.1,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.237 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5123,
-    "ml_ev": -0.2367,
-    "ml_fair_odds": 1.95,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.51,
+    "ml_ev": -0.2401,
+    "ml_fair_odds": 1.96,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.95,
-      "ev": -0.2367,
-      "edge_pct": -23.67,
-      "explanation": "Odds 1.49 short vs fair 1.95, EV -23.7% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.96,
+      "ev": -0.2401,
+      "edge_pct": -24.01,
+      "explanation": "Odds 1.49 short vs fair 1.96, EV -24.0% \u2013 negative, avoid unless boosting acca"
     }
   },
   {
@@ -1923,25 +1900,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.138 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.214 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6285,
-    "ml_ev": -0.2144,
-    "ml_fair_odds": 1.59,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6197,
+    "ml_ev": -0.2254,
+    "ml_fair_odds": 1.61,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.59,
-      "ev": -0.2144,
-      "edge_pct": -21.44,
-      "explanation": "Odds 1.25 short vs fair 1.59, EV -21.4% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.61,
+      "ev": -0.2254,
+      "edge_pct": -22.54,
+      "explanation": "Odds 1.25 short vs fair 1.61, EV -22.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -1982,11 +1958,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.139 < 0.000)",
-    "ml_strength_score": -0.25,
+    "ml_strength_score": 0.15,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.302 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
@@ -1994,15 +1969,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5674,
-    "ml_ev": -0.3022,
-    "ml_fair_odds": 1.76,
+    "ml_calibrated_prob": 0.5439,
+    "ml_ev": -0.331,
+    "ml_fair_odds": 1.84,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.76,
-      "ev": -0.3022,
-      "edge_pct": -30.22,
-      "explanation": "Odds 1.23 short vs fair 1.76, EV -30.2% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.84,
+      "ev": -0.331,
+      "edge_pct": -33.1,
+      "explanation": "Odds 1.23 short vs fair 1.84, EV -33.1% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -2043,10 +2018,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.148 < 0.000)",
-    "ml_strength_score": -0.6,
+    "ml_strength_score": -0.4,
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.269429 n=38",
+      "surface Hard VETO roi -0.286176 n=38",
       "ML EV -0.148 negative with low strength"
     ],
     "ml_boost_reasons": [],
@@ -2101,26 +2076,25 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.151 < 0.000)",
-    "ml_strength_score": -0.4,
+    "ml_strength_score": 0.0,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.343 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5342,
-    "ml_ev": -0.3429,
-    "ml_fair_odds": 1.87,
+    "ml_calibrated_prob": 0.5245,
+    "ml_ev": -0.3549,
+    "ml_fair_odds": 1.91,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.87,
-      "ev": -0.3429,
-      "edge_pct": -34.29,
-      "explanation": "Odds 1.23 short vs fair 1.87, EV -34.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.91,
+      "ev": -0.3549,
+      "edge_pct": -35.49,
+      "explanation": "Odds 1.23 short vs fair 1.91, EV -35.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -2161,25 +2135,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.155 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.201 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6149,
-    "ml_ev": -0.2007,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6117,
+    "ml_ev": -0.2048,
     "ml_fair_odds": 1.63,
     "ml_odds_answer": {
       "verdict": "SHORT",
       "fair_odds": 1.63,
-      "ev": -0.2007,
-      "edge_pct": -20.07,
-      "explanation": "Odds 1.30 short vs fair 1.63, EV -20.1% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "ev": -0.2048,
+      "edge_pct": -20.48,
+      "explanation": "Odds 1.30 short vs fair 1.63, EV -20.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -2220,11 +2193,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.191 < 0.000)",
-    "ml_strength_score": -0.5,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.276 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -2280,11 +2252,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.194 < 0.000)",
-    "ml_strength_score": -0.5,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.209 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -2340,16 +2311,15 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.196 < 0.000)",
-    "ml_strength_score": -0.1,
+    "ml_strength_score": 0.1,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.281 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
+    "ml_verdict": "ALLOW",
     "ml_calibrated_prob": 0.51,
     "ml_ev": -0.2809,
     "ml_fair_odds": 1.96,
@@ -2399,11 +2369,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.212 < 0.000)",
-    "ml_strength_score": -0.5,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.255 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -2459,25 +2428,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.212 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.240 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6081,
-    "ml_ev": -0.2399,
-    "ml_fair_odds": 1.64,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6077,
+    "ml_ev": -0.2404,
+    "ml_fair_odds": 1.65,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.64,
-      "ev": -0.2399,
-      "edge_pct": -23.99,
-      "explanation": "Odds 1.25 short vs fair 1.64, EV -24.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.65,
+      "ev": -0.2404,
+      "edge_pct": -24.04,
+      "explanation": "Odds 1.25 short vs fair 1.65, EV -24.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -2518,16 +2486,15 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.246 < 0.000)",
-    "ml_strength_score": -0.1,
+    "ml_strength_score": 0.1,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.261 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
+    "ml_verdict": "ALLOW",
     "ml_calibrated_prob": 0.51,
     "ml_ev": -0.2605,
     "ml_fair_odds": 1.96,
@@ -2577,11 +2544,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.252 < 0.000)",
-    "ml_strength_score": -0.5,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.342 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -2637,25 +2603,24 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.256 < 0.000)",
-    "ml_strength_score": 0.0,
+    "ml_strength_score": 0.2,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38",
-      "ML EV -0.259 negative with low strength"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5979,
-    "ml_ev": -0.2586,
-    "ml_fair_odds": 1.67,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6017,
+    "ml_ev": -0.2539,
+    "ml_fair_odds": 1.66,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.67,
-      "ev": -0.2586,
-      "edge_pct": -25.86,
-      "explanation": "Odds 1.24 short vs fair 1.67, EV -25.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.66,
+      "ev": -0.2539,
+      "edge_pct": -25.39,
+      "explanation": "Odds 1.24 short vs fair 1.66, EV -25.4% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -2696,11 +2661,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.258 < 0.000)",
-    "ml_strength_score": -0.5,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.286 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -2756,11 +2720,11 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.263 < 0.000)",
-    "ml_strength_score": -1.0,
+    "ml_strength_score": -0.6,
     "ml_veto_reasons": [
       "Sources disagree",
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
       "ML EV -0.291 negative with low strength"
     ],
     "ml_boost_reasons": [],
@@ -2815,11 +2779,11 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.271 < 0.000)",
-    "ml_strength_score": -1.0,
+    "ml_strength_score": -0.6,
     "ml_veto_reasons": [
       "Sources disagree",
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
       "ML EV -0.311 negative with low strength"
     ],
     "ml_boost_reasons": [],
@@ -2874,10 +2838,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.282 < 0.000)",
-    "ml_strength_score": -0.6,
+    "ml_strength_score": -0.4,
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.269429 n=38",
+      "surface Hard VETO roi -0.286176 n=38",
       "ML EV -0.296 negative with low strength"
     ],
     "ml_boost_reasons": [],
@@ -2932,11 +2896,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.293 < 0.000)",
-    "ml_strength_score": -0.5,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.332 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -2992,11 +2955,11 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.304 < 0.000)",
-    "ml_strength_score": -0.9,
+    "ml_strength_score": -0.5,
     "ml_veto_reasons": [
       "Sources disagree",
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38",
       "ML EV -0.408 negative with low strength"
     ],
     "ml_boost_reasons": [],
@@ -3051,11 +3014,10 @@
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
     "skip_reason": "negative EV (-0.322 < 0.000)",
-    "ml_strength_score": -0.5,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38",
-      "ML EV -0.393 negative with low strength"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -3110,16 +3072,16 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": -0.1,
+    "ml_strength_score": 0.1,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6149,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6117,
     "ml_ev": null,
     "ml_fair_odds": 1.63
   },
@@ -3160,15 +3122,15 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": -0.2,
+    "ml_strength_score": -0.0,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
+    "ml_verdict": "ALLOW",
     "ml_calibrated_prob": 0.51,
     "ml_ev": null,
     "ml_fair_odds": 1.96
@@ -3210,10 +3172,10 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": -0.6,
+    "ml_strength_score": -0.2,
     "ml_veto_reasons": [
-      "tour CHALLENGER VETO roi -0.269429 n=38",
-      "series Challenger VETO roi -0.269429 n=38"
+      "tour CHALLENGER VETO roi -0.286176 n=38",
+      "series Challenger VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
@@ -3261,18 +3223,19 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "live_only",
-    "ml_strength_score": 0.05,
+    "ml_strength_score": 0.35,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.269429 n=38"
+      "surface Hard VETO roi -0.286176 n=38"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
-      "High conf 72%"
+      "High conf 72%",
+      "NO_ODDS but strong strengths"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6743,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6466,
     "ml_ev": null,
-    "ml_fair_odds": 1.48
+    "ml_fair_odds": 1.55
   }
 ]

@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-16
 ============================================================
-Generated at: 2026-09-16 08:06:16
+Generated at: 2026-09-16 08:30:21
 
 
 CERTIFIED CLEAN PICKS
@@ -13,7 +13,14 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  (none)
+  [live_only_fallback] Whitney Osuigwe vs Kaitlin Quevedo         KO 00:30 -> KAITLIN QUEVEDO  conf 73% @1.43  EV +0.04u
+     bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Anastasiia Sobolieva vs Denisa Zoldakova   KO 09:00 -> ANASTASIIA SOBOLIEVA  conf 65% @1.55  EV +0.01u
+     bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Noemi Basiletti vs Julie Struplova         KO 09:00 -> NOEMI BASILETTI  conf 62% @1.76  EV +0.09u
+     bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
+  [live_only_fallback] Cavalle-Reimers / Salden vs Kobori / Plipu KO 21:00 -> CAVALLE-REIMERS / SALDEN  conf 60% @1.67  EV +0.00u
+     bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
@@ -32,18 +39,10 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  [live_only_fallback] Whitney Osuigwe vs Kaitlin Quevedo         KO 00:30 -> KAITLIN QUEVEDO  conf 73% @1.43  EV +0.04u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Tom Gentzsch vs Martin Krumich             KO 13:30 -> TOM GENTZSCH  conf 71% @1.53  EV +0.09u
      bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] Anastasiia Sobolieva vs Denisa Zoldakova   KO 09:00 -> ANASTASIIA SOBOLIEVA  conf 65% @1.55  EV +0.01u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Diego Dedura vs Kilian Feldbausch          KO 15:00 -> KILIAN FELDBAUSCH  conf 65% @1.55  EV +0.01u
      bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] Noemi Basiletti vs Julie Struplova         KO 09:00 -> NOEMI BASILETTI  conf 62% @1.76  EV +0.09u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
-  [live_only_fallback] Cavalle-Reimers / Salden vs Kobori / Plipu KO 21:00 -> CAVALLE-REIMERS / SALDEN  conf 60% @1.67  EV +0.00u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
   [live_only_fallback] Sascha Gueymard Wayenburg vs Ugo Blanchet  KO 17:30 -> UGO BLANCHET  conf 57% @1.80  EV +0.03u
      bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=live_only
 
