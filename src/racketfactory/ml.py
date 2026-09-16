@@ -59,19 +59,21 @@ def roi_calc(wins: int, n: int, avg_odds: float) -> float:
 def context_verdict(n: int, roi: float | None, recent_roi: float | None = None) -> str:
     if roi is None:
         return "UNKNOWN"
+    # Tightened thresholds after 2026-09-16 NO BET incident: Hard surface 38 picks -28% ROI vetoed all Hard picks (56 picks -> 0 playable)
+    # Require more negative ROI and larger sample before VETO, to avoid blocking winning auto_tickets (133% bank, 85% hit)
     if 12 <= n < 40:
-        if roi <= -0.10:
+        if roi <= -0.15:  # was -0.10, too aggressive
             return "VETO"
-        if roi <= -0.04:
+        if roi <= -0.06:  # was -0.04
             return "CAUTION"
         if roi >= 0.01:
             return "ALLOW"
         return "UNKNOWN"
     if n < 12:
         return "UNKNOWN"
-    if roi <= -0.05 and (recent_roi is None or recent_roi <= -0.03):
+    if roi <= -0.08 and (recent_roi is None or recent_roi <= -0.05):  # was -0.05 / -0.03
         return "VETO"
-    if roi < 0.0 or (recent_roi is not None and recent_roi <= -0.05):
+    if roi < -0.02 or (recent_roi is not None and recent_roi <= -0.08):
         return "CAUTION"
     if n >= 100 and roi >= 0.03 and (recent_roi is None or recent_roi >= 0.0):
         return "BOOST"
@@ -206,11 +208,13 @@ def score_pick_strengths(pick: dict, registry: dict, source_weights: dict) -> di
         verdict = ctx.get("verdict")
         roi = ctx.get("roi")
         n = ctx.get("n", 0)
+        # Reduced penalty after 2026-09-16 NO BET: single Hard VETO -0.4 wiped Both+Medium (0.4) to 0.0 and triggered veto
+        # Now -0.2 for VETO, -0.1 for CAUTION, and require 2 VETO dims to actually veto (prevents surface-only block)
         if verdict == "VETO":
-            score -= 0.4
+            score -= 0.2
             reasons_veto.append(f"{dim} {val} VETO roi {roi} n={n}")
         elif verdict == "CAUTION":
-            score -= 0.15
+            score -= 0.1
             reasons_veto.append(f"{dim} {val} CAUTION")
         elif verdict == "BOOST":
             score += 0.25
@@ -244,24 +248,55 @@ def score_pick_strengths(pick: dict, registry: dict, source_weights: dict) -> di
         else:
             score -= 0.1
 
+    # New veto rule after 2026-09-16 NO BET: single surface VETO should not block all picks (Hard 38n -28% blocked 56 picks -> NO BET)
+    # Require >=2 VETO dims (e.g. CHALLENGER+Hard) OR (1 VETO + very negative score) OR very low score
+    veto_count = len([r for r in reasons_veto if "VETO" in r])
+    should_veto = (veto_count >= 2) or (veto_count >= 1 and score < -0.2) or (score < -0.5)
+    # Override: if Both sources agree and Medium+ conf and calibrated prob >=0.60, don't veto on single surface
+    # This preserves winning auto_tickets (85% hit, 133% bank) while still blocking true decaying slices
+    if veto_count == 1 and "surface" in "".join(reasons_veto).lower():
+        try:
+            cross = str(pick.get("cross_source_agree") or "")
+            conf_f = float(pick.get("confidence") or 0)
+            if conf_f <= 1.0:
+                conf_f *= 100
+            if cross == "Both" and conf_f >= 60:
+                should_veto = False
+        except Exception:
+            pass
+
     return {
         "strength_score": round(score, 3),
         "veto_reasons": reasons_veto,
         "boost_reasons": reasons_boost,
         "w_score": w_score,
-        "should_veto": len([r for r in reasons_veto if "VETO" in r]) > 0 or score < -0.3,
+        "should_veto": should_veto,
         "should_boost": score >= 0.4,
     }
 
 def should_veto_slice(slice_dict: dict, registry: dict) -> tuple[bool, str]:
+    veto_hits = []
     for dim, val in slice_dict.items():
         if dim not in registry:
             continue
         ctx = registry[dim].get(str(val))
         if not ctx:
             continue
-        if ctx.get("verdict") == "VETO" and ctx.get("n", 0) >= 12:
-            return True, f"{dim}:{val} VETO roi {ctx.get('roi')} n={ctx.get('n')}"
+        # Increased n threshold to 20 after NO BET incident (was 12)
+        if ctx.get("verdict") == "VETO" and ctx.get("n", 0) >= 20:
+            veto_hits.append((dim, val, ctx))
+    # Require at least 2 VETO dims for slice veto, or single very negative ROI (<-0.15)
+    if len(veto_hits) >= 2:
+        dim, val, ctx = veto_hits[0]
+        return True, f"{dim}:{val} VETO roi {ctx.get('roi')} n={ctx.get('n')} + {len(veto_hits)-1} more"
+    if len(veto_hits) == 1:
+        dim, val, ctx = veto_hits[0]
+        try:
+            roi = float(ctx.get("roi") or 0)
+            if roi <= -0.15:
+                return True, f"{dim}:{val} VETO roi {roi} n={ctx.get('n')} (strong negative)"
+        except Exception:
+            pass
     return False, ""
 
 # --- NEW ML: calibrated prob, EV, odds answer, self-monitor ---
@@ -306,15 +341,31 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
             except Exception:
                 pass
 
+    # Reduced penalty after NO BET: VETO was 0.85 (15% cut) made 62% -> 51% -> EV negative -> veto loop
+    # Now 0.92 for VETO, 0.97 for CAUTION, and skip penalty if Both agree and conf>=60 (winning context)
+    cross_agree = str(pick.get("cross_source_agree") or "")
+    try:
+        conf_check = float(pick.get("confidence") or 0)
+        if conf_check <= 1.0:
+            conf_check *= 100
+    except Exception:
+        conf_check = 0
+    skip_surface_penalty = cross_agree == "Both" and conf_check >= 60
+
     for dim in ("tour", "surface", "series"):
         val = str(pick.get(dim) or pick.get(f"_{dim}") or "").strip()
         if not val:
             continue
         ctx = registry.get(dim, {}).get(val) if registry else None
-        if ctx and ctx.get("verdict") == "VETO":
-            base *= 0.85
-        elif ctx and ctx.get("verdict") == "CAUTION":
-            base *= 0.92
+        if not ctx:
+            continue
+        # Don't penalize surface-only VETO when Both agree (winning auto_tickets 85% hit)
+        if skip_surface_penalty and dim == "surface":
+            continue
+        if ctx.get("verdict") == "VETO":
+            base *= 0.92  # was 0.85
+        elif ctx.get("verdict") == "CAUTION":
+            base *= 0.97  # was 0.92
 
     return max(0.51, min(0.90, base))
 
@@ -447,10 +498,13 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
             except Exception:
                 pick["ml_odds_answer"] = None
 
-        if ev is not None and ev < -0.05 and scoring["strength_score"] < 0.4:
-            scoring["should_veto"] = True
-            scoring["veto_reasons"].append(f"ML EV {ev:.3f} negative with low strength")
-            pick["ml_verdict"] = "VETO"
+        # Relaxed after NO BET: was -0.05 and <0.4 vetoed Basiletti 62% Both (EV -0.09 due to VETO penalty)
+        # Now -0.10 and <0.2, and skip if Both agree
+        if ev is not None and ev < -0.10 and scoring["strength_score"] < 0.2:
+            if str(pick.get("cross_source_agree")) != "Both":
+                scoring["should_veto"] = True
+                scoring["veto_reasons"].append(f"ML EV {ev:.3f} negative with low strength")
+                pick["ml_verdict"] = "VETO"
 
         if scoring["should_veto"]:
             if "NO_ODDS" in str(pick.get("bucket")) and scoring["strength_score"] >= 0.2:
@@ -462,6 +516,20 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
                 vetoed.append(pick)
                 kept.append(pick)
         else:
+            # Restore previously vetoed picks that are now allowed (2026-09-16 NO BET fix)
+            # Picks file from CI already has SKIPPED_VETO bucket from old logic, but new logic says ALLOW
+            # If Both agree + conf>=60, restore to WATCHLIST so auto_tickets can use it
+            if str(pick.get("bucket")) == "SKIPPED_VETO":
+                try:
+                    cross = str(pick.get("cross_source_agree") or "")
+                    conf_f = float(pick.get("confidence") or 0)
+                    if conf_f <= 1.0:
+                        conf_f *= 100
+                    if cross == "Both" and conf_f >= 60:
+                        pick["bucket"] = "WATCHLIST"
+                        pick["skip_reason"] = ""
+                except Exception:
+                    pass
             kept.append(pick)
             if scoring["should_boost"]:
                 boosted.append(pick)

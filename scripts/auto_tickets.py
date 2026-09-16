@@ -274,11 +274,31 @@ def is_playable(pick: dict) -> bool:
         ml_strength = 0
     # VETO bucket hard block, but BOOST with >=0.5 can override (Paquet 0.75)
     # Also block ml VETO with low strength (<0.5) – prevents 10:26 0.15/-0.05 VETO accas
+    # FIX 2026-09-16 NO BET: single surface Hard VETO blocked all 56 picks -> NO BET
+    # Allow VETO override if Both agree + conf>=60 + strength>=0.2 (winning auto_tickets 85% hit, 133% bank)
     if is_veto_bucket:
-        if not (ml_verdict == "BOOST" and ml_strength >= 0.5):
+        cross = str(pick.get("cross_source_agree") or "")
+        try:
+            conf_f = float(pick.get("confidence") or 0)
+            if conf_f <= 1.0:
+                conf_f *= 100
+        except Exception:
+            conf_f = 0
+        if cross == "Both" and conf_f >= 60 and ml_strength >= 0.2:
+            pass  # allow surface-only VETO when Both agree
+        elif not (ml_verdict == "BOOST" and ml_strength >= 0.5):
             return False
     if ml_verdict == "VETO" and ml_strength < 0.5:
-        return False
+        # Allow if Both agree + conf>=60 + strength>=0.2 (surface-only VETO case)
+        cross = str(pick.get("cross_source_agree") or "")
+        try:
+            conf_f = float(pick.get("confidence") or 0)
+            if conf_f <= 1.0:
+                conf_f *= 100
+        except Exception:
+            conf_f = 0
+        if not (cross == "Both" and conf_f >= 60 and ml_strength >= 0.2):
+            return False
     # USER FIX: those odds are high because favorites marked SKIPPED_DEAD_EDGE (EV negative via confidence) were excluded,
     # leaving only underdogs 2.78*2.68=7.45. Allow DEAD_EDGE if ML prob high (>=0.80) or conf >=65 with odds <=2.0
     # This brings back low-odds winners like 1.28,1.30,1.41 that produce accas 1.28-1.88 like user's tickets
