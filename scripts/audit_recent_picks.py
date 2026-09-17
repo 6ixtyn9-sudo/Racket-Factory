@@ -160,12 +160,153 @@ def pick_players(pick: dict[str, Any]) -> tuple[str, str]:
     return home, away
 
 
+HISTORY_PATH = LOCALDATA / "picks_audit_history.json"
+
+
 def archived_picks_path(day: str) -> Path:
     return LOCALDATA / f"picks_{day}.json"
 
 
 def forecast_picks_path(day: str) -> Path:
     return LOCALDATA / f"picks_forecast_{day}.json"
+
+
+def discover_archived_pick_dates(*, ledger_kind: str = "official") -> list[str]:
+    """Every dated pick ledger on disk, oldest first. Window is not truncated here."""
+    dates: set[str] = set()
+    if ledger_kind in {"official", "both"}:
+        for path in LOCALDATA.glob("picks_20[0-9][0-9]-[0-9][0-9]-[0-9][0-9].json"):
+            m = re.search(r"(\d{4}-\d{2}-\d{2})", path.name)
+            if m:
+                dates.add(m.group(1))
+    if ledger_kind in {"forecast", "both"}:
+        for path in LOCALDATA.glob("picks_forecast_20[0-9][0-9]-[0-9][0-9]-[0-9][0-9].json"):
+            m = re.search(r"(\d{4}-\d{2}-\d{2})", path.name)
+            if m:
+                dates.add(m.group(1))
+    return sorted(dates)
+
+
+def _all_pick_key(row: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(row.get("date") or "")[:10],
+        clean_text(row.get("match")),
+        clean_text(row.get("selected_player")),
+    )
+
+
+def load_audit_history() -> list[dict[str, Any]]:
+    if not HISTORY_PATH.exists():
+        return []
+    try:
+        data = json.loads(HISTORY_PATH.read_text())
+    except Exception:
+        return []
+    if not isinstance(data, list):
+        return []
+    return [r for r in data if isinstance(r, dict)]
+
+
+def merge_audit_history(current: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep a cumulative per-pick ledger so a 3-day prune cannot blank the audit.
+
+    Newer settled (won/lost/void/conflict) rows replace pending ones. A fresh
+    pending row does not overwrite a previously settled result.
+    """
+    by_key: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for row in load_audit_history() + list(current):
+        key = _all_pick_key(row)
+        if not key[0] or not key[1]:
+            continue
+        prev = by_key.get(key)
+        if prev is None:
+            by_key[key] = row
+            continue
+        prev_status = str(prev.get("status") or "")
+        new_status = str(row.get("status") or "")
+        prev_done = prev_status in {"won", "lost", "void", "conflict"}
+        new_done = new_status in {"won", "lost", "void", "conflict"}
+        if new_done or not prev_done:
+            by_key[key] = row
+    merged = [by_key[k] for k in sorted(by_key)]
+    try:
+        LOCALDATA.mkdir(parents=True, exist_ok=True)
+        HISTORY_PATH.write_text(json.dumps(merged, indent=2, sort_keys=True))
+    except Exception:
+        pass
+    return merged
+
+
+def settled_from_all_row(pp: dict[str, Any]) -> SettledPick | None:
+    status = str(pp.get("status") or "")
+    if status not in {"won", "lost"}:
+        return None
+    odds = pp.get("odds")
+    try:
+        odds_f = float(odds) if odds is not None and str(odds).strip() not in {"", "nan", "None"} else None
+        if odds_f is not None and odds_f <= 1.0:
+            odds_f = None
+    except (TypeError, ValueError):
+        odds_f = None
+    pnl = pp.get("pnl")
+    try:
+        pnl_f = float(pnl) if pnl is not None and str(pnl).strip() not in {"", "nan", "None"} else None
+    except (TypeError, ValueError):
+        pnl_f = None
+    if pnl_f is None and odds_f is not None:
+        pnl_f = (odds_f - 1.0) if status == "won" else -1.0
+
+    def _bool(key: str):
+        v = pp.get(key)
+        if v is None:
+            return None
+        if isinstance(v, bool):
+            return v
+        s = str(v).strip().lower()
+        if s in {"true", "1", "yes"}:
+            return True
+        if s in {"false", "0", "no"}:
+            return False
+        return None
+
+    def _int(key: str):
+        v = pp.get(key)
+        if v is None or str(v).strip() in {"", "nan", "None"}:
+            return None
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
+    return SettledPick(
+        date=str(pp.get("date") or "")[:10],
+        tour=str(pp.get("tour") or "UNKNOWN"),
+        series=str(pp.get("series") or "UNKNOWN"),
+        surface=str(pp.get("surface") or "UNKNOWN"),
+        bucket=str(pp.get("bucket") or "UNKNOWN"),
+        source=str(pp.get("source") or "UNKNOWN"),
+        match=str(pp.get("match") or ""),
+        selected_player=str(pp.get("selected_player") or ""),
+        winner=str(pp.get("winner") or ""),
+        won=status == "won",
+        odds=odds_f,
+        pnl=pnl_f,
+        selected_sets_won=_int("selected_sets_won"),
+        selected_sets_lost=_int("selected_sets_lost"),
+        selected_won_any_set=_bool("selected_won_any_set"),
+        selected_won_set1=_bool("selected_won_set1"),
+        selected_won_set2=_bool("selected_won_set2"),
+        selected_won_set3=_bool("selected_won_set3"),
+        ledger_kind=str(pp.get("ledger_kind") or "official"),
+        settle_source=str(pp.get("settle_source") or ""),
+        settle_date=str(pp.get("settle_date") or ""),
+        settle_score=str(pp.get("settle_score") or ""),
+        settle_reason=str(pp.get("settle_reason") or ""),
+        settle_status=str(pp.get("settle_status") or ""),
+        odds_basis=str(pp.get("odds_basis") or "none"),
+        market_basis=str(pp.get("market_basis") or ""),
+        is_paper=bool(pp.get("is_paper")),
+    )
 
 
 def _load_pick_rows_from_path(path: Path, day: str, ledger_kind: str) -> list[dict[str, Any]]:
@@ -658,6 +799,12 @@ def build_report(
                 "odds_basis": settled.odds_basis,
                 "market_basis": settled.market_basis,
                 "is_paper": settled.is_paper,
+                "selected_sets_won": settled.selected_sets_won,
+                "selected_sets_lost": settled.selected_sets_lost,
+                "selected_won_any_set": settled.selected_won_any_set,
+                "selected_won_set1": settled.selected_won_set1,
+                "selected_won_set2": settled.selected_won_set2,
+                "selected_won_set3": settled.selected_won_set3,
             })
         else:
             all_rows.append({
@@ -677,14 +824,18 @@ def build_report(
                 "settle_score": basis.get("score", ""),
             })
 
+    all_rows = merge_audit_history(all_rows)
+    archived_dates = sorted({str(r.get("date") or "")[:10] for r in all_rows if r.get("date")})
+    settled_rows = [s for s in (settled_from_all_row(r) for r in all_rows) if s is not None]
+
     # Summary includes pending/void/conflict counts
-    pending = sum(1 for r in all_rows if r["status"].startswith("pending"))
-    voids = sum(1 for r in all_rows if r["status"] == "void")
-    conflicts = sum(1 for r in all_rows if r["status"] == "conflict")
+    pending = sum(1 for r in all_rows if str(r.get("status") or "").startswith("pending"))
+    voids = sum(1 for r in all_rows if r.get("status") == "void")
+    conflicts = sum(1 for r in all_rows if r.get("status") == "conflict")
     return {
         "start": start,
         "end": end,
-        "archived_pick_rows": len(picks),
+        "archived_pick_rows": len(all_rows),
         "archived_pick_dates": archived_dates,
         "same_day_excluded": same_day_excluded,
         "same_day_cutoff": today_local,
@@ -692,7 +843,7 @@ def build_report(
         "ledger_kind": ledger_kind,
         "overall": {**summarize_scored(settled_rows), "pending_picks": pending,
                     "void_picks": voids, "conflict_picks": conflicts,
-                    "total_picks": len(picks)},
+                    "total_picks": len(all_rows)},
         "by_ledger_kind": summarize_by(settled_rows, "ledger_kind"),
         "by_tour": summarize_by(settled_rows, "tour"),
         "by_series": summarize_by(settled_rows, "series"),
@@ -746,7 +897,7 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
     ]
     all_picks = report.get("all_picks", [])
     if all_picks:
-        for pp in all_picks[:100]:
+        for pp in all_picks:
             status = pp.get("status")
             match = pp.get("match")
             sel = pp.get("selected_player")
@@ -760,8 +911,6 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
                 basis = f"{pp.get('settle_source', '')}@{pp.get('settle_date', '')}:{pp.get('settle_score', '')}"
                 extra = f" basis={basis}"
             lines.append(f"- {d} {match} selected={sel} winner={winner} status={status}{extra}")
-        if len(all_picks) > 100:
-            lines.append(f"- ... and {len(all_picks)-100} more")
     else:
         lines.append("- none")
     lines.extend(["", "## By Tour", ""])
@@ -815,7 +964,8 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Audit recent archived daily picks against settled warehouse results.")
     ap.add_argument("--end", default=date.today().isoformat(), help="End date inclusive (YYYY-MM-DD).")
-    ap.add_argument("--days", type=int, default=30, help="Rolling window length in days (default: 30).")
+    ap.add_argument("--days", type=int, default=0,
+                    help="Rolling window length in days. 0 = all archived pick files (default).")
     ap.add_argument("--warehouse", default=str(WAREHOUSE), help="Path to warehouse.csv.gz")
     ap.add_argument(
         "--ledger-kind",
@@ -831,7 +981,12 @@ def main() -> int:
     args = ap.parse_args()
 
     end = datetime.strptime(args.end, "%Y-%m-%d").date()
-    start = (end - timedelta(days=max(0, args.days - 1))).isoformat()
+    if args.days and args.days > 0:
+        start = (end - timedelta(days=max(0, args.days - 1))).isoformat()
+    else:
+        discovered = discover_archived_pick_dates(ledger_kind=args.ledger_kind)
+        in_range = [d for d in discovered if d <= end.isoformat()]
+        start = in_range[0] if in_range else end.isoformat()
     report = build_report(
         start,
         end.isoformat(),
