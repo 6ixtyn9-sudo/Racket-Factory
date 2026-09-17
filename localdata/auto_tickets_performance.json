@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-17T06:47:45",
+  "generated_at": "2026-09-17T07:06:35",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 114.623996,
@@ -153,6 +153,7 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_bare_surname": true,
               "_settle_basis": {
                 "source": "Challenger_results",
                 "match_date": "2026-09-17",
@@ -216,8 +217,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Sao Paulo WD Prediction",
-              "_settle_bare_surname": true
+              "tournament": "WTA Sao Paulo WD Prediction"
             },
             {
               "_is_paper": false,

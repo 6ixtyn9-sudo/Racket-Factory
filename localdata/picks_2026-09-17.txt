@@ -1,12 +1,12 @@
 Racket Factory Picks — 2026-09-17
 ============================================================
-Generated at: 2026-09-17 06:47:08
+Generated at: 2026-09-17 07:06:15
 
 
 CERTIFIED CLEAN PICKS
 ============================================================
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Francisca Jorge vs Victoria Jimenez Kasint KO 14:30 -> FRANCISCA JORGE  conf 62% @2.18  EV +0.35u
-     bucket=CERTIFIED_CLEAN  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=54  roi=22.37%
+     bucket=CERTIFIED_CLEAN  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
 
 CAUTION PICKS
 ============================================================
@@ -27,18 +27,18 @@ WATCHLIST — UNKNOWN CONTEXT
 SKIPPED — VETO CONTEXT
 ============================================================
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Elina Avanesyan vs Alina Charaeva          KO 16:00 -> ELINA AVANESYAN  conf 62% @1.63  EV +0.01u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=54  roi=22.37%
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Samira De Stefano vs Alice Tubello         KO 09:00 -> SAMIRA DE STEFANO  conf 60% @1.82  EV +0.09u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=54  roi=22.37%
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Da Silva Fick / Kulambayeva vs Hruncakova  KO 14:30 -> HRUNCAKOVA / KRAUS  conf 61% @1.61  EV -0.02u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=54  roi=22.37%
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Mikulskyte / Smith vs Strakhova / Tikhonov KO 17:00 -> STRAKHOVA / TIKHONOVA  conf 60% @1.66  EV -0.00u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=54  roi=22.37%
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Quevedo / Salkova vs Riera / Sierra        KO 17:00 -> QUEVEDO / SALKOVA  conf 60% @1.66  EV -0.00u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=54  roi=22.37%
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
 
 ⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
 ⚠️  Bet only what you can afford to lose.

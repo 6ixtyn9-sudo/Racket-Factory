@@ -32,20 +32,18 @@
     "expected_value": 0.35160000000000013,
     "slice_matched": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
     "edge_dims": 3,
-    "edge_n": 54,
+    "edge_n": 55,
     "edge_grade": "GOLD",
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "22.37%",
-    "ml_strength_score": 0.2,
-    "ml_veto_reasons": [
-      "surface Hard VETO roi -0.308108 n=42"
-    ],
+    "roi_estimate": "20.29%",
+    "ml_strength_score": 0.4,
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 0.0,
-    "ml_verdict": "ALLOW",
+    "ml_verdict": "BOOST",
     "ml_calibrated_prob": 0.51,
     "ml_ev": 0.1118,
     "ml_fair_odds": 1.96,
@@ -90,14 +88,13 @@
     "expected_value": 0.09199999999999997,
     "slice_matched": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
     "edge_dims": 3,
-    "edge_n": 54,
+    "edge_n": 55,
     "edge_grade": "GOLD",
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "22.37%",
-    "ml_strength_score": 0.2,
+    "roi_estimate": "20.29%",
+    "ml_strength_score": 0.4,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.308108 n=42",
       "ML EV -0.072 < 0.01 min (capital protection)"
     ],
     "ml_boost_reasons": [
@@ -115,7 +112,7 @@
       "edge_pct": -7.18,
       "explanation": "Odds 1.82 short vs fair 1.96, EV -7.2% \u2013 negative, avoid unless boosting acca"
     },
-    "skip_reason": "surface Hard VETO roi -0.308108 n=42; ML EV -0.072 < 0.01 min (capital protection)"
+    "skip_reason": "ML EV -0.072 < 0.01 min (capital protection)"
   },
   {
     "match": "Elina Avanesyan vs Alina Charaeva",
@@ -150,15 +147,14 @@
     "expected_value": 0.010599999999999943,
     "slice_matched": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
     "edge_dims": 3,
-    "edge_n": 54,
+    "edge_n": 55,
     "edge_grade": "GOLD",
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "22.37%",
-    "ml_strength_score": -0.45,
+    "roi_estimate": "20.29%",
+    "ml_strength_score": -0.25,
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.308108 n=42",
       "Low consensus w_score 0.0",
       "ML EV -0.169 < 0.01 min (capital protection)"
     ],
@@ -175,7 +171,7 @@
       "edge_pct": -16.87,
       "explanation": "Odds 1.63 short vs fair 1.96, EV -16.9% \u2013 negative, avoid unless boosting acca"
     },
-    "skip_reason": "Sources disagree; surface Hard VETO roi -0.308108 n=42"
+    "skip_reason": "Sources disagree; Low consensus w_score 0.0"
   },
   {
     "match": "Mikulskyte / Smith vs Strakhova / Tikhonova",
@@ -210,15 +206,14 @@
     "expected_value": -0.004000000000000059,
     "slice_matched": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
     "edge_dims": 3,
-    "edge_n": 54,
+    "edge_n": 55,
     "edge_grade": "GOLD",
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "22.37%",
+    "roi_estimate": "20.29%",
     "skip_reason": "negative EV (-0.004 < 0.000)",
-    "ml_strength_score": 0.2,
+    "ml_strength_score": 0.4,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.308108 n=42",
       "Doubles EV -0.153 < 0.05 min (doubles 0W/5L -40% ROI)"
     ],
     "ml_boost_reasons": [
@@ -270,15 +265,14 @@
     "expected_value": -0.004000000000000059,
     "slice_matched": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
     "edge_dims": 3,
-    "edge_n": 54,
+    "edge_n": 55,
     "edge_grade": "GOLD",
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "22.37%",
+    "roi_estimate": "20.29%",
     "skip_reason": "negative EV (-0.004 < 0.000)",
-    "ml_strength_score": 0.2,
+    "ml_strength_score": 0.4,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.308108 n=42",
       "Doubles EV -0.153 < 0.05 min (doubles 0W/5L -40% ROI)"
     ],
     "ml_boost_reasons": [
@@ -330,15 +324,14 @@
     "expected_value": -0.01789999999999997,
     "slice_matched": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
     "edge_dims": 3,
-    "edge_n": 54,
+    "edge_n": 55,
     "edge_grade": "GOLD",
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "22.37%",
+    "roi_estimate": "20.29%",
     "skip_reason": "negative EV (-0.018 < 0.000)",
-    "ml_strength_score": 0.2,
+    "ml_strength_score": 0.4,
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.308108 n=42",
       "Doubles EV -0.179 < 0.05 min (doubles 0W/5L -40% ROI)"
     ],
     "ml_boost_reasons": [
