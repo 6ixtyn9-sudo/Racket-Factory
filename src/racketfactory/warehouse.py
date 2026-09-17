@@ -1155,14 +1155,22 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     active = discover_active_tennis_sports(api_keys)
     if active is not None:
         active_set = set(active)
+        logger.info("The Odds API active keys discovered: %s", active)
         skipped = [s for s in sports if s not in active_set]
         sports = tuple(s for s in sports if s in active_set)
         for sport in skipped:
             logger.warning("The Odds API sport key %r is not active "
                            "(check THE_ODDS_API_SPORT_KEYS)", sport)
         if not sports:
-            logger.warning("No active configured tennis sport keys; skipping odds fetch.")
-            return []
+            # Fallback: if configured keys all inactive, use discovered active keys (if any)
+            # instead of skipping entirely. This handles seasonal changes where generic atp/wta
+            # may be inactive but challenger or slam keys are active.
+            if active:
+                logger.warning("No active configured tennis sport keys; falling back to discovered active keys: %s", active)
+                sports = tuple(active)
+            else:
+                logger.warning("No active configured tennis sport keys; skipping odds fetch.")
+                return []
 
     cached_rows = _load_the_odds_api_cache(str(target_date)[:10], sports, regions, bookmakers)
     if cached_rows is not None:

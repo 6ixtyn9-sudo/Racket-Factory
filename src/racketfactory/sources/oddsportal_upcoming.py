@@ -72,49 +72,68 @@ def _is_match_link(href: str) -> dict[str, Any] | None:
 
     Historically /tennis/h2h/<a>/<b>/, but live listings have been observed
     with /tennis/match/<id>/, /tennis/<tournament>/<slug>/<id>/ and similar
-    shapes. Accept any /tennis/ link with >=3 segments that is not a known
-    category/listing page; the downstream split_match_names will reject
-    non-player anchors (scores, headers). This restores 0 -> 100+ match_links
-    when OddsPortal changes URL shape (run #0332500c had 183 links but 0 match_links).
+    shapes. Category pages like /tennis/usa/atp-us-open/ (3 segs, all lowercase)
+    must be excluded — they caused bad_names=16 parsed=0 in run 6ffa8c3a.
+
+    Heuristic:
+    - /tennis/h2h/... or /tennis/match/... always allowed
+    - 3-seg /tennis/<x>/<y>/ where x is atp/wta/challenger/etc or y is tournament slug (all lowercase, no digit) -> reject (category)
+    - 4+ segs under /tennis/ -> allow (match pages like /tennis/usa/atp-us-open/<player-slug>/ or h2h)
+    - Otherwise reject, letting split_match_names filter non-player anchors.
     """
     try:
-        path = urlsplit(href).path.lower()
+        path = urlsplit(href).path
+        # Keep original case for digit/upper heuristic, but lower for comparisons
+        path_lower = path.lower()
     except Exception:
         return None
     segs = [s for s in path.split("/") if s]
-    if not segs or segs[0] != "tennis":
+    segs_lower = [s for s in path_lower.split("/") if s]
+    if not segs or segs_lower[0] != "tennis":
         return None
-    # Known non-match category pages (listing pages, not match pages)
-    # e.g. /tennis/, /tennis/tomorrow/, /tennis/next/, /tennis/atp/, /tennis/wta/, /tennis/challenger/, etc.
-    # These have 1-2 segs or are exact known patterns.
-    if len(segs) == 1:
+    if len(segs_lower) == 1:
         return None  # /tennis/
-    if len(segs) == 2:
-        # /tennis/tomorrow/, /tennis/next/, /tennis/atp/, /tennis/wta/, /tennis/challenger/, /tennis/itf-men/, /tennis/itf-women/, /tennis/results/, /tennis/standings/
-        second = segs[1]
-        if second in {"tomorrow", "next", "atp", "wta", "challenger", "itf-men", "itf-women", "results", "standings", "live", "my-matches"}:
+    if len(segs_lower) == 2:
+        second = segs_lower[1]
+        if second in {"tomorrow", "next", "atp", "wta", "challenger", "itf-men", "itf-women", "results", "standings", "live", "my-matches", "rankings", "news", "stats", "calendar"}:
             return None
-        # /tennis/atp/tomorrow/ etc already handled via len>=3 but check
-    if len(segs) >= 3:
-        # Exclude extra category combos like /tennis/atp/tomorrow/, /tennis/wta/tomorrow/, /tennis/challenger/tomorrow/
-        if segs[1] in {"atp", "wta", "challenger", "itf-men", "itf-women"} and segs[2] in {"tomorrow", "next"} and len(segs) == 3:
+    if len(segs_lower) == 3:
+        # /tennis/atp/tomorrow/, /tennis/wta/tomorrow/, etc
+        if segs_lower[1] in {"atp", "wta", "challenger", "itf-men", "itf-women", "tomorrow", "next"}:
             return None
-        if segs[1] == "tomorrow" and segs[2] in {"next", "atp", "wta", "challenger"}:
+        # Category like /tennis/usa/atp-us-open/ -> 3 segs, all lowercase, no digit, no uppercase -> reject
+        # Match like /tennis/match/<id> -> segs[1]=match, allow
+        if segs_lower[1] == "match":
+            return {"tour_hint": "", "tournament": ""}
+        if segs_lower[1] == "h2h":
+            return {"tour_hint": "", "tournament": ""}
+        # If last seg looks like tournament slug (all lowercase, hyphens, no digit, length>3) -> reject
+        last = segs[2]
+        if last.islower() and last.replace("-", "").replace("_", "").isalpha() and len(last) >= 3:
+            # Could still be player slug like "shelton-ben" all lowercase? But h2h player slugs have ID with uppercase/digit like "shelton-ben-QNuG0Gzb"
+            # So pure lowercase is likely category
             return None
-    # Accept h2h explicitly
-    if len(segs) >= 4 and segs[1] == "h2h":
+        # Otherwise, be conservative and reject 3-seg unknown to avoid bad_names
+        return None
+    # len >=4
+    if segs_lower[1] == "h2h" or segs_lower[1] == "match":
         return {"tour_hint": "", "tournament": ""}
-    # Accept /tennis/match/...
-    if len(segs) >= 3 and segs[1] == "match":
-        return {"tour_hint": "", "tournament": ""}
-    # Generic: /tennis/<something>/<something>/... with at least 3 segs and not a pure category
-    # Require at least 3 segs and path contains a hyphen or looks like player slug (heuristic)
-    # But be permissive: any 3+ segs under /tennis/ that isn't excluded is a candidate
-    if len(segs) >= 3:
-        # Avoid obvious non-match pages like /tennis/rankings/, /tennis/news/, etc.
-        if segs[1] in {"rankings", "news", "stats", "calendar"}:
-            return None
-        return {"tour_hint": segs[1].replace("-", " ") if len(segs) >= 2 else "", "tournament": segs[2].replace("-", " ") if len(segs) >= 3 else ""}
+    # Generic 4+ segs: /tennis/usa/atp-us-open/<player> or /tennis/<cat>/<tour>/<player>/<id>
+    # Allow, but still need to avoid obvious non-match like /tennis/rankings/...
+    if segs_lower[1] in {"rankings", "news", "stats", "calendar"}:
+        return None
+    # If last seg is pure tournament (all lowercase alpha hyphen) and no player-like second last, might still be category with 4 segs like /tennis/usa/atp-us-open/results/ ?
+    # Check if last two segs are both lowercase alpha hyphen -> likely not match
+    # But allow if any seg contains digit or uppercase (player ID)
+    has_id_like = any(any(c.isupper() or c.isdigit() for c in seg) for seg in segs[2:])
+    if not has_id_like:
+        # No ID-like segment, could still be /tennis/usa/atp-us-open/shelton-ben (all lowercase) – allow if last seg contains hyphen and looks like 2 names?
+        # Require last seg contains hyphen and at least 2 parts
+        last = segs[-1]
+        if "-" in last and len(last.split("-")) >= 2:
+            return {"tour_hint": segs[1].replace("-", " ") if len(segs) >= 2 else "", "tournament": segs[2].replace("-", " ") if len(segs) >= 3 else ""}
+        return None
+    return {"tour_hint": segs[1].replace("-", " ") if len(segs) >= 2 else "", "tournament": segs[2].replace("-", " ") if len(segs) >= 3 else ""}
 
 
 def _is_challenge_page(html: str) -> bool:

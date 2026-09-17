@@ -47,7 +47,7 @@ def sports_from_env() -> list[str]:
         os.getenv("THE_ODDS_API_SCORE_SPORT_KEYS")
         or os.getenv("THE_ODDS_API_SPORT_KEYS")
         or os.getenv("THE_ODDS_API_SPORTS")
-        or "tennis_atp_wimbledon,tennis_wta_wimbledon"
+        or "tennis_atp,tennis_wta"
     )
     # The generic "tennis" key may work for odds but does not work for scores.
     return [s.strip() for s in raw.split(",") if s.strip() and s.strip() != "tennis"]
@@ -284,13 +284,18 @@ def main() -> int:
     active = discover_active_tennis_sports(api_keys)
     if active is not None:
         active_set = set(active)
+        logger.info("The Odds API active score keys discovered: %s", active)
         skipped = [s for s in sports if s not in active_set]
         sports = [s for s in sports if s in active_set]
         for sport in skipped:
             logger.warning("Scores sport key %r is not active; skipping", sport)
         if not sports:
-            logger.warning("No active score sport keys; skipping scores fetch.")
-            return 0
+            if active:
+                logger.warning("No active configured score sport keys; falling back to discovered: %s", active)
+                sports = active
+            else:
+                logger.warning("No active score sport keys; skipping scores fetch.")
+                return 0
 
     all_rows: list[dict[str, Any]] = []
     for i, sport in enumerate(sports):
