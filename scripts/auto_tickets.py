@@ -116,15 +116,26 @@ def dynamic_max_odds(p: dict) -> float:
     if n < 10 and prob < 0.70:
         return 1.8
     # Not restrictive: proven high-EV dogs allowed up to 3.5
+    # REVISED: allow high EV even with medium prob (e.g. Charaeva 2.23 EV 25% prob 56% n=54 ROI 17% should be allowed)
+    # Check EV from ml_ev if available
+    try:
+        ev = float(p.get("ml_ev") or 0)
+    except Exception:
+        ev = 0.0
     if prob >= 0.85 and n >= 30 and roi >= 0.10:
-        # e.g. Bobichon 2.28 85% 51n 15.9% ROI, or Ostapenkov 3.23 if it proves 85%+
         cap = 3.5
+    elif ev >= 0.20 and n >= 20 and roi >= 0.05:  # High EV 20%+ like Charaeva 25% should be allowed up to 3.0
+        cap = 3.0
     elif prob >= 0.80 and n >= 20 and roi >= 0.05:
         cap = 2.8
+    elif ev >= 0.10 and n >= 15 and roi >= 0.03:  # EV 10%+ like Jorge 22% should be allowed up to 2.5
+        cap = 2.5
     elif prob >= 0.75 and n >= 15:
         cap = 2.4
     elif prob >= 0.70:
         cap = 2.0
+    elif ev >= 0.05 and n >= 15:  # Even low prob but EV 5%+ and proven n>=15 gets 2.2
+        cap = 2.2
     else:
         cap = 1.8
     # BANKER/CERTIFIED +0.2, BOOST +0.2 – rewards proven tiers
