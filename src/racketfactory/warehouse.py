@@ -1982,6 +1982,42 @@ def build_warehouse(
     warehouse = warehouse.drop(columns=['_key_a', '_key_b'])
 
     pred_files = list(data_path.glob("predictions_*.csv.gz"))
+    # DEEP SEARCH FIX: also include archive_*.csv (BetClan, Bzzoiro, PredixSport) which hold historical daily captures
+    archive_files = list(data_path.glob("archive_*.csv"))
+    # Convert archive CSVs to prediction-style DataFrames if they exist
+    for af in archive_files:
+        try:
+            adf = pd.read_csv(af, low_memory=False)
+            if adf.empty:
+                continue
+            # Normalize archive format to predictions format
+            # BetClan archive has player_home/player_away, predicted_winner
+            if "player_home" in adf.columns and "player_a" not in adf.columns:
+                adf = adf.rename(columns={"player_home": "player_a", "player_away": "player_b"})
+            if "predicted_winner" not in adf.columns and "winner" in adf.columns:
+                adf = adf.rename(columns={"winner": "predicted_winner"})
+            if "source" not in adf.columns:
+                # Infer source from filename
+                if "betclan" in af.name.lower():
+                    adf["source"] = "BetClan"
+                elif "bzzoiro" in af.name.lower():
+                    adf["source"] = "Bzzoiro"
+                elif "predixsport" in af.name.lower():
+                    adf["source"] = "PredixSport"
+                else:
+                    adf["source"] = af.stem.replace("archive_","").title()
+            # Ensure required cols
+            if "match_date" in adf.columns and "player_a" in adf.columns and "player_b" in adf.columns:
+                # Save as temporary gz for merging
+                tmp_gz = data_path / f"predictions_{adf['source'].iloc[0].lower()}_archive_{af.stem}.csv.gz"
+                # Only write if not already exists or newer
+                if not tmp_gz.exists() or adf.shape[0] > 0:
+                    adf.to_csv(tmp_gz, index=False, compression="gzip")
+                    pred_files.append(tmp_gz)
+                    logger.info("Including archive %s as %s (%d rows)", af.name, tmp_gz.name, len(adf))
+        except Exception as e:
+            logger.warning("Failed to include archive %s: %s", af, e)
+
     if pred_files:
         logger.info("Loading %d prediction files for multi-source merge...", len(pred_files))
 
