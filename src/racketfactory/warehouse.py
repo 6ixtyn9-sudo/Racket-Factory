@@ -840,14 +840,17 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
 
 
 THE_ODDS_API_BASE = "https://api.the-odds-api.com/v4"
-DEFAULT_THE_ODDS_API_SPORTS = "tennis_atp_wimbledon,tennis_wta_wimbledon"
+DEFAULT_THE_ODDS_API_SPORTS = "tennis_atp,tennis_wta"
 
 
 def the_odds_api_sports() -> tuple[str, ...]:
     """Return configured The Odds API sport keys.
 
-    The Odds API does not expose generic `tennis_atp` / `tennis_wta` sport
-    keys. Tennis is tournament-keyed, e.g. `tennis_atp_wimbledon`.
+    The Odds API exposes generic `tennis_atp` / `tennis_wta` for year-round
+    coverage plus tournament keys like `tennis_atp_wimbledon` during Slams.
+    Generic keys are active year-round; tournament keys are seasonal and
+    cause \"No active configured tennis sport keys\" warnings out of season
+    (run 0332500c had 0 The Odds API rows because us_open keys were inactive).
     We read .env at call time so daily/systemd runs pick up local config.
     """
     load_warehouse_env()

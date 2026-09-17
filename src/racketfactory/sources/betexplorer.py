@@ -116,6 +116,7 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
 
         # 2) Fallback: two separate anchors, each a single player / doubles team
         # Handles <a>Borisiouk M.</a> vs <a>Kim D. J.</a> or <a>Collins K.</a> vs <a>Yashina E.</a>
+        # 2026-09-17: extended to full names without initials (e.g. Alcaraz Carlos) and loose check
         if chosen is None and len(candidates) >= 2:
             def _looks_like_player_or_team(t: str) -> bool:
                 tt = t.strip()
@@ -123,8 +124,15 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
                     return False
                 if re.fullmatch(r"\d+:\d+", tt):
                     return False
+                if tt.lower() in {"winner", "odds", "result", "finished", "live"}:
+                    return False
                 try:
                     if po._looks_like_player(tt):
+                        return True
+                except Exception:
+                    pass
+                try:
+                    if po._looks_like_player_loose(tt):
                         return True
                 except Exception:
                     pass
@@ -137,17 +145,35 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
                     # Fallback: slash with dot or space
                     if "." in tt or " " in tt:
                         return len(tt) >= 5
-                # Single player heuristic
-                return len(tt) >= 3 and tt[0].isupper() and ("." in tt or " " in tt)
+                # Single player heuristic: allow full names (two caps words) or initial
+                if len(tt) >= 3 and tt[0].isupper():
+                    if "." in tt or " " in tt:
+                        return True
+                    # Single capitalized surname with len>=3 (rare but possible)
+                    if len(tt) >= 3 and tt.isalpha():
+                        return True
+                return False
 
             player_cands = [(a, txt, ctx, href) for a, txt, ctx, href in candidates if _looks_like_player_or_team(txt)]
+            # Deduplicate by text to avoid same anchor twice
+            seen_txt = set()
+            uniq_cands = []
+            for cand in player_cands:
+                txt = cand[1].strip()
+                if txt.lower() not in seen_txt:
+                    seen_txt.add(txt.lower())
+                    uniq_cands.append(cand)
+            player_cands = uniq_cands
             if len(player_cands) >= 2:
                 a1, txt1, ctx1, href1 = player_cands[0]
                 a2, txt2, ctx2, href2 = player_cands[1]
                 if txt1 != txt2 and len(txt1) >= 2 and len(txt2) >= 2:
+                    # Clean trailing odds if present
+                    txt1_clean = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", txt1).strip()
+                    txt2_clean = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", txt2).strip()
                     chosen = a1
-                    chosen_home = txt1
-                    chosen_away = txt2
+                    chosen_home = txt1_clean or txt1
+                    chosen_away = txt2_clean or txt2
                     chosen_ctx = ctx1 or ctx2
                     chosen_href = href1 or href2
 

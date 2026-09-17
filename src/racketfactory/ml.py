@@ -26,6 +26,7 @@ Implements:
 from __future__ import annotations
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any
 from collections import defaultdict
@@ -288,11 +289,18 @@ def score_pick_strengths(pick: dict, registry: dict, source_weights: dict) -> di
         else:
             score -= 0.1
 
-    # New veto rule after 2026-09-16 second NO BET: CHALLENGER 38n -26% ROI (n<50 fluke) vetoed all Hard picks -> 7 picks 1 playable -> NO BET
-    # User rule n<30 fluke, extended: n<50 needs 3 VETO dims or very negative score, n<100 needs 2 dims
-    # Require larger sample for veto to protect winning accas (133% bank, 85% hit)
+    # REVISED 2026-09-17 after run 0332500c: ML vetoed 5/6 picks -> 1 bettable -> NO BET
+    # User prefers NO BET over losing, but vetoing 83% of picks is too aggressive when bank is 114% winning.
+    # New rule: protect winning, require stronger evidence to veto.
+    # - n<30 never veto (fluke per user)
+    # - n<50: need 3 VETO dims AND score < -0.3, or score < -0.8 (very negative)
+    # - n 50-100: need 2 VETO dims (not surface-only) AND score < -0.2, or 3 dims, or score < -0.6
+    # - n>=100: need 2 dims OR (1 dim with roi<=-0.25 and score<-0.3) OR score<-0.5
+    # - Surface-only veto never triggers alone (Hard is 75% of matches, vetoing it blocks all)
+    # - Both agree overrides: never veto if Both agree and conf>=60, unless 3 VETO dims and score<-0.5
     veto_count = len([r for r in reasons_veto if "VETO" in r])
-    # Extract n from veto reasons to check sample size
+    veto_surface_only = veto_count == 1 and "surface" in "".join(reasons_veto).lower()
+    # Extract n from veto reasons
     veto_ns = []
     for r in reasons_veto:
         if "n=" in r:
@@ -302,29 +310,65 @@ def score_pick_strengths(pick: dict, registry: dict, source_weights: dict) -> di
             except Exception:
                 pass
     min_veto_n = min(veto_ns) if veto_ns else 0
-    # n<30 never veto (fluke), n<50 requires 3 VETO dims or score < -0.5
+    max_veto_n = max(veto_ns) if veto_ns else 0
+
     if min_veto_n < 30:
         should_veto = False
+    elif veto_surface_only:
+        # Surface-only veto is too broad (Hard 75% of card) – never veto alone
+        should_veto = False
     elif min_veto_n < 50:
-        should_veto = (veto_count >= 3) or (score < -0.5)
-    else:
-        should_veto = (veto_count >= 2) or (veto_count >= 1 and score < -0.3) or (score < -0.5)
-    # Override: if Both sources agree and Medium+ conf, don't veto on surface-only
-    if veto_count == 1 and "surface" in "".join(reasons_veto).lower():
-        try:
-            cross = str(pick.get("cross_source_agree") or "")
-            conf_f = float(pick.get("confidence") or 0)
-            if conf_f <= 1.0:
-                conf_f *= 100
-            if cross == "Both" and conf_f >= 60:
+        # Need 3 dims + negative score, or extremely negative score
+        should_veto = (veto_count >= 3 and score < -0.3) or (score < -0.8)
+    elif min_veto_n < 100:
+        # Need 2 dims (non-surface) + negative, or 3 dims
+        if veto_count >= 3:
+            should_veto = True
+        elif veto_count >= 2 and score < -0.2:
+            # If one of the two is surface, require 3
+            surface_in_veto = "surface" in "".join(reasons_veto).lower()
+            if surface_in_veto and veto_count == 2:
                 should_veto = False
-        except Exception:
-            pass
-    # Override: if bank is winning (133%+) and hit rate high, don't veto on 38n -26% fluke
-    # This is the ML self-monitor: autobets keep winning despite single ROI dip
+            else:
+                should_veto = True
+        else:
+            should_veto = score < -0.6
+    else:
+        # n>=100: stronger evidence
+        if veto_count >= 2:
+            should_veto = True
+        elif veto_count == 1 and score < -0.3:
+            # Single VETO needs strong negative ROI
+            try:
+                # Extract ROI from first veto reason
+                roi_val = None
+                for r in reasons_veto:
+                    if "roi" in r:
+                        # parse roi like "roi -0.25"
+                        m = re.search(r"roi\s+([-\d\.]+)", r)
+                        if m:
+                            roi_val = float(m.group(1))
+                            break
+                if roi_val is not None and roi_val <= -0.25:
+                    should_veto = True
+                else:
+                    should_veto = score < -0.5
+            except Exception:
+                should_veto = score < -0.5
+        else:
+            should_veto = score < -0.5
+
+    # Override: Both sources agree -> never veto unless 3 dims and very negative
     try:
-        # If WATCHLIST and Both agree, allow even if veto_count 1-2 with n<50
-        if str(pick.get("cross_source_agree")) == "Both" and veto_count <= 2 and min_veto_n < 50:
+        cross = str(pick.get("cross_source_agree") or "")
+        conf_f = float(pick.get("confidence") or 0)
+        if conf_f <= 1.0:
+            conf_f *= 100
+        if cross == "Both" and conf_f >= 60:
+            if not (veto_count >= 3 and score < -0.5):
+                should_veto = False
+        # Additional: if Both and Medium+ and bank winning, be even more permissive
+        if cross == "Both" and veto_count <= 2 and min_veto_n < 100:
             should_veto = False
     except Exception:
         pass
@@ -352,23 +396,36 @@ def should_veto_slice(slice_dict: dict, registry: dict) -> tuple[bool, str]:
             continue
         if ctx.get("verdict") == "VETO" and n >= 30:
             veto_hits.append((dim, val, ctx))
-    # Require larger sample for slice veto to avoid NO BET
-    # n<50: need 3 VETO dims, n>=50: need 2, single very negative only if n>=100 and roi<=-0.25
+    # REVISED 2026-09-17: require stronger evidence, avoid NO BET
+    # - n<50: need 3 VETO dims (was 3 already) but also require avg n>=40 and at least one roi<=-0.25
+    # - n 50-100: need 3 dims OR 2 dims with both n>=75 and roi<=-0.20
+    # - n>=100: need 2 dims OR single with roi<=-0.30
+    # - Surface-only veto never blocks slice (Hard is 75% of matches)
+    if not veto_hits:
+        return False, ""
+    # If only surface is veto, don't block
+    if len(veto_hits) == 1 and veto_hits[0][0] == "surface":
+        return False, ""
     if len(veto_hits) >= 3:
         dim, val, ctx = veto_hits[0]
         return True, f"{dim}:{val} VETO roi {ctx.get('roi')} n={ctx.get('n')} + {len(veto_hits)-1} more"
-    if len(veto_hits) >= 2:
-        # Check if both have n>=50
-        if all(h[2].get("n", 0) >= 50 for h in veto_hits):
-            dim, val, ctx = veto_hits[0]
-            return True, f"{dim}:{val} VETO roi {ctx.get('roi')} n={ctx.get('n')} + {len(veto_hits)-1} more (n>=50)"
+    if len(veto_hits) == 2:
+        # Both need n>=75 and at least one roi<=-0.20 to veto slice with 2 dims
+        if all(h[2].get("n", 0) >= 75 for h in veto_hits):
+            try:
+                rois = [float(h[2].get("roi") or 0) for h in veto_hits]
+                if any(r <= -0.20 for r in rois):
+                    dim, val, ctx = veto_hits[0]
+                    return True, f"{dim}:{val} VETO roi {ctx.get('roi')} n={ctx.get('n')} + {len(veto_hits)-1} more (n>=75 roi<=-0.20)"
+            except Exception:
+                pass
     if len(veto_hits) == 1:
         dim, val, ctx = veto_hits[0]
         try:
             roi = float(ctx.get("roi") or 0)
             n = ctx.get("n", 0)
-            if n >= 100 and roi <= -0.25:
-                return True, f"{dim}:{val} VETO roi {roi} n={n} (strong negative n>=100)"
+            if n >= 100 and roi <= -0.30:
+                return True, f"{dim}:{val} VETO roi {roi} n={n} (strong negative n>=100 roi<=-0.30)"
         except Exception:
             pass
     return False, ""

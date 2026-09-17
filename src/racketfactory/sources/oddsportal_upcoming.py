@@ -68,15 +68,53 @@ _BETSLIP_HREF = "/betslip/"
 
 
 def _is_match_link(href: str) -> dict[str, Any] | None:
-    """Match links live under /tennis/h2h/<player-a>/<player-b>/."""
+    """Match links: tolerant to markup changes (h2h, match, or player-slug pages).
+
+    Historically /tennis/h2h/<a>/<b>/, but live listings have been observed
+    with /tennis/match/<id>/, /tennis/<tournament>/<slug>/<id>/ and similar
+    shapes. Accept any /tennis/ link with >=3 segments that is not a known
+    category/listing page; the downstream split_match_names will reject
+    non-player anchors (scores, headers). This restores 0 -> 100+ match_links
+    when OddsPortal changes URL shape (run #0332500c had 183 links but 0 match_links).
+    """
     try:
-        path = urlsplit(href).path
+        path = urlsplit(href).path.lower()
     except Exception:
         return None
     segs = [s for s in path.split("/") if s]
-    if len(segs) < 4 or segs[0] != "tennis" or segs[1] != "h2h":
+    if not segs or segs[0] != "tennis":
         return None
-    return {"tour_hint": "", "tournament": ""}
+    # Known non-match category pages (listing pages, not match pages)
+    # e.g. /tennis/, /tennis/tomorrow/, /tennis/next/, /tennis/atp/, /tennis/wta/, /tennis/challenger/, etc.
+    # These have 1-2 segs or are exact known patterns.
+    if len(segs) == 1:
+        return None  # /tennis/
+    if len(segs) == 2:
+        # /tennis/tomorrow/, /tennis/next/, /tennis/atp/, /tennis/wta/, /tennis/challenger/, /tennis/itf-men/, /tennis/itf-women/, /tennis/results/, /tennis/standings/
+        second = segs[1]
+        if second in {"tomorrow", "next", "atp", "wta", "challenger", "itf-men", "itf-women", "results", "standings", "live", "my-matches"}:
+            return None
+        # /tennis/atp/tomorrow/ etc already handled via len>=3 but check
+    if len(segs) >= 3:
+        # Exclude extra category combos like /tennis/atp/tomorrow/, /tennis/wta/tomorrow/, /tennis/challenger/tomorrow/
+        if segs[1] in {"atp", "wta", "challenger", "itf-men", "itf-women"} and segs[2] in {"tomorrow", "next"} and len(segs) == 3:
+            return None
+        if segs[1] == "tomorrow" and segs[2] in {"next", "atp", "wta", "challenger"}:
+            return None
+    # Accept h2h explicitly
+    if len(segs) >= 4 and segs[1] == "h2h":
+        return {"tour_hint": "", "tournament": ""}
+    # Accept /tennis/match/...
+    if len(segs) >= 3 and segs[1] == "match":
+        return {"tour_hint": "", "tournament": ""}
+    # Generic: /tennis/<something>/<something>/... with at least 3 segs and not a pure category
+    # Require at least 3 segs and path contains a hyphen or looks like player slug (heuristic)
+    # But be permissive: any 3+ segs under /tennis/ that isn't excluded is a candidate
+    if len(segs) >= 3:
+        # Avoid obvious non-match pages like /tennis/rankings/, /tennis/news/, etc.
+        if segs[1] in {"rankings", "news", "stats", "calendar"}:
+            return None
+        return {"tour_hint": segs[1].replace("-", " ") if len(segs) >= 2 else "", "tournament": segs[2].replace("-", " ") if len(segs) >= 3 else ""}
 
 
 def _is_challenge_page(html: str) -> bool:

@@ -619,8 +619,17 @@ def build_accas(pool):
                             if not (is_boost and cross == "Both" and conf_f >= 70):
                                 continue
                     # If ml_ev is None (test picks), skip EV gate
+                    # REVISED 2026-09-17: allow prob 55-60% if high EV (>=10%) or conf>=60 and EV>=5%
+                    # Charaeva 56% prob 25% EV 2.23 odds conf 62% should be allowed (was blocked at 2.2)
                     if cp < 0.60 and str(p.get("ml_verdict")) != "BOOST":
-                        if not (o <= 2.2 and conf_of(p) >= 60):
+                        try:
+                            ev_check = float(p.get("ml_ev") or 0) if p.get("ml_ev") is not None else 0
+                        except Exception:
+                            ev_check = 0
+                        # Allow if high EV dog: EV>=10% and odds<=3.0 and conf>=60 and prob>=0.55
+                        if cp >= 0.55 and ev_check >= 0.10 and o <= 3.0 and conf_of(p) >= 60:
+                            pass  # allow high EV dog like Charaeva 56% 25% EV
+                        elif not (o <= 2.2 and conf_of(p) >= 60):
                             continue
                 except Exception:
                     pass

@@ -1397,10 +1397,12 @@ def main() -> int:
     ap.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse")
     ap.add_argument("--min-n", type=int, default=15,
                     help="Minimum matches per slice (default 15)")
-    ap.add_argument("--min-export-n", type=int, default=50,
+    ap.add_argument("--min-export-n", type=int, default=30,
                     help="REDTEAM Finding #5: minimum historical N required for a slice to be "
-                         "considered exportable as a live pick. Default 50 — anything smaller is "
-                         "kept for transparency in the slice report but cannot become a pick.")
+                         "considered exportable as a live pick. Default 30 (was 50 too strict: "
+                         "2026-09-17 only 1 slice n=54 exportable -> 1 bettable -> NO BET, 66 rows "
+                         "no exportable slice). Anything smaller is kept for transparency but cannot "
+                         "become a pick. User rule n<30 fluke, so 30 is minimum meaningful.")
     ap.add_argument("--min-ev", type=float, default=0.0,
                     help="REDTEAM Finding #4: minimum per-bet expected value (decimal) required "
                          "for a pick to be exported. EV = conf*(odds-1) - (1-conf). Default 0.0 "

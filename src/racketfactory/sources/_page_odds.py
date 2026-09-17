@@ -49,7 +49,9 @@ def _throttle(host: str) -> None:
 _DECIMAL_RE = re.compile(r"\b(\d{1,2}\.\d{1,2})\b")
 _DATE_DMY_RE = re.compile(r"\b\d{1,2}\.\d{1,2}\.\d{4}\b")
 _TIME_RE = re.compile(r"\b\d{1,2}:\d{2}\b")
-_NAME_SEP_RE = re.compile(r"\s+[–—-]\s+")
+# Dash plus vs variants observed on BetExplorer/OddsPortal: " - ", " vs ", " vs. "
+# Note: single "v" not included because it collides with initial "V." in "Lepchenko V. Melichar..."
+_NAME_SEP_RE = re.compile(r"\s+(?:[–—-]|vs\.?)\s+", re.IGNORECASE)
 _FINISHED_RE = re.compile(r"\b(FIN\b|FINISHED|RET\.?|RETIRED|W\.?\s?O\.?|WALKOVER|AWARDED|CANCELLED)", re.IGNORECASE)
 
 MIN_DECIMAL_ODDS = 1.01
@@ -296,23 +298,58 @@ def _looks_like_player(text: str) -> bool:
     in compound surnames like 'Von der Schulenburg J.' – observed 2026-09-13
     in BetExplorer results. Middle tokens may be initials or surname parts
     regardless of case as long as they are alphabetic length>=2.
+
+    Extended 2026-09-17 to also accept full names without initials
+    (e.g. 'Alcaraz Carlos', 'Sinner Jannik') and names where last token is
+    a capitalized word, not just initial – this fixes bad=28 where BetExplorer
+    started rendering full first names in some Challenger rows.
     """
     toks = text.split()
     if not 2 <= len(toks) <= _FUSED_SPLIT_MAX_TOKENS:
         return False
-    if not re.fullmatch(r"[A-Z]\.", toks[-1]):
+    # Last token: either initial "X." or capitalized word len>=2 (full first name)
+    last = toks[-1]
+    if not (re.fullmatch(r"[A-Z]\.", last) or (len(re.sub(r"[^A-Za-z]", "", last)) >= 2 and last[:1].isupper())):
         return False
     if len(re.sub(r"[^A-Za-z]", "", toks[0])) < 2 or not toks[0][:1].isupper():
         return False
     for tok in toks[1:-1]:
         if re.fullmatch(r"[A-Z]\.", tok):
             continue
-        # Allow surname parts and particles in any case (von, der, etc.)
         cleaned = re.sub(r"[^A-Za-z]", "", tok)
         if len(cleaned) >= 2:
             continue
         return False
+    # Additional sanity: must contain at least one dot OR two capitalized words (to avoid random phrases)
+    # Accept if any token is initial OR at least 2 tokens start with uppercase
+    has_initial = any(re.fullmatch(r"[A-Z]\.", t) for t in toks)
+    caps = sum(1 for t in toks if t[:1].isupper() and len(re.sub(r"[^A-Za-z]", "", t)) >= 2)
+    if not (has_initial or caps >= 2):
+        # Allow single full name like "Alcaraz Carlos" has caps=2, so passes
+        # Reject random like "Winner" single token already filtered by len>=2 check
+        return False
     return True
+
+
+def _looks_like_player_loose(text: str) -> bool:
+    """Very loose check for BetExplorer fallback: any 2+ word capitalized phrase, or initial present."""
+    t = text.strip()
+    if len(t) < 3:
+        return False
+    if re.fullmatch(r"\d+:\d+", t):
+        return False
+    if t.lower() in {"winner", "odds", "result", "finished"}:
+        return False
+    # Must have at least one uppercase letter
+    if not any(c.isupper() for c in t):
+        return False
+    # Must have at least 2 chars and either dot or space
+    if "." in t or " " in t:
+        # Avoid pure scores
+        if re.search(r"\d", t) and not re.search(r"[A-Za-z]", t):
+            return False
+        return len(t) >= 3
+    return False
 
 
 def _looks_like_doubles_team(text: str) -> bool:
@@ -344,6 +381,9 @@ def _split_fused_names(text: str) -> tuple[str, str]:
     The no-space variant is normalized by inserting a space after any dot
     that is immediately followed by an uppercase letter (e.g. 'A.Shelton' ->
     'A. Shelton'), then the existing '. ' scan applies.
+
+    2026-09-17: added loose fallback that accepts full names without initials
+    (e.g. 'Alcaraz Carlos Sinner Jannik' split on cap boundary) to fix bad=28.
     """
     clean = _TRAIL_SCORE_RE.sub("", text.strip()).strip()
     # Strip trailing decimal odds that may leak from row text (e.g. " 1.69 2.21")
@@ -389,6 +429,7 @@ def _split_fused_names(text: str) -> tuple[str, str]:
         return "", ""
 
     best: tuple[str, str] = ("", "")
+    # Primary: split on ". " where both sides look like player (strict)
     for m in re.finditer(r"\. ", clean):
         left, right = clean[: m.end()].strip(), clean[m.end():].strip()
         if _looks_like_player(left) and _looks_like_player(right):
@@ -398,7 +439,24 @@ def _split_fused_names(text: str) -> tuple[str, str]:
             left, right = clean[: m.end()].strip(), clean[m.end():].strip()
             if _looks_like_player(left) and _looks_like_player(right):
                 best = (left, right)
-    return best
+    if best[0]:
+        return best
+    # Loose fallback: try splitting on whitespace where both sides look loosely like players
+    # This handles full names without initials: "Alcaraz Carlos Sinner Jannik" -> "Alcaraz Carlos" + "Sinner Jannik"
+    # Find all possible split points and pick the most balanced where both sides have >=2 tokens and caps
+    tokens = clean.split()
+    if len(tokens) >= 4:
+        # Try middle splits
+        for split_idx in range(2, len(tokens)-1):
+            left = " ".join(tokens[:split_idx])
+            right = " ".join(tokens[split_idx:])
+            if _looks_like_player_loose(left) and _looks_like_player_loose(right):
+                # Prefer splits where both sides have at least 2 tokens and start with uppercase
+                if left[:1].isupper() and right[:1].isupper():
+                    # If both contain at least 2 words, accept
+                    if len(left.split()) >= 2 and len(right.split()) >= 2:
+                        return (left, right)
+    return ("", "")
 
 
 def split_match_names(link_text: str) -> tuple[str, str]:
@@ -413,6 +471,9 @@ def split_match_names(link_text: str) -> tuple[str, str]:
     after the dot ('Zverev A.Shelton B.', 'Baris O.Claverie L.'). We normalize
     '.<Upper>' -> '. <Upper>' before any split so both dash and fused paths
     see the same shape.
+
+    2026-09-17: strip trailing odds (e.g. ' 1.69 2.21') in dash path too, and
+    allow full names without initials to fix bad=28.
     """
     txt = link_text.strip()
     # Normalize fused dot+Upper (no space) early – helps both dash and fused paths
@@ -422,15 +483,24 @@ def split_match_names(link_text: str) -> tuple[str, str]:
     txt = _TIME_RE.sub("", txt, count=1).strip()
     # Strip trailing scoreline like " 1:3" or " 1:3, 6:2" etc.
     txt = _TRAIL_SCORE_RE.sub("", txt).strip()
+    # Strip trailing odds like " 1.69 2.21" that leak from row text
+    txt = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", txt).strip()
     parts = _NAME_SEP_RE.split(txt, maxsplit=1)
     if len(parts) == 2:
         left, right = parts[0].strip(), parts[1].strip()
-        # Right side may still carry trailing score after dash split
+        # Right side may still carry trailing score/odds after dash split
         right = _TRAIL_SCORE_RE.sub("", right).strip()
+        right = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", right).strip()
+        left = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", left).strip()
         # Basic sanity: both sides must look at least vaguely like players
-        # (contain a dot for initial, or at least two chars and a space)
         if left and right:
-            return left, right
+            # Accept if either strict or loose check passes
+            if _looks_like_player(left) or _looks_like_player_loose(left):
+                if _looks_like_player(right) or _looks_like_player_loose(right):
+                    return left, right
+            # Even if loose fails, if both have >=3 chars and uppercase, accept (dash is strong signal)
+            if len(left) >= 3 and len(right) >= 3 and left[:1].isupper() and right[:1].isupper():
+                return left, right
         return "", ""
     return _split_fused_names(txt)
 
