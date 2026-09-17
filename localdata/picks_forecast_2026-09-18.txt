@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-18
 ============================================================
-Generated at: 2026-09-17 08:35:42
-Snapshot as of: 2026-09-17T08:29:28+02:00
+Generated at: 2026-09-17 15:12:09
+Snapshot as of: 2026-09-17T15:05:04+02:00
 Ledger kind: forecast
 
 
@@ -19,7 +19,8 @@ WATCHLIST PICKS
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] F. J. Planinsek vs O. Kimhi                KO 12:30 -> O. KIMHI  conf 61% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=66  roi=21.55%
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================

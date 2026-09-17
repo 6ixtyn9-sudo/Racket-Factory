@@ -2,7 +2,7 @@
 
 ## Overall
 
-- archived pick rows: 61
+- archived pick rows: 62
 - archived pick dates: 5
 - settled picks: 43
 - wins: 19
@@ -11,10 +11,10 @@
 - ROI: -0.292105
 - ROI (real-priced): -0.292105 (n=38)
 - ROI (paper-priced): None (n=0)
-- pending picks: 18
+- pending picks: 19
 - void picks: 0
 - conflict picks: 0
-- total picks: 61
+- total picks: 62
 - set diagnostic picks: 43
 - selected won any set: 30 (0.697674)
 - selected won set 1: 20 (0.465116)
@@ -86,16 +86,17 @@
 - 2026-09-16 Brancaccio / Erjavec vs Burillo / Fossa Huergo selected=Brancaccio / Erjavec winner=? status=pending_no_result reason=no matching result rows found
 - 2026-09-16 Cavalle-Reimers / Salden vs Kobori / Plipuech selected=Cavalle-Reimers / Salden winner=Kobori M. / Plipuech P. status=lost basis=Challenger_results@2026-09-16:6-3 6-4
 - 2026-09-16 Jennifer Ruggeri vs Despina Papamichail selected=Jennifer Ruggeri winner=Papamichail D. status=lost basis=Challenger_results@2026-09-16:6-1 6-7 7-5
-- 2026-09-16 Mikulskyte / Smith vs Strakhova / Tikhonova selected=Strakhova / Tikhonova winner=? status=pending_no_result reason=no matching result rows found
+- 2026-09-16 Mikulskyte / Smith vs Strakhova / Tikhonova selected=Strakhova / Tikhonova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Noemi Basiletti vs Julie Struplova selected=Noemi Basiletti winner=Basiletti N. status=won basis=Challenger_results@2026-09-16:6-2 6-3
 - 2026-09-16 Palicova / Struplova vs Novak / Sebestova selected=Palicova / Struplova winner=Novak K. / Sebestova I. status=lost basis=Challenger_results@2026-09-16:6-2 5-7 10-5
-- 2026-09-16 Quevedo / Salkova vs Riera / Sierra selected=Quevedo / Salkova winner=? status=pending_no_result reason=no matching result rows found
+- 2026-09-16 Quevedo / Salkova vs Riera / Sierra selected=Quevedo / Salkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-17 Da Silva Fick / Kulambayeva vs Hruncakova / Kraus selected=Hruncakova / Kraus winner=? status=pending_no_result reason=no matching result rows found
-- 2026-09-17 Elina Avanesyan vs Alina Charaeva selected=Elina Avanesyan winner=? status=pending_no_result reason=no matching result rows found
-- 2026-09-17 F. Jorge vs V. Jimenez Kasintseva selected=F. Jorge winner=? status=pending_no_result reason=no matching result rows found
-- 2026-09-17 Mikulskyte / Smith vs Strakhova / Tikhonova selected=Strakhova / Tikhonova winner=? status=pending_no_result reason=no matching result rows found
+- 2026-09-17 Elina Avanesyan vs Alina Charaeva selected=Elina Avanesyan winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-17 F. Jorge vs V. Jimenez Kasintseva selected=F. Jorge winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-17 Mikulskyte / Smith vs Strakhova / Tikhonova selected=Strakhova / Tikhonova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-17 Quevedo / Salkova vs Riera / Sierra selected=Quevedo / Salkova winner=? status=pending_no_result reason=no matching result rows found
-- 2026-09-17 S. De Stefano vs A. Tubello selected=S. De Stefano winner=? status=pending_no_result reason=no matching result rows found
+- 2026-09-17 Romero Gormaz / Selekhmeteva vs Christie / Silva selected=Christie / Silva winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-17 S. De Stefano vs A. Tubello selected=S. De Stefano winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 
 ## By Tour
 

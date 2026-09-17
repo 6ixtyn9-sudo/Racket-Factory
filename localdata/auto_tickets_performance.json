@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-17T08:35:51",
+  "generated_at": "2026-09-17T15:12:38",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 114.623996,
@@ -303,6 +303,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-17",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 62.0,
               "context_used": "Caldas da Rainha - 1/8-finals",
@@ -355,18 +361,18 @@
               "source_count": 3,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Caldas da Rainha - 1/8-finals",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-17",
-                "score": ""
-              }
+              "tournament": "Caldas da Rainha - 1/8-finals"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-17",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 60.0,
               "context_used": "Ljubljana - Quarter-finals",
@@ -419,13 +425,7 @@
               "source_count": 3,
               "surface": "Hard",
               "tour": "CHALLENGER",
-              "tournament": "Ljubljana - Quarter-finals",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-17",
-                "score": ""
-              }
+              "tournament": "Ljubljana - Quarter-finals"
             }
           ],
           "odds": 4.08,
