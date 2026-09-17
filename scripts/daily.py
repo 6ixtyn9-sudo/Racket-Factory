@@ -656,17 +656,25 @@ def run_once(args: argparse.Namespace) -> None:
             elif wh_path.exists():
                 try:
                     df = pd.read_csv(wh_path, low_memory=False, nrows=5000)
-                    # quick estimate: any pred column notna ratio
-                    has_pred = 0
                     total = len(df)
                     if total>0:
-                        for col in ["predicted_winner","predicted_winner_betclan","predicted_winner_foretennis"]:
-                            if col in df.columns:
-                                has_pred = max(has_pred, int(df[col].notna().sum()))
-                        if has_pred / max(1,total) < 0.40:
+                        # any pred across all secondary sources
+                        pred_cols = [c for c in df.columns if c.startswith("predicted_winner")]
+                        has_any = 0
+                        if pred_cols:
+                            # count rows where at least one pred notna
+                            has_any = int(df[pred_cols].notna().any(axis=1).sum())
+                        else:
+                            for col in ["predicted_winner","predicted_winner_betclan","predicted_winner_foretennis","predicted_winner_bzzoiro"]:
+                                if col in df.columns:
+                                    has_any = max(has_any, int(df[col].notna().sum()))
+                        cov = has_any / max(1,total)
+                        print(f"deep check: coverage {has_any}/{total}={cov:.1%} (threshold 60%)")
+                        if cov < 0.60:
                             deep_needed = True
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"deep check failed {e}")
+                    deep_needed = True
         if deep_needed:
             print("\n>>> DEEP SEARCH enabled: Forebet tournament backfill (limit 50) to deepen warehouse")
             run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode tournament --limit 50 --delay 2 --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet tournament deep 50", env=child_env)
