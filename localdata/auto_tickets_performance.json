@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-17T00:07:07",
+  "generated_at": "2026-09-17T06:47:45",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 114.623996,
@@ -146,8 +146,6 @@
       "staked_pct": 6.25
     },
     {
-      "date": "2026-09-16",
-      "generated_at": "2026-09-16T08:28:15+02:00",
       "accas": [
         {
           "legs": [
@@ -155,9 +153,17 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-17",
+                "score": "6-0 6-3",
+                "winner": "Martins I. / Ortenzi J.",
+                "result_id": "3322277.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-17 6-0 6-3",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 69.0,
               "context_used": "WTA Sao Paulo WD Prediction",
@@ -210,15 +216,19 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Sao Paulo WD Prediction"
+              "tournament": "WTA Sao Paulo WD Prediction",
+              "_settle_bare_surname": true
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_basis": {},
+              "_settle_basis": {
+                "match_date": "2026-09-17",
+                "score": ""
+              },
               "_settle_outcome": "PENDING",
-              "_settle_reason": "no matching result rows found",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 66.0,
               "context_used": "WTA Sao Paulo WD Prediction",
@@ -280,8 +290,10 @@
           "type": "value_2leg_mutual"
         }
       ],
-      "staked_pct": 8.3477,
-      "stake_per_acca_pct": 8.3477
+      "date": "2026-09-16",
+      "generated_at": "2026-09-16T08:28:15+02:00",
+      "stake_per_acca_pct": 8.3477,
+      "staked_pct": 8.3477
     }
   ],
   "events": [],
@@ -1777,35 +1789,21 @@
       "staked_pct": 6.25
     },
     {
-      "date": "2026-09-15",
-      "staked_pct": 6.25,
-      "return_pct": 0.0,
-      "pnl_pct": -6.25,
-      "bank_pct": 127.3125,
-      "paper_staked_pct": 0.0,
-      "paper_return_pct": 0.0,
-      "paper_pnl_pct": 0.0,
-      "paper_bank_pct": 100.0,
       "accas": [
         {
-          "odds": 1.67,
-          "won": false,
-          "stake_pct": 6.25,
-          "return_pct": 0.0,
-          "type": "value_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-16",
-                "score": "6-3 6-2",
-                "winner": "Ortenzi J.",
                 "result_id": "3323295.0",
+                "score": "6-3 6-2",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Ortenzi J."
               },
               "_settle_outcome": "LOST",
               "_settle_reason": "settled from Challenger_results 2026-09-16 6-3 6-2",
@@ -1867,13 +1865,13 @@
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Forebet_results",
                 "match_date": "2026-09-15",
-                "score": "7-6 6-0",
-                "winner": "C. Burel",
                 "result_id": "",
+                "score": "7-6 6-0",
+                "source": "Forebet_results",
+                "status": "",
                 "tournament": "Valencia - 1/16-finals",
-                "status": ""
+                "winner": "C. Burel"
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Forebet_results 2026-09-15 7-6 6-0",
@@ -1931,42 +1929,43 @@
               "tournament": "WTA Valencia Prediction"
             }
           ],
+          "odds": 1.67,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 0.0,
+          "stake_pct": 6.25,
+          "type": "value_2leg_mutual",
+          "unpriced": false,
+          "won": false
         }
-      ]
+      ],
+      "bank_pct": 127.3125,
+      "date": "2026-09-15",
+      "paper_bank_pct": 100.0,
+      "paper_pnl_pct": 0.0,
+      "paper_return_pct": 0.0,
+      "paper_staked_pct": 0.0,
+      "pnl_pct": -6.25,
+      "return_pct": 0.0,
+      "staked_pct": 6.25
     },
     {
-      "date": "2026-09-16",
-      "staked_pct": 25.0431,
-      "return_pct": 12.354595999999999,
-      "pnl_pct": -12.688504,
-      "bank_pct": 114.623996,
-      "paper_staked_pct": 0.0,
-      "paper_return_pct": 0.0,
-      "paper_pnl_pct": 0.0,
-      "paper_bank_pct": 100.0,
       "accas": [
         {
-          "odds": 1.48,
-          "won": true,
-          "stake_pct": 8.3477,
-          "return_pct": 12.354595999999999,
-          "type": "value_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_bare_surname": true,
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-16",
-                "score": "4-6 7-5 10-2",
-                "winner": "Ciric Bagaric L. / Moratelli A.",
                 "result_id": "3325285.0",
+                "score": "4-6 7-5 10-2",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Ciric Bagaric L. / Moratelli A."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-16 4-6 7-5 10-2",
@@ -2021,21 +2020,20 @@
               "source_count": 2,
               "surface": "Grass",
               "tour": "WTA",
-              "tournament": "WTA Ljubljana WD Prediction",
-              "_settle_bare_surname": true
+              "tournament": "WTA Ljubljana WD Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-16",
-                "score": "6-7 6-0 6-3",
-                "winner": "Samson L.",
                 "result_id": "3325197.0",
+                "score": "6-7 6-0 6-3",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Samson L."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-16 6-7 6-0 6-3",
@@ -2095,29 +2093,30 @@
               "tournament": "WTA Ljubljana Prediction"
             }
           ],
+          "odds": 1.48,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 12.354595999999999,
+          "stake_pct": 8.3477,
+          "type": "value_2leg_mutual",
+          "unpriced": false,
+          "won": true
         },
         {
-          "odds": 1.78,
-          "won": false,
-          "stake_pct": 8.3477,
-          "return_pct": 0.0,
-          "type": "value_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_bare_surname": true,
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-16",
-                "score": "7-5 6-3",
-                "winner": "Rogers A. / Zamarripa A.",
                 "result_id": "3322279.0",
+                "score": "7-5 6-3",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Rogers A. / Zamarripa A."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-16 7-5 6-3",
@@ -2174,21 +2173,21 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Sao Paulo WD Prediction",
-              "_settle_bare_surname": true
+              "tournament": "WTA Sao Paulo WD Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_bare_surname": true,
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-16",
-                "score": "6-4 7-5",
-                "winner": "Chiesa D. / Nagy A.",
                 "result_id": "3325131.0",
+                "score": "6-4 7-5",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Chiesa D. / Nagy A."
               },
               "_settle_outcome": "LOST",
               "_settle_reason": "settled from Challenger_results 2026-09-16 6-4 7-5",
@@ -2245,33 +2244,33 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ljubljana WD Prediction",
-              "_settle_bare_surname": true
+              "tournament": "WTA Ljubljana WD Prediction"
             }
           ],
+          "odds": 1.78,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 0.0,
+          "stake_pct": 8.3477,
+          "type": "value_2leg_mutual",
+          "unpriced": false,
+          "won": false
         },
         {
-          "odds": 1.82,
-          "won": false,
-          "stake_pct": 8.3477,
-          "return_pct": 0.0,
-          "type": "value_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_bare_surname": true,
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-16",
-                "score": "6-4 4-6 10-4",
-                "winner": "Collins K. / Voloshchuk A.",
                 "result_id": "3322981.0",
+                "score": "6-4 4-6 10-4",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Collins K. / Voloshchuk A."
               },
               "_settle_outcome": "LOST",
               "_settle_reason": "settled from Challenger_results 2026-09-16 6-4 4-6 10-4",
@@ -2328,21 +2327,20 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Caldas Da Rainha WD Prediction",
-              "_settle_bare_surname": true
+              "tournament": "WTA Caldas Da Rainha WD Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-16",
-                "score": "6-0 6-4",
-                "winner": "Barthel M.",
                 "result_id": "3325011.0",
+                "score": "6-0 6-4",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Barthel M."
               },
               "_settle_outcome": "LOST",
               "_settle_reason": "settled from Challenger_results 2026-09-16 6-0 6-4",
@@ -2401,13 +2399,27 @@
               "tournament": "WTA Ljubljana Prediction"
             }
           ],
+          "odds": 1.82,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 0.0,
+          "stake_pct": 8.3477,
+          "type": "value_2leg_mutual",
+          "unpriced": false,
+          "won": false
         }
       ],
+      "bank_pct": 114.623996,
+      "date": "2026-09-16",
+      "paper_bank_pct": 100.0,
+      "paper_pnl_pct": 0.0,
+      "paper_return_pct": 0.0,
+      "paper_staked_pct": 0.0,
       "partial": true,
-      "pending_accas": 1
+      "pending_accas": 1,
+      "pnl_pct": -12.688504,
+      "return_pct": 12.354595999999999,
+      "staked_pct": 25.0431
     }
   ]
 }
