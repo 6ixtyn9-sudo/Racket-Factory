@@ -1,10 +1,10 @@
 AUTO-TICKETS (TENNIS) PERFORMANCE — percentages of capital only
 ==============================================================
-generated 2026-09-17T07:24:06
+generated 2026-09-17T07:44:57
 bank 114.6% of capital (x1.15) · cycle baseline 100.0% · next take-profit at 200.0% (+100% per cycle)
 bet-days 4 (unique) · REAL accas 7W/4L (hit 63.6%)
 PAPER accas (phantom odds, excluded from bank): 3W/0L  paper-PnL +0.0%  paper-bank 100.0%
-open slips 2 · 0 take-profit notification(s)
+open slips 3 · 0 take-profit notification(s)
 
 --- bet-days (most recent first) ---
   2026-09-16  @1.48W @1.78L @1.82L                         bank   114.6%

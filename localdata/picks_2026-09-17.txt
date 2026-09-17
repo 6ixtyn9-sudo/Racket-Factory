@@ -1,11 +1,15 @@
 Racket Factory Picks — 2026-09-17
 ============================================================
-Generated at: 2026-09-17 07:23:39
+Generated at: 2026-09-17 07:44:19
 
 
 CERTIFIED CLEAN PICKS
 ============================================================
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Francisca Jorge vs Victoria Jimenez Kasint KO 14:30 -> FRANCISCA JORGE  conf 62% @2.18  EV +0.35u
+     bucket=CERTIFIED_CLEAN  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Elina Avanesyan vs Alina Charaeva          KO 16:00 -> ELINA AVANESYAN  conf 62% @1.65  EV +0.02u
+     bucket=CERTIFIED_CLEAN  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Samira De Stefano vs Alice Tubello         KO 09:00 -> SAMIRA DE STEFANO  conf 60% @1.82  EV +0.09u
      bucket=CERTIFIED_CLEAN  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
 
 CAUTION PICKS
@@ -26,10 +30,7 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Elina Avanesyan vs Alina Charaeva          KO 16:00 -> ELINA AVANESYAN  conf 62% @1.63  EV +0.01u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
-  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Samira De Stefano vs Alice Tubello         KO 09:00 -> SAMIRA DE STEFANO  conf 60% @1.82  EV +0.09u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=55  roi=20.29%
+  (none)
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================

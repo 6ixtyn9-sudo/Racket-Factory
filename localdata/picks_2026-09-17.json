@@ -44,15 +44,15 @@
     ],
     "ml_w_score": 0.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.51,
-    "ml_ev": 0.1118,
-    "ml_fair_odds": 1.96,
+    "ml_calibrated_prob": 0.6876,
+    "ml_ev": 0.4989,
+    "ml_fair_odds": 1.45,
     "ml_odds_answer": {
       "verdict": "HIGH_VALUE",
-      "fair_odds": 1.96,
-      "ev": 0.1118,
-      "edge_pct": 11.18,
-      "explanation": "Odds 2.18 HIGH value vs fair 1.96 (prob 51%), EV +11.2%, edge +11.2%"
+      "fair_odds": 1.45,
+      "ev": 0.4989,
+      "edge_pct": 49.89,
+      "explanation": "Odds 2.18 HIGH value vs fair 1.45 (prob 69%), EV +49.9%, edge +49.9%"
     }
   },
   {
@@ -74,7 +74,7 @@
     "context_used": "WTA Ljubljana Prediction",
     "player_home": "Samira De Stefano",
     "player_away": "Alice Tubello",
-    "bucket": "SKIPPED_VETO",
+    "bucket": "CERTIFIED_CLEAN",
     "pick": "EDGE CONFIRMED",
     "odds": 1.82,
     "odds_source": "BetExplorer",
@@ -94,25 +94,22 @@
     "edge_verdict": "EDGE CONFIRMED",
     "roi_estimate": "20.29%",
     "ml_strength_score": 0.4,
-    "ml_veto_reasons": [
-      "ML EV -0.072 < 0.01 min (capital protection)"
-    ],
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 0.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.51,
-    "ml_ev": -0.0718,
-    "ml_fair_odds": 1.96,
+    "ml_verdict": "BOOST",
+    "ml_calibrated_prob": 0.6826,
+    "ml_ev": 0.2423,
+    "ml_fair_odds": 1.47,
     "ml_odds_answer": {
-      "verdict": "SHORT",
-      "fair_odds": 1.96,
-      "ev": -0.0718,
-      "edge_pct": -7.18,
-      "explanation": "Odds 1.82 short vs fair 1.96, EV -7.2% \u2013 negative, avoid unless boosting acca"
-    },
-    "skip_reason": "ML EV -0.072 < 0.01 min (capital protection)"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.47,
+      "ev": 0.2423,
+      "edge_pct": 24.23,
+      "explanation": "Odds 1.82 HIGH value vs fair 1.47 (prob 68%), EV +24.2%, edge +24.2%"
+    }
   },
   {
     "match": "Elina Avanesyan vs Alina Charaeva",
@@ -133,9 +130,9 @@
     "context_used": "WTA Sao Paulo Prediction",
     "player_home": "Elina Avanesyan",
     "player_away": "Alina Charaeva",
-    "bucket": "SKIPPED_VETO",
+    "bucket": "CERTIFIED_CLEAN",
     "pick": "EDGE CONFIRMED",
-    "odds": 1.63,
+    "odds": 1.65,
     "odds_source": "BetExplorer",
     "odds_bookmaker": "BetExplorer consensus",
     "odds_cross_checked": "",
@@ -144,7 +141,7 @@
     "_market_basis": "api",
     "_is_paper": false,
     "confidence": 62.0,
-    "expected_value": 0.010599999999999943,
+    "expected_value": 0.022999999999999965,
     "slice_matched": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
     "edge_dims": 3,
     "edge_n": 55,
@@ -155,23 +152,21 @@
     "ml_strength_score": -0.25,
     "ml_veto_reasons": [
       "Sources disagree",
-      "Low consensus w_score 0.0",
-      "ML EV -0.169 < 0.01 min (capital protection)"
+      "Low consensus w_score 0.0"
     ],
     "ml_boost_reasons": [],
     "ml_w_score": 0.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.51,
-    "ml_ev": -0.1687,
-    "ml_fair_odds": 1.96,
+    "ml_verdict": "ALLOW",
+    "ml_calibrated_prob": 0.6876,
+    "ml_ev": 0.1345,
+    "ml_fair_odds": 1.45,
     "ml_odds_answer": {
-      "verdict": "SHORT",
-      "fair_odds": 1.96,
-      "ev": -0.1687,
-      "edge_pct": -16.87,
-      "explanation": "Odds 1.63 short vs fair 1.96, EV -16.9% \u2013 negative, avoid unless boosting acca"
-    },
-    "skip_reason": "Sources disagree; Low consensus w_score 0.0"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.45,
+      "ev": 0.1345,
+      "edge_pct": 13.45,
+      "explanation": "Odds 1.65 HIGH value vs fair 1.45 (prob 69%), EV +13.4%, edge +13.4%"
+    }
   },
   {
     "match": "Mikulskyte / Smith vs Strakhova / Tikhonova",
@@ -213,23 +208,21 @@
     "roi_estimate": "20.29%",
     "skip_reason": "negative EV (-0.004 < 0.000)",
     "ml_strength_score": 0.4,
-    "ml_veto_reasons": [
-      "Doubles EV -0.153 < 0.05 min (doubles 0W/5L -40% ROI)"
-    ],
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 0.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.51,
-    "ml_ev": -0.1534,
-    "ml_fair_odds": 1.96,
+    "ml_verdict": "BOOST",
+    "ml_calibrated_prob": 0.6826,
+    "ml_ev": 0.1331,
+    "ml_fair_odds": 1.47,
     "ml_odds_answer": {
-      "verdict": "SHORT",
-      "fair_odds": 1.96,
-      "ev": -0.1534,
-      "edge_pct": -15.34,
-      "explanation": "Odds 1.66 short vs fair 1.96, EV -15.3% \u2013 negative, avoid unless boosting acca"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.47,
+      "ev": 0.1331,
+      "edge_pct": 13.31,
+      "explanation": "Odds 1.66 HIGH value vs fair 1.47 (prob 68%), EV +13.3%, edge +13.3%"
     }
   },
   {
@@ -272,23 +265,21 @@
     "roi_estimate": "20.29%",
     "skip_reason": "negative EV (-0.004 < 0.000)",
     "ml_strength_score": 0.4,
-    "ml_veto_reasons": [
-      "Doubles EV -0.153 < 0.05 min (doubles 0W/5L -40% ROI)"
-    ],
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 0.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.51,
-    "ml_ev": -0.1534,
-    "ml_fair_odds": 1.96,
+    "ml_verdict": "BOOST",
+    "ml_calibrated_prob": 0.6826,
+    "ml_ev": 0.1331,
+    "ml_fair_odds": 1.47,
     "ml_odds_answer": {
-      "verdict": "SHORT",
-      "fair_odds": 1.96,
-      "ev": -0.1534,
-      "edge_pct": -15.34,
-      "explanation": "Odds 1.66 short vs fair 1.96, EV -15.3% \u2013 negative, avoid unless boosting acca"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.47,
+      "ev": 0.1331,
+      "edge_pct": 13.31,
+      "explanation": "Odds 1.66 HIGH value vs fair 1.47 (prob 68%), EV +13.3%, edge +13.3%"
     }
   },
   {
@@ -331,23 +322,21 @@
     "roi_estimate": "20.29%",
     "skip_reason": "negative EV (-0.018 < 0.000)",
     "ml_strength_score": 0.4,
-    "ml_veto_reasons": [
-      "Doubles EV -0.179 < 0.05 min (doubles 0W/5L -40% ROI)"
-    ],
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 0.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.51,
-    "ml_ev": -0.1789,
-    "ml_fair_odds": 1.96,
+    "ml_verdict": "BOOST",
+    "ml_calibrated_prob": 0.6851,
+    "ml_ev": 0.103,
+    "ml_fair_odds": 1.46,
     "ml_odds_answer": {
-      "verdict": "SHORT",
-      "fair_odds": 1.96,
-      "ev": -0.1789,
-      "edge_pct": -17.89,
-      "explanation": "Odds 1.61 short vs fair 1.96, EV -17.9% \u2013 negative, avoid unless boosting acca"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.46,
+      "ev": 0.103,
+      "edge_pct": 10.3,
+      "explanation": "Odds 1.61 HIGH value vs fair 1.46 (prob 69%), EV +10.3%, edge +10.3%"
     }
   }
 ]
