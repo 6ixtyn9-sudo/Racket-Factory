@@ -1,0 +1,54 @@
+Racket Factory Picks — 2026-09-18
+============================================================
+Generated at: 2026-09-18 00:08:00
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  (none)
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] A. Shevchenko vs M. Jones                  KO 08:00 -> M. JONES  conf 64% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=218  roi=2.76%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] B. Artnak vs A. Vales                      KO 11:00 -> A. VALES  conf 64% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=218  roi=2.76%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] M. Stoiana vs P. Badosa                    KO 13:00 -> P. BADOSA  conf 62% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=218  roi=2.76%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] F. J. Planinsek vs O. Kimhi                KO 12:30 -> O. KIMHI  conf 61% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=218  roi=2.76%
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] J. Lehecka vs B. Shelton                   KO 14:30 -> B. SHELTON  conf 68% @1.62  EV +0.10u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=70  roi=17.44%
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] J. Mensik vs L. Tien                       KO 13:00 -> L. TIEN  conf 62% @1.89  EV +0.17u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=70  roi=17.44%
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] A. Dougaz vs M. Shoaib                     KO 10:00 -> A. DOUGAZ  conf 69% @1.06  EV -0.27u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=218  roi=2.76%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] M. Echargui vs M. Murtaza                  KO 11:30 -> M. ECHARGUI  conf 66% @1.02  EV -0.33u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=218  roi=2.76%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] G. Trismuwantara vs C. Cretu               KO 06:30 -> C. CRETU  conf 63% @1.11  EV -0.30u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=218  roi=2.76%
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Andrea Lazaro Garcia vs Joelle Lilly Sophi KO 10:00 -> ANDREA LAZARO GARCIA  conf 61% @1.63  EV -0.01u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=70  roi=17.44%
+  [_surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly] F. Auger-Aliassime vs Q. Halys             KO 22:30 -> F. AUGER-ALIASSIME  conf 61% @1.29  EV -0.21u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=218  roi=2.76%
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.

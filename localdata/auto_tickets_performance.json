@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-09-17T16:09:06",
+  "generated_at": "2026-09-18T00:08:33",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
-  "bank_pct": 114.623996,
-  "multiple": 1.14623996,
+  "bank_pct": 106.276296,
+  "multiple": 1.06276296,
   "cycle_base_pct": 100.0,
   "next_take_profit_pct": 200.0,
-  "bet_days": 8,
+  "bet_days": 9,
   "accas": {
     "wins": 7,
-    "losses": 4
+    "losses": 5
   },
   "paper_accas": {
     "wins": 3,
@@ -153,162 +153,17 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
-              "_settle_bare_surname": true,
               "_settle_basis": {
                 "source": "Challenger_results",
                 "match_date": "2026-09-17",
-                "score": "6-0 6-3",
-                "winner": "Martins I. / Ortenzi J.",
-                "result_id": "3322277.0",
+                "score": "6-2 4-6 6-4",
+                "winner": "Jorge F.",
+                "result_id": "3325139.0",
                 "tournament": "",
                 "status": ""
               },
               "_settle_outcome": "WON",
-              "_settle_reason": "settled from Challenger_results 2026-09-17 6-0 6-3",
-              "bucket": "SKIPPED_DEAD_EDGE",
-              "confidence": 69.0,
-              "context_used": "WTA Sao Paulo WD Prediction",
-              "cross_source_agree": "Both",
-              "date": "2026-09-16",
-              "edge_dims": 0,
-              "edge_grade": "SILVER",
-              "edge_n": 0,
-              "edge_tier": "BANKER",
-              "edge_verdict": "WATCHLIST",
-              "expected_value": -0.006400000000000128,
-              "kickoff": "17:00",
-              "match": "Martins / Ortenzi vs Navarro Oliva / Rodriguez",
-              "match_time": "17:00",
-              "ml_boost_reasons": [
-                "Both sources agree"
-              ],
-              "ml_calibrated_prob": 0.6197,
-              "ml_ev": -0.1076,
-              "ml_fair_odds": 1.61,
-              "ml_odds_answer": {
-                "edge_pct": -10.76,
-                "ev": -0.1076,
-                "explanation": "Odds 1.44 short vs fair 1.61, EV -10.8% \u2013 negative, avoid unless boosting acca",
-                "fair_odds": 1.61,
-                "verdict": "SHORT"
-              },
-              "ml_strength_score": 0.2,
-              "ml_verdict": "ALLOW",
-              "ml_veto_reasons": [
-                "surface Hard VETO roi -0.286176 n=38"
-              ],
-              "ml_w_score": 1.0,
-              "odds": 1.44,
-              "odds_bookmaker": "BetExplorer consensus",
-              "odds_cross_checked": "",
-              "odds_reject_reason": null,
-              "odds_source": "BetExplorer",
-              "pick": "WATCHLIST",
-              "player_away": "Navarro Oliva / Rodriguez",
-              "player_home": "Martins / Ortenzi",
-              "pred_confidence": "Medium",
-              "roi_estimate": "live_only",
-              "selected_player": "Martins / Ortenzi",
-              "selected_side": "player_a",
-              "series": "International",
-              "skip_reason": "negative EV (-0.006 < 0.000)",
-              "slice_matched": "live_only_fallback",
-              "source": "BetClan",
-              "source_count": 2,
-              "surface": "Hard",
-              "tour": "WTA",
-              "tournament": "WTA Sao Paulo WD Prediction"
-            },
-            {
-              "_is_paper": false,
-              "_market_basis": "api",
-              "_selection_basis": "prediction",
-              "_settle_basis": {
-                "match_date": "2026-09-17",
-                "score": ""
-              },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "bucket": "SKIPPED_DEAD_EDGE",
-              "confidence": 66.0,
-              "context_used": "WTA Sao Paulo WD Prediction",
-              "cross_source_agree": "Both",
-              "date": "2026-09-16",
-              "edge_dims": 0,
-              "edge_grade": "SILVER",
-              "edge_n": 0,
-              "edge_tier": "BANKER",
-              "edge_verdict": "WATCHLIST",
-              "expected_value": -0.0033999999999999586,
-              "kickoff": "17:00",
-              "match": "McAdoo / Osborne vs Barros / Leme Da Silva",
-              "match_time": "17:00",
-              "ml_boost_reasons": [
-                "Both sources agree"
-              ],
-              "ml_calibrated_prob": 0.6137,
-              "ml_ev": -0.0733,
-              "ml_fair_odds": 1.63,
-              "ml_odds_answer": {
-                "edge_pct": -7.33,
-                "ev": -0.0733,
-                "explanation": "Odds 1.51 short vs fair 1.63, EV -7.3% \u2013 negative, avoid unless boosting acca",
-                "fair_odds": 1.63,
-                "verdict": "SHORT"
-              },
-              "ml_strength_score": 0.2,
-              "ml_verdict": "ALLOW",
-              "ml_veto_reasons": [
-                "surface Hard VETO roi -0.286176 n=38"
-              ],
-              "ml_w_score": 1.0,
-              "odds": 1.51,
-              "odds_bookmaker": "BetExplorer consensus",
-              "odds_cross_checked": "",
-              "odds_reject_reason": null,
-              "odds_source": "BetExplorer",
-              "pick": "WATCHLIST",
-              "player_away": "Barros / Leme Da Silva",
-              "player_home": "McAdoo / Osborne",
-              "pred_confidence": "Medium",
-              "roi_estimate": "live_only",
-              "selected_player": "McAdoo / Osborne",
-              "selected_side": "player_a",
-              "series": "International",
-              "skip_reason": "negative EV (-0.003 < 0.000)",
-              "slice_matched": "live_only_fallback",
-              "source": "BetClan",
-              "source_count": 2,
-              "surface": "Hard",
-              "tour": "WTA",
-              "tournament": "WTA Sao Paulo WD Prediction"
-            }
-          ],
-          "odds": 2.17,
-          "paper": false,
-          "stake_pct": 8.3477,
-          "type": "value_2leg_mutual"
-        }
-      ],
-      "date": "2026-09-16",
-      "generated_at": "2026-09-16T08:28:15+02:00",
-      "stake_per_acca_pct": 8.3477,
-      "staked_pct": 8.3477
-    },
-    {
-      "accas": [
-        {
-          "legs": [
-            {
-              "_is_paper": false,
-              "_market_basis": "api",
-              "_selection_basis": "prediction",
-              "_settle_basis": {
-                "match_date": "2026-09-17",
-                "score": ""
-              },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_reason": "settled from Challenger_results 2026-09-17 6-2 4-6 6-4",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 62.0,
               "context_used": "Caldas da Rainha - 1/8-finals",
@@ -368,7 +223,7 @@
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "match_date": "2026-09-17",
+                "match_date": "2026-09-18",
                 "score": ""
               },
               "_settle_outcome": "PENDING",
@@ -2564,6 +2419,171 @@
       "pnl_pct": -12.688504,
       "return_pct": 12.354595999999999,
       "staked_pct": 25.0431
+    },
+    {
+      "date": "2026-09-16",
+      "staked_pct": 8.3477,
+      "return_pct": 0.0,
+      "pnl_pct": -8.3477,
+      "bank_pct": 106.276296,
+      "paper_staked_pct": 0.0,
+      "paper_return_pct": 0.0,
+      "paper_pnl_pct": 0.0,
+      "paper_bank_pct": 100.0,
+      "accas": [
+        {
+          "odds": 2.17,
+          "won": false,
+          "stake_pct": 8.3477,
+          "return_pct": 0.0,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "_is_paper": false,
+              "_market_basis": "api",
+              "_selection_basis": "prediction",
+              "_settle_bare_surname": true,
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-17",
+                "score": "6-0 6-3",
+                "winner": "Martins I. / Ortenzi J.",
+                "result_id": "3322277.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-17 6-0 6-3",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "confidence": 69.0,
+              "context_used": "WTA Sao Paulo WD Prediction",
+              "cross_source_agree": "Both",
+              "date": "2026-09-16",
+              "edge_dims": 0,
+              "edge_grade": "SILVER",
+              "edge_n": 0,
+              "edge_tier": "BANKER",
+              "edge_verdict": "WATCHLIST",
+              "expected_value": -0.006400000000000128,
+              "kickoff": "17:00",
+              "match": "Martins / Ortenzi vs Navarro Oliva / Rodriguez",
+              "match_time": "17:00",
+              "ml_boost_reasons": [
+                "Both sources agree"
+              ],
+              "ml_calibrated_prob": 0.6197,
+              "ml_ev": -0.1076,
+              "ml_fair_odds": 1.61,
+              "ml_odds_answer": {
+                "edge_pct": -10.76,
+                "ev": -0.1076,
+                "explanation": "Odds 1.44 short vs fair 1.61, EV -10.8% \u2013 negative, avoid unless boosting acca",
+                "fair_odds": 1.61,
+                "verdict": "SHORT"
+              },
+              "ml_strength_score": 0.2,
+              "ml_verdict": "ALLOW",
+              "ml_veto_reasons": [
+                "surface Hard VETO roi -0.286176 n=38"
+              ],
+              "ml_w_score": 1.0,
+              "odds": 1.44,
+              "odds_bookmaker": "BetExplorer consensus",
+              "odds_cross_checked": "",
+              "odds_reject_reason": null,
+              "odds_source": "BetExplorer",
+              "pick": "WATCHLIST",
+              "player_away": "Navarro Oliva / Rodriguez",
+              "player_home": "Martins / Ortenzi",
+              "pred_confidence": "Medium",
+              "roi_estimate": "live_only",
+              "selected_player": "Martins / Ortenzi",
+              "selected_side": "player_a",
+              "series": "International",
+              "skip_reason": "negative EV (-0.006 < 0.000)",
+              "slice_matched": "live_only_fallback",
+              "source": "BetClan",
+              "source_count": 2,
+              "surface": "Hard",
+              "tour": "WTA",
+              "tournament": "WTA Sao Paulo WD Prediction"
+            },
+            {
+              "_is_paper": false,
+              "_market_basis": "api",
+              "_selection_basis": "prediction",
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-17",
+                "score": "3-6 7-6 10-6",
+                "winner": "Barros V. / Leme Da Silva N.",
+                "result_id": "3322281.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "LOST",
+              "_settle_reason": "settled from Challenger_results 2026-09-17 3-6 7-6 10-6",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "confidence": 66.0,
+              "context_used": "WTA Sao Paulo WD Prediction",
+              "cross_source_agree": "Both",
+              "date": "2026-09-16",
+              "edge_dims": 0,
+              "edge_grade": "SILVER",
+              "edge_n": 0,
+              "edge_tier": "BANKER",
+              "edge_verdict": "WATCHLIST",
+              "expected_value": -0.0033999999999999586,
+              "kickoff": "17:00",
+              "match": "McAdoo / Osborne vs Barros / Leme Da Silva",
+              "match_time": "17:00",
+              "ml_boost_reasons": [
+                "Both sources agree"
+              ],
+              "ml_calibrated_prob": 0.6137,
+              "ml_ev": -0.0733,
+              "ml_fair_odds": 1.63,
+              "ml_odds_answer": {
+                "edge_pct": -7.33,
+                "ev": -0.0733,
+                "explanation": "Odds 1.51 short vs fair 1.63, EV -7.3% \u2013 negative, avoid unless boosting acca",
+                "fair_odds": 1.63,
+                "verdict": "SHORT"
+              },
+              "ml_strength_score": 0.2,
+              "ml_verdict": "ALLOW",
+              "ml_veto_reasons": [
+                "surface Hard VETO roi -0.286176 n=38"
+              ],
+              "ml_w_score": 1.0,
+              "odds": 1.51,
+              "odds_bookmaker": "BetExplorer consensus",
+              "odds_cross_checked": "",
+              "odds_reject_reason": null,
+              "odds_source": "BetExplorer",
+              "pick": "WATCHLIST",
+              "player_away": "Barros / Leme Da Silva",
+              "player_home": "McAdoo / Osborne",
+              "pred_confidence": "Medium",
+              "roi_estimate": "live_only",
+              "selected_player": "McAdoo / Osborne",
+              "selected_side": "player_a",
+              "series": "International",
+              "skip_reason": "negative EV (-0.003 < 0.000)",
+              "slice_matched": "live_only_fallback",
+              "source": "BetClan",
+              "source_count": 2,
+              "surface": "Hard",
+              "tour": "WTA",
+              "tournament": "WTA Sao Paulo WD Prediction",
+              "_settle_bare_surname": true
+            }
+          ],
+          "paper": false,
+          "refunded": false,
+          "unpriced": false
+        }
+      ]
     }
   ]
 }
