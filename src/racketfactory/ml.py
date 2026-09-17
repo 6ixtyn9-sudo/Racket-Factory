@@ -543,12 +543,26 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
             except Exception:
                 pick["ml_odds_answer"] = None
 
-        # Relaxed after NO BET: was -0.05 and <0.4 vetoed Basiletti 62% Both (EV -0.09 due to VETO penalty)
-        # Now -0.10 and <0.2, and skip if Both agree
-        if ev is not None and ev < -0.10 and scoring["strength_score"] < 0.2:
-            if str(pick.get("cross_source_agree")) != "Both":
+        # CAPITAL PROTECTION MODE (user: rather NO BET than losing money) after RED DAY 2026-09-16
+        # 3 accas lost: legs EV -0.01 to -0.20 SHORT, odds 1.65/1.64/1.69/1.54, bank 133%->114% -12.68%
+        # Old gate -0.10 allowed negative EV if Both agree -> lost
+        # New gate: require EV >= +2% for REAL track, else VETO (NO BET is valid outcome)
+        # This would have prevented RED DAY (all 4 legs EV -0.01 to -0.20 -> VETO -> NO BET)
+        min_ev_real = 0.02  # 2% edge required for capital protection
+        if ev is not None and ev < min_ev_real:
+            # Allow only if BOOST with high strength >=0.5 and Both agree and High conf >=70
+            is_boost_high = scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.5
+            cross = str(pick.get("cross_source_agree") or "")
+            try:
+                conf_f = float(pick.get("confidence") or 0)
+                if conf_f <= 1.0:
+                    conf_f *= 100
+            except Exception:
+                conf_f = 0
+            # Strict: need BOOST + Both + High conf to allow low EV
+            if not (is_boost_high and cross == "Both" and conf_f >= 70):
                 scoring["should_veto"] = True
-                scoring["veto_reasons"].append(f"ML EV {ev:.3f} negative with low strength")
+                scoring["veto_reasons"].append(f"ML EV {ev:.3f} < {min_ev_real} min (capital protection)")
                 pick["ml_verdict"] = "VETO"
 
         if scoring["should_veto"]:
