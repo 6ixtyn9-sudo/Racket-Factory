@@ -281,7 +281,7 @@
       "won": null
     },
     {
-      "bucket": "CERTIFIED_CLEAN",
+      "bucket": "SKIPPED_VETO",
       "date": "2026-09-17",
       "match": "Samira De Stefano vs Alice Tubello",
       "reason": "result not final: live/in-progress markers present",
@@ -297,7 +297,7 @@
       "won": null
     },
     {
-      "bucket": "CERTIFIED_CLEAN",
+      "bucket": "SKIPPED_VETO",
       "date": "2026-09-17",
       "match": "Elina Avanesyan vs Alina Charaeva",
       "reason": "result not final: live/in-progress markers present",

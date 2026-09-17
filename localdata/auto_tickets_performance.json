@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-17T08:03:46",
+  "generated_at": "2026-09-17T08:18:11",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 114.623996,
@@ -303,6 +303,12 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-17",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 62.0,
               "context_used": "WTA Caldas Da Rainha Prediction",
@@ -353,18 +359,18 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Caldas Da Rainha Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-17",
-                "score": ""
-              }
+              "tournament": "WTA Caldas Da Rainha Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-17",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 60.0,
               "context_used": "WTA Ljubljana Prediction",
@@ -415,13 +421,7 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ljubljana Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-17",
-                "score": ""
-              }
+              "tournament": "WTA Ljubljana Prediction"
             }
           ],
           "odds": 3.97,

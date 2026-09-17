@@ -5,9 +5,9 @@ Generated 2026-09-17
 ## Confidence Calibration (prob vs actual win rate)
 | Band | N | Wins | Hit Rate | Expected | Error | Wilson LB |
 |---|---|---|---|---|---|---|
-| High (70%+) | 89 | 59 | 0.6629 | 0.7 | -0.0371 | 0.5598 |
-| Low (<60%) | 385 | 203 | 0.5273 | 0.5 | 0.0273 | 0.4774 |
-| Medium (60-70%) | 215 | 154 | 0.7163 | 0.6 | 0.1163 | 0.6526 |
+| High (70%+) | 163 | 119 | 0.7301 | 0.7 | 0.0301 | 0.6572 |
+| Low (<60%) | 465 | 253 | 0.5441 | 0.5 | 0.0441 | 0.4986 |
+| Medium (60-70%) | 274 | 198 | 0.7226 | 0.6 | 0.1226 | 0.6668 |
 
 ## ROI by Tour (from audit)
 | Tour | N | ROI | Hit Rate |
