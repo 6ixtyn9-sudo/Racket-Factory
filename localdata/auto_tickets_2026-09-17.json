@@ -1,6 +1,6 @@
 {
   "date": "2026-09-17",
-  "generated_at": "2026-09-17T07:40:50+02:00",
+  "generated_at": "2026-09-17T08:01:38+02:00",
   "bank_pct": 114.623996,
   "stake_per_acca_pct": 28.656,
   "staked_pct": 28.656,
@@ -53,15 +53,15 @@
           ],
           "ml_w_score": 0.0,
           "ml_verdict": "BOOST",
-          "ml_calibrated_prob": 0.6876,
-          "ml_ev": 0.4989,
-          "ml_fair_odds": 1.45,
+          "ml_calibrated_prob": 0.6841,
+          "ml_ev": 0.4913,
+          "ml_fair_odds": 1.46,
           "ml_odds_answer": {
             "verdict": "HIGH_VALUE",
-            "fair_odds": 1.45,
-            "ev": 0.4989,
-            "edge_pct": 49.89,
-            "explanation": "Odds 2.18 HIGH value vs fair 1.45 (prob 69%), EV +49.9%, edge +49.9%"
+            "fair_odds": 1.46,
+            "ev": 0.4913,
+            "edge_pct": 49.13,
+            "explanation": "Odds 2.18 HIGH value vs fair 1.46 (prob 68%), EV +49.1%, edge +49.1%"
           }
         },
         {
@@ -109,15 +109,15 @@
           ],
           "ml_w_score": 0.0,
           "ml_verdict": "BOOST",
-          "ml_calibrated_prob": 0.6826,
-          "ml_ev": 0.2423,
+          "ml_calibrated_prob": 0.6791,
+          "ml_ev": 0.2359,
           "ml_fair_odds": 1.47,
           "ml_odds_answer": {
             "verdict": "HIGH_VALUE",
             "fair_odds": 1.47,
-            "ev": 0.2423,
-            "edge_pct": 24.23,
-            "explanation": "Odds 1.82 HIGH value vs fair 1.47 (prob 68%), EV +24.2%, edge +24.2%"
+            "ev": 0.2359,
+            "edge_pct": 23.59,
+            "explanation": "Odds 1.82 HIGH value vs fair 1.47 (prob 68%), EV +23.6%, edge +23.6%"
           }
         }
       ],
