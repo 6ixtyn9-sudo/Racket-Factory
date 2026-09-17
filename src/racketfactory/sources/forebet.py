@@ -1325,13 +1325,30 @@ class ForebetPredictor:
         """
         Fetch and parse predictions for a given tour + tournament.
         Returns list of raw prediction dicts (home/away orientation).
+        Deep search fix: tournament pages via relay return HTML without tnmscn anchors,
+        but Jina markdown contains match blocks — try both parsers.
         """
         tour_slug = forebet_tour_slug(tour)
         tourn_slug = forebet_tournament_slug(tournament)
-        html = self._fetch_tournament_page(tour_slug, tourn_slug)
-        if not html:
+        body = self._fetch_tournament_page(tour_slug, tourn_slug)
+        if not body:
             return []
-        preds = self.parse_page(html)
+        preds = []
+        stripped = body.lstrip().lower()
+        if stripped.startswith("<") or "<html" in stripped:
+            preds = self.parse_page(body)
+            if not preds:
+                # Fallback: try Jina markdown parser on HTML that may be markdown-wrapped
+                try:
+                    preds = self.parse_jina_markdown(body)
+                except Exception:
+                    pass
+        else:
+            # Relay returned markdown wrapper
+            try:
+                preds = self.parse_jina_markdown(body)
+            except Exception:
+                preds = self.parse_page(body)
         for p in preds:
             p["tournament"] = tournament
         return preds
