@@ -552,7 +552,7 @@ def build_accas(pool):
             else:
                 if o is None or late:
                     continue
-                # Dynamic min odds: BOOST picks allowed down to 1.10 (user's winners 1.05-1.22)
+                # Dynamic min odds: BOOST picks allowed down to 1.20 CAPITAL PROTECTION (was 1.10)
                 min_leg = MIN_ODDS_BOOST if str(p.get("ml_verdict")) == "BOOST" else MIN_ODDS_PER_LEG
                 # DYNAMIC MAX: scales with prob + ROI + edge_n (e.g. Bobichon 2.28 allowed only because 85%+51n+15.9% ROI)
                 max_leg = dynamic_max_odds(p)
