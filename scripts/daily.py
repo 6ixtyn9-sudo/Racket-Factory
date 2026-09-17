@@ -729,7 +729,7 @@ def run_once(args: argparse.Namespace) -> None:
     restore_picks_today(target_picks_text)
 
     # 8. Run Audit + CLV/Calibration (feeds ML feedback loop for next run)
-    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_recent_picks.py --end {target} --days 30 --warehouse localdata/warehouse.csv.gz --include-same-day", "audit_recent_picks (include same-day for visibility)", env=child_env)
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_recent_picks.py --end {target} --days 0 --warehouse localdata/warehouse.csv.gz --include-same-day", "audit_recent_picks (full history, include same-day)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/audit_clv.py --days 30", "audit_clv", env=child_env)
 
     # 8b. Auto Tickets (Edge-Factory parity) — tennis accas from playable picks
