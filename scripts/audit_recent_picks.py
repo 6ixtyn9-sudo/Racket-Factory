@@ -405,7 +405,7 @@ def _pick_market_labels(pick: dict[str, Any]) -> tuple[str, bool]:
     odds = _pick_odds_value(pick)
     if odds is None:
         return "none", True
-    if source in {"TheOddsAPI", "OddsPortal", "Bzzoiro"}:
+    if source in {"TheOddsAPI", "OddsPortal", "Bzzoiro", "BetExplorer"}:
         return "api", False
     if source == "ScrapedFallback":
         return "scraped_fallback", True
