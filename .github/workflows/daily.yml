@@ -45,8 +45,8 @@ jobs:
       CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
       THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
       THE_ODDS_API_KEYS: ${{ secrets.THE_ODDS_API_KEYS }}
-      THE_ODDS_API_SPORT_KEYS: tennis_atp_us_open,tennis_wta_us_open,tennis_atp_french_open,tennis_wta_french_open,tennis_atp_australian_open,tennis_wta_australian_open,tennis_atp_wimbledon,tennis_wta_wimbledon
-      THE_ODDS_API_SPORTS: tennis_atp_us_open,tennis_wta_us_open,tennis_atp_french_open,tennis_wta_french_open,tennis_atp_australian_open,tennis_wta_australian_open,tennis_atp_wimbledon,tennis_wta_wimbledon
+      THE_ODDS_API_SPORT_KEYS: tennis_atp,tennis_wta
+      THE_ODDS_API_SPORTS: tennis_atp,tennis_wta
       THE_ODDS_API_REGIONS: uk,eu,us,au
       THE_ODDS_API_CACHE_TTL_MINUTES: '30'
       BZZOIRO_TOKEN: ${{ secrets.BZZOIRO_TOKEN }}
