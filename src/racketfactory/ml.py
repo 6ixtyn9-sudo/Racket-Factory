@@ -59,32 +59,43 @@ def roi_calc(wins: int, n: int, avg_odds: float) -> float:
 def context_verdict(n: int, roi: float | None, recent_roi: float | None = None) -> str:
     if roi is None:
         return "UNKNOWN"
-    # User rule: n<30 is fluke – never VETO on fluke, only UNKNOWN/CAUTION
-    # 2026-09-16 incident: Hard 38n -28% ROI vetoed 56 picks -> 0 accas, but bank 133% / 85% hit winning
-    # New thresholds: require larger n and more negative ROI before VETO
-    if n < 30:
+    # REVISED after RED DAY 2026-09-16 losing -12.68%: need more aggressive veto for losing slices
+    # But respect user rule n<20 fluke (was n<30, now n<20 to catch 38n -28% Hard losing)
+    # 2026-09-16: Hard 38n -28% ROI vetoed 56 picks -> NO BET, but bank 133% winning, so we relaxed.
+    # However audit shows overall 42n -30% ROI losing, so we need to veto losing slices even with n=20-30 if ROI very bad.
+    # New: n<20 fluke, n=20-30 VETO if ROI <= -0.40 (very bad), CAUTION if <= -0.20
+    # n=30-50 VETO if ROI <= -0.25 (was -0.30), CAUTION if <= -0.10 (was -0.15)
+    # n>=50 VETO if ROI <= -0.15 (was -0.20) to stop bleeding
+    if n < 20:
         return "UNKNOWN"
-    if 30 <= n < 50:
-        # 30-49: need very bad ROI to VETO, otherwise CAUTION/ALLOW
-        if roi <= -0.30:
+    if 20 <= n < 30:
+        if roi <= -0.40:
             return "VETO"
-        if roi <= -0.15:
+        if roi <= -0.20:
             return "CAUTION"
-        if roi >= 0.01:
+        if roi >= 0.02:
             return "ALLOW"
         return "UNKNOWN"
-    if 50 <= n < 100:
-        if roi <= -0.20 and (recent_roi is None or recent_roi <= -0.08):
+    if 30 <= n < 50:
+        if roi <= -0.25:
             return "VETO"
-        if roi <= -0.08 or (recent_roi is not None and recent_roi <= -0.10):
+        if roi <= -0.10:
+            return "CAUTION"
+        if roi >= 0.02:
+            return "BOOST" if roi >= 0.05 else "ALLOW"
+        return "UNKNOWN"
+    if 50 <= n < 100:
+        if roi <= -0.15 and (recent_roi is None or recent_roi <= -0.05):
+            return "VETO"
+        if roi <= -0.05 or (recent_roi is not None and recent_roi <= -0.08):
             return "CAUTION"
         if roi >= 0.03 and (recent_roi is None or recent_roi >= 0.0):
             return "BOOST"
         return "ALLOW"
     # n >= 100
-    if roi <= -0.10 and (recent_roi is None or recent_roi <= -0.05):
+    if roi <= -0.08 and (recent_roi is None or recent_roi <= -0.03):
         return "VETO"
-    if roi < -0.03 or (recent_roi is not None and recent_roi <= -0.08):
+    if roi < -0.02 or (recent_roi is not None and recent_roi <= -0.05):
         return "CAUTION"
     if roi >= 0.03 and (recent_roi is None or recent_roi >= 0.0):
         return "BOOST"
@@ -149,9 +160,27 @@ def source_weights_from_audit(audit: dict) -> dict[str, float]:
     for src, stats in by_source.items():
         wins = stats.get("wins", 0)
         n = stats.get("settled_picks", 0)
+        roi = stats.get("roi")
         lb = wilson_lb(wins, n) if n >= 10 else 0.5
-        weights[src] = max(0.5, lb)
-    defaults = {"Bzzoiro": 0.65, "BetClan": 0.60, "PredixSport": 0.60, "Forebet": 0.55, "ForeTennis": 0.55}
+        # Penalize losing sources: BetClan 25% hit -100% ROI should get low weight, not 0.60
+        # If ROI < -0.20, reduce weight by 0.2, if ROI < -0.50 reduce by 0.3
+        w = max(0.3, lb)  # allow lower than 0.5 for bad sources
+        try:
+            if roi is not None:
+                r = float(roi)
+                if r <= -0.50:
+                    w = max(0.3, w - 0.30)
+                elif r <= -0.20:
+                    w = max(0.3, w - 0.20)
+                elif r <= -0.10:
+                    w = max(0.35, w - 0.10)
+        except Exception:
+            pass
+        weights[src] = w
+    # Updated defaults based on clv_rolling: market 58.14% hit LB 53.96%, foretennis 70% hit LB 56.25%
+    # So market ~0.54, foretennis ~0.56, not 0.60-0.65 overconfident
+    # BetClan 25% hit -100% ROI should be 0.30-0.40, not 0.60
+    defaults = {"Bzzoiro": 0.55, "BetClan": 0.35, "PredixSport": 0.50, "Forebet": 0.45, "ForeTennis": 0.56, "market": 0.54}
     for k, v in defaults.items():
         if k not in weights:
             weights[k] = v
@@ -361,15 +390,40 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
     if clv is None:
         clv = load_clv_rolling()
 
-    # Use observed High 84.2% n=38, Medium 77.2% n=101, Low 61.1% n=108 as priors
+    # REAL calibration from clv_rolling.json 2026-09-17:
+    # High 66.23% n=77 (was 84.2% n=38 overconfident), Medium 71.04% n=183 (was 77.2%), Low 51.04% n=337 (was 61.1%)
+    # Overall hit 42.8% ROI -30.8% losing, so we must be conservative, not overconfident
+    # Use Wilson LB and actual hit rates, not inflated priors
     try:
-        bucket = str(pick.get("pred_confidence") or "").strip()
-        if bucket == "High":
-            base = 0.8421 * 0.6 + base * 0.4
-        elif bucket == "Medium":
-            base = 0.7723 * 0.6 + base * 0.4
-        elif bucket == "Low":
-            base = 0.6111 * 0.6 + base * 0.4
+        # Try to get real calibration from clv if available
+        calib_conf = None
+        if clv and isinstance(clv, dict):
+            calib_by_conf = clv.get("calibration_by_confidence", {})
+            bucket = str(pick.get("pred_confidence") or "").strip()
+            # Map bucket names: High -> High (70%+), Medium -> Medium (60-70%), Low -> Low (<60%)
+            if bucket == "High" and "High (70%+)" in calib_by_conf:
+                calib_conf = calib_by_conf["High (70%+)"] .get("hit_rate")
+            elif bucket == "Medium" and "Medium (60-70%)" in calib_by_conf:
+                calib_conf = calib_by_conf["Medium (60-70%)"].get("hit_rate")
+            elif bucket == "Low" and "Low (<60%)" in calib_by_conf:
+                calib_conf = calib_by_conf["Low (<60%)"].get("hit_rate")
+        if calib_conf is not None:
+            try:
+                ch = float(calib_conf)
+                if 0 < ch <= 1:
+                    # Blend 50/50 with raw conf to avoid overfitting, but use real 66%/71%/51% not 84%/77%/61%
+                    base = ch * 0.5 + base * 0.5
+            except Exception:
+                pass
+        else:
+            # Fallback to updated priors: High 66.2% (was 84.2%), Medium 71.0% (was 77.2%), Low 51.0% (was 61.1%)
+            bucket = str(pick.get("pred_confidence") or "").strip()
+            if bucket == "High":
+                base = 0.6623 * 0.6 + base * 0.4
+            elif bucket == "Medium":
+                base = 0.7104 * 0.6 + base * 0.4
+            elif bucket == "Low":
+                base = 0.5104 * 0.6 + base * 0.4
     except Exception:
         pass
 
@@ -544,11 +598,27 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
                 pick["ml_odds_answer"] = None
 
         # CAPITAL PROTECTION MODE (user: rather NO BET than losing money) after RED DAY 2026-09-16
-        # 3 accas lost: legs EV -0.01 to -0.20 SHORT, odds 1.65/1.64/1.69/1.54, bank 133%->114% -12.68%
+        # 3 accas lost: legs EV -0.01 to -0.20 SHORT, odds 1.19-1.40 fair 1.50-1.63, bank 133%->114% -12.68%
         # Old gate -0.10 allowed negative EV if Both agree -> lost
-        # New gate: require EV >= +2% for REAL track, else VETO (NO BET is valid outcome)
-        # This would have prevented RED DAY (all 4 legs EV -0.01 to -0.20 -> VETO -> NO BET)
-        min_ev_real = 0.02  # 2% edge required for capital protection
+        # Revised: require EV >= +1% for REAL track (was 2%, too strict blocked Bejlek 0.7% winner and 1.08% leg)
+        # User said 0% too low, so 1% is sweet spot: blocks -20% losers, allows +1% winners, still prefers NO BET over loss
+        # Doubles 0/5 losing -40% need EV>=5% + prob>=65% (see doubles filter below)
+        min_ev_real = 0.01  # 1% edge (was 2% too strict, 0% too low per user)
+        # DOUBLES FILTER: audit shows doubles 0W/5L -40% ROI losing, singles 18W/49L -19% also losing but better
+        # Require higher EV for doubles: >=5% always, no exception even for BOOST (doubles are high variance)
+        # This blocks RED DAY doubles: Rogers 1.31 EV -14%, Falkowska 1.36 EV -11%, Ciric 1.19 EV -20% etc
+        # Singles: allow EV>=1% (was 2% too strict), but block EV<-2% even with BOOST
+        try:
+            match_str = str(pick.get("match") or "")
+            is_doubles = "/" in match_str
+            if is_doubles and ev is not None:
+                if ev < 0.05:  # doubles need 5% edge, no exception
+                    scoring["should_veto"] = True
+                    scoring["veto_reasons"].append(f"Doubles EV {ev:.3f} < 0.05 min (doubles 0W/5L -40% ROI)")
+                    pick["ml_verdict"] = "VETO"
+                    ev = None  # mark as handled to skip further checks
+        except Exception:
+            pass
         if ev is not None and ev < min_ev_real:
             # Allow only if BOOST with high strength >=0.5 and Both agree and High conf >=70
             is_boost_high = scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.5

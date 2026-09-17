@@ -4,8 +4,8 @@
 Recipe v4 (ML winner chooser + BetExplorer REAL):
   LEGS      CERTIFIED_CLEAN, WATCHLIST, CAUTION + WATCHLIST_NO_ODDS if ML BOOST strength>=0.4
   FILTER    ML calibrated prob (High 84.2% n=38, Medium 77.2% n=101, Low 61.1% n=108):
-            - MIN_ODDS_PER_LEG dynamic 1.30 base (ML monitor: High hit >=80% -> max(1.30, adj)) CAPITAL PROTECTION
-            - BOOST legs allowed down to 1.20 (was 1.10) + EV>=+2% required (0% too low per user)
+            - MIN_ODDS_PER_LEG dynamic 1.20 base (ML monitor: High hit >=80% -> max(1.20, adj)) CAPITAL PROTECTION REVISED
+            - BOOST legs allowed down to 1.15 + EV>=+1% required (0% too low, 2% too strict, doubles need 5%)
             - MIN_ACCA_ODDS 2.0, BetExplorer consensus = REAL price (fixed bad=10 fused names)
             - ML EV gating: prob * odds -1, calibrated prob from history, not raw confidence
   ACCAS     4 accas max, all multi-leg, mutually exclusive, Kelly-sized:
@@ -59,22 +59,22 @@ PLAYABLE_BUCKETS_WITH_ML = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "WATCHLIS
 def _get_min_odds_per_leg() -> float:
     """Dynamic min odds: CAPITAL PROTECTION MODE after RED DAY 2026-09-16
     User: rather NO BET than losing money. Old 1.20 allowed 1.19/1.24 shorts with EV -20% that lost -12.68% bank 133%->114%.
-    New: base 1.30 (was 1.20), BOOST 1.20 (was 1.10), require EV >=+2% (was -10%). 0% min too low per user.
+    Revised: base 1.20 (was 1.30 too strict causing NO BET on 2026-09-17), BOOST 1.15 (was 1.20), EV>=1% (was 2% too strict)
+    1.05 EV -11.8% still blocked by EV>=1%, not just odds floor. Winners 1.22-1.40 allowed.
     """
     try:
         health = monitor_performance()
         adj = health.get("adjustments", {}) if isinstance(health, dict) else {}
         if "min_odds_per_leg" in adj:
-            # Respect ML monitor but never go below 1.30 for capital protection (was 1.20)
-            return max(1.30, float(adj["min_odds_per_leg"]))
+            # Respect ML monitor but never go below 1.20 for capital protection (was 1.30 too strict)
+            return max(1.20, float(adj["min_odds_per_leg"]))
     except Exception:
         pass
-    # CAPITAL PROTECTION: 1.30 base (was 1.20), blocks 1.05/1.19/1.24 shorts that had negative EV
-    # User's winners 1.22-1.40 still allowed, but 1.05/1.13/1.18 blocked unless BOOST + EV>=2%
-    return 1.30
+    # CAPITAL PROTECTION: 1.20 base (was 1.30 too strict), BOOST 1.15 (was 1.20) + EV>=1% blocks 1.05 -11% EV
+    return 1.20
 
 MIN_ODDS_PER_LEG = _get_min_odds_per_leg()
-MIN_ODDS_BOOST = 1.20  # BOOST picks down to 1.20 (was 1.10), 1.05 blocked - too short even with 84% hit EV -11%
+MIN_ODDS_BOOST = 1.15  # BOOST down to 1.15 (was 1.20 too strict, was 1.10 too loose) + EV>=1% blocks 1.05 -11%
 # DYNAMIC MAX: base 1.8 (winning range 1.28-1.88), scales with prob + ROI + edge_n
 # Static fallback kept for backward compat, but eligible_pool now uses dynamic_max_odds()
 MAX_ODDS_PER_LEG = 2.5  # fallback static
@@ -310,7 +310,9 @@ def is_playable(pick: dict) -> bool:
         if is_no_odds and bucket in PLAYABLE_BUCKETS_WITH_ML:
             pass
         elif is_dead_edge:
-            # CAPITAL PROTECTION MODE: DEAD_EDGE only if EV>=+2% + odds>=1.30 + high prob (was 1.05 allowed -> -12.68% loss)
+            # CAPITAL PROTECTION: DEAD_EDGE only if EV>=+1% + odds>=1.20 + high prob (was 1.05 EV -11% allowed -> -12.68% loss)
+            # Revised: 1% not 2% (2% blocked Bejlek 0.7% winner), odds 1.20 not 1.30 (1.30 blocked 1.24/1.27 winners)
+            # Doubles 0W/5L -40% need EV>=5% (handled in ml.py but also here)
             try:
                 cp = float(pick.get("ml_calibrated_prob") or 0)
                 conf = float(pick.get("confidence") or 0)
@@ -318,7 +320,10 @@ def is_playable(pick: dict) -> bool:
                     conf *= 100
                 odds_f = float(pick.get("odds") or 0)
                 ev = float(pick.get("ml_ev") or -1)
-                if ev >= 0.02 and odds_f >= 1.30 and (cp >= 0.80 or (conf >= 65 and odds_f <= 2.2)):
+                match_str = str(pick.get("match") or "")
+                is_doubles = "/" in match_str
+                min_ev = 0.05 if is_doubles else 0.01  # doubles need 5%
+                if ev >= min_ev and odds_f >= 1.20 and (cp >= 0.70 or (conf >= 65 and odds_f <= 2.2)):
                     pass
                 else:
                     return False
@@ -417,7 +422,7 @@ def build_accas(pool):
     - PAPER: unpriced or late. Hit-rate only.
 
     - Mutually exclusive, ML strengths, Kelly growth, continuous self-monitor
-    - MIN_ODDS dynamic: 1.30 base CAPITAL PROTECTION (was 1.20), BOOST 1.20 (was 1.10) + EV>=2% (user: rather NO BET)
+    - MIN_ODDS dynamic: 1.20 base CAPITAL PROTECTION REVISED (was 1.30 too strict), BOOST 1.15 + EV>=1% (was 2% too strict, doubles 5%)
     - ML chooses winners via calibrated prob (High 84%, Medium 77%, Low 61%) + EV vs BetExplorer
     """
     audit = {}
@@ -557,13 +562,12 @@ def build_accas(pool):
                 # DYNAMIC MAX: scales with prob + ROI + edge_n (e.g. Bobichon 2.28 allowed only because 85%+51n+15.9% ROI)
                 max_leg = dynamic_max_odds(p)
                 if o < min_leg:
-                    # CAPITAL PROTECTION: no longer allow 1.05 even with 85% prob (EV -11.8% for 1.05 @84% hit)
-                    # Require 1.20 min and EV>=2% even for BOOST
+                    # CAPITAL PROTECTION: 1.05 EV -11.8% blocked by EV>=1%, not just odds
+                    # Allow below min_leg only if BOOST + Both + High>=70 + EV>=1% + odds>=1.15 + prob>=75%
                     try:
                         cp = float(p.get("ml_calibrated_prob") or 0)
                         ev = float(p.get("ml_ev") or -1)
-                        # Only allow below min_leg if BOOST + Both + High conf + EV>=2% + odds>=1.20
-                        if cp >= 0.85 and o >= 1.20 and ev >= 0.02 and str(p.get("ml_verdict"))=="BOOST":
+                        if cp >= 0.75 and o >= 1.15 and ev >= 0.01 and str(p.get("ml_verdict"))=="BOOST":
                             pass
                         else:
                             continue
@@ -572,20 +576,29 @@ def build_accas(pool):
                 if o > max_leg:
                     # Dynamic cap blocks random underdogs, allows proven high-EV dogs
                     continue
-                # CAPITAL PROTECTION: Require min prob 0.65 AND EV>=+2% for REAL (user: rather NO BET than lose)
-                # RED DAY: all legs EV -0.01 to -0.20 prob 60-62% Medium -> lost -12.68%
+                # CAPITAL PROTECTION: Require min prob 0.60 AND EV>=+1% for REAL (0% too low, 2% too strict)
+                # RED DAY: EV -0.01 to -0.20 -> NO BET, doubles 0W/5L -40% need EV>=5% no exception
+                # Revised: 1% allows 1.08% leg on 2026-09-17, doubles 5% blocks losing doubles
                 try:
                     cp = float(p.get("ml_calibrated_prob") or get_prob(p) or 0)
                     ev = float(p.get("ml_ev") or -1)
-                    if ev < 0.02:
-                        # Require BOOST+Both+High conf>=70 to allow EV<2% (capital protection)
+                    match_str = str(p.get("match") or "")
+                    is_doubles = "/" in match_str
+                    min_ev = 0.05 if is_doubles else 0.01
+                    if ev < min_ev:
+                        # Doubles: no exception, always block if EV<5%
+                        if is_doubles:
+                            continue
+                        # Singles: allow exception only if EV>= -0.02 (not -20%) + BOOST+Both+High>=70
+                        if ev < -0.02:
+                            continue
                         is_boost = str(p.get("ml_verdict")) == "BOOST"
                         cross = str(p.get("cross_source_agree") or "")
                         conf_f = conf_of(p)
                         if not (is_boost and cross == "Both" and conf_f >= 70):
                             continue
-                    if cp < 0.65 and str(p.get("ml_verdict")) != "BOOST":
-                        if not (o <= 2.0 and conf_of(p) >= 60):
+                    if cp < 0.60 and str(p.get("ml_verdict")) != "BOOST":
+                        if not (o <= 2.2 and conf_of(p) >= 60):
                             continue
                 except Exception:
                     pass
