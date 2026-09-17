@@ -2,8 +2,8 @@
   {
     "match": "F. Jorge vs V. Jimenez Kasintseva",
     "date": "2026-09-17",
-    "match_time": "15:30",
-    "kickoff": "15:30",
+    "match_time": "16:00",
+    "kickoff": "16:00",
     "selected_side": "1",
     "selected_player": "F. Jorge",
     "_selection_basis": "prediction",
@@ -122,24 +122,24 @@
     "skip_reason": "Sources disagree; surface Hard VETO roi -0.292105 n=43"
   },
   {
-    "match": "S. De Stefano vs A. Tubello",
+    "match": "Samira De Stefano vs Alice Tubello",
     "date": "2026-09-17",
-    "match_time": "12:10",
-    "kickoff": "12:10",
+    "match_time": "09:00",
+    "kickoff": "09:00",
     "selected_side": "1",
-    "selected_player": "S. De Stefano",
+    "selected_player": "Samira De Stefano",
     "_selection_basis": "prediction",
-    "tournament": "Ljubljana - Quarter-finals",
-    "source": "Forebet",
+    "tournament": "WTA Ljubljana Prediction",
+    "source": "BetClan",
     "source_count": 3,
-    "tour": "CHALLENGER",
-    "series": "Challenger",
+    "tour": "WTA",
+    "series": "International",
     "surface": "Hard",
     "pred_confidence": "Medium",
     "cross_source_agree": "Disagree",
-    "context_used": "Ljubljana - Quarter-finals",
-    "player_home": "S. De Stefano",
-    "player_away": "A. Tubello",
+    "context_used": "WTA Ljubljana Prediction",
+    "player_home": "Samira De Stefano",
+    "player_away": "Alice Tubello",
     "bucket": "SKIPPED_VETO",
     "pick": "EDGE CONFIRMED",
     "odds": 1.82,
@@ -159,13 +159,10 @@
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
     "roi_estimate": "21.55%",
-    "ml_strength_score": -0.7,
+    "ml_strength_score": -0.1,
     "ml_veto_reasons": [
       "Sources disagree",
-      "tour CHALLENGER VETO roi -0.252778 n=39",
       "surface Hard VETO roi -0.292105 n=43",
-      "series Challenger VETO roi -0.252778 n=39",
-      "source Forebet VETO roi -0.252778 n=39",
       "ML EV -0.072 < 0.01 min (capital protection)"
     ],
     "ml_boost_reasons": [
@@ -183,7 +180,7 @@
       "edge_pct": -7.18,
       "explanation": "Odds 1.82 short vs fair 1.96, EV -7.2% \u2013 negative, avoid unless boosting acca"
     },
-    "skip_reason": "Sources disagree; tour CHALLENGER VETO roi -0.252778 n=39"
+    "skip_reason": "Sources disagree; surface Hard VETO roi -0.292105 n=43"
   },
   {
     "match": "Elina Avanesyan vs Alina Charaeva",

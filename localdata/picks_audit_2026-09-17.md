@@ -2,7 +2,7 @@
 
 ## Overall
 
-- archived pick rows: 62
+- archived pick rows: 63
 - archived pick dates: 5
 - settled picks: 43
 - wins: 19
@@ -11,10 +11,10 @@
 - ROI: -0.292105
 - ROI (real-priced): -0.292105 (n=38)
 - ROI (paper-priced): None (n=0)
-- pending picks: 19
+- pending picks: 20
 - void picks: 0
 - conflict picks: 0
-- total picks: 62
+- total picks: 63
 - set diagnostic picks: 43
 - selected won any set: 30 (0.697674)
 - selected won set 1: 20 (0.465116)
@@ -97,6 +97,7 @@
 - 2026-09-17 Quevedo / Salkova vs Riera / Sierra selected=Quevedo / Salkova winner=? status=pending_no_result reason=no matching result rows found
 - 2026-09-17 Romero Gormaz / Selekhmeteva vs Christie / Silva selected=Christie / Silva winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-17 S. De Stefano vs A. Tubello selected=S. De Stefano winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-17 Samira De Stefano vs Alice Tubello selected=Samira De Stefano winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 
 ## By Tour
 

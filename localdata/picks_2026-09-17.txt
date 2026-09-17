@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-17
 ============================================================
-Generated at: 2026-09-17 15:11:49
+Generated at: 2026-09-17 16:08:14
 
 
 CERTIFIED CLEAN PICKS
@@ -27,12 +27,12 @@ SKIPPED — VETO CONTEXT
 ============================================================
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Romero Gormaz / Selekhmeteva vs Christie / KO 18:00 -> CHRISTIE / SILVA  conf 63% @1.91  EV +0.20u
      bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=66  roi=21.55%
-  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] F. Jorge vs V. Jimenez Kasintseva          KO 15:30 -> F. JORGE  conf 62% @2.18  EV +0.35u
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] F. Jorge vs V. Jimenez Kasintseva          KO 16:00 -> F. JORGE  conf 62% @2.18  EV +0.35u
      bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=66  roi=21.55%
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Elina Avanesyan vs Alina Charaeva          KO 16:00 -> ELINA AVANESYAN  conf 62% @1.76  EV +0.09u
      bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=66  roi=21.55%
-  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] S. De Stefano vs A. Tubello                KO 12:10 -> S. DE STEFANO  conf 60% @1.82  EV +0.09u
-     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=66  roi=21.55%
+  [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Samira De Stefano vs Alice Tubello         KO 09:00 -> SAMIRA DE STEFANO  conf 60% @1.82  EV +0.09u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=66  roi=21.55%
   [_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium] Mikulskyte / Smith vs Strakhova / Tikhonov KO 17:00 -> STRAKHOVA / TIKHONOVA  conf 60% @1.75  EV +0.05u
      bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=66  roi=21.55%
 

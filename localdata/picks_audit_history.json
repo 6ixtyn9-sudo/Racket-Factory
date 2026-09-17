@@ -1549,5 +1549,21 @@
     "surface": "Hard",
     "tour": "CHALLENGER",
     "won": null
+  },
+  {
+    "bucket": "SKIPPED_VETO",
+    "date": "2026-09-17",
+    "match": "Samira De Stefano vs Alice Tubello",
+    "reason": "result not final: live/in-progress markers present",
+    "selected_player": "Samira De Stefano",
+    "series": "International",
+    "settle_date": "2026-09-17",
+    "settle_score": "",
+    "settle_source": "",
+    "source": "BetClan",
+    "status": "pending_no_result",
+    "surface": "Hard",
+    "tour": "WTA",
+    "won": null
   }
 ]
