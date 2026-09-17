@@ -11,7 +11,7 @@
     },
     "results:foretennis_results": {
       "status": "OK",
-      "detail": "4 files, 1117 rows, max_date 2026-09-17 (lag 0d, budget 3d)"
+      "detail": "4 files, 1121 rows, max_date 2026-09-17 (lag 0d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "OK",
@@ -19,23 +19,23 @@
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "1 files, 2896 rows, max_date 2026-09-17 (lag 0d, budget 3d)"
+      "detail": "1 files, 2901 rows, max_date 2026-09-17 (lag 0d, budget 3d)"
     },
     "results:theoddsapi_scores": {
-      "status": "WARN",
-      "detail": "1 files, 9 rows, max_date 2026-09-13 (lag 4d, budget 3d)"
+      "status": "OK",
+      "detail": "1 files, 23 rows, max_date 2026-09-17 (lag 0d, budget 3d)"
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "4391 result rows across all sources"
+      "detail": "4414 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "5 files, 912 rows, max_date 2026-09-18"
+      "detail": "5 files, 914 rows, max_date 2026-09-18"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "3385 rows, max_date 2026-09-17"
+      "detail": "3404 rows, max_date 2026-09-17"
     },
     "warehouse:live_rows": {
       "status": "OK",
