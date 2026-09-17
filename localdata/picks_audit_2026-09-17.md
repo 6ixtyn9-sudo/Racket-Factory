@@ -48,8 +48,8 @@
 - 2026-09-16 Quevedo / Salkova vs Riera / Sierra selected=Quevedo / Salkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-16 Jennifer Ruggeri vs Despina Papamichail selected=Jennifer Ruggeri winner=Papamichail D. status=lost basis=Challenger_results@2026-09-16:6-1 6-7 7-5
 - 2026-09-16 Noemi Basiletti vs Julie Struplova selected=Noemi Basiletti winner=Basiletti N. status=won basis=Challenger_results@2026-09-16:6-2 6-3
-- 2026-09-17 Francisca Jorge vs Victoria Jimenez Kasintseva selected=Francisca Jorge winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-17 Samira De Stefano vs Alice Tubello selected=Samira De Stefano winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-17 F. Jorge vs V. Jimenez Kasintseva selected=F. Jorge winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-17 S. De Stefano vs A. Tubello selected=S. De Stefano winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-17 Elina Avanesyan vs Alina Charaeva selected=Elina Avanesyan winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-17 Mikulskyte / Smith vs Strakhova / Tikhonova selected=Strakhova / Tikhonova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-17 Quevedo / Salkova vs Riera / Sierra selected=Quevedo / Salkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present

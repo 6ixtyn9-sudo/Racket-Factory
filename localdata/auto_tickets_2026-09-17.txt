@@ -1,10 +1,13 @@
 Racket Factory Auto Tickets — 2026-09-17
-Generated at: 2026-09-17T08:13:16+02:00
+Generated at: 2026-09-17T08:29:28+02:00
 Bank: 114.62% (cycle base 100.00%)
 Take profit target: 200.00%
 
 Strategy: strengths-focused, avoid super short odds (min leg 1.2, min acca 1.5), 4 accas max per track, NO SINGLES
 Stake: 25% of bank per day (priced track only; paper is hit-rate only)
 
-NO BET — no priced legs available (zero qualifying bets is a valid outcome)
-Playable buckets: {'WATCHLIST', 'CERTIFIED_CLEAN', 'CAUTION'} + ML NO_ODDS BOOST (paper track)
+ACCA 1 [fallback_2leg_mutual] — Odds 4.08 — Stake 28.66%
+  - F. Jorge vs V. Jimenez Kasintseva -> F. Jorge @ 2.18 (conf 62.0 ml 0.1 ALLOW src Forebet odds_src BetExplorer)
+  - S. De Stefano vs A. Tubello -> S. De Stefano @ 1.87 (conf 60.0 ml 0.1 ALLOW src Forebet odds_src BetExplorer)
+
+Total staked: 28.66% of bank
