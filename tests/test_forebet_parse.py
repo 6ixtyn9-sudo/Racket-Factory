@@ -119,3 +119,44 @@ def test_strict_signature_separates_brothers():
     assert strict("Bergs Z.") == strict("Zizou Bergs")
     assert strict("Alcala Gurri M.") == strict("Max Alcala Gurri")
     assert strict("P. Carreno-Busta") == strict("Pablo Carreno Busta")
+
+
+# Jina markdown shape for a tournament page (no tnmscn anchors in the relay
+# HTML — the 2026-09-18 "Parsed 0 predictions" case). fetch_tournament_predictions
+# must fall back to the markdown parser and still yield predictions.
+TOURNAMENT_JINA_MD = """
+ATP Bastad - Round of 16
+[F. Tiafoe B. Shelton 12/09/2026 01:45](https://www.forebet.com/en/tennis/matches/atp-singles/atp-bastad/tiafoe-ben-shelton-ben/)
+41 59
+2 1-3
+10.2
+-152
+[A. Zverev H. Rune 13/09/2026 03:00](https://www.forebet.com/en/tennis/matches/atp-singles/atp-bastad/zverev-alexander-rune-holger/)
+55 45
+1 2-1
+10.4
+-110
+"""
+
+
+def test_fetch_tournament_predictions_jina_markdown_fallback(monkeypatch):
+    p = ForebetPredictor()
+    monkeypatch.setattr(p, "_fetch_tournament_page", lambda tour, tourn: TOURNAMENT_JINA_MD)
+    preds = p.fetch_tournament_predictions("ATP", "Bastad")
+    assert len(preds) == 2
+    tiaofoe = next(x for x in preds if "Tiafoe" in (x.get("player_home") or ""))
+    assert tiaofoe["player_away"] and "Shelton" in tiaofoe["player_away"]
+    assert tiaofoe["tournament"] == "Bastad"
+    assert tiaofoe["prob_home"] == 41
+    assert tiaofoe["prob_away"] == 59
+    assert tiaofoe["predicted_winner"] == "2"
+    zverev = next(x for x in preds if "Zverev" in (x.get("player_home") or ""))
+    assert zverev["predicted_winner"] == "1"
+
+
+def test_fetch_tournament_predictions_html_with_tnmscn_uses_parse_page(monkeypatch):
+    p = ForebetPredictor()
+    monkeypatch.setattr(p, "_fetch_tournament_page", lambda tour, tourn: FIXTURE)
+    preds = p.fetch_tournament_predictions("ATP", "Sevilla")
+    assert len(preds) == 2
+    assert preds[0]["tournament"] == "Sevilla"
