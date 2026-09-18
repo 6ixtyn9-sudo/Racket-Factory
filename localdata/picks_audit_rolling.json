@@ -2083,6 +2083,6 @@
   },
   "same_day_cutoff": "2026-09-18",
   "same_day_excluded": 0,
-  "stale_rows_pruned": 11,
+  "stale_rows_pruned": 0,
   "start": "2026-09-13"
 }

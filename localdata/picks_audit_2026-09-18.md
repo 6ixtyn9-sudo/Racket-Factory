@@ -6,7 +6,7 @@
 - archived pick dates: 6
 - ledger pick rows (in window): 63
 - duplicate rows merged (same match + selection re-picked): 1
-- stale history rows pruned (pick no longer in ledger): 11
+- stale history rows pruned (pick no longer in ledger): 0
 - settled picks: 49
 - wins: 23
 - hit rate: 0.469388
@@ -40,7 +40,7 @@
 
 - ledger rows in window (official): 63
 - duplicate rows merged (same match + selection in multiple daily ledgers): 1
-- stale history rows pruned (pick no longer in any archived ledger): 11
+- stale history rows pruned (pick no longer in any archived ledger): 0
 - audited rows: 62
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:

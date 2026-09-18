@@ -20,14 +20,14 @@
     "ml_boost_reasons": [
       "Both sources agree"
     ],
-    "ml_calibrated_prob": 0.5514,
-    "ml_ev": -0.2942,
-    "ml_fair_odds": 1.81,
+    "ml_calibrated_prob": 0.557,
+    "ml_ev": -0.287,
+    "ml_fair_odds": 1.8,
     "ml_odds_answer": {
-      "edge_pct": -29.42,
-      "ev": -0.2942,
-      "explanation": "Odds 1.28 short vs fair 1.81, EV -29.4% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.81,
+      "edge_pct": -28.7,
+      "ev": -0.287,
+      "explanation": "Odds 1.28 short vs fair 1.80, EV -28.7% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.8,
       "verdict": "SHORT"
     },
     "ml_strength_score": 0.1,
@@ -36,7 +36,7 @@
       "tour CHALLENGER CAUTION",
       "series Challenger CAUTION",
       "source Forebet CAUTION",
-      "ML EV -0.294 < 0.02 min (capital protection)"
+      "ML EV -0.287 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.28,
@@ -83,14 +83,14 @@
     "ml_boost_reasons": [
       "Both sources agree"
     ],
-    "ml_calibrated_prob": 0.5502,
-    "ml_ev": -0.3727,
-    "ml_fair_odds": 1.82,
+    "ml_calibrated_prob": 0.5559,
+    "ml_ev": -0.3663,
+    "ml_fair_odds": 1.8,
     "ml_odds_answer": {
-      "edge_pct": -37.27,
-      "ev": -0.3727,
-      "explanation": "Odds 1.14 short vs fair 1.82, EV -37.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.82,
+      "edge_pct": -36.63,
+      "ev": -0.3663,
+      "explanation": "Odds 1.14 short vs fair 1.80, EV -36.6% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.8,
       "verdict": "SHORT"
     },
     "ml_strength_score": 0.1,
@@ -99,7 +99,7 @@
       "tour CHALLENGER CAUTION",
       "series Challenger CAUTION",
       "source Forebet CAUTION",
-      "ML EV -0.373 < 0.02 min (capital protection)"
+      "ML EV -0.366 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.14,
@@ -146,9 +146,9 @@
     "ml_boost_reasons": [
       "Both sources agree"
     ],
-    "ml_calibrated_prob": 0.5507,
+    "ml_calibrated_prob": 0.5563,
     "ml_ev": null,
-    "ml_fair_odds": 1.82,
+    "ml_fair_odds": 1.8,
     "ml_strength_score": 0.0,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
