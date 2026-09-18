@@ -2,26 +2,26 @@
 
 ## Overall
 
-- archived pick rows: 62
+- archived pick rows: 67
 - archived pick dates: 6
-- ledger pick rows (in window): 63
+- ledger pick rows (in window): 68
 - duplicate rows merged (same match + selection re-picked): 1
 - stale history rows pruned (pick no longer in ledger): 0
-- settled picks: 49
-- wins: 23
-- hit rate: 0.469388
+- settled picks: 48
+- wins: 22
+- hit rate: 0.458333
 - priced picks: 43
 - ROI: -0.246512
 - ROI (real-priced): -0.246512 (n=43)
 - ROI (paper-priced): None (n=0)
-- pending picks: 13
+- pending picks: 18
 - void picks: 0
-- conflict picks: 0
-- total picks: 62
-- set diagnostic picks: 49
-- selected won any set: 35 (0.714286)
-- selected won set 1: 24 (0.489796)
-- selected won set 2: 27 (0.55102)
+- conflict picks: 1
+- total picks: 67
+- set diagnostic picks: 48
+- selected won any set: 34 (0.708333)
+- selected won set 1: 23 (0.479167)
+- selected won set 2: 26 (0.541667)
 - selected won set 3: 7 (0.368421)
 
 ## Settlement policy
@@ -38,14 +38,15 @@
 
 ## Ledger reconciliation
 
-- ledger rows in window (official): 63
+- ledger rows in window (official): 68
 - duplicate rows merged (same match + selection in multiple daily ledgers): 1
 - stale history rows pruned (pick no longer in any archived ledger): 0
-- audited rows: 62
+- audited rows: 67
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
   - pending_no_result: no matching result rows found: 10
-  - pending_no_result: result not final: live/in-progress markers present: 3
+  - pending_no_result: result not final: live/in-progress markers present: 8
+  - conflict: conflicting final results: Challenger_results@2026-09-18:Simakin I.(6-3 6-1); Forebet_results@2026-09-18:C. Hewitt(47-4): 1
 
 ## Per-pick audit (won/lost/pending)
 
@@ -108,34 +109,40 @@
 - 2026-09-17 F. Jorge vs V. Jimenez Kasintseva selected=F. Jorge winner=Jorge F. status=won basis=Challenger_results@2026-09-17:6-2 4-6 6-4
 - 2026-09-17 Romero Gormaz / Selekhmeteva vs Christie / Silva selected=Christie / Silva winner=Romero Gormaz L. / Selekhmeteva O. status=lost basis=Challenger_results@2026-09-17:6-2 4-6 10-8
 - 2026-09-17 Samira De Stefano vs Alice Tubello selected=Samira De Stefano winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-18 A. Shevchenko vs M. Jones selected=M. Jones winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-18 B. Tomic vs A. Binda selected=B. Tomic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-18 C. Hewitt vs I. Simakin selected=I. Simakin winner=Simakin I. status=won basis=Challenger_results@2026-09-18:6-3 6-1
+- 2026-09-18 C. Hewitt vs I. Simakin selected=I. Simakin winner=? status=conflict reason=conflicting final results: Challenger_results@2026-09-18:Simakin I.(6-3 6-1); Forebet_results@2026-09-18:C. Hewitt(47-4)
+- 2026-09-18 L. Neumayer vs Z. Bergs selected=Z. Bergs winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-18 M. Bobichon vs T. Schoolkate selected=T. Schoolkate winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-18 M. Stoiana vs P. Badosa selected=P. Badosa winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-18 R. Pacheco Mendez vs P. Sekulic selected=R. Pacheco Mendez winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-18 T. Kostovic vs K. Quevedo selected=K. Quevedo winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 
 ## By Tour
 
-- `CHALLENGER`: total=51, settled=41, wins=20, hit_rate=0.487805, ROI=-0.214054, pending=10
-- `WTA`: total=11, settled=8, wins=3, hit_rate=0.375, ROI=-0.446667, pending=3
+- `CHALLENGER`: total=52, settled=40, wins=19, hit_rate=0.475, ROI=-0.214054, pending=11, conflict=1
+- `WTA`: total=13, settled=8, wins=3, hit_rate=0.375, ROI=-0.446667, pending=5
+- `ATP`: total=2, settled=0, wins=0, hit_rate=None, ROI=None, pending=2
 
 ## By Series
 
-- `Challenger`: total=51, settled=41, wins=20, hit_rate=0.487805, ROI=-0.214054, pending=10
-- `International`: total=11, settled=8, wins=3, hit_rate=0.375, ROI=-0.446667, pending=3
+- `Challenger`: total=52, settled=40, wins=19, hit_rate=0.475, ROI=-0.214054, pending=11, conflict=1
+- `International`: total=13, settled=8, wins=3, hit_rate=0.375, ROI=-0.446667, pending=5
+- `ATP250`: total=2, settled=0, wins=0, hit_rate=None, ROI=None, pending=2
 
 ## By Surface
 
-- `Grass`: total=3, settled=1, wins=1, hit_rate=1.0, ROI=None, pending=2
-- `Hard`: total=59, settled=48, wins=22, hit_rate=0.458333, ROI=-0.246512, pending=11
+- `Hard`: total=67, settled=48, wins=22, hit_rate=0.458333, ROI=-0.246512, pending=18, conflict=1
 
 ## By Bucket
 
-- `SKIPPED_DEAD_EDGE`: total=33, settled=25, wins=15, hit_rate=0.6, ROI=-0.1428, pending=8
-- `SKIPPED_VETO`: total=6, settled=3, wins=1, hit_rate=0.333333, ROI=-0.273333, pending=3
+- `SKIPPED_DEAD_EDGE`: total=34, settled=25, wins=15, hit_rate=0.6, ROI=-0.1428, pending=8, conflict=1
+- `SKIPPED_VETO`: total=10, settled=3, wins=1, hit_rate=0.333333, ROI=-0.273333, pending=7
 - `WATCHLIST`: total=16, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=1
-- `WATCHLIST_NO_ODDS`: total=7, settled=6, wins=3, hit_rate=0.5, ROI=None, pending=1
+- `WATCHLIST_NO_ODDS`: total=7, settled=5, wins=2, hit_rate=0.4, ROI=None, pending=2
 
 ## By Source
 
 - `BetClan`: total=9, settled=7, wins=3, hit_rate=0.428571, ROI=-0.336, pending=2
 - `BetClan, Forebet`: total=1, settled=1, wins=0, hit_rate=0.0, ROI=-1.0, pending=0
-- `Forebet`: total=52, settled=41, wins=20, hit_rate=0.487805, ROI=-0.214054, pending=11
+- `Forebet`: total=57, settled=40, wins=19, hit_rate=0.475, ROI=-0.214054, pending=16, conflict=1
