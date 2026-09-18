@@ -544,11 +544,21 @@ RELAY_BASE = "https://r.jina.ai/"
 # Actions daily with zero Cloudflare challenges, and only under those UAs.
 # 2026-09-18: our "RacketFactory/1.0" UA was CF-challenged on every forebet
 # fetch while Slumdog's 04:25Z run fetched the same tennis page fine.
+def _auth_headers() -> dict[str, str]:
+    """Jina Reader API key support — paid key bypasses anonymous shared IP CF challenges."""
+    import os
+    key = (os.getenv("JINA_API_KEY") or os.getenv("JINA_READER_API_KEY") or "").strip()
+    if key:
+        # Jina docs: Authorization: Bearer <key>
+        return {"Authorization": f"Bearer {key}"}
+    return {}
+
 RELAY_HEADERS = {
     "User-Agent": "Slumdog",
     "Accept": "text/plain",
     "X-No-Cache": "true",
     "X-Return-Format": "html",
+    **_auth_headers(),
 }
 # Reader-mode header set (no X-Return-Format): the single fallback flavor when
 # html-mode returns a stub. Morning runs historically parsed full boards out
@@ -558,6 +568,7 @@ RELAY_HEADERS_MARKDOWN = {
     "User-Agent": "EdgeFactory/1.0",
     "Accept": "text/plain",
     "X-No-Cache": "true",
+    **_auth_headers(),
 }
 # Relay statuses worth retrying (Slumdog _RETRY_STATUS). Any other 4xx
 # (401/403/404) is deterministic per context and is never retried.
@@ -620,8 +631,16 @@ def relay_get(url: str, timeout: int = 45, max_retries: int = 3,
     Cloudflare-protected), Slumdog-validated headers, hard client errors
     (401/403/404) raised immediately without retry. ``headers`` overrides the
     default html-mode set (used once for the reader-mode fallback).
+
+    Jina API key: if JINA_API_KEY env is set, injects Authorization Bearer
+    at call time (paid key bypasses anonymous shared IP CF challenges).
     """
-    send = dict(RELAY_HEADERS) if headers is None else dict(headers)
+    base = dict(RELAY_HEADERS) if headers is None else dict(headers)
+    # Dynamic auth injection — env may be set after import
+    auth = _auth_headers()
+    for k, v in auth.items():
+        base.setdefault(k, v)
+    send = base
     last_error: Exception | None = None
     for attempt in range(max_retries):
         request = urllib.request.Request(url, headers=send)

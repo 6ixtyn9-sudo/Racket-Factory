@@ -676,8 +676,8 @@ def run_once(args: argparse.Namespace) -> None:
                     print(f"deep check failed {e}")
                     deep_needed = True
         if deep_needed:
-            print("\n>>> DEEP SEARCH enabled: Forebet tournament backfill (limit 50) to deepen warehouse")
-            run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode tournament --limit 50 --delay 2 --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet tournament deep 50", env=child_env)
+            print("\n>>> DEEP SEARCH enabled: Forebet tournament backfill (limit 15 to reduce CF burst, was 50) to deepen warehouse")
+            run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode tournament --limit 15 --delay 5 --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet tournament deep 15", env=child_env)
             # Also Bzzoiro historical 30d if token present
             if os.getenv("BZZOIRO_TOKEN"):
                 run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_bzzoiro.py --start-date {(datetime.now()-timedelta(days=30)).date().isoformat()} --end-date {target} --output-dir localdata", "backfill_bzzoiro 30d deep", env=child_env)
