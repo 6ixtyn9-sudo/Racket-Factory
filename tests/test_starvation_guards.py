@@ -296,6 +296,121 @@ def test_mine_logs_today_rows_matching_no_slice(tmp_path, monkeypatch, caplog):
     assert "matched no exportable historical slice" in caplog.text
 
 
+def _no_slice_fixture_rows(target):
+    """60 settled rows (one dominant GOLD slice) + a live row matching nothing.
+
+    Mirrors run 35402614701: exportable slices exist, today's slate matches
+    none of them, and the day must still be diagnosable/exportable.
+    """
+    rows = [_settled_row(i, won=(i % 12 != 0)) for i in range(60)]
+    rows.append({"match_date": target, "tour": "UTR", "tournament": "Madrid",
+                 "_series": "ITF", "player_a": "Today A", "player_b": "Today B",
+                 "winner": "", "odds_a": 1.6, "odds_b": 2.4, "rank_a": 150,
+                 "rank_b": 160, "predicted_winner_market": "player_a",
+                 "prediction_prob": 0.66, "_is_live": True,
+                 "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    return rows
+
+
+def test_no_slice_diagnostics_dumped_on_empty_day(tmp_path, monkeypatch):
+    # Run 35402614701: 81 candidates matched no exportable slice and the only
+    # trace was one log line. With opt-in OFF (default) the picks file stays
+    # empty — but the dropped rows must land in picks_unmatched_<date>.json
+    # with dims + nearest slice + missing dims.
+    monkeypatch.delenv("RACKET_FACTORY_EXPORT_NO_SLICE", raising=False)
+    target = "2026-09-13"
+    picks = _run_mine(tmp_path, monkeypatch, _no_slice_fixture_rows(target), target)
+    assert picks == []
+    dump = tmp_path / "localdata" / f"picks_unmatched_{target}.json"
+    assert dump.exists()
+    rows = json.loads(dump.read_text())
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["match"] == "Today A vs Today B"
+    assert row["tour"] == "UTR"
+    assert row["closest_slice"]
+    assert row["missing_dims"], "nearest slice must say which dims failed"
+    assert row["odds"] == pytest.approx(1.6)
+
+
+def test_no_slice_diagnostics_stale_dump_removed_when_picks_exist(tmp_path, monkeypatch):
+    # A later run on the same date that DOES produce picks must clear the
+    # stale diagnostic dump (the picks .txt renders it).
+    monkeypatch.delenv("RACKET_FACTORY_EXPORT_NO_SLICE", raising=False)
+    target = "2026-09-13"
+    (tmp_path / "localdata").mkdir(parents=True, exist_ok=True)
+    dump = tmp_path / "localdata" / f"picks_unmatched_{target}.json"
+    dump.write_text(json.dumps([{"match": "stale", "missing_dims": ["x"]}]))
+    # Dominant slice that the today-row DOES match (ATP/Grand Slam @1.5).
+    rows = [_settled_row(i, won=(i % 12 != 0)) for i in range(60)]
+    rows.append({"match_date": target, "tour": "ATP", "tournament": "US Open",
+                 "_series": "Grand Slam", "player_a": "Today A",
+                 "player_b": "Today B", "winner": "", "odds_a": 1.5,
+                 "odds_b": 2.5, "rank_a": 5, "rank_b": 40,
+                 "predicted_winner": "player_a",
+                 "predicted_winner_market": "player_a",
+                 "predicted_winner_foretennis": "player_a",
+                 "prediction_prob": 0.7, "_is_live": True,
+                 "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    picks = _run_mine(tmp_path, monkeypatch, rows, target)
+    assert len(picks) >= 1
+    assert not dump.exists()
+
+
+def test_no_slice_export_opt_in_exports_watchlist(tmp_path, monkeypatch, caplog):
+    # Opt-in dial: RACKET_FACTORY_EXPORT_NO_SLICE=1 routes would-be dropped
+    # candidates through the same watchlist exporter (EV gate applied).
+    # Fires only on would-be empty days and must not write the diagnostic dump
+    # (the rows are in the picks file instead).
+    monkeypatch.setenv("RACKET_FACTORY_EXPORT_NO_SLICE", "1")
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
+    target = "2026-09-13"
+    with caplog.at_level("WARNING", logger="edge_miner"):
+        picks = _run_mine(tmp_path, monkeypatch, _no_slice_fixture_rows(target), target)
+    assert "No-slice export enabled" in caplog.text
+    assert len(picks) == 1
+    pick = picks[0]
+    assert pick["match"] == "Today A vs Today B"
+    assert pick["bucket"] == "WATCHLIST"
+    assert pick["slice_matched"] == "no_slice_export"
+    assert pick["expected_value"] == pytest.approx(0.056)  # 0.66*0.6 - 0.34
+    assert not (tmp_path / "localdata" / f"picks_unmatched_{target}.json").exists()
+
+
+def test_no_slice_export_opt_in_never_dilutes_matched_days(tmp_path, monkeypatch):
+    # If the slice pass already exported a pick, the opt-in must NOT also
+    # export the unmatched rows (no gate dilution on days that have picks).
+    monkeypatch.setenv("RACKET_FACTORY_EXPORT_NO_SLICE", "1")
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
+    target = "2026-09-13"
+    rows = [_settled_row(i, won=(i % 12 != 0)) for i in range(60)]
+    # One row that matches the dominant slice...
+    rows.append({"match_date": target, "tour": "ATP", "tournament": "US Open",
+                 "_series": "Grand Slam", "player_a": "Match A",
+                 "player_b": "Match B", "winner": "", "odds_a": 1.5,
+                 "odds_b": 2.5, "rank_a": 5, "rank_b": 40,
+                 "predicted_winner": "player_a",
+                 "predicted_winner_market": "player_a",
+                 "predicted_winner_foretennis": "player_a",
+                 "prediction_prob": 0.7, "_is_live": True,
+                 "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    # ...and one that matches nothing.
+    rows.append({"match_date": target, "tour": "UTR", "tournament": "Madrid",
+                 "_series": "ITF", "player_a": "Today A", "player_b": "Today B",
+                 "winner": "", "odds_a": 1.6, "odds_b": 2.4, "rank_a": 150,
+                 "rank_b": 160, "predicted_winner_market": "player_a",
+                 "prediction_prob": 0.66, "_is_live": True,
+                 "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    picks = _run_mine(tmp_path, monkeypatch, rows, target)
+    matches = [p for p in picks if p.get("slice_matched") == "no_slice_export"]
+    assert matches == [], "opt-in must not fire on days that have slice-matched picks"
+    assert any(p["match"] == "Match A vs Match B" for p in picks)
+
+
 # ------------------------------------------------ forebet writer dedup --
 
 

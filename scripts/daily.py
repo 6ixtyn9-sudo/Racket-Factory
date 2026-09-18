@@ -387,6 +387,44 @@ def generate_daily_report(
                     f"{edge_str}"
                 )
 
+        # No-slice diagnostics (run 35402614701: 81 candidates dropped with
+        # no operator-visible trace). mine_edges writes picks_unmatched_<date>.json
+        # on every day where candidates matched no exportable slice.
+        unmatched_file = LOCALDATA / f"picks_unmatched_{target_date}.json"
+        unmatched_rows: list[dict[str, Any]] = []
+        if unmatched_file.exists():
+            try:
+                loaded = json.loads(unmatched_file.read_text())
+                if isinstance(loaded, list):
+                    unmatched_rows = loaded
+            except Exception:
+                unmatched_rows = []
+        if unmatched_rows:
+            lines.append("")
+            lines.append(f"NO-SLICE CANDIDATES (diagnostic — matched no exportable slice; NOT bets)  [{len(unmatched_rows)} rows]")
+            lines.append("=" * 60)
+            for u in unmatched_rows[:30]:
+                conf = u.get("confidence")
+                if conf:
+                    c = float(conf)
+                    if 0 < c <= 1.0:  # dump stores decimal prob; pick json stores percent
+                        c *= 100.0
+                    conf_str = f"{c:.0f}%"
+                else:
+                    conf_str = "n/a"
+                odds_val = u.get("odds")
+                odds_str = f"@{float(odds_val):.2f}" if odds_val else "@n/a"
+                lines.append(
+                    f"  {str(u.get('match', '?'))[:42]:42s} KO {str(u.get('kickoff', 'n/a'))[:5]:5s}  "
+                    f"{str(u.get('tour', '?'))}/{str(u.get('_surface', '?'))}  conf={u.get('pred_confidence', '?')}  "
+                    f"agree={u.get('cross_source_agree', '?')}  band={u.get('fav_odds_band', '?')}  {odds_str} {conf_str}"
+                )
+                missing = u.get("missing_dims") or []
+                closest = str(u.get("closest_slice") or "?")[:60]
+                lines.append(f"     nearest: {closest}  missing: {', '.join(missing[:4]) or 'n/a'}")
+            if len(unmatched_rows) > 30:
+                lines.append(f"  ... and {len(unmatched_rows) - 30} more (full list in picks_unmatched_{target_date}.json)")
+
         lines.append("")
         lines.append("⚠️  Flat stakes only. Best odds inflate ROI (~halve it).")
         lines.append("⚠️  Bet only what you can afford to lose.")

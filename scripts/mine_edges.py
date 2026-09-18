@@ -5,6 +5,8 @@ Automated combinatorial discovery of Bankers and Robbers, including prediction s
 
 WARNING: ROI is currently calculated using Market Closing Odds. AI predictions captured early in the day must be evaluated against Opening Odds before live capital is deployed.
 """
+import os
+
 import pandas as pd
 import argparse
 import logging
@@ -1392,6 +1394,41 @@ def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
     )
     return kept
 
+def _dim_mismatches_slice(row: pd.Series, dim_name: str, dim_val) -> bool:
+    """True when a today-row's dimension value does NOT satisfy a slice's
+    dimension value.
+
+    Exact, case/space-insensitive equality — the same rule the slice-match
+    loop has always used — with the historical series equivalences
+    (International <-> WTA250, Premier <-> WTA500) applied to ``_series``.
+    Centralised so the match loop and the no-slice diagnostics below can't
+    drift apart (run 35402614701: 81 candidates matched no slice and the
+    only trace was a single log line — diagnostics must reuse one rule).
+    """
+    r_val = row.get(dim_name)
+    if str(r_val).replace(" ", "").lower() == str(dim_val).replace(" ", "").lower():
+        return False
+    if dim_name == "_series":
+        d_clean = str(dim_val).replace(" ", "").lower()
+        r_clean = str(r_val).replace(" ", "").lower()
+        if (d_clean, r_clean) in {
+            ("international", "wta250"), ("wta250", "international"),
+            ("premier", "wta500"), ("wta500", "premier"),
+        }:
+            return False
+    return True
+
+
+def _nearest_slice_gap(row: pd.Series, res: dict) -> list[str]:
+    """Human-readable list of the dims where ``row`` fails ``res``'s slice."""
+    combo = res.get("Combo_Dict") or {}
+    gaps = []
+    for dim_name, dim_val in combo.items():
+        if _dim_mismatches_slice(row, dim_name, dim_val):
+            gaps.append(f"{dim_name}={str(row.get(dim_name)).strip()}!={str(dim_val).strip()}")
+    return gaps
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Mine the warehouse for automated edges")
     ap.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse")
@@ -1715,6 +1752,80 @@ def main() -> int:
         logger.warning("Mined %d slices but none are actionable (all NO STAT SIG / "
                        "N<%d / ROBBER / FADE) — live-only fallback will export today "
                        "candidates as WATCHLIST", len(results), args.min_export_n)
+    # Fallback exporter shared by both recovery paths:
+    #   (1) live-only fallback (no actionable slices at all) — original path,
+    #   (2) opt-in no-slice export (RACKET_FACTORY_EXPORT_NO_SLICE) — added
+    #       after run 35402614701, where 81 candidates matched no exportable
+    #       slice and the day went to NO BET with zero operator-visible trace.
+    # Either way the row's own prediction confidence prices it, the EV gate
+    # still applies, and unpriced/arbitrary rows stay watchlist/paper.
+    def _export_candidate_as_watchlist(row: pd.Series, marker: str, roi_label: str) -> dict:
+        base = select_player_from_row(row, target_date)
+        prob = None
+        for col in prob_cols:
+            pval = row.get(col)
+            if pd.notna(pval) and str(pval).strip() not in {"nan", "<NA>", "None"}:
+                try:
+                    v = float(pval)
+                    if v <= 1.0 and v > 0:
+                        v *= 100.0
+                    if prob is None or v > prob:
+                        prob = v
+                except (TypeError, ValueError):
+                    pass
+        odds_val, odds_reject_reason = selected_odds_is_usable(row, base.get("selected_side"), prob)
+        odds_source = str(row.get("_odds_source") or row.get("odds_source") or "").strip()
+        odds_bookmaker = str(row.get("bookmaker") or row.get("odds_bookmaker") or "").strip()
+        if odds_val is None:
+            # FIX: Try OddsPortal first (covers ATP/WTA/Challenger live), then Bzzoiro (Challenger/ITF)
+            local_op = lookup_local_oddsportal_selected_odds(target_date, base)
+            if local_op is not None:
+                odds_val = local_op.get("odds")
+                odds_reject_reason = None
+                odds_source = "OddsPortal"
+                odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
+            else:
+                bzzoiro_op = lookup_bzzoiro_selected_odds(target_date, base)
+                if bzzoiro_op is not None:
+                    odds_val = bzzoiro_op.get("odds")
+                    odds_reject_reason = None
+                    odds_source = "Bzzoiro"
+                    odds_bookmaker = str(bzzoiro_op.get("bookmaker") or "Bzzoiro")
+        ev = None
+        if prob is not None and odds_val is not None and odds_val > 1.0:
+            p_dec = max(0.0, min(1.0, prob / 100.0))
+            ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
+        basis, is_paper = market_basis_for_pick(odds_source, odds_val)
+        base.update({
+            "bucket": "WATCHLIST" if odds_val is not None else "WATCHLIST_NO_ODDS",
+            "pick": "WATCHLIST",
+            "odds": odds_val,
+            "odds_source": odds_source,
+            "odds_bookmaker": odds_bookmaker,
+            "odds_cross_checked": str(row.get("odds_cross_checked") or ""),
+            "odds_reject_reason": odds_reject_reason,
+            "_market_basis": basis,
+            "_is_paper": is_paper,
+            "confidence": prob,
+            "expected_value": ev,
+            "slice_matched": marker,
+            "edge_dims": 0,
+            "edge_n": 0,
+            "edge_grade": "SILVER",
+            # BANKER requires an executable price; scrape-priced and
+            # unpriced live-only rows are watchlist-only (paper).
+            "edge_tier": "BANKER" if basis == "api" else "WATCHLIST_ONLY",
+            "edge_verdict": "WATCHLIST",
+            "roi_estimate": roi_label,
+        })
+        if ev is not None and ev < args.min_ev:
+            base["bucket"] = "SKIPPED_DEAD_EDGE"
+            base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
+        if base.get("_selection_basis") == "arbitrary_default":
+            base["bucket"] = "WATCHLIST_UNKNOWN_CTX"
+            base["skip_reason"] = "no prediction and no odds: selection would be arbitrary"
+        return base
+
     # Fallback for live-only mode (no historical edges after cache eviction)
     # If we have today candidates but no certified edges, export them as WATCHLIST
     # using their own prediction confidence — allows factory to recover and
@@ -1722,73 +1833,10 @@ def main() -> int:
     if not actionable_results and not today_df.empty:
         logger.warning("No historical edges found — live-only fallback: exporting today candidates as WATCHLIST")
         for _, row in today_df.iterrows():
-            base = select_player_from_row(row, target_date)
-            prob = None
-            for col in prob_cols:
-                pval = row.get(col)
-                if pd.notna(pval) and str(pval).strip() not in {"nan", "<NA>", "None"}:
-                    try:
-                        v = float(pval)
-                        if v <= 1.0 and v > 0:
-                            v *= 100.0
-                        if prob is None or v > prob:
-                            prob = v
-                    except (TypeError, ValueError):
-                        pass
-            odds_val, odds_reject_reason = selected_odds_is_usable(row, base.get("selected_side"), prob)
-            odds_source = str(row.get("_odds_source") or row.get("odds_source") or "").strip()
-            odds_bookmaker = str(row.get("bookmaker") or row.get("odds_bookmaker") or "").strip()
-            if odds_val is None:
-                # FIX: Try OddsPortal first (covers ATP/WTA/Challenger live), then Bzzoiro (Challenger/ITF)
-                local_op = lookup_local_oddsportal_selected_odds(target_date, base)
-                if local_op is not None:
-                    odds_val = local_op.get("odds")
-                    odds_reject_reason = None
-                    odds_source = "OddsPortal"
-                    odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
-                else:
-                    bzzoiro_op = lookup_bzzoiro_selected_odds(target_date, base)
-                    if bzzoiro_op is not None:
-                        odds_val = bzzoiro_op.get("odds")
-                        odds_reject_reason = None
-                        odds_source = "Bzzoiro"
-                        odds_bookmaker = str(bzzoiro_op.get("bookmaker") or "Bzzoiro")
-            ev = None
-            if prob is not None and odds_val is not None and odds_val > 1.0:
-                p_dec = max(0.0, min(1.0, prob / 100.0))
-                ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
-            basis, is_paper = market_basis_for_pick(odds_source, odds_val)
-            base.update({
-                "bucket": "WATCHLIST" if odds_val is not None else "WATCHLIST_NO_ODDS",
-                "pick": "WATCHLIST",
-                "odds": odds_val,
-                "odds_source": odds_source,
-                "odds_bookmaker": odds_bookmaker,
-                "odds_cross_checked": str(row.get("odds_cross_checked") or ""),
-                "odds_reject_reason": odds_reject_reason,
-                "_market_basis": basis,
-                "_is_paper": is_paper,
-                "confidence": prob,
-                "expected_value": ev,
-                "slice_matched": "live_only_fallback",
-                "edge_dims": 0,
-                "edge_n": 0,
-                "edge_grade": "SILVER",
-                # BANKER requires an executable price; scrape-priced and
-                # unpriced live-only rows are watchlist-only (paper).
-                "edge_tier": "BANKER" if basis == "api" else "WATCHLIST_ONLY",
-                "edge_verdict": "WATCHLIST",
-                "roi_estimate": "live_only",
-            })
-            if ev is not None and ev < args.min_ev:
-                base["bucket"] = "SKIPPED_DEAD_EDGE"
-                base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
-            if base.get("_selection_basis") == "arbitrary_default":
-                base["bucket"] = "WATCHLIST_UNKNOWN_CTX"
-                base["skip_reason"] = "no prediction and no odds: selection would be arbitrary"
-            picks_to_export.append(base)
+            picks_to_export.append(_export_candidate_as_watchlist(row, "live_only_fallback", "live_only"))
 
     unmatched_slice_rows = 0
+    matched_row_ids: set = set()
     if not today_df.empty and actionable_results:
         for _, row in today_df.iterrows():
             best_pick = None
@@ -1802,20 +1850,11 @@ def main() -> int:
                 combo = res["Combo_Dict"]
                 match_all = True
                 for dim_name, dim_val in combo.items():
-                    r_val = row.get(dim_name)
-                    if str(r_val).replace(" ", "").lower() != str(dim_val).replace(" ", "").lower():
-                        # Allow historical series equivalences (International <-> WTA250, Premier <-> WTA500)
-                        if dim_name == "_series":
-                            d_clean = str(dim_val).replace(" ", "").lower()
-                            r_clean = str(r_val).replace(" ", "").lower()
-                            if d_clean == "international" and r_clean == "wta250": continue
-                            if d_clean == "wta250" and r_clean == "international": continue
-                            if d_clean == "premier" and r_clean == "wta500": continue
-                            if d_clean == "wta500" and r_clean == "premier": continue
+                    if _dim_mismatches_slice(row, dim_name, dim_val):
                         match_all = False
                         break
-
                 if match_all:
+                    matched_row_ids.add(row.name)
                     slice_roi = float(str(res["ROI"]).strip('%')) / 100.0
                     verdict_rank = {"EDGE CONFIRMED": 3, "WATCHLIST": 2, "FADE THIS SIGNAL": 1}.get(res["Verdict"], 0)
                     best_verdict_rank = -1 if best_pick is None else {"EDGE CONFIRMED": 3, "WATCHLIST": 2, "FADE THIS SIGNAL": 1}.get(best_pick["Verdict"], 0)
@@ -1926,12 +1965,92 @@ def main() -> int:
             else:
                 unmatched_slice_rows += 1
 
-    if unmatched_slice_rows:
+    # --- No-slice candidates: opt-in export + per-row diagnostics ---
+    # Run 35402614701: 81 live candidates, none matching any exportable slice,
+    # and the day went to NO BET with this single log line as the only trace.
+    # (a) Opt-in export: RACKET_FACTORY_EXPORT_NO_SLICE=1 routes the would-be
+    #     dropped candidates through the same watchlist fallback exporter
+    #     (EV gate / veto gates / ML filter all still apply). Only fires on
+    #     would-be empty days — it never dilutes a day that has picks.
+    #     Default OFF keeps the validated-slice policy exactly as before.
+    # (b) Diagnostics: when rows are dropped, dump their dims + nearest slice
+    #     + missing dims to picks_unmatched_<date>.json so the next zero-pick
+    #     day is diagnosable from the committed artifact, not the Actions log.
+    export_no_slice = os.environ.get(
+        "RACKET_FACTORY_EXPORT_NO_SLICE", ""
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    no_slice_fallback_ran = False
+    if unmatched_slice_rows and actionable_results and export_no_slice and not picks_to_export:
+        logger.warning(
+            "No-slice export enabled (RACKET_FACTORY_EXPORT_NO_SLICE): %d candidates "
+            "matched no exportable slice -> WATCHLIST (marker no_slice_export)",
+            unmatched_slice_rows,
+        )
+        for _, row in today_df.iterrows():
+            picks_to_export.append(_export_candidate_as_watchlist(row, "no_slice_export", "no_slice"))
+        no_slice_fallback_ran = True
+
+    unmatched_dump_path = ROOT / "localdata" / f"picks_unmatched_{target_date}.json"
+    if unmatched_slice_rows and not no_slice_fallback_ran:
+        unmatched_rows = []
+        for _, row in today_df.iterrows():
+            if row.name in matched_row_ids:
+                continue
+            base = select_player_from_row(row, target_date)
+            prob = None
+            for col in prob_cols:
+                pval = row.get(col)
+                if pd.notna(pval) and str(pval).strip() not in {"nan", "<NA>", "None", ""}:
+                    try:
+                        v = float(pval)
+                        if prob is None or v > prob:
+                            prob = v
+                    except (TypeError, ValueError):
+                        pass
+            best_slice, best_gaps = "", None
+            for res in actionable_results:
+                gaps = _nearest_slice_gap(row, res)
+                if best_gaps is None or len(gaps) < len(best_gaps):
+                    best_slice, best_gaps = str(res.get("Slice", "")), gaps
+            unmatched_rows.append({
+                "match": base.get("match"),
+                "kickoff": base.get("kickoff") or base.get("match_time"),
+                "tour": str(row.get("tour") or "").strip(),
+                "_series": str(row.get("_series") or "").strip(),
+                "_surface": str(row.get("_surface") or "").strip(),
+                "pred_confidence": str(row.get("pred_confidence") or "").strip(),
+                "cross_source_agree": str(row.get("cross_source_agree") or "").strip(),
+                "fav_odds_band": str(row.get("fav_odds_band") or "").strip(),
+                "confidence": prob,
+                "odds": odds_for_selected_side(row, base.get("selected_side")),
+                "odds_source": str(row.get("_odds_source") or row.get("odds_source") or "").strip(),
+                "closest_slice": best_slice,
+                "missing_dims": best_gaps or [],
+            })
+        unmatched_dump_path.parent.mkdir(parents=True, exist_ok=True)
+        unmatched_dump_path.write_text(json.dumps(unmatched_rows, indent=2))
+        dim_summary = {}
+        for u in unmatched_rows:
+            dim_summary[u["tour"] or "?"] = dim_summary.get(u["tour"] or "?", 0) + 1
         logger.warning(
             "%d today rows matched no exportable historical slice for %s "
-            "(candidates existed but produced no picks)",
-            unmatched_slice_rows, target_date,
+            "(candidates existed but produced no picks); per-row diagnostics "
+            "written to %s (tour split: %s)",
+            unmatched_slice_rows, target_date, unmatched_dump_path.name, dim_summary,
         )
+    else:
+        # A later run on the same date produced picks — drop the stale dump so
+        # the picks .txt (which renders it) does not show phantom diagnostics.
+        try:
+            unmatched_dump_path.unlink()
+        except FileNotFoundError:
+            pass
+        if unmatched_slice_rows:
+            logger.warning(
+                "%d today rows matched no exportable historical slice for %s "
+                "(candidates existed but produced no picks)",
+                unmatched_slice_rows, target_date,
+            )
 
     picks_to_export = sorted(
         picks_to_export,
