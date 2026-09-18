@@ -43,6 +43,8 @@ from racketfactory.sources.forebet import (
     forebet_cache_key,
     name_signature,
     name_signature_strict,
+    read_relay_status,
+    record_relay_status,
 )
 
 logging.basicConfig(
@@ -134,6 +136,15 @@ def _write_predictions(predictions: list[dict], output_dir: Path) -> None:
 
 def mode_tournament(args) -> int:
     """Historical backfill using tournament pages."""
+    # Slumdog discipline: don't re-attempt a route a satellite already
+    # proved dead. If today's daily forebet fetch (which runs first) hit the
+    # Cloudflare challenge wall, every tournament page would too — skip the
+    # 50-page burn entirely instead of relying on the per-run latch.
+    if read_relay_status(date.today().isoformat(), args.output_dir) == "challenged":
+        logger.info("Tournament mode skipped: relay challenged during today's "
+                    "daily forebet fetch (marker=%s)",
+                    args.output_dir)
+        return 0
     try:
         df = pd.read_csv(args.warehouse, low_memory=False)
     except Exception as e:
@@ -532,6 +543,14 @@ def mode_daily(args) -> int:
             logger.info("predictions-%s: %d raw predictions stored (no warehouse match).", day, len(preds))
 
         time.sleep(args.delay)
+
+    # Canaries for the tournament backfill: a latched predictor means the
+    # relay served CF challenge pages for this run, so the 50-page deep
+    # pass (same route, same run) is skipped via the status marker.
+    if predictor.relay_blocked:
+        record_relay_status("challenged", date.today().isoformat(), args.output_dir)
+        logger.warning("Forebet relay status for %s recorded as 'challenged' "
+                       "— tournament backfill will skip today", date.today().isoformat())
 
     _write_predictions(predictions, args.output_dir)
 

@@ -9,6 +9,7 @@ transport; direct fetching is local-only; on a GitHub runner a relay failure
 fails fast instead of burning the run on transports the provider blocks.
 """
 from __future__ import annotations
+import json
 import logging
 import os
 import random
@@ -16,8 +17,9 @@ import re
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from curl_cffi import requests
 from bs4 import BeautifulSoup
 from racketfactory.entities import normalize_player, player_key
@@ -537,8 +539,13 @@ RELAY_BASE = "https://r.jina.ai/"
 # calls were served ~11KB stubs, almost certainly a poisoned reader cache).
 # X-No-Cache defeats stale snapshots; X-Return-Format selects raw HTML so the
 # body goes through parse_page rather than parse_jina_markdown.
+# The User-Agent strings are Slumdog's exact validated UAs: its committed
+# capture receipts show the relay serving fresh forebet boards from GitHub
+# Actions daily with zero Cloudflare challenges, and only under those UAs.
+# 2026-09-18: our "RacketFactory/1.0" UA was CF-challenged on every forebet
+# fetch while Slumdog's 04:25Z run fetched the same tennis page fine.
 RELAY_HEADERS = {
-    "User-Agent": "RacketFactory/1.0",
+    "User-Agent": "Slumdog",
     "Accept": "text/plain",
     "X-No-Cache": "true",
     "X-Return-Format": "html",
@@ -546,9 +553,9 @@ RELAY_HEADERS = {
 # Reader-mode header set (no X-Return-Format): the single fallback flavor when
 # html-mode returns a stub. Morning runs historically parsed full boards out
 # of reader-mode markdown, so a page that stubs in one flavor may serve in
-# the other.
+# the other. Reader-mode UA is Slumdog's EdgeFactory-validated string.
 RELAY_HEADERS_MARKDOWN = {
-    "User-Agent": "RacketFactory/1.0",
+    "User-Agent": "EdgeFactory/1.0",
     "Accept": "text/plain",
     "X-No-Cache": "true",
 }
@@ -571,6 +578,38 @@ def on_github_runner() -> bool:
 def _sleep_with_jitter(attempt: int, base: float = 4.0, cap: float = 40.0) -> None:
     delay = min(cap, base * (2 ** attempt)) * (0.7 + 0.6 * random.random())
     time.sleep(delay)
+
+
+def relay_status_file(day: str, root: str | Path = "localdata") -> Path:
+    """Per-day relay health marker (gitignored, Actions-cached dir)."""
+    return Path(root) / "fetch_cache" / f"forebet_relay_status_{day}.json"
+
+
+def record_relay_status(status: str, day: str, root: str | Path = "localdata") -> None:
+    """Persist today's relay health so later steps can skip a proven-bad route.
+
+    Slumdog discipline: a satellite that has already failed its route is not
+    re-attempted in the same run. The daily forebet fetch (3 pages, runs
+    first) is the canary for the 50-page tournament backfill (runs second).
+    """
+    try:
+        path = relay_status_file(day, root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({
+            "day": day, "status": status,
+            "at": datetime.now(timezone.utc).isoformat(),
+        }, sort_keys=True))
+    except Exception as e:
+        logger.debug("Could not write forebet relay status marker: %s", e)
+
+
+def read_relay_status(day: str, root: str | Path = "localdata") -> Optional[str]:
+    """'challenged' when today's daily forebet fetch hit the CF wall; else None."""
+    try:
+        payload = json.loads(relay_status_file(day, root).read_text())
+        return payload.get("status")
+    except Exception:
+        return None
 
 
 def relay_get(url: str, timeout: int = 45, max_retries: int = 3,

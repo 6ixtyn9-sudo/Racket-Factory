@@ -696,12 +696,15 @@ def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch, ca
     got = ForebetPredictor()._fetch_via_relay(
         "https://www.forebet.com/en/tennis/predictions/2026-09-13")
     assert got is not None and "/tennis/matches/" in got
-    # Slumdog header set on the relay request.
+    # Slumdog header set on the relay request — including the exact UAs
+    # Slumdog's capture receipts prove work from GitHub Actions (its own
+    # "RacketFactory/1.0" UA was CF-challenged 2026-09-18).
     assert len(calls) == 1
     assert calls[0].full_url.startswith("https://r.jina.ai/https://www.forebet.com/")
     sent = sent_headers(calls[0])
     assert sent.get("x-no-cache") == "true"
     assert sent.get("x-return-format") == "html"
+    assert sent.get("user-agent") == "Slumdog"
 
     # Stub in both flavors -> None after exactly one reader-mode retry (no
     # ?fb= cache-buster: X-No-Cache replaces that workaround), and the
@@ -733,6 +736,8 @@ def test_fetch_via_relay_sends_slumdog_headers_and_rejects_stubs(monkeypatch, ca
     got = ForebetPredictor()._fetch_via_relay("https://www.forebet.com/en/tennis/x")
     assert got is not None and "Markdown Content:" in got
     assert len(calls) == 2
+    # Reader-mode retry uses Slumdog's EdgeFactory-validated UA, no html format.
+    assert sent_headers(calls[1]).get("user-agent") == "EdgeFactory/1.0"
 
     # Relay 403 -> None with a single attempt: transport failures get no
     # reader-mode retry.
@@ -906,6 +911,44 @@ def test_relay_empty_board_still_accepted(monkeypatch):
     assert ForebetPredictor()._fetch_via_relay(
         "https://www.forebet.com/en/tennis/atp-singles/bastad",
         expect_matches=False) is not None
+
+
+def test_relay_status_marker_roundtrip(tmp_path):
+    from racketfactory.sources.forebet import read_relay_status, record_relay_status
+
+    day = "2026-09-18"
+    assert read_relay_status(day, tmp_path) is None  # absent -> None
+    record_relay_status("challenged", day, tmp_path)
+    assert read_relay_status(day, tmp_path) == "challenged"
+    # A different day's marker must not leak into today's gate.
+    assert read_relay_status("2026-09-19", tmp_path) is None
+    # Corrupt marker fails soft to None (never raises into the pipeline).
+    bad = tmp_path / "fetch_cache" / f"forebet_relay_status_{day}.json"
+    bad.write_text("not json")
+    assert read_relay_status(day, tmp_path) is None
+
+
+def test_tournament_mode_skips_when_relay_challenged(tmp_path, monkeypatch):
+    from scripts import backfill_forebet
+
+    class Args:
+        output_dir = str(tmp_path)
+        warehouse = str(tmp_path / "does-not-exist.csv.gz")
+        limit = 50
+        delay = 2
+
+    backfill_forebet.record_relay_status(
+        "challenged", _today_iso(), str(tmp_path))
+    # Gate fires BEFORE the warehouse load, so a missing warehouse file is
+    # fine — a non-gated run would have returned 1 with a load error.
+    assert backfill_forebet.mode_tournament(Args()) == 0
+    # No marker -> gate open (the per-run latch is the remaining guard).
+    assert backfill_forebet.read_relay_status(_today_iso(), str(tmp_path / "else")) is None
+
+
+def _today_iso() -> str:
+    from datetime import date
+    return date.today().isoformat()
 
 
 def test_relay_get_retries_transient_statuses_only(monkeypatch):
