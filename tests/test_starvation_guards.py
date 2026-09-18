@@ -886,6 +886,105 @@ def test_relay_challenge_counter_resets_on_real_board(monkeypatch):
     assert p.relay_blocked is True   # new streak reaches 3
 
 
+def test_relay_forebet_404_streak_fails_fast(monkeypatch, caplog):
+    """Run 35399503550: with the Jina key the relay reached Forebet, so dead
+    warehouse slugs surface as real 404 content pages (15/15 dead). Each one
+    burns a relay call for a guaranteed empty board, so fail fast after 3."""
+    import urllib.request
+
+    not_found = ("<html><head><title>404 - Error: 404</title></head><body>"
+                 "<h1>Forebet 404 Error</h1>Not what you were looking for?"
+                 "</body></html>")
+
+    calls = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return not_found.encode()
+
+    def fake_urlopen(request, timeout=None):
+        calls.append(request)
+        return FakeResponse()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    p = ForebetPredictor()
+    with caplog.at_level("WARNING", logger="racketfactory.sources.forebet"):
+        # A real 404 is authoritative (no reader retry), so 1 call per URL.
+        for i in range(3):
+            assert p._fetch_via_relay(
+                f"https://www.forebet.com/en/tennis/atp-singles/dead-{i}",
+                expect_matches=False) is None
+    assert len(calls) == 3
+    assert p.notfound_blocked is True
+    assert "failing fast" in caplog.text
+
+    # Once latched, the deep fetch short-circuits WITHOUT another relay call.
+    calls.clear()
+    assert p.fetch_tournament_predictions("ATP", "Bastad") == []
+    assert calls == []
+
+
+def test_relay_forebet_404_counter_resets_on_real_board(monkeypatch):
+    """Streak of 404s is broken by a real board (a live tournament page),
+    so a single dead slug among live ones never latches the run."""
+    import urllib.request
+
+    not_found = ("<html><head><title>404 - Error: 404</title></head><body>"
+                 "<h1>Forebet 404 Error</h1>Not what you were looking for?"
+                 "</body></html>")
+    board = ("<html><head><title>Tennis predictions | Forebet</title></head>"
+             "<body>atp-singles live board" + "rows " * 800 + "</body></html>")
+
+    bodies = {
+        "u1": not_found,
+        "u2": not_found,
+        "u3": board,          # live page mid-run resets the streak
+        "u4": not_found,
+        "u5": not_found,      # fresh streak of 2: still below 3
+        "u6": not_found,      # new streak reaches 3
+    }
+
+    class FakeResponse:
+        def __init__(self, body):
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self._body
+
+    def fake_urlopen(request, timeout=None):
+        url = request.full_url.rsplit("/", 1)[-1]
+        return FakeResponse(bodies[url].encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    p = ForebetPredictor()
+    assert p._fetch_via_relay("u1", expect_matches=False) is None
+    assert p.notfound_blocked is False
+    assert p._fetch_via_relay("u2", expect_matches=False) is None
+    assert p.notfound_blocked is False  # streak of 2: below 3
+    got = p._fetch_via_relay("u3", expect_matches=False)
+    assert got is not None
+    assert p.notfound_blocked is False  # latch released
+    assert p._notfound_hits == 0        # streak reset by the good board
+    assert p._fetch_via_relay("u4", expect_matches=False) is None
+    assert p.notfound_blocked is False  # fresh streak of 1: no latch
+    assert p._fetch_via_relay("u5", expect_matches=False) is None
+    assert p.notfound_blocked is False  # fresh streak of 2: below 3
+    assert p._fetch_via_relay("u6", expect_matches=False) is None
+    assert p.notfound_blocked is True   # new streak reaches 3
+
+
 def test_relay_empty_board_still_accepted(monkeypatch):
     """Regression: with expect_matches=False a legitimate board WITHOUT match
     links (empty tournament) must still pass — only challenge shells are new

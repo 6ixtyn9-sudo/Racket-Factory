@@ -248,8 +248,13 @@ def mode_tournament(args) -> int:
             )
         time.sleep(args.delay)
 
-    blocked_note = (" [relay blocked by Cloudflare challenge — failing fast]"
-                    if predictor.relay_blocked else "")
+    if predictor.relay_blocked:
+        blocked_note = " [relay blocked by Cloudflare challenge — failing fast]"
+    elif predictor.notfound_blocked:
+        blocked_note = (" [warehouse slugs dead: 3+ consecutive 404 content pages "
+                        "— failing fast for this run]")
+    else:
+        blocked_note = ""
     logger.info("Tournament mode complete: %d matched predictions, %d skipped (no date)%s.",
                 matched_count, dateless_skipped, blocked_note)
     _write_predictions(predictions, args.output_dir)

@@ -678,11 +678,22 @@ class ForebetPredictor:
         # passed the sport-label check and parsed to 0 silently).
         self._challenge_hits = 0
         self._relay_blocked = False
+        # Dead-slug streak (run 35399503550: with the Jina key the relay
+        # reached Forebet, so warehouse-derived tournament slugs that no
+        # longer exist surface as real 404 content pages — 15/15 dead,
+        # each burning ~15s of relay time for a guaranteed empty board).
+        self._notfound_hits = 0
+        self._notfound_blocked = False
 
     @property
     def relay_blocked(self) -> bool:
         """True once the relay served CF challenge pages 3x consecutively."""
         return self._relay_blocked
+
+    @property
+    def notfound_blocked(self) -> bool:
+        """True once 3 consecutive pages returned real Forebet 404s (dead slugs)."""
+        return self._notfound_blocked
 
     @staticmethod
     def _is_cf_challenge(text: str) -> bool:
@@ -704,9 +715,21 @@ class ForebetPredictor:
                 "— failing fast for this run (no further relay attempts)"
             )
 
+    def _note_notfound(self, mode: str, url: str) -> None:
+        self._notfound_hits += 1
+        if self._notfound_hits >= 3 and not self._notfound_blocked:
+            self._notfound_blocked = True
+            logger.warning(
+                "Forebet returned real 404 content pages 3 consecutive times "
+                "(last: %s) — warehouse slugs appear stale/dead; failing fast "
+                "for this run (no further tournament page attempts)", url,
+            )
+
     def _note_board_ok(self) -> None:
         self._challenge_hits = 0
         self._relay_blocked = False
+        self._notfound_hits = 0
+        self._notfound_blocked = False
 
     # ------------------------------------------------------------------
     # Low-level fetch (Slumdog-style: relay first, direct local-only)
@@ -747,6 +770,7 @@ class ForebetPredictor:
             return False
         if self._is_forebet_404(text):
             logger.warning("Forebet relay (%s) returned a 404 content page for %s", mode, url)
+            self._note_notfound(mode, url)
             return False
         if "tennis" not in text.lower():
             logger.warning("Forebet relay (%s) snapshot for %s lacks the sport label "
@@ -1431,6 +1455,10 @@ class ForebetPredictor:
         if self._relay_blocked:
             # Relay is CF-challenged for this run: each page would be another
             # identical shell. Skip without burning a relay call.
+            return []
+        if self._notfound_blocked:
+            # 3+ consecutive real 404s: warehouse slugs are stale/dead for
+            # this run, so every remaining page would 404 identically.
             return []
         tour_slug = forebet_tour_slug(tour)
         tourn_slug = forebet_tournament_slug(tournament)
