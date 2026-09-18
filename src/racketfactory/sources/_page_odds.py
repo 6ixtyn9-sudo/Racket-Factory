@@ -162,6 +162,34 @@ _CLIMB_MAX_LEVELS = 6
 _CLIMB_MAX_CHARS = 8000
 
 
+def _resolve_link_names(link: Tag, is_match_link: Callable[[str], dict[str, Any] | None]) -> tuple[str, str, str]:
+    """Resolve (home, away, names_text) for a match link.
+
+    Primary: the anchor's own text ('A - B', fused 'A B'). Fallback (observed
+    2026-09-18, BetExplorer): one match rendered as TWO sibling anchors on the
+    same match href ('<a>Borisiouk M.</a> vs <a>Kim D. J.</a>') — join their
+    texts in DOM order and split the union. The fallback fires only when the
+    parent holds exactly those two anchors, both are match links to the same
+    href, and the joined text splits cleanly, so it cannot invent matches.
+    """
+    txt = link.get_text(" ", strip=True)
+    home, away = split_match_names(txt)
+    if home and away:
+        return home, away, txt
+    parent = link.parent
+    if isinstance(parent, Tag):
+        anchors = [c for c in parent.children
+                   if isinstance(c, Tag) and c.name == "a" and c.get("href")]
+        if len(anchors) == 2 and link in anchors:
+            hrefs = [str(a.get("href") or "") for a in anchors]
+            if hrefs[0] == hrefs[1] and is_match_link(hrefs[0]) is not None:
+                joined = " vs ".join(a.get_text(" ", strip=True) for a in anchors)
+                h2, a2 = split_match_names(joined)
+                if h2 and a2:
+                    return h2, a2, joined
+    return "", "", txt
+
+
 def _is_player_anchor(anchor: Tag, is_match_link: Callable[[str], dict[str, Any] | None]) -> tuple[str, str, dict[str, Any]] | None:
     """Return (home, away, ctx) if anchor looks like a player-vs-player link."""
     href = str(anchor.get("href") or "")
@@ -173,7 +201,7 @@ def _is_player_anchor(anchor: Tag, is_match_link: Callable[[str], dict[str, Any]
     # e.g. BetExplorer score links like "1:3" or "CAN." etc.
     if not txt or len(txt) < 5:
         return None
-    home, away = split_match_names(txt)
+    home, away, _ = _resolve_link_names(anchor, is_match_link)
     if not home or not away:
         return None
     return home, away, ctx
@@ -181,9 +209,17 @@ def _is_player_anchor(anchor: Tag, is_match_link: Callable[[str], dict[str, Any]
 
 def _match_link_count(container: Tag, is_match_link: Callable[[str], dict[str, Any] | None]) -> int:
     n = 0
+    seen: set[tuple[str, str]] = set()
     for anchor in container.find_all("a", href=True):
-        if _is_player_anchor(anchor, is_match_link) is None:
+        resolved = _is_player_anchor(anchor, is_match_link)
+        if resolved is None:
             continue
+        # Two sibling anchors of the SAME match (BetExplorer two-anchor
+        # rendering) resolve to one identity, not two.
+        ident = (resolved[0], resolved[1])
+        if ident in seen:
+            continue
+        seen.add(ident)
         n += 1
         if n > 1:
             break
@@ -531,15 +567,18 @@ def parse_listing_page(
     n_finished = n_few_decimals = n_dupes = 0
     few_samples: list[str] = []
     bad_samples: list[str] = []
+    rejected_href_samples: list[str] = []
     for link in soup.find_all("a", href=True):
         n_links += 1
         href = str(link.get("href") or "")
         ctx = is_match_link(href)
         if ctx is None:
+            if len(rejected_href_samples) < 5:
+                rejected_href_samples.append(href)
             continue
         n_match += 1
-        names_text = link.get_text(" ", strip=True)
-        home, away = split_match_names(names_text)
+        # Two-anchor matches resolve via the parent (names_text = joined text)
+        home, away, names_text = _resolve_link_names(link, is_match_link)
         if not home or not away:
             n_bad_names += 1
             if len(bad_samples) < 3:
@@ -595,4 +634,10 @@ def parse_listing_page(
         logger.info("%s few-decimals sample: %r", source_label, sample[:180])
     for sample in bad_samples:
         logger.info("%s bad-names sample: %r", source_label, sample[:180])
+    if n_match == 0 and n_links >= 20:
+        # Zero match links on a populated listing = URL-shape drift. Log the
+        # rejected hrefs so the next Actions run is debuggable without a
+        # live re-fetch (2026-09-18: OddsPortal scan links=183 match_links=0).
+        for sample in rejected_href_samples:
+            logger.info("%s rejected-href sample: %r", source_label, sample[:160])
     return rows

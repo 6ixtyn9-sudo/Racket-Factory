@@ -169,3 +169,49 @@ def test_no_retry_without_429(monkeypatch):
     monkeypatch.setattr(po.time, "sleep", lambda s: sleeps.append(s))
     assert po.fetch_page_html("http://x/", "T") == ""
     assert sleeps == []
+
+
+TWO_ANCHOR_ROW = """
+<html><body><table>
+<tr>
+<td><a href="/m/xyz/">Borisiouk M.</a> vs <a href="/m/xyz/">Kim D. J.</a></td>
+<td>1.45</td><td>2.80</td>
+</tr>
+<tr><td><a href="/m/other/">Alpha B. - Beta C.</a></td><td>1.90</td><td>1.90</td></tr>
+</table></body></html>
+"""
+
+
+def test_two_sibling_anchors_same_href_parse_as_one_match():
+    rows = po.parse_listing_page(TWO_ANCHOR_ROW, source_label="T", is_match_link=_is_match,
+                                 page_date="2026-09-18")
+    assert len(rows) == 2
+    by_home = {r["player_home"]: r for r in rows}
+    twin = by_home["Borisiouk M."]
+    assert twin["player_away"] == "Kim D. J."
+    assert (twin["odds_home"], twin["odds_away"]) == (1.45, 2.80)
+
+
+TWO_ANCHOR_DIFFERENT_HREFS = """
+<html><body><table>
+<tr>
+<td><a href="/m/aaa/">Borisiouk M.</a> vs <a href="/m/bbb/">Kim D. J.</a></td>
+<td>1.45</td><td>2.80</td>
+</tr>
+</table></body></html>
+"""
+
+
+def test_two_anchors_different_hrefs_not_merged():
+    rows = po.parse_listing_page(TWO_ANCHOR_DIFFERENT_HREFS, source_label="T",
+                                 is_match_link=_is_match, page_date="2026-09-18")
+    assert rows == []
+
+
+def test_two_anchor_match_box_not_rejected_by_link_count():
+    from bs4 import BeautifulSoup
+
+    # The tr holds two anchors of one match: link count must be 1, not 2,
+    # or _row_container would refuse the box and the row would be lost.
+    tr = BeautifulSoup(TWO_ANCHOR_ROW, "html.parser").find("tr")
+    assert po._match_link_count(tr, _is_match) == 1
