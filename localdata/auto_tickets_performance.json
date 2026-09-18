@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-18T16:09:26",
+  "generated_at": "2026-09-19T00:09:36",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 194.536776,
@@ -2437,35 +2437,21 @@
       "staked_pct": 8.3477
     },
     {
-      "date": "2026-09-17",
-      "staked_pct": 28.656,
-      "return_pct": 116.91647999999999,
-      "pnl_pct": 88.26048,
-      "bank_pct": 194.536776,
-      "paper_staked_pct": 0.0,
-      "paper_return_pct": 0.0,
-      "paper_pnl_pct": 0.0,
-      "paper_bank_pct": 100.0,
       "accas": [
         {
-          "odds": 4.08,
-          "won": true,
-          "stake_pct": 28.656,
-          "return_pct": 116.91647999999999,
-          "type": "fallback_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-17",
-                "score": "6-2 4-6 6-4",
-                "winner": "Jorge F.",
                 "result_id": "3325139.0",
+                "score": "6-2 4-6 6-4",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Jorge F."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-17 6-2 4-6 6-4",
@@ -2528,13 +2514,13 @@
               "_market_basis": "api",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-18",
-                "score": "4-6 7-6 6-4",
-                "winner": "De Stefano S.",
                 "result_id": "3325705.0",
+                "score": "4-6 7-6 6-4",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "De Stefano S."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-18 4-6 7-6 6-4",
@@ -2593,11 +2579,25 @@
               "tournament": "Ljubljana - Quarter-finals"
             }
           ],
+          "odds": 4.08,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 116.91647999999999,
+          "stake_pct": 28.656,
+          "type": "fallback_2leg_mutual",
+          "unpriced": false,
+          "won": true
         }
-      ]
+      ],
+      "bank_pct": 194.536776,
+      "date": "2026-09-17",
+      "paper_bank_pct": 100.0,
+      "paper_pnl_pct": 0.0,
+      "paper_return_pct": 0.0,
+      "paper_staked_pct": 0.0,
+      "pnl_pct": 88.26048,
+      "return_pct": 116.91647999999999,
+      "staked_pct": 28.656
     }
   ]
 }

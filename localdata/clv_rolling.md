@@ -1,17 +1,17 @@
 # Racket Factory — CLV & Calibration Rolling
 
-Generated 2026-09-18
+Generated 2026-09-19
 
 ## Confidence Calibration (prob vs actual win rate)
 | Band | N | Wins | Hit Rate | Expected | Error | Wilson LB |
 |---|---|---|---|---|---|---|
-| High (70%+) | 271 | 201 | 0.7417 | 0.7 | 0.0417 | 0.6865 |
-| Low (<60%) | 831 | 466 | 0.5608 | 0.5 | 0.0608 | 0.5268 |
-| Medium (60-70%) | 457 | 324 | 0.709 | 0.6 | 0.109 | 0.6657 |
+| High (70%+) | 279 | 204 | 0.7312 | 0.7 | 0.0312 | 0.6763 |
+| Low (<60%) | 887 | 486 | 0.5479 | 0.5 | 0.0479 | 0.515 |
+| Medium (60-70%) | 480 | 326 | 0.6792 | 0.6 | 0.0792 | 0.6361 |
 
 ## ROI by Tour (from audit)
 | Tour | N | ROI | Hit Rate |
 |---|---|---|---|
 | ATP | 0 | None | None |
-| CHALLENGER | 40 | -0.214054 | 0.475 |
-| WTA | 9 | -0.265714 | 0.444444 |
+| CHALLENGER | 41 | -0.202895 | 0.487805 |
+| WTA | 10 | -0.18125 | 0.5 |
