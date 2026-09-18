@@ -26,6 +26,7 @@ Implements:
 from __future__ import annotations
 import json
 import math
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -39,6 +40,34 @@ if not LOCALDATA.exists():
         LOCALDATA = alt
 
 Z95 = 1.959963984540054
+
+
+def get_min_ev_real() -> float:
+    """Minimum EV for a REAL (stakeable) leg.
+
+    Prompt 2026-09-18: +2%+ (0% too low; blocks negative-EV shorts). The
+    post-RED-DAY 1% tuning is restorable via RACKET_FACTORY_MIN_EV=0.01.
+    The BOOST+Both+High-conf exception in the gates below still narrows the
+    floor to +1% for proven contexts.
+    """
+    try:
+        return float(os.environ.get("RACKET_FACTORY_MIN_EV", "0.02"))
+    except (TypeError, ValueError):
+        return 0.02
+
+
+def get_min_odds_base() -> float:
+    """Base minimum per-leg odds (non-BOOST legs).
+
+    Prompt 2026-09-18: 1.30 (1.19/1.24 shorts at EV -20% cost -12.68% bank).
+    BOOST legs may still go to 1.15 with EV >= 1% (see auto_tickets). The
+    post-RED-DAY 1.20 floor is restorable via RACKET_FACTORY_MIN_ODDS=1.20.
+    """
+    try:
+        return float(os.environ.get("RACKET_FACTORY_MIN_ODDS", "1.30"))
+    except (TypeError, ValueError):
+        return 1.30
+
 
 def wilson_bounds(wins: int, n: int, z: float = Z95) -> tuple[float, float]:
     if n <= 0:
@@ -611,9 +640,10 @@ def monitor_performance() -> dict:
     except Exception:
         pass
 
+    base_min_odds = get_min_odds_base()
     if high_hit >= 0.80:
-        adjustments["min_odds_per_leg"] = 1.20
-        adjustments["reason"] = f"High conf hit {high_hit:.0%} >=80%, can lower min leg to 1.20"
+        adjustments["min_odds_per_leg"] = base_min_odds
+        adjustments["reason"] = f"High conf hit {high_hit:.0%} >=80%, min leg {base_min_odds}"
     else:
         adjustments["min_odds_per_leg"] = 1.35
 
@@ -660,7 +690,7 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
         # Revised: require EV >= +1% for REAL track (was 2%, too strict blocked Bejlek 0.7% winner and 1.08% leg)
         # User said 0% too low, so 1% is sweet spot: blocks -20% losers, allows +1% winners, still prefers NO BET over loss
         # Doubles 0/5 losing -40% need EV>=5% + prob>=65% (see doubles filter below)
-        min_ev_real = 0.01  # 1% edge (was 2% too strict, 0% too low per user)
+        min_ev_real = get_min_ev_real()  # 2% default; 1% restorable via RACKET_FACTORY_MIN_EV
         # DOUBLES FILTER: audit shows doubles 0W/5L -40% ROI losing, singles 18W/49L -19% also losing but better
         # Require higher EV for doubles: >=5% always, no exception even for BOOST (doubles are high variance)
         # This blocks RED DAY doubles: Rogers 1.31 EV -14%, Falkowska 1.36 EV -11%, Ciric 1.19 EV -20% etc

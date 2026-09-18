@@ -260,6 +260,10 @@ def _run_mine(tmp_path, monkeypatch, rows, target):
 
 
 def test_mine_mines_unsettled_nonlive_row(tmp_path, monkeypatch):
+    # This test exercises the starvation/live-only fallback, not the EV gate:
+    # pin the post-RED-DAY 1% floor so the fixture pick (1-2% calibrated EV
+    # band) is not vetoed by the 2% default (prompt 2026-09-18).
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
     target = "2026-09-13"
     rows = [_settled_row(i) for i in range(5)]  # too few for any slice
     rows.append({"match_date": target, "tour": "ATP", "tournament": "US Open",
@@ -447,6 +451,8 @@ def test_placeholder_dim_values_exclude_unknown_variants():
 
 
 def test_mine_unactionable_slices_still_exports_live_only(tmp_path, monkeypatch, caplog):
+    # Starvation-fallback test: pin the 1% EV floor (see sibling test).
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
     target = "2026-09-13"
     # 20 settled rows: slices mine at N=20 (min-n 15) but stay unexportable
     # (min-export-n 50) however the verdict lands. Mirrors run #206, where 5

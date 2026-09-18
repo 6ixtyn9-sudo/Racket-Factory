@@ -32,7 +32,8 @@ LOCALDATA = ROOT / "localdata"
 try:
     from racketfactory.ml import (
         load_audit_rolling, build_context_registry, score_pick_strengths, source_weights_from_audit,
-        ml_predict_proba, ml_ev, ml_answer_odds_question, monitor_performance, load_clv_rolling
+        ml_predict_proba, ml_ev, ml_answer_odds_question, monitor_performance, load_clv_rolling,
+        get_min_ev_real, get_min_odds_base
     )
     _ML_AVAILABLE = True
 except Exception as _ml_e:
@@ -46,6 +47,8 @@ except Exception as _ml_e:
     ml_answer_odds_question = lambda odds, prob, ctx=None: {"verdict": "UNKNOWN", "explanation": ""}
     monitor_performance = lambda: {}
     load_clv_rolling = lambda: {}
+    get_min_ev_real = lambda: 0.02
+    get_min_odds_base = lambda: 1.30
 
 GENERATE_HOUR_START = 6
 FREEZE_HOUR = 9
@@ -57,21 +60,21 @@ PLAYABLE_BUCKETS = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION"}
 PLAYABLE_BUCKETS_WITH_ML = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "WATCHLIST_NO_ODDS"}
 
 def _get_min_odds_per_leg() -> float:
-    """Dynamic min odds: CAPITAL PROTECTION MODE after RED DAY 2026-09-16
-    User: rather NO BET than losing money. Old 1.20 allowed 1.19/1.24 shorts with EV -20% that lost -12.68% bank 133%->114%.
-    Revised: base 1.20 (was 1.30 too strict causing NO BET on 2026-09-17), BOOST 1.15 (was 1.20), EV>=1% (was 2% too strict)
-    1.05 EV -11.8% still blocked by EV>=1%, not just odds floor. Winners 1.22-1.40 allowed.
+    """Dynamic min odds: CAPITAL PROTECTION (prompt 2026-09-18: base 1.30).
+    1.19/1.24 shorts with EV -20% once lost -12.68% bank. Base is
+    get_min_odds_base() (1.30, restorable to the RED-DAY 1.20 via
+    RACKET_FACTORY_MIN_ODDS); BOOST legs still reach 1.15 with EV>=1%.
     """
+    base = get_min_odds_base()
     try:
         health = monitor_performance()
         adj = health.get("adjustments", {}) if isinstance(health, dict) else {}
         if "min_odds_per_leg" in adj:
-            # Respect ML monitor but never go below 1.20 for capital protection (was 1.30 too strict)
-            return max(1.20, float(adj["min_odds_per_leg"]))
+            # Respect ML monitor but never go below the capital-protection base
+            return max(base, float(adj["min_odds_per_leg"]))
     except Exception:
         pass
-    # CAPITAL PROTECTION: 1.20 base (was 1.30 too strict), BOOST 1.15 (was 1.20) + EV>=1% blocks 1.05 -11% EV
-    return 1.20
+    return base
 
 MIN_ODDS_PER_LEG = _get_min_odds_per_leg()
 MIN_ODDS_BOOST = 1.15  # BOOST down to 1.15 (was 1.20 too strict, was 1.10 too loose) + EV>=1% blocks 1.05 -11%
@@ -607,7 +610,7 @@ def build_accas(pool):
                         ev = float(ml_ev_raw)
                         match_str = str(p.get("match") or "")
                         is_doubles = "/" in match_str
-                        min_ev = 0.05 if is_doubles else 0.01
+                        min_ev = 0.05 if is_doubles else get_min_ev_real()
                         if ev < min_ev:
                             if is_doubles:
                                 continue
