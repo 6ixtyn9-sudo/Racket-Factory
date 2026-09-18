@@ -773,6 +773,141 @@ def test_fetch_via_relay_skips_reader_retry_on_forebet_404(monkeypatch):
     assert len(calls) == 1
 
 
+# Run 35311356382: every deep tournament page came back as a ~7.9KB
+# Cloudflare "Just a moment..." shell. The shell echoes the requested URL
+# (which contains /tennis/), so it PASSED the sport-label check and the
+# parsers silently returned 0 predictions for all 50 pages.
+
+
+def _cf_shell(url: str) -> str:
+    """Challenge stub shaped like the 7.9KB shells from run 35311356382:
+    contains the requested URL (=> 'tennis' present) but no board content."""
+    return (
+        '<html lang="en-US"><head><title>Just a moment...</title>'
+        "<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>"
+        '<meta name="robots" content="noindex,nofollow"></head><body>'
+        f'<div id="challenge-running"><a href="{url}">Verifying...</a></div>'
+        + "cf padding " * 400
+        + "</body></html>"
+    )
+
+
+def test_relay_challenge_shell_discarded_and_fails_fast(monkeypatch, caplog):
+    import urllib.request
+
+    class FakeResponse:
+        def __init__(self, body):
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self._body
+
+    def fake_urlopen(request, timeout=None):
+        return FakeResponse(_cf_shell(request.full_url.replace("https://r.jina.ai/", "")).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    p = ForebetPredictor()
+    with caplog.at_level("WARNING", logger="racketfactory.sources.forebet"):
+        # expect_matches=False is the deep tournament path (looser check).
+        for _ in range(3):
+            assert p._fetch_via_relay("https://www.forebet.com/en/tennis/atp-singles/bastad",
+                                      expect_matches=False) is None
+    assert p.relay_blocked is True
+    assert "Cloudflare challenge page" in caplog.text
+    assert "failing fast" in caplog.text
+
+    # Once latched, the deep fetch short-circuits WITHOUT another relay call.
+    fetched = []
+    monkeypatch.setattr(p, "_fetch_tournament_page",
+                        lambda *a, **k: fetched.append(1) or "body")
+    assert p.fetch_tournament_predictions("ATP", "Bastad") == []
+    assert fetched == []
+
+
+def test_relay_challenge_counter_resets_on_real_board(monkeypatch):
+    import urllib.request
+
+    board = ("<html><head><title>Tennis predictions | Forebet</title></head><body>"
+             "atp-singles bastad board" + "rows " * 800 + "</body></html>")
+
+    # Per-URL bodies: both relay flavors (html + reader retry) for a given
+    # URL return the same body, so each challenged URL records 2 challenge
+    # snapshots and the streak of 3 latches mid-URL-2.
+    bodies = {
+        "u1": _cf_shell("https://www.forebet.com/en/tennis/atp-singles/t1"),
+        "u2": _cf_shell("https://www.forebet.com/en/tennis/atp-singles/t2"),
+        "u3": board,  # relay recovers mid-run
+        "u4": _cf_shell("https://www.forebet.com/en/tennis/atp-singles/t3"),
+        "u5": _cf_shell("https://www.forebet.com/en/tennis/atp-singles/t4"),
+    }
+
+    class FakeResponse:
+        def __init__(self, body):
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self._body
+
+    def fake_urlopen(request, timeout=None):
+        # request.full_url is the relay-wrapped URL: RELAY_BASE + url
+        url = request.full_url.rsplit("/", 1)[-1]
+        return FakeResponse(bodies[url].encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    p = ForebetPredictor()
+    assert p._fetch_via_relay("u1", expect_matches=False) is None
+    assert p.relay_blocked is False  # streak of 2: below 3
+    assert p._fetch_via_relay("u2", expect_matches=False) is None
+    assert p.relay_blocked is True   # streak hits 3 mid-URL
+    got = p._fetch_via_relay("u3", expect_matches=False)
+    assert got is not None           # real board accepted
+    assert p.relay_blocked is False  # latch released
+    assert p._challenge_hits == 0    # streak reset by the good board
+    assert p._fetch_via_relay("u4", expect_matches=False) is None
+    assert p.relay_blocked is False  # fresh streak of 2: no latch
+    assert p._fetch_via_relay("u5", expect_matches=False) is None
+    assert p.relay_blocked is True   # new streak reaches 3
+
+
+def test_relay_empty_board_still_accepted(monkeypatch):
+    """Regression: with expect_matches=False a legitimate board WITHOUT match
+    links (empty tournament) must still pass — only challenge shells are new
+    rejects."""
+    import urllib.request
+
+    empty_board = ("<html><head><title>Tennis predictions | Forebet</title></head>"
+                   "<body>atp-singles bastad, no matches today" + "nav " * 800
+                   + "</body></html>")
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return empty_board.encode()
+
+    monkeypatch.setattr(urllib.request, "urlopen",
+                        lambda request, timeout=None: FakeResponse())
+    assert ForebetPredictor()._fetch_via_relay(
+        "https://www.forebet.com/en/tennis/atp-singles/bastad",
+        expect_matches=False) is not None
+
+
 def test_relay_get_retries_transient_statuses_only(monkeypatch):
     import time
     import urllib.error

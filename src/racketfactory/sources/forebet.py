@@ -615,6 +615,40 @@ class ForebetPredictor:
         self.impersonate = impersonate
         self._session = requests.Session()
         self._session.impersonate = impersonate
+        # Cloudflare challenge streak on the relay (run 35311356382: 50/50
+        # deep tournament pages were ~7.9KB "Just a moment..." shells that
+        # passed the sport-label check and parsed to 0 silently).
+        self._challenge_hits = 0
+        self._relay_blocked = False
+
+    @property
+    def relay_blocked(self) -> bool:
+        """True once the relay served CF challenge pages 3x consecutively."""
+        return self._relay_blocked
+
+    @staticmethod
+    def _is_cf_challenge(text: str) -> bool:
+        lower = text.lower()
+        return ("just a moment" in lower
+                or "challenge-error" in lower
+                or "attention required" in lower)
+
+    def _note_challenge(self, mode: str, url: str, text: str) -> None:
+        self._challenge_hits += 1
+        logger.warning(
+            "Forebet relay (%s) returned a Cloudflare challenge page for %s "
+            "(%d bytes) — discarded; head=%r", mode, url, len(text), text[:200],
+        )
+        if self._challenge_hits >= 3 and not self._relay_blocked:
+            self._relay_blocked = True
+            logger.warning(
+                "Forebet relay blocked by Cloudflare for 3 consecutive pages "
+                "— failing fast for this run (no further relay attempts)"
+            )
+
+    def _note_board_ok(self) -> None:
+        self._challenge_hits = 0
+        self._relay_blocked = False
 
     # ------------------------------------------------------------------
     # Low-level fetch (Slumdog-style: relay first, direct local-only)
@@ -647,6 +681,12 @@ class ForebetPredictor:
         stub species from evidence instead of guessing (run #220: identical
         5919-byte stubs for two different dates).
         """
+        if self._is_cf_challenge(text):
+            # Challenge shells echo the requested URL (which contains
+            # /tennis/), so they would pass the sport-label check below and
+            # parse to 0 predictions silently.
+            self._note_challenge(mode, url, text)
+            return False
         if self._is_forebet_404(text):
             logger.warning("Forebet relay (%s) returned a 404 content page for %s", mode, url)
             return False
@@ -677,6 +717,7 @@ class ForebetPredictor:
         if html is None:
             return None
         if self._looks_like_board(html, url, expect_matches, "html"):
+            self._note_board_ok()
             logger.info("Forebet fetched via relay (html) for %s (%d bytes)", url, len(html))
             return html
         if self._is_forebet_404(html):
@@ -686,6 +727,7 @@ class ForebetPredictor:
         if md is None:
             return None
         if self._looks_like_board(md, url, expect_matches, "markdown"):
+            self._note_board_ok()
             logger.info("Forebet fetched via relay (markdown) for %s (%d bytes)", url, len(md))
             return md
         return None
@@ -983,7 +1025,7 @@ class ForebetPredictor:
                 context.close()
                 browser.close()
                 if html and len(html) > 1000:
-                    if "Just a moment" in html or "challenge-error" in html:
+                    if self._is_cf_challenge(html):
                         logger.warning("Forebet Playwright still got CF challenge for %s", url)
                         return None
                     return html
@@ -1027,7 +1069,7 @@ class ForebetPredictor:
                     resp = cffi_requests.get(url, impersonate=imp, headers=headers, timeout=30)
                     if resp.status_code == 200:
                         txt = resp.text
-                        if "Just a moment" in txt or "challenge-error" in txt or "Attention Required" in txt:
+                        if self._is_cf_challenge(txt):
                             logger.info("Forebet CF challenge with %s for %s", imp, url)
                             continue
                         # Must have some prediction marker or reasonable size
@@ -1061,7 +1103,7 @@ class ForebetPredictor:
                 browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False}
             )
             r = scraper.get(url, headers=headers, timeout=30)
-            if r.status_code == 200 and "Just a moment" not in r.text and len(r.text) > 2000:
+            if r.status_code == 200 and not self._is_cf_challenge(r.text) and len(r.text) > 2000:
                 logger.info("Forebet fetched via cloudscraper for %s", url)
                 return r.text
         except ImportError:
@@ -1328,6 +1370,10 @@ class ForebetPredictor:
         Deep search fix: tournament pages via relay return HTML without tnmscn anchors,
         but Jina markdown contains match blocks — try both parsers.
         """
+        if self._relay_blocked:
+            # Relay is CF-challenged for this run: each page would be another
+            # identical shell. Skip without burning a relay call.
+            return []
         tour_slug = forebet_tour_slug(tour)
         tourn_slug = forebet_tournament_slug(tournament)
         body = self._fetch_tournament_page(tour_slug, tourn_slug)
