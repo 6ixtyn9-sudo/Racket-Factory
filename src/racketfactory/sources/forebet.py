@@ -273,7 +273,7 @@ TOURNAMENT_SLUGS: dict[str, str] = {
 
 
 def forebet_tour_slug(tour: str) -> str:
-    t = tour.upper().strip()
+    t = str(tour or "").strip().upper()
     if t == "ATP":
         return "atp-singles"
     if t == "WTA":
@@ -286,10 +286,11 @@ def forebet_tour_slug(tour: str) -> str:
 
 
 def forebet_tournament_slug(tournament: str) -> str:
-    if tournament in TOURNAMENT_SLUGS:
-        return TOURNAMENT_SLUGS[tournament]
+    t = str(tournament or "").strip()
+    if t in TOURNAMENT_SLUGS:
+        return TOURNAMENT_SLUGS[t]
     # Best-effort slugify
-    s = tournament.lower()
+    s = t.lower()
     s = re.sub(r"[^a-z0-9\s]", "", s)
     s = re.sub(r"\s+", "-", s).strip("-")
     return s
@@ -1445,24 +1446,38 @@ class ForebetPredictor:
     # ------------------------------------------------------------------
     # Public API: tournament predictions
     # ------------------------------------------------------------------
-    def fetch_tournament_predictions(self, tour: str, tournament: str) -> list[dict[str, Any]]:
+    def fetch_tournament_predictions(self, tour: str, tournament: str,
+                                     tour_slug: str | None = None,
+                                     tournament_slug: str | None = None) -> list[dict[str, Any]]:
         """
         Fetch and parse predictions for a given tour + tournament.
         Returns list of raw prediction dicts (home/away orientation).
         Deep search fix: tournament pages via relay return HTML without tnmscn anchors,
         but Jina markdown contains match blocks — try both parsers.
+
+        Slug resolution (run 35399503550: 15/15 deep pages 404): name-derived
+        slugs drift from Forebet's canonical ones ("Challenger Rennes Prediction"
+        -> challenger-rennes-prediction, but the live page is /challenger-men/rennes).
+        The live match links on daily boards carry the true (tour_slug,
+        tournament_slug) — pass them through to skip the name guesswork.
         """
         if self._relay_blocked:
             # Relay is CF-challenged for this run: each page would be another
             # identical shell. Skip without burning a relay call.
             return []
         if self._notfound_blocked:
-            # 3+ consecutive real 404s: warehouse slugs are stale/dead for
-            # this run, so every remaining page would 404 identically.
+            # 3+ consecutive real 404s: slugs are stale/dead for this run,
+            # so every remaining page would 404 identically.
             return []
-        tour_slug = forebet_tour_slug(tour)
-        tourn_slug = forebet_tournament_slug(tournament)
-        body = self._fetch_tournament_page(tour_slug, tourn_slug)
+        if tour_slug and tournament_slug:
+            # Live slugs from a daily-board match link — authoritative.
+            slug_tour, slug_tournament = tour_slug, tournament_slug
+            display = tournament or f"{tour_slug}/{tournament_slug}"
+        else:
+            slug_tour = forebet_tour_slug(tour)
+            slug_tournament = forebet_tournament_slug(tournament)
+            display = tournament
+        body = self._fetch_tournament_page(slug_tour, slug_tournament)
         if not body:
             return []
         preds = []
@@ -1482,7 +1497,7 @@ class ForebetPredictor:
             except Exception:
                 preds = self.parse_page(body)
         for p in preds:
-            p["tournament"] = tournament
+            p["tournament"] = display
         return preds
 
     # ------------------------------------------------------------------

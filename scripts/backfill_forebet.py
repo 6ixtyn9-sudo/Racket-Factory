@@ -28,7 +28,7 @@ import logging
 import re
 import sys
 import time
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 from collections import defaultdict
@@ -41,6 +41,8 @@ from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources.forebet import (
     ForebetPredictor,
     forebet_cache_key,
+    forebet_tour_slug,
+    forebet_tournament_slug,
     name_signature,
     name_signature_strict,
     read_relay_status,
@@ -134,8 +136,99 @@ def _write_predictions(predictions: list[dict], output_dir: Path) -> None:
         logger.info("Wrote %d predictions to %s", len(group), path)
 
 
+def _load_forebet_prediction_slugs(output_dir) -> pd.DataFrame:
+    """Live (tour_slug, tournament_slug) pairs from the monthly forebet captures.
+
+    Slug resolution (run 35399503550: 15/15 deep pages 404): name-derived
+    slugs drift from Forebet's canonical slugs and die, but the daily
+    boards' match links (/tennis/matches/{tour_slug}/{tournament_slug}/...)
+    carry the slugs Forebet itself generates — those resolve. The monthly
+    predictions CSV accumulates them day by day, so recent captures cover
+    every tournament that had Forebet matches in the window.
+    """
+    out_dir = Path(output_dir)
+    this_month = date.today().strftime("%Y-%m")
+    prev_month = (date.today().replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+    frames = []
+    # Previous month first: the current month's rows win duplicate identities
+    # (dedup below is keep="last") since they are the freshest captures.
+    for month in (prev_month, this_month):
+        path = out_dir / f"predictions_forebet_{month}.csv.gz"
+        if not path.exists():
+            continue
+        try:
+            fdf = pd.read_csv(path, low_memory=False)
+        except Exception as e:
+            logger.warning("Could not read slug source %s: %s", path.name, e)
+            continue
+        need = {"match_date", "player_a", "player_b", "tour_slug", "tournament_slug"}
+        if not need.issubset(fdf.columns):
+            continue  # pre-slug capture (cold start) — nothing to resolve
+        frames.append(fdf[list(need)])
+    if not frames:
+        return pd.DataFrame(columns=["match_date", "player_a", "player_b",
+                                     "tour_slug", "tournament_slug"])
+    slugs = pd.concat(frames, ignore_index=True)
+    slugs["tour_slug"] = slugs["tour_slug"].fillna("").astype(str).str.strip()
+    slugs["tournament_slug"] = slugs["tournament_slug"].fillna("").astype(str).str.strip()
+    slugs = slugs[(slugs["tour_slug"] != "") & (slugs["tournament_slug"] != "")]
+    # Recency window: slugs of tournaments still on the boards (last ~2
+    # weeks) outrank stale early-month rows, so the top-N keeps the pages
+    # that can still return predictions.
+    slugs["match_date"] = pd.to_datetime(slugs["match_date"], errors="coerce")
+    window_start = pd.Timestamp(date.today()) - pd.Timedelta(days=14)
+    slugs = slugs[slugs["match_date"] >= window_start]
+    return slugs.reset_index(drop=True)
+
+
+def _match_identity_key(frame: pd.DataFrame) -> pd.Series:
+    """Order-independent match identity: date + sorted strict name signatures."""
+    sig_a = frame["player_a"].astype(str).map(name_signature_strict)
+    sig_b = frame["player_b"].astype(str).map(name_signature_strict)
+    pair = [f"{min(a, b)}|{max(a, b)}" for a, b in zip(sig_a, sig_b)]
+    return (frame["match_date"].astype(str).str.strip()
+            + "|" + pd.Series(pair, index=frame.index))
+
+
+def _attach_live_slugs(df: pd.DataFrame, slug_df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Attach _fetch_tour/_fetch_tournament to every warehouse row.
+
+    Prefers the live slugs observed on the daily boards (joined by the
+    (date, players) identity key); falls back to name-derived slugs where
+    no live slug was observed, so cold-start runs keep the legacy behavior.
+    """
+    df = df.copy()
+    if slug_df is not None and not slug_df.empty:
+        slug_df = slug_df.assign(_mk=_match_identity_key(slug_df))
+        slug_map = (slug_df.drop_duplicates(subset=["_mk"], keep="last")
+                        .set_index("_mk")[["tour_slug", "tournament_slug"]])
+        df["_mk"] = _match_identity_key(df)
+        df = df.merge(slug_map.reset_index(), on="_mk", how="left")
+        df = df.drop(columns=["_mk"])
+    for col in ("tour_slug", "tournament_slug"):
+        if col not in df.columns:
+            df[col] = ""
+        df[col] = df[col].fillna("").astype(str).str.strip()
+    live_mask = (df["tour_slug"] != "") & (df["tournament_slug"] != "")
+    # fillna first: pandas 3.x str dtype keeps NaN through astype(str), and
+    # the warehouse carries NaN tours (e.g. unattributed ITF rows).
+    tour_fallback = df["tour"].fillna("").astype(str).map(forebet_tour_slug)
+    tourn_fallback = df["tournament"].fillna("").astype(str).map(forebet_tournament_slug)
+    df["_fetch_tour"] = df["tour_slug"].where(live_mask, tour_fallback)
+    df["_fetch_tournament"] = df["tournament_slug"].where(live_mask, tourn_fallback)
+    df["_live"] = live_mask
+    return df, int(live_mask.sum())
+
+
 def mode_tournament(args) -> int:
-    """Historical backfill using tournament pages."""
+    """Tournament-page deep pass.
+
+    Pages are fetched by the LIVE (tour_slug, tournament_slug) pairs observed
+    in daily-board match links, ranked by warehouse match count; name-derived
+    slugs remain as a per-row fallback for cold starts (they are exactly what
+    404'd 15/15 in run 35399503550 — "Challenger Rennes Prediction" vs the
+    real /challenger-men/rennes page).
+    """
     # Slumdog discipline: don't re-attempt a route a satellite already
     # proved dead. If today's daily forebet fetch (which runs first) hit the
     # Cloudflare challenge wall, every tournament page would too — skip the
@@ -161,30 +254,53 @@ def mode_tournament(args) -> int:
         logger.error("Warehouse missing required columns: %s", missing)
         return 1
 
-    groups = df.groupby(["tour", "tournament"])
-    tournament_list = list(groups.groups.keys())
+    slug_df = _load_forebet_prediction_slugs(args.output_dir)
+    df, live_count = _attach_live_slugs(df, slug_df)
+
+    groups = df.groupby(["_fetch_tour", "_fetch_tournament"], sort=False)
+    stats = []
+    for key, gdf in groups:
+        if not key[0] or not key[1]:
+            continue  # empty slugs build no valid page URL
+        # A group is "live" when any of its rows carried a daily-board slug
+        # (its page is verified to exist); rank those before name-derived
+        # fallbacks, busiest first within each tier.
+        stats.append((tuple(key), len(gdf), bool(gdf["_live"].any())))
+    stats.sort(key=lambda s: (not s[2], -s[1]))
+    fetchable = [s[0] for s in stats]
+    skipped_empty = len(groups) - len(fetchable)
     logger.info(
-        "Tournament mode: %d tournaments, %d matches in warehouse.",
-        len(tournament_list), len(df),
+        "Tournament mode: %d fetchable tournaments (%d live-slug, %d name-derived; "
+        "%d/%d warehouse rows with live slugs)%s.",
+        len(fetchable),
+        sum(1 for s in stats if s[2]),
+        sum(1 for s in stats if not s[2]),
+        live_count, len(df),
+        f", {skipped_empty} group(s) without a resolvable slug skipped" if skipped_empty else "",
     )
 
     if args.limit:
-        tournament_list = tournament_list[: args.limit]
-        logger.info("Limiting to %d tournaments.", args.limit)
+        fetchable = fetchable[: args.limit]
+        logger.info("Limiting to top %d tournaments (live-slug groups first).", args.limit)
+    tournament_list = fetchable
 
     predictor = ForebetPredictor()
     predictions: list[dict] = []
     matched_count = 0
     dateless_skipped = 0
 
-    for i, (tour, tournament) in enumerate(tournament_list): # type: ignore
-        group_df = groups.get_group((tour, tournament))
+    for i, (fetch_tour, fetch_tournament) in enumerate(tournament_list): # type: ignore
+        group_df = groups.get_group((fetch_tour, fetch_tournament))
+        rep = group_df.iloc[0]
         logger.info(
             "[%3d/%d] %s / %s — %d warehouse matches",
-            i + 1, len(tournament_list), tour, tournament, len(group_df),
+            i + 1, len(tournament_list), fetch_tour, fetch_tournament, len(group_df),
         )
 
-        preds = predictor.fetch_tournament_predictions(tour, tournament)
+        preds = predictor.fetch_tournament_predictions(
+            str(rep["tour"]), str(rep["tournament"]),
+            tour_slug=fetch_tour, tournament_slug=fetch_tournament,
+        )
         if not preds:
             time.sleep(args.delay)
             continue
@@ -507,6 +623,8 @@ def mode_daily(args) -> int:
                                 "odds_a": odds_a,
                                 "odds_b": odds_b,
                                 "source": "Forebet",
+                                "tour_slug": p.get("tour_slug", ""),
+                                "tournament_slug": p.get("tournament_slug", ""),
                             }
                             predictions.append(_copy_forebet_result_fields(row_out, p, row["player_a"], row["player_b"]))
                             matched += 1
@@ -524,6 +642,8 @@ def mode_daily(args) -> int:
                         "odds_a": p.get("odds_home"),
                         "odds_b": p.get("odds_away"),
                         "source": "Forebet",
+                        "tour_slug": p.get("tour_slug", ""),
+                        "tournament_slug": p.get("tournament_slug", ""),
                     }
                     predictions.append(_copy_forebet_result_fields(row_out, p, p["player_home"], p["player_away"]))
                     unmatched += 1
@@ -543,6 +663,8 @@ def mode_daily(args) -> int:
                     "odds_a": p.get("odds_home"),
                     "odds_b": p.get("odds_away"),
                     "source": "Forebet",
+                    "tour_slug": p.get("tour_slug", ""),
+                    "tournament_slug": p.get("tournament_slug", ""),
                 }
                 predictions.append(_copy_forebet_result_fields(row_out, p, p["player_home"], p["player_away"]))
             logger.info("predictions-%s: %d raw predictions stored (no warehouse match).", day, len(preds))

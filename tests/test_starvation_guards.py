@@ -1045,6 +1045,197 @@ def test_tournament_mode_skips_when_relay_challenged(tmp_path, monkeypatch):
     assert backfill_forebet.read_relay_status(_today_iso(), str(tmp_path / "else")) is None
 
 
+def _stub_tournament_fetch(monkeypatch, captured: list, boards: dict):
+    """Replace ForebetPredictor.fetch_tournament_predictions inside the
+    backfill script; record the (tour_slug, tournament_slug) requested and
+    return canned raw predictions from ``boards`` keyed by the slug pair."""
+    from scripts import backfill_forebet
+    real = backfill_forebet.ForebetPredictor
+
+    class FakePredictor(real):
+        def fetch_tournament_predictions(self, tour, tournament,
+                                         tour_slug=None, tournament_slug=None):
+            captured.append((tour_slug, tournament_slug))
+            return boards.get((tour_slug, tournament_slug), [])
+
+    monkeypatch.setattr(backfill_forebet, "ForebetPredictor", FakePredictor)
+
+
+def _warehouse_with(tmp_path, rows) -> str:
+    import pandas as pd
+    wh = pd.DataFrame(rows)
+    path = tmp_path / "warehouse.csv.gz"
+    wh.to_csv(path, index=False, compression="gzip")
+    return str(path)
+
+
+def _today_row(match_date, tour, tournament, a, b):
+    return {"match_date": match_date, "tour": tour, "tournament": tournament,
+            "player_a": a, "player_b": b}
+
+
+def test_mode_tournament_prefers_live_slugs_ranked_by_count(tmp_path, monkeypatch):
+    """Run 35399503550 fix: pages are fetched by the live slugs observed in
+    daily-board match links (challenger-men/rennes), NOT the name-derived
+    slugs ('Challenger Rennes Prediction' -> challenger-rennes-prediction,
+    which is a 404), and the limit keeps the busiest tournaments."""
+    import pandas as pd
+    from datetime import date
+    from scripts import backfill_forebet
+
+    today = date.today().isoformat()
+    wh_path = _warehouse_with(tmp_path, [
+        _today_row(today, "CHALLENGER", "Challenger Rennes Prediction", "A. Player", "B. Opp"),
+        _today_row(today, "CHALLENGER", "Challenger Rennes Prediction", "C. Day", "D. Foe"),
+        _today_row(today, "WTA", "WTA Guadalajara Prediction", "E. Vega", "F. Cruz"),
+    ])
+    # Daily-board capture carrying the live slugs from the match links.
+    month = date.today().strftime("%Y-%m")
+    preds = pd.DataFrame([
+        {"match_date": today, "tour": "CHALLENGER", "tournament": "Challenger Rennes Prediction",
+         "player_a": "A. Player", "player_b": "B. Opp", "predicted_winner": "player_a",
+         "prediction_prob": 0.64, "odds_a": 1.55, "odds_b": 2.4, "source": "Forebet",
+         "tour_slug": "challenger-men", "tournament_slug": "rennes"},
+        {"match_date": today, "tour": "CHALLENGER", "tournament": "Challenger Rennes Prediction",
+         "player_a": "C. Day", "player_b": "D. Foe", "predicted_winner": "player_b",
+         "prediction_prob": 0.57, "odds_a": 1.8, "odds_b": 1.95, "source": "Forebet",
+         "tour_slug": "challenger-men", "tournament_slug": "rennes"},
+        {"match_date": today, "tour": "WTA", "tournament": "WTA Guadalajara Prediction",
+         "player_a": "E. Vega", "player_b": "F. Cruz", "predicted_winner": "player_a",
+         "prediction_prob": 0.61, "odds_a": 1.6, "odds_b": 2.3, "source": "Forebet",
+         "tour_slug": "wta-singles", "tournament_slug": "guadalajara"},
+    ])
+    preds.to_csv(tmp_path / f"predictions_forebet_{month}.csv.gz", index=False, compression="gzip")
+
+    boards = {
+        ("challenger-men", "rennes"): [
+            {"match_date": today, "player_home": "A. Player", "player_away": "B. Opp",
+             "predicted_winner": "1", "prob_home": 64, "prob_away": 36,
+             "odds_home": 1.55, "odds_away": 2.4, "tournament": "Rennes"},
+            {"match_date": today, "player_home": "C. Day", "player_away": "D. Foe",
+             "predicted_winner": "2", "prob_home": 43, "prob_away": 57,
+             "odds_home": 1.8, "odds_away": 1.95, "tournament": "Rennes"},
+        ],
+        ("wta-singles", "guadalajara"): [
+            {"match_date": today, "player_home": "E. Vega", "player_away": "F. Cruz",
+             "predicted_winner": "1", "prob_home": 61, "prob_away": 39,
+             "odds_home": 1.6, "odds_away": 2.3, "tournament": "Guadalajara"},
+        ],
+    }
+    captured: list = []
+    _stub_tournament_fetch(monkeypatch, captured, boards)
+
+    class Args:
+        output_dir = str(tmp_path)
+        warehouse = wh_path
+        limit = 1
+        delay = 0
+
+    assert backfill_forebet.mode_tournament(Args()) == 0
+    # Live slug of the busiest tournament — NOT the name-derived slugs, and
+    # NOT the name-derived slugs of the smaller one (limit keeps the top).
+    assert captured == [("challenger-men", "rennes")]
+
+    out = pd.read_csv(tmp_path / f"predictions_forebet_{month}.csv.gz")
+    rennes = out[out["player_a"].astype(str).str.contains("Player|Day")]
+    assert len(rennes) == 2
+    assert rennes["predicted_winner"].notna().all()
+
+
+def test_mode_tournament_falls_back_to_name_slugs_without_slug_data(tmp_path, monkeypatch):
+    """Cold start: monthly captures predate slug persistence (no tour_slug
+    column) — the legacy name-derived path must still run, not crash."""
+    from datetime import date
+    from scripts import backfill_forebet
+
+    today = date.today().isoformat()
+    wh_path = _warehouse_with(tmp_path, [
+        _today_row(today, "ATP", "Bastad", "A. Player", "B. Opp"),
+    ])
+    import pandas as pd
+    month = date.today().strftime("%Y-%m")
+    pd.DataFrame([
+        {"match_date": today, "tour": "ATP", "tournament": "Bastad",
+         "player_a": "A. Player", "player_b": "B. Opp", "predicted_winner": "player_a",
+         "prediction_prob": 0.6, "odds_a": 1.5, "odds_b": 2.5, "source": "Forebet"},
+    ]).to_csv(tmp_path / f"predictions_forebet_{month}.csv.gz", index=False, compression="gzip")
+
+    captured: list = []
+    _stub_tournament_fetch(monkeypatch, captured, {})
+
+    class Args:
+        output_dir = str(tmp_path)
+        warehouse = wh_path
+        limit = 5
+        delay = 0
+
+    assert backfill_forebet.mode_tournament(Args()) == 0
+    assert captured == [("atp-singles", "bastad")]  # legacy name-derived slugs
+
+
+def test_mode_tournament_skips_unresolvable_slug_groups(tmp_path, monkeypatch):
+    """Rows with empty tour/tournament names build empty slugs — they must
+    be skipped (BASE_URL// is not a page), not fetched, and not crash the
+    run (the old groupby dropped NaN keys implicitly; the "" fallbacks
+    do not, so the filter is explicit now)."""
+    from datetime import date
+    from scripts import backfill_forebet
+
+    today = date.today().isoformat()
+    wh_path = _warehouse_with(tmp_path, [
+        _today_row(today, "", "", "A. One", "B. Two"),
+        _today_row(today, "ATP", "Bastad", "A. Player", "B. Opp"),
+    ])
+
+    captured: list = []
+    _stub_tournament_fetch(monkeypatch, captured, {})
+
+    class Args:
+        output_dir = str(tmp_path)
+        warehouse = wh_path
+        limit = 5
+        delay = 0
+
+    assert backfill_forebet.mode_tournament(Args()) == 0
+    assert captured == [("atp-singles", "bastad")]
+
+
+def test_load_forebet_prediction_slugs_reads_recent_months_only(tmp_path):
+    """Slug source = current + previous month only; empty-slug rows and old
+    monthly files are excluded."""
+    from datetime import date, timedelta
+    from scripts import backfill_forebet
+
+    today = date.today()
+    this_month = today.strftime("%Y-%m")
+    prev_month = (today.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+    older_month = (today.replace(day=1) - timedelta(days=62)).strftime("%Y-%m")
+
+    def month_file(month, rows):
+        import pandas as pd
+        pd.DataFrame(rows).to_csv(
+            tmp_path / f"predictions_forebet_{month}.csv.gz", index=False, compression="gzip")
+
+    day = today.isoformat()
+    base = lambda sl_t, sl_tt, mdate=None: {  # noqa: E731
+        "match_date": mdate or day, "player_a": "A. One", "player_b": "B. Two",
+        "tour_slug": sl_t, "tournament_slug": sl_tt}
+    stale_day = (today - timedelta(days=30)).isoformat()  # beyond the 14d window
+    month_file(this_month, [base("atp-singles", "us-open"),
+                            base("", "stale-empty"),
+                            base("wta-singles", "guadalajara"),
+                            base("atp-singles", "long-finished", stale_day)])
+    month_file(prev_month, [base("challenger-men", "rennes")])
+    month_file(older_month, [base("atp-singles", "should-be-ignored")])
+
+    slugs = backfill_forebet._load_forebet_prediction_slugs(tmp_path)
+    got = {(r["tour_slug"], r["tournament_slug"]) for _, r in slugs.iterrows()}
+    assert got == {("atp-singles", "us-open"), ("wta-singles", "guadalajara"),
+                   ("challenger-men", "rennes")}
+    # the 30-day-old row is excluded even though it is in the current month
+    assert "long-finished" not in got
+
+
 def _today_iso() -> str:
     from datetime import date
     return date.today().isoformat()
