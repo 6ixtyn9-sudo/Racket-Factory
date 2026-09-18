@@ -7,20 +7,20 @@
 - ledger pick rows (in window): 63
 - duplicate rows merged (same match + selection re-picked): 1
 - stale history rows pruned (pick no longer in ledger): 0
-- settled picks: 51
-- wins: 25
-- hit rate: 0.490196
-- priced picks: 46
-- ROI: -0.19913
-- ROI (real-priced): -0.19913 (n=46)
+- settled picks: 50
+- wins: 24
+- hit rate: 0.48
+- priced picks: 45
+- ROI: -0.212667
+- ROI (real-priced): -0.212667 (n=45)
 - ROI (paper-priced): None (n=0)
 - pending picks: 11
 - void picks: 0
-- conflict picks: 0
+- conflict picks: 1
 - total picks: 62
-- set diagnostic picks: 51
-- selected won any set: 37 (0.72549)
-- selected won set 1: 25 (0.490196)
+- set diagnostic picks: 50
+- selected won any set: 36 (0.72)
+- selected won set 1: 24 (0.48)
 - selected won set 2: 28 (0.56)
 - selected won set 3: 8 (0.4)
 
@@ -45,6 +45,7 @@
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
   - pending_no_result: no matching result rows found: 11
+  - conflict: conflicting final results: Challenger_results@2026-09-18:Badosa P.(6-4 6-2); Forebet_results@2026-09-18:Badosa G. P.(4-6 2-6): 1
 
 ## Per-pick audit (won/lost/pending)
 
@@ -109,27 +110,27 @@
 - 2026-09-17 Samira De Stefano vs Alice Tubello selected=Samira De Stefano winner=De Stefano S. status=won basis=Challenger_results@2026-09-18:4-6 7-6 6-4
 - 2026-09-18 F. Auger-Aliassime vs Q. Halys selected=F. Auger-Aliassime winner=? status=pending_no_result reason=no matching result rows found | near-miss candidates: 2026-09-18 Turriziani Alvarez A. vs Fabre A. 6-2 4-6 6-3 [Challenger_results] (Fabre A. side matches, other side unresolvable) ;; 2026-09-17 Milanovic D. vs Fiorentini A. 6-4 6-4 [Challenger_results] (Fiorentini A. side matches, other side unresolvable)
 - 2026-09-18 M. Bobichon vs T. Schoolkate selected=T. Schoolkate winner=Schoolkate T. status=won basis=Challenger_results@2026-09-18:6-2 6-1
-- 2026-09-18 M. Stoiana vs P. Badosa selected=P. Badosa winner=P. Badosa status=won basis=Forebet_results@2026-09-18:20-30
+- 2026-09-18 M. Stoiana vs P. Badosa selected=P. Badosa winner=? status=conflict reason=conflicting final results: Challenger_results@2026-09-18:Badosa P.(6-4 6-2); Forebet_results@2026-09-18:Badosa G. P.(4-6 2-6)
 
 ## By Tour
 
 - `CHALLENGER`: total=49, settled=41, wins=20, hit_rate=0.487805, ROI=-0.202895, pending=8
-- `WTA`: total=12, settled=10, wins=5, hit_rate=0.5, ROI=-0.18125, pending=2
+- `WTA`: total=12, settled=9, wins=4, hit_rate=0.444444, ROI=-0.265714, pending=2, conflict=1
 - `ATP`: total=1, settled=0, wins=0, hit_rate=None, ROI=None, pending=1
 
 ## By Series
 
 - `Challenger`: total=49, settled=41, wins=20, hit_rate=0.487805, ROI=-0.202895, pending=8
-- `International`: total=12, settled=10, wins=5, hit_rate=0.5, ROI=-0.18125, pending=2
+- `International`: total=12, settled=9, wins=4, hit_rate=0.444444, ROI=-0.265714, pending=2, conflict=1
 - `ATP250`: total=1, settled=0, wins=0, hit_rate=None, ROI=None, pending=1
 
 ## By Surface
 
-- `Hard`: total=62, settled=51, wins=25, hit_rate=0.490196, ROI=-0.19913, pending=11
+- `Hard`: total=62, settled=50, wins=24, hit_rate=0.48, ROI=-0.212667, pending=11, conflict=1
 
 ## By Bucket
 
-- `SKIPPED_DEAD_EDGE`: total=33, settled=26, wins=16, hit_rate=0.615385, ROI=-0.121538, pending=7
+- `SKIPPED_DEAD_EDGE`: total=33, settled=25, wins=15, hit_rate=0.6, ROI=-0.1428, pending=7, conflict=1
 - `SKIPPED_VETO`: total=7, settled=5, wins=3, hit_rate=0.6, ROI=0.042, pending=2
 - `WATCHLIST`: total=16, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=1
 - `WATCHLIST_NO_ODDS`: total=6, settled=5, wins=2, hit_rate=0.4, ROI=None, pending=1
@@ -138,4 +139,4 @@
 
 - `BetClan`: total=9, settled=8, wins=4, hit_rate=0.5, ROI=-0.143333, pending=1
 - `BetClan, Forebet`: total=1, settled=1, wins=0, hit_rate=0.0, ROI=-1.0, pending=0
-- `Forebet`: total=52, settled=42, wins=21, hit_rate=0.5, ROI=-0.187179, pending=10
+- `Forebet`: total=52, settled=41, wins=20, hit_rate=0.487805, ROI=-0.202895, pending=10, conflict=1
