@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-18T00:08:33",
+  "generated_at": "2026-09-18T06:24:13",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 106.276296,
@@ -2421,22 +2421,8 @@
       "staked_pct": 25.0431
     },
     {
-      "date": "2026-09-16",
-      "staked_pct": 8.3477,
-      "return_pct": 0.0,
-      "pnl_pct": -8.3477,
-      "bank_pct": 106.276296,
-      "paper_staked_pct": 0.0,
-      "paper_return_pct": 0.0,
-      "paper_pnl_pct": 0.0,
-      "paper_bank_pct": 100.0,
       "accas": [
         {
-          "odds": 2.17,
-          "won": false,
-          "stake_pct": 8.3477,
-          "return_pct": 0.0,
-          "type": "value_2leg_mutual",
           "legs": [
             {
               "_is_paper": false,
@@ -2444,13 +2430,13 @@
               "_selection_basis": "prediction",
               "_settle_bare_surname": true,
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-17",
-                "score": "6-0 6-3",
-                "winner": "Martins I. / Ortenzi J.",
                 "result_id": "3322277.0",
+                "score": "6-0 6-3",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Martins I. / Ortenzi J."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-17 6-0 6-3",
@@ -2512,14 +2498,15 @@
               "_is_paper": false,
               "_market_basis": "api",
               "_selection_basis": "prediction",
+              "_settle_bare_surname": true,
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-17",
-                "score": "3-6 7-6 10-6",
-                "winner": "Barros V. / Leme Da Silva N.",
                 "result_id": "3322281.0",
+                "score": "3-6 7-6 10-6",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Barros V. / Leme Da Silva N."
               },
               "_settle_outcome": "LOST",
               "_settle_reason": "settled from Challenger_results 2026-09-17 3-6 7-6 10-6",
@@ -2575,15 +2562,28 @@
               "source_count": 2,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Sao Paulo WD Prediction",
-              "_settle_bare_surname": true
+              "tournament": "WTA Sao Paulo WD Prediction"
             }
           ],
+          "odds": 2.17,
           "paper": false,
           "refunded": false,
-          "unpriced": false
+          "return_pct": 0.0,
+          "stake_pct": 8.3477,
+          "type": "value_2leg_mutual",
+          "unpriced": false,
+          "won": false
         }
-      ]
+      ],
+      "bank_pct": 106.276296,
+      "date": "2026-09-16",
+      "paper_bank_pct": 100.0,
+      "paper_pnl_pct": 0.0,
+      "paper_return_pct": 0.0,
+      "paper_staked_pct": 0.0,
+      "pnl_pct": -8.3477,
+      "return_pct": 0.0,
+      "staked_pct": 8.3477
     }
   ]
 }
