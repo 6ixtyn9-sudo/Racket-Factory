@@ -321,3 +321,48 @@ def test_enrich_live_card_prefers_api_odds_over_scraped_fallback(monkeypatch):
     assert enriched.loc[0, "api_odds_away"] == 4.80
     assert enriched.loc[0, "scraped_odds_home"] == 1.20
     assert enriched.loc[0, "scraped_odds_away"] == 4.40
+
+
+def test_enrich_live_card_prices_from_betexplorer_consensus(monkeypatch):
+    """REAL pricing path (prompt 2026-09-18 task 6): no The Odds API row, but a
+    cross-checked BetExplorer consensus row must price the pick with
+    odds_source=BetExplorer so downstream _market_basis=api / _is_paper=False."""
+    from racketfactory import warehouse
+
+    monkeypatch.setattr(warehouse, "fetch_the_odds_api_rows", lambda target_date: [])
+    monkeypatch.setattr(
+        warehouse, "fetch_comparison_rows",
+        lambda target_date: [{
+            "match_date": "2026-09-18",
+            "player_home": "J. Mensik",
+            "player_away": "L. Tien",
+            "odds_home": 1.62,
+            "odds_away": 2.31,
+            "source": "BetExplorer",
+            "bookmaker": "BetExplorer consensus",
+            "odds_cross_checked": "agree",
+        }],
+    )
+    card = pd.DataFrame([{
+        "match_date": "2026-09-18",
+        "match_time": "13:00",
+        "tour": "ATP",
+        "match_type": "Singles",
+        "player_home": "Mensik J.",
+        "player_away": "Tien L.",
+        "tournament": "Challenger",
+        "surface": "Hard",
+        "source": "Forebet",
+        "predicted_winner": "1",
+        "prob_home": 62,
+        "prob_away": 38,
+    }])
+
+    enriched = warehouse.enrich_live_card_with_api_odds(card, "2026-09-18")
+
+    assert len(enriched) == 1
+    assert enriched.loc[0, "odds_source"] == "BetExplorer"
+    assert enriched.loc[0, "odds_bookmaker"] == "BetExplorer consensus"
+    assert enriched.loc[0, "odds_cross_checked"] == "agree"
+    assert abs(float(enriched.loc[0, "odds_home"]) - 1.62) < 1e-9
+    assert abs(float(enriched.loc[0, "odds_away"]) - 2.31) < 1e-9
