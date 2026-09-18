@@ -1,67 +1,5 @@
 [
   {
-    "match": "T. Kostovic vs K. Quevedo",
-    "date": "2026-09-18",
-    "match_time": "16:00",
-    "kickoff": "16:00",
-    "selected_side": "player_b",
-    "selected_player": "K. Quevedo",
-    "_selection_basis": "prediction",
-    "tournament": "WTA Sao Paulo - Quarter-finals",
-    "source": "Forebet",
-    "source_count": 2,
-    "tour": "WTA",
-    "series": "International",
-    "surface": "Hard",
-    "pred_confidence": "High",
-    "cross_source_agree": "Both",
-    "context_used": "WTA Sao Paulo - Quarter-finals",
-    "player_home": "T. Kostovic",
-    "player_away": "K. Quevedo",
-    "bucket": "SKIPPED_VETO",
-    "pick": "EDGE CONFIRMED",
-    "odds": 1.67,
-    "odds_source": "BetExplorer",
-    "odds_bookmaker": "BetExplorer consensus",
-    "odds_cross_checked": "",
-    "oddsportal_matched_market": "",
-    "odds_reject_reason": null,
-    "_market_basis": "api",
-    "_is_paper": false,
-    "confidence": 70.0,
-    "expected_value": 0.16899999999999987,
-    "slice_matched": "_surface:Hard | pred_confidence:High | cross_source_agree:Both",
-    "edge_dims": 3,
-    "edge_n": 53,
-    "edge_grade": "GOLD",
-    "edge_tier": "BANKER",
-    "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "28.88%",
-    "ml_strength_score": 0.35,
-    "ml_veto_reasons": [
-      "surface Hard CAUTION",
-      "source Forebet CAUTION",
-      "ML EV 0.015 < 0.02 min (capital protection)"
-    ],
-    "ml_boost_reasons": [
-      "Both sources agree",
-      "High conf 70%"
-    ],
-    "ml_w_score": 0.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6076,
-    "ml_ev": 0.0147,
-    "ml_fair_odds": 1.65,
-    "ml_odds_answer": {
-      "verdict": "FAIR",
-      "fair_odds": 1.65,
-      "ev": 0.0147,
-      "edge_pct": 1.47,
-      "explanation": "Odds 1.67 fair vs 1.65, EV +1.5%"
-    },
-    "skip_reason": "surface Hard CAUTION; source Forebet CAUTION"
-  },
-  {
     "match": "L. Neumayer vs Z. Bergs",
     "date": "2026-09-18",
     "match_time": "14:30",
@@ -103,7 +41,7 @@
     "ml_veto_reasons": [
       "surface Hard CAUTION",
       "source Forebet CAUTION",
-      "ML EV -0.126 < 0.02 min (capital protection)"
+      "ML EV -0.139 < 0.02 min (capital protection)"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
@@ -111,15 +49,15 @@
     ],
     "ml_w_score": 0.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6336,
-    "ml_ev": -0.1256,
-    "ml_fair_odds": 1.58,
+    "ml_calibrated_prob": 0.6237,
+    "ml_ev": -0.1394,
+    "ml_fair_odds": 1.6,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.58,
-      "ev": -0.1256,
-      "edge_pct": -12.56,
-      "explanation": "Odds 1.38 short vs fair 1.58, EV -12.6% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.6,
+      "ev": -0.1394,
+      "edge_pct": -13.94,
+      "explanation": "Odds 1.38 short vs fair 1.60, EV -13.9% \u2013 negative, avoid unless boosting acca"
     },
     "skip_reason": "surface Hard CAUTION; source Forebet CAUTION"
   },
@@ -154,20 +92,20 @@
     "_is_paper": false,
     "confidence": 87.2,
     "expected_value": 0.055119999999999975,
-    "slice_matched": "tour:CHALLENGER | _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
-    "edge_dims": 4,
-    "edge_n": 54,
+    "slice_matched": "tour:CHALLENGER | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "edge_dims": 3,
+    "edge_n": 58,
     "edge_grade": "GOLD",
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "32.98%",
+    "roi_estimate": "30.22%",
     "ml_strength_score": 0.15,
     "ml_veto_reasons": [
       "tour CHALLENGER CAUTION",
       "surface Hard CAUTION",
       "series Challenger CAUTION",
       "source Forebet CAUTION",
-      "ML EV -0.259 < 0.02 min (capital protection)"
+      "ML EV -0.271 < 0.02 min (capital protection)"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
@@ -175,15 +113,15 @@
     ],
     "ml_w_score": 0.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6122,
-    "ml_ev": -0.2593,
-    "ml_fair_odds": 1.63,
+    "ml_calibrated_prob": 0.6028,
+    "ml_ev": -0.2706,
+    "ml_fair_odds": 1.66,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.63,
-      "ev": -0.2593,
-      "edge_pct": -25.93,
-      "explanation": "Odds 1.21 short vs fair 1.63, EV -25.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.66,
+      "ev": -0.2706,
+      "edge_pct": -27.06,
+      "explanation": "Odds 1.21 short vs fair 1.66, EV -27.1% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     },
     "skip_reason": "tour CHALLENGER CAUTION; surface Hard CAUTION"
   },
@@ -229,7 +167,7 @@
     "ml_veto_reasons": [
       "surface Hard CAUTION",
       "source Forebet CAUTION",
-      "ML EV -0.124 < 0.02 min (capital protection)"
+      "ML EV -0.138 < 0.02 min (capital protection)"
     ],
     "ml_boost_reasons": [
       "Both sources agree",
@@ -237,143 +175,17 @@
     ],
     "ml_w_score": 0.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6084,
-    "ml_ev": -0.124,
-    "ml_fair_odds": 1.64,
+    "ml_calibrated_prob": 0.5984,
+    "ml_ev": -0.1383,
+    "ml_fair_odds": 1.67,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.64,
-      "ev": -0.124,
-      "edge_pct": -12.4,
-      "explanation": "Odds 1.44 short vs fair 1.64, EV -12.4% \u2013 negative, avoid unless boosting acca"
+      "fair_odds": 1.67,
+      "ev": -0.1383,
+      "edge_pct": -13.83,
+      "explanation": "Odds 1.44 short vs fair 1.67, EV -13.8% \u2013 negative, avoid unless boosting acca"
     },
     "skip_reason": "surface Hard CAUTION; source Forebet CAUTION"
-  },
-  {
-    "match": "C. Hewitt vs I. Simakin",
-    "date": "2026-09-18",
-    "match_time": "05:05",
-    "kickoff": "05:05",
-    "selected_side": "player_b",
-    "selected_player": "I. Simakin",
-    "_selection_basis": "prediction",
-    "tournament": "Phan Thiet 4 - Quarter-finals",
-    "source": "Forebet",
-    "source_count": 2,
-    "tour": "CHALLENGER",
-    "series": "Challenger",
-    "surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "context_used": "Phan Thiet 4 - Quarter-finals",
-    "player_home": "C. Hewitt",
-    "player_away": "I. Simakin",
-    "bucket": "SKIPPED_DEAD_EDGE",
-    "pick": "EDGE CONFIRMED",
-    "odds": 1.289855,
-    "odds_source": "ScrapedFallback",
-    "odds_bookmaker": "Validated scrape",
-    "odds_cross_checked": "",
-    "oddsportal_matched_market": "",
-    "odds_reject_reason": null,
-    "_market_basis": "scraped_fallback",
-    "_is_paper": true,
-    "confidence": 67.0,
-    "expected_value": -0.13579714999999998,
-    "slice_matched": "tour:CHALLENGER | _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
-    "edge_dims": 4,
-    "edge_n": 54,
-    "edge_grade": "GOLD",
-    "edge_tier": "WATCHLIST_ONLY",
-    "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "32.98%",
-    "skip_reason": "negative EV (-0.136 < 0.000)",
-    "ml_strength_score": 0.0,
-    "ml_veto_reasons": [
-      "tour CHALLENGER CAUTION",
-      "surface Hard CAUTION",
-      "series Challenger CAUTION",
-      "source Forebet CAUTION",
-      "ML EV -0.282 < 0.02 min (capital protection)"
-    ],
-    "ml_boost_reasons": [
-      "Both sources agree"
-    ],
-    "ml_w_score": 0.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5563,
-    "ml_ev": -0.2824,
-    "ml_fair_odds": 1.8,
-    "ml_odds_answer": {
-      "verdict": "SHORT",
-      "fair_odds": 1.8,
-      "ev": -0.2824,
-      "edge_pct": -28.24,
-      "explanation": "Odds 1.29 short vs fair 1.80, EV -28.2% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
-    }
-  },
-  {
-    "match": "R. Pacheco Mendez vs P. Sekulic",
-    "date": "2026-09-18",
-    "match_time": "06:55",
-    "kickoff": "06:55",
-    "selected_side": "player_a",
-    "selected_player": "R. Pacheco Mendez",
-    "_selection_basis": "prediction",
-    "tournament": "Phan Thiet 4 - Quarter-finals",
-    "source": "Forebet",
-    "source_count": 2,
-    "tour": "CHALLENGER",
-    "series": "Challenger",
-    "surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "context_used": "Phan Thiet 4 - Quarter-finals",
-    "player_home": "R. Pacheco Mendez",
-    "player_away": "P. Sekulic",
-    "bucket": "SKIPPED_DEAD_EDGE",
-    "pick": "EDGE CONFIRMED",
-    "odds": 1.28,
-    "odds_source": "BetExplorer",
-    "odds_bookmaker": "BetExplorer consensus",
-    "odds_cross_checked": "",
-    "oddsportal_matched_market": "",
-    "odds_reject_reason": null,
-    "_market_basis": "api",
-    "_is_paper": false,
-    "confidence": 67.3,
-    "expected_value": -0.13856000000000007,
-    "slice_matched": "tour:CHALLENGER | _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
-    "edge_dims": 4,
-    "edge_n": 54,
-    "edge_grade": "GOLD",
-    "edge_tier": "BANKER",
-    "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "32.98%",
-    "skip_reason": "negative EV (-0.139 < 0.000)",
-    "ml_strength_score": 0.0,
-    "ml_veto_reasons": [
-      "tour CHALLENGER CAUTION",
-      "surface Hard CAUTION",
-      "series Challenger CAUTION",
-      "source Forebet CAUTION",
-      "ML EV -0.287 < 0.02 min (capital protection)"
-    ],
-    "ml_boost_reasons": [
-      "Both sources agree"
-    ],
-    "ml_w_score": 0.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.557,
-    "ml_ev": -0.287,
-    "ml_fair_odds": 1.8,
-    "ml_odds_answer": {
-      "verdict": "SHORT",
-      "fair_odds": 1.8,
-      "ev": -0.287,
-      "edge_pct": -28.7,
-      "explanation": "Odds 1.28 short vs fair 1.80, EV -28.7% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
-    }
   },
   {
     "match": "B. Tomic vs A. Binda",
@@ -406,13 +218,13 @@
     "_is_paper": false,
     "confidence": 66.8,
     "expected_value": -0.23848000000000014,
-    "slice_matched": "tour:CHALLENGER | _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
-    "edge_dims": 4,
-    "edge_n": 54,
+    "slice_matched": "tour:CHALLENGER | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "edge_dims": 3,
+    "edge_n": 58,
     "edge_grade": "GOLD",
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "32.98%",
+    "roi_estimate": "30.22%",
     "skip_reason": "negative EV (-0.238 < 0.000)",
     "ml_strength_score": 0.0,
     "ml_veto_reasons": [
@@ -420,22 +232,22 @@
       "surface Hard CAUTION",
       "series Challenger CAUTION",
       "source Forebet CAUTION",
-      "ML EV -0.366 < 0.02 min (capital protection)"
+      "ML EV -0.380 < 0.02 min (capital protection)"
     ],
     "ml_boost_reasons": [
       "Both sources agree"
     ],
     "ml_w_score": 0.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5559,
-    "ml_ev": -0.3663,
-    "ml_fair_odds": 1.8,
+    "ml_calibrated_prob": 0.5442,
+    "ml_ev": -0.3796,
+    "ml_fair_odds": 1.84,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.8,
-      "ev": -0.3663,
-      "edge_pct": -36.63,
-      "explanation": "Odds 1.14 short vs fair 1.80, EV -36.6% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.84,
+      "ev": -0.3796,
+      "edge_pct": -37.96,
+      "explanation": "Odds 1.14 short vs fair 1.84, EV -38.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -471,11 +283,11 @@
     "expected_value": null,
     "slice_matched": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
     "edge_dims": 3,
-    "edge_n": 63,
+    "edge_n": 66,
     "edge_grade": "GOLD",
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "EDGE CONFIRMED",
-    "roi_estimate": "29.41%",
+    "roi_estimate": "27.35%",
     "skip_reason": "prob/odds side disagreement on BetExplorer live odds (selected 5.6 vs alt 1.13) \u2014 not usable",
     "ml_strength_score": 0.1,
     "ml_veto_reasons": [
@@ -487,8 +299,8 @@
     ],
     "ml_w_score": 0.0,
     "ml_verdict": "ALLOW",
-    "ml_calibrated_prob": 0.5838,
+    "ml_calibrated_prob": 0.5714,
     "ml_ev": null,
-    "ml_fair_odds": 1.71
+    "ml_fair_odds": 1.75
   }
 ]

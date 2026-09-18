@@ -1665,23 +1665,6 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_DEAD_EDGE",
-      "date": "2026-09-18",
-      "ledger_kind": "official",
-      "match": "C. Hewitt vs I. Simakin",
-      "reason": "conflicting final results: Challenger_results@2026-09-18:Simakin I.(6-3 6-1); Forebet_results@2026-09-18:C. Hewitt(47-4)",
-      "selected_player": "I. Simakin",
-      "series": "Challenger",
-      "settle_date": "",
-      "settle_score": "",
-      "settle_source": "",
-      "source": "Forebet",
-      "status": "conflict",
-      "surface": "Hard",
-      "tour": "CHALLENGER",
-      "won": null
-    },
-    {
       "bucket": "SKIPPED_VETO",
       "date": "2026-09-18",
       "ledger_kind": "official",
@@ -1731,40 +1714,6 @@
       "surface": "Hard",
       "tour": "WTA",
       "won": null
-    },
-    {
-      "bucket": "SKIPPED_DEAD_EDGE",
-      "date": "2026-09-18",
-      "ledger_kind": "official",
-      "match": "R. Pacheco Mendez vs P. Sekulic",
-      "reason": "result not final: live/in-progress markers present",
-      "selected_player": "R. Pacheco Mendez",
-      "series": "Challenger",
-      "settle_date": "2026-09-18",
-      "settle_score": "",
-      "settle_source": "",
-      "source": "Forebet",
-      "status": "pending_no_result",
-      "surface": "Hard",
-      "tour": "CHALLENGER",
-      "won": null
-    },
-    {
-      "bucket": "SKIPPED_VETO",
-      "date": "2026-09-18",
-      "ledger_kind": "official",
-      "match": "T. Kostovic vs K. Quevedo",
-      "reason": "result not final: live/in-progress markers present",
-      "selected_player": "K. Quevedo",
-      "series": "International",
-      "settle_date": "2026-09-18",
-      "settle_score": "",
-      "settle_source": "",
-      "source": "Forebet",
-      "status": "pending_no_result",
-      "surface": "Hard",
-      "tour": "WTA",
-      "won": null
     }
   ],
   "archived_pick_dates": [
@@ -1775,12 +1724,12 @@
     "2026-09-17",
     "2026-09-18"
   ],
-  "archived_pick_rows": 67,
+  "archived_pick_rows": 64,
   "by_bucket": {
     "SKIPPED_DEAD_EDGE": {
-      "conflict_picks": 1,
+      "conflict_picks": 0,
       "hit_rate": 0.6,
-      "pending_picks": 8,
+      "pending_picks": 7,
       "priced_paper": 0,
       "priced_picks": 25,
       "priced_real": 25,
@@ -1797,14 +1746,14 @@
       "selected_won_set3_rate": 0.416667,
       "set_diagnostic_picks": 25,
       "settled_picks": 25,
-      "total_picks": 34,
+      "total_picks": 32,
       "void_picks": 0,
       "wins": 15
     },
     "SKIPPED_VETO": {
       "conflict_picks": 0,
       "hit_rate": 0.333333,
-      "pending_picks": 7,
+      "pending_picks": 6,
       "priced_paper": 0,
       "priced_picks": 3,
       "priced_real": 3,
@@ -1821,7 +1770,7 @@
       "selected_won_set3_rate": 0.5,
       "set_diagnostic_picks": 3,
       "settled_picks": 3,
-      "total_picks": 10,
+      "total_picks": 9,
       "void_picks": 0,
       "wins": 1
     },
@@ -1922,9 +1871,9 @@
       "wins": 0
     },
     "Challenger": {
-      "conflict_picks": 1,
+      "conflict_picks": 0,
       "hit_rate": 0.475,
-      "pending_picks": 11,
+      "pending_picks": 10,
       "priced_paper": 0,
       "priced_picks": 37,
       "priced_real": 37,
@@ -1941,14 +1890,14 @@
       "selected_won_set3_rate": 0.4,
       "set_diagnostic_picks": 40,
       "settled_picks": 40,
-      "total_picks": 52,
+      "total_picks": 50,
       "void_picks": 0,
       "wins": 19
     },
     "International": {
       "conflict_picks": 0,
       "hit_rate": 0.375,
-      "pending_picks": 5,
+      "pending_picks": 4,
       "priced_paper": 0,
       "priced_picks": 6,
       "priced_real": 6,
@@ -1965,7 +1914,7 @@
       "selected_won_set3_rate": 0.25,
       "set_diagnostic_picks": 8,
       "settled_picks": 8,
-      "total_picks": 13,
+      "total_picks": 12,
       "void_picks": 0,
       "wins": 3
     }
@@ -2020,9 +1969,9 @@
       "wins": 0
     },
     "Forebet": {
-      "conflict_picks": 1,
+      "conflict_picks": 0,
       "hit_rate": 0.475,
-      "pending_picks": 16,
+      "pending_picks": 14,
       "priced_paper": 0,
       "priced_picks": 37,
       "priced_real": 37,
@@ -2039,16 +1988,16 @@
       "selected_won_set3_rate": 0.4,
       "set_diagnostic_picks": 40,
       "settled_picks": 40,
-      "total_picks": 57,
+      "total_picks": 54,
       "void_picks": 0,
       "wins": 19
     }
   },
   "by_surface": {
     "Hard": {
-      "conflict_picks": 1,
+      "conflict_picks": 0,
       "hit_rate": 0.458333,
-      "pending_picks": 18,
+      "pending_picks": 16,
       "priced_paper": 0,
       "priced_picks": 43,
       "priced_real": 43,
@@ -2065,7 +2014,7 @@
       "selected_won_set3_rate": 0.368421,
       "set_diagnostic_picks": 48,
       "settled_picks": 48,
-      "total_picks": 67,
+      "total_picks": 64,
       "void_picks": 0,
       "wins": 22
     }
@@ -2096,9 +2045,9 @@
       "wins": 0
     },
     "CHALLENGER": {
-      "conflict_picks": 1,
+      "conflict_picks": 0,
       "hit_rate": 0.475,
-      "pending_picks": 11,
+      "pending_picks": 10,
       "priced_paper": 0,
       "priced_picks": 37,
       "priced_real": 37,
@@ -2115,14 +2064,14 @@
       "selected_won_set3_rate": 0.4,
       "set_diagnostic_picks": 40,
       "settled_picks": 40,
-      "total_picks": 52,
+      "total_picks": 50,
       "void_picks": 0,
       "wins": 19
     },
     "WTA": {
       "conflict_picks": 0,
       "hit_rate": 0.375,
-      "pending_picks": 5,
+      "pending_picks": 4,
       "priced_paper": 0,
       "priced_picks": 6,
       "priced_real": 6,
@@ -2139,7 +2088,7 @@
       "selected_won_set3_rate": 0.25,
       "set_diagnostic_picks": 8,
       "settled_picks": 8,
-      "total_picks": 13,
+      "total_picks": 12,
       "void_picks": 0,
       "wins": 3
     }
@@ -2148,11 +2097,11 @@
   "end": "2026-09-18",
   "include_same_day": true,
   "ledger_kind": "official",
-  "ledger_pick_rows": 68,
+  "ledger_pick_rows": 65,
   "overall": {
-    "conflict_picks": 1,
+    "conflict_picks": 0,
     "hit_rate": 0.458333,
-    "pending_picks": 18,
+    "pending_picks": 16,
     "priced_paper": 0,
     "priced_picks": 43,
     "priced_real": 43,
@@ -2169,17 +2118,16 @@
     "selected_won_set3_rate": 0.368421,
     "set_diagnostic_picks": 48,
     "settled_picks": 48,
-    "total_picks": 67,
+    "total_picks": 64,
     "void_picks": 0,
     "wins": 22
   },
   "pending_reasons": {
-    "conflict: conflicting final results: Challenger_results@2026-09-18:Simakin I.(6-3 6-1); Forebet_results@2026-09-18:C. Hewitt(47-4)": 1,
     "pending_no_result: no matching result rows found": 10,
-    "pending_no_result: result not final: live/in-progress markers present": 8
+    "pending_no_result: result not final: live/in-progress markers present": 6
   },
   "same_day_cutoff": "2026-09-18",
   "same_day_excluded": 0,
-  "stale_rows_pruned": 0,
+  "stale_rows_pruned": 3,
   "start": "2026-09-13"
 }
