@@ -65,3 +65,19 @@ def test_page_routing_today_tomorrow_only():
 def test_disable_env_short_circuits(monkeypatch):
     monkeypatch.setenv("RACKET_FACTORY_DISABLE_ODDSPORTAL_UPCOMING", "1")
     assert opup.fetch_oddsportal_upcoming_rows(date.today().isoformat()) == []
+
+
+def test_is_match_link_tolerates_event_id_shapes():
+    from racketfactory.sources.oddsportal_upcoming import _is_match_link
+
+    # Event-id shapes (digit/uppercase segment) are match pages
+    assert _is_match_link("/tennis/123456/") is not None
+    assert _is_match_link("/tennis/usa/123456/") is not None
+    assert _is_match_link("/tennis/h2h/shelton-ben-QNuG0Gzb/alcaraz-carlos-Xk/") is not None
+    assert _is_match_link("/tennis/match/98765/") is not None
+    # Category shapes stay rejected
+    assert _is_match_link("/tennis/") is None
+    assert _is_match_link("/tennis/atp/") is None
+    assert _is_match_link("/tennis/usa/atp-us-open/") is None
+    assert _is_match_link("/tennis/rankings/") is None
+    assert _is_match_link("/tennis/usa/atp-us-open/tomorrow/") is None

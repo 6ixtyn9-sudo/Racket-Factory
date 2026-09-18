@@ -93,10 +93,20 @@ def _is_match_link(href: str) -> dict[str, Any] | None:
         return None
     if len(segs_lower) == 1:
         return None  # /tennis/
+
+    def _id_like(seg: str) -> bool:
+        # Event/player IDs carry digits or uppercase; category slugs are
+        # pure lowercase alpha+hyphen. (SPA shape observed 2026-09-18:
+        # /tennis/<event-id>/ 2-seg and /tennis/<cat>/<event-id>/ 3-seg.)
+        return any(c.isdigit() or c.isupper() for c in seg)
+
     if len(segs_lower) == 2:
         second = segs_lower[1]
         if second in {"tomorrow", "next", "atp", "wta", "challenger", "itf-men", "itf-women", "results", "standings", "live", "my-matches", "rankings", "news", "stats", "calendar"}:
             return None
+        if _id_like(segs[1]):
+            return {"tour_hint": "", "tournament": ""}  # /tennis/<event-id>/
+        return None
     if len(segs_lower) == 3:
         # /tennis/atp/tomorrow/, /tennis/wta/tomorrow/, etc
         if segs_lower[1] in {"atp", "wta", "challenger", "itf-men", "itf-women", "tomorrow", "next"}:
@@ -107,6 +117,9 @@ def _is_match_link(href: str) -> dict[str, Any] | None:
             return {"tour_hint": "", "tournament": ""}
         if segs_lower[1] == "h2h":
             return {"tour_hint": "", "tournament": ""}
+        # Event-id shaped last seg (digit/uppercase) -> match, allow
+        if _id_like(segs[2]):
+            return {"tour_hint": segs[1].replace("-", " "), "tournament": ""}
         # If last seg looks like tournament slug (all lowercase, hyphens, no digit, length>3) -> reject
         last = segs[2]
         if last.islower() and last.replace("-", "").replace("_", "").isalpha() and len(last) >= 3:
