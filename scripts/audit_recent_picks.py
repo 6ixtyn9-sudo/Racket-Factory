@@ -187,12 +187,55 @@ def discover_archived_pick_dates(*, ledger_kind: str = "official") -> list[str]:
     return sorted(dates)
 
 
-def _all_pick_key(row: dict[str, Any]) -> tuple[str, str, str]:
+def _pick_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
+    """History/ledger key: (ledger_kind, date, normalized match, normalized selection).
+
+    Normalized so spelling/case variants of the same pick collapse to one key.
+    Legacy history rows without a ledger_kind are treated as official.
+    """
+    kind = clean_text(row.get("ledger_kind")) or "official"
     return (
+        kind,
         str(row.get("date") or "")[:10],
-        clean_text(row.get("match")),
-        clean_text(row.get("selected_player")),
+        normalize_name(row.get("match")),
+        normalize_name(row.get("selected_player") or row.get("selection")),
     )
+
+
+def pick_identity(row: dict[str, Any]) -> tuple[tuple[str, ...], str]:
+    """Identity of the physical pick (match + selection).
+
+    Independent of the daily-ledger file and of home/away ordering, so a
+    carryover re-pick of the same match archived in two daily ledgers (e.g.
+    picked the day before AND on match day) collapses to one pick.
+    """
+    match = clean_text(row.get("match"))
+    home = away = ""
+    if match:
+        parts = re.split(r"\s+v(?:s\.?)?\s+", match, maxsplit=1, flags=re.IGNORECASE)
+        if len(parts) == 2:
+            home, away = clean_text(parts[0]), clean_text(parts[1])
+        else:
+            home = match
+    teams = tuple(sorted(normalize_name(t) for t in (home, away) if t))
+    selection = normalize_name(row.get("selected_player") or row.get("selection"))
+    return (teams, selection)
+
+
+def archive_pick_keys(ledger_kind: str) -> set[tuple[str, str, str, str]]:
+    """Keys of every archived pick row (all dates) for one ledger kind.
+
+    Used to prune the cumulative history: a pick that no longer exists in any
+    archived ledger (its daily file was rewritten/pruned) must not keep
+    resurrecting itself in every future audit.
+    """
+    dates = discover_archived_pick_dates(ledger_kind=ledger_kind)
+    if not dates:
+        return set()
+    keys: set[tuple[str, str, str, str]] = set()
+    for row in load_archived_picks(dates[0], dates[-1], ledger_kind=ledger_kind):
+        keys.add(_pick_key(row))
+    return keys
 
 
 def load_audit_history() -> list[dict[str, Any]]:
@@ -207,16 +250,25 @@ def load_audit_history() -> list[dict[str, Any]]:
     return [r for r in data if isinstance(r, dict)]
 
 
-def merge_audit_history(current: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def merge_audit_history(
+    current: list[dict[str, Any]],
+    valid_keys: set[tuple[str, str, str, str]] | None = None,
+) -> list[dict[str, Any]]:
     """Keep a cumulative per-pick ledger so a 3-day prune cannot blank the audit.
 
     Newer settled (won/lost/void/conflict) rows replace pending ones. A fresh
     pending row does not overwrite a previously settled result.
+
+    When ``valid_keys`` is provided (the keys of every archived pick row),
+    rows of the current ledger kind whose pick no longer exists in any
+    archived ledger are pruned — a rewritten daily file must not keep
+    resurrecting stale picks in every future audit. History rows of other
+    ledger kinds are preserved untouched for their own runs.
     """
-    by_key: dict[tuple[str, str, str], dict[str, Any]] = {}
+    by_key: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for row in load_audit_history() + list(current):
-        key = _all_pick_key(row)
-        if not key[0] or not key[1]:
+        key = _pick_key(row)
+        if not key[1] or not key[2]:
             continue
         prev = by_key.get(key)
         if prev is None:
@@ -229,12 +281,60 @@ def merge_audit_history(current: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if new_done or not prev_done:
             by_key[key] = row
     merged = [by_key[k] for k in sorted(by_key)]
+    if valid_keys is not None:
+        current_kinds = {
+            clean_text(r.get("ledger_kind")) or "official" for r in current
+        }
+        merged = [
+            r for r in merged
+            if _pick_key(r) in valid_keys
+            or (clean_text(r.get("ledger_kind")) or "official") not in current_kinds
+        ]
     try:
         LOCALDATA.mkdir(parents=True, exist_ok=True)
         HISTORY_PATH.write_text(json.dumps(merged, indent=2, sort_keys=True))
     except Exception:
         pass
     return merged
+
+
+_STATUS_RANK = {"won": 3, "lost": 3, "void": 2, "conflict": 2}
+
+
+def dedupe_by_identity(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse rows that are the same physical pick re-archived in several
+    daily ledgers (carryover re-picks: identical match + identical selection).
+
+    Canonical row: most advanced status first (settled beats pending), then
+    earliest date (the original pick). Losers are recorded on the canonical
+    row under ``duplicate_picks`` so the merge stays visible in the report.
+    """
+    groups: dict[tuple[tuple[str, ...], str], list[dict[str, Any]]] = {}
+    order: list[tuple[tuple[str, ...], str]] = []
+    for row in rows:
+        key = pick_identity(row)
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(row)
+    out: list[dict[str, Any]] = []
+    for key in order:
+        group = groups[key]
+        if len(group) == 1:
+            out.append(group[0])
+            continue
+        group = sorted(
+            group,
+            key=lambda r: (-_STATUS_RANK.get(str(r.get("status") or ""), 1),
+                           str(r.get("date") or "")),
+        )
+        canonical = dict(group[0])
+        canonical["duplicate_picks"] = [
+            f"{str(r.get('date') or '')[:10]} {clean_text(r.get('bucket')) or 'UNKNOWN'} ({r.get('status')})"
+            for r in group[1:]
+        ]
+        out.append(canonical)
+    return out
 
 
 def settled_from_all_row(pp: dict[str, Any]) -> SettledPick | None:
@@ -553,6 +653,65 @@ def _pick_market_labels(pick: dict[str, Any]) -> tuple[str, bool]:
     return "none", True
 
 
+def _side_team_match(x: tuple[str, ...], y: tuple[str, ...]) -> bool:
+    """Order-insensitive full-side (team) match via the shared matcher."""
+    if len(x) == 1 and len(y) == 1:
+        return bool(players_match(x[0], y[0])[0])
+    if len(x) != 2 or len(y) != 2:
+        return False
+    return bool(
+        (players_match(x[0], y[0])[0] and players_match(x[1], y[1])[0])
+        or (players_match(x[0], y[1])[0] and players_match(x[1], y[0])[0])
+    )
+
+
+def _near_miss_details(match_text: str, rows: list[dict[str, Any]],
+                       limit: int = 2) -> list[str]:
+    """Find result rows where exactly ONE side of the pick matches.
+
+    A full teams_match is required to settle; a single-side match is the
+    signature of a name-variant gap (e.g. initials "L. E." vs "L.", bare
+    surname vs compound surname) rather than a missing result. Surfacing it
+    lets the report distinguish resolvable matcher gaps from real data gaps.
+    """
+    from racketfactory.settlement import parse_match_teams
+
+    pa, pb = parse_match_teams(match_text)
+    if not pa or not pb:
+        return []
+    out: list[str] = []
+    for row in rows:
+        ra = tuple(p.strip() for p in str(row.get("player_a") or "").split("/") if p.strip())
+        rb = tuple(p.strip() for p in str(row.get("player_b") or "").split("/") if p.strip())
+        if len(ra) != len(pa) or len(rb) != len(pb):
+            continue
+        straight = (_side_team_match(pa, ra), _side_team_match(pb, rb))
+        swapped = (_side_team_match(pa, rb), _side_team_match(pb, ra))
+        hit_side = None
+        if straight[0] and not straight[1]:
+            hit_side = clean_text(row.get("player_a"))
+        elif straight[1] and not straight[0]:
+            hit_side = clean_text(row.get("player_b"))
+        elif swapped[0] and not swapped[1]:
+            hit_side = clean_text(row.get("player_b"))
+        elif swapped[1] and not swapped[0]:
+            hit_side = clean_text(row.get("player_a"))
+        if not hit_side:
+            continue
+        detail = (f"{clean_text(row.get('match_date'))[:10]} "
+                  f"{clean_text(row.get('player_a'))} vs {clean_text(row.get('player_b'))}")
+        score = clean_text(row.get("score"))
+        if score:
+            detail += f" {score}"
+        src = clean_text(row.get("source"))
+        if src:
+            detail += f" [{src}]"
+        out.append(f"{detail} ({hit_side} side matches, other side unresolvable)")
+        if len(out) >= limit:
+            break
+    return out
+
+
 def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> tuple[SettledPick | None, dict[str, Any]]:
     """Settle one pick via the shared settlement module.
 
@@ -594,7 +753,12 @@ def settle_pick(pick: dict[str, Any], df: pd.DataFrame) -> tuple[SettledPick | N
     if outcome.outcome == "VOID":
         return None, {"status": "void", "reason": outcome.reason, "basis": basis}
     if outcome.outcome == "PENDING":
-        return None, {"status": "pending_no_result", "reason": outcome.reason,
+        reason = outcome.reason
+        if "no matching result rows found" in reason:
+            near = _near_miss_details(match_text, rows)
+            if near:
+                reason = f"{reason} | near-miss candidates: " + " ;; ".join(near)
+        return None, {"status": "pending_no_result", "reason": reason,
                       "basis": basis}
 
     won = outcome.outcome == "WON"
@@ -730,11 +894,49 @@ def summarize_scored(rows: list[SettledPick]) -> dict[str, Any]:
     }
 
 
-def summarize_by(rows: list[SettledPick], attr: str) -> dict[str, dict[str, Any]]:
+def summarize_by(rows: list[SettledPick], attr: str,
+                 all_rows: list[dict[str, Any]] | None = None) -> dict[str, dict[str, Any]]:
+    """Group summaries with full ledger coverage.
+
+    ``rows`` are the settled (won/lost) picks and drive hit rate/ROI;
+    ``all_rows`` (every audited pick, including pending/void/conflict) drives
+    the total/pending counts so every group reconciles against the archived
+    ledger — a group whose picks are all pending still appears, with
+    settled=0, instead of vanishing.
+    """
     grouped: dict[str, list[SettledPick]] = defaultdict(list)
     for row in rows:
         grouped[str(getattr(row, attr) or "UNKNOWN")].append(row)
-    return {name: summarize_scored(group_rows) for name, group_rows in sorted(grouped.items())}
+    out: dict[str, dict[str, Any]] = {
+        name: summarize_scored(group_rows) for name, group_rows in sorted(grouped.items())
+    }
+    if all_rows:
+        total: dict[str, int] = defaultdict(int)
+        pend: dict[str, int] = defaultdict(int)
+        voids: dict[str, int] = defaultdict(int)
+        confl: dict[str, int] = defaultdict(int)
+        for r in all_rows:
+            if isinstance(r, dict):
+                g = str(r.get(attr) or "UNKNOWN")
+                st = str(r.get("status") or "")
+            else:  # SettledPick (already settled by definition)
+                g = str(getattr(r, attr, None) or "UNKNOWN")
+                st = "won" if r.won else "lost"
+            total[g] += 1
+            if st.startswith("pending"):
+                pend[g] += 1
+            elif st == "void":
+                voids[g] += 1
+            elif st == "conflict":
+                confl[g] += 1
+        for g in total:
+            out.setdefault(g, summarize_scored([]))
+        for g, s in out.items():
+            s["total_picks"] = total.get(g, 0)
+            s["pending_picks"] = pend.get(g, 0)
+            s["void_picks"] = voids.get(g, 0)
+            s["conflict_picks"] = confl.get(g, 0)
+    return out
 
 
 def build_report(
@@ -769,6 +971,7 @@ def build_report(
                 "bucket": pick.get("bucket"),
                 "status": "pending_same_day_excluded",
                 "won": None,
+                "ledger_kind": ledger_kind,
             })
             continue
         settled, info = settle_pick(pick, df)
@@ -799,6 +1002,7 @@ def build_report(
                 "odds_basis": settled.odds_basis,
                 "market_basis": settled.market_basis,
                 "is_paper": settled.is_paper,
+                "ledger_kind": ledger_kind,
                 "selected_sets_won": settled.selected_sets_won,
                 "selected_sets_lost": settled.selected_sets_lost,
                 "selected_won_any_set": settled.selected_won_any_set,
@@ -822,9 +1026,30 @@ def build_report(
                 "settle_source": basis.get("source", ""),
                 "settle_date": basis.get("match_date", ""),
                 "settle_score": basis.get("score", ""),
+                "ledger_kind": ledger_kind,
             })
 
-    all_rows = merge_audit_history(all_rows)
+    # Cumulative history merge with pruning: rows of this ledger kind whose
+    # pick no longer exists in any archived ledger are dropped, so a
+    # rewritten daily file cannot resurrect stale picks in future audits.
+    valid_keys = archive_pick_keys(ledger_kind)
+    prior_history = load_audit_history()
+    stale_pruned = sum(
+        1 for r in prior_history
+        if (clean_text(r.get("ledger_kind")) or "official") == ledger_kind
+        and _pick_key(r) not in valid_keys
+    )
+    all_rows = merge_audit_history(all_rows, valid_keys=valid_keys)
+    # Keep only this run's ledger kind (the history file is shared between
+    # official and forecast runs and must not cross-contaminate reports).
+    all_rows = [r for r in all_rows
+                if (clean_text(r.get("ledger_kind")) or "official") == ledger_kind]
+    # Collapse carryover re-picks: the same match + selection archived in
+    # multiple daily ledgers is one pick, not one per ledger.
+    deduped_rows = dedupe_by_identity(all_rows)
+    duplicates_merged = len(all_rows) - len(deduped_rows)
+    all_rows = deduped_rows
+
     archived_dates = sorted({str(r.get("date") or "")[:10] for r in all_rows if r.get("date")})
     settled_rows = [s for s in (settled_from_all_row(r) for r in all_rows) if s is not None]
 
@@ -832,11 +1057,24 @@ def build_report(
     pending = sum(1 for r in all_rows if str(r.get("status") or "").startswith("pending"))
     voids = sum(1 for r in all_rows if r.get("status") == "void")
     conflicts = sum(1 for r in all_rows if r.get("status") == "conflict")
+    reason_counts: dict[str, int] = {}
+    for r in all_rows:
+        st = str(r.get("status") or "")
+        if st.startswith("pending") or st in ("void", "conflict"):
+            base = str(r.get("reason") or r.get("settle_reason") or "")
+            base = base.split(" | near-miss")[0] or "(unspecified)"
+            label = f"{st}: {base}"
+            reason_counts[label] = reason_counts.get(label, 0) + 1
     return {
         "start": start,
         "end": end,
         "archived_pick_rows": len(all_rows),
         "archived_pick_dates": archived_dates,
+        "ledger_pick_rows": len(picks),
+        "duplicates_merged": duplicates_merged,
+        "stale_rows_pruned": stale_pruned,
+        "pending_reasons": dict(sorted(reason_counts.items(),
+                                       key=lambda kv: (-kv[1], kv[0]))),
         "same_day_excluded": same_day_excluded,
         "same_day_cutoff": today_local,
         "include_same_day": include_same_day,
@@ -845,11 +1083,11 @@ def build_report(
                     "void_picks": voids, "conflict_picks": conflicts,
                     "total_picks": len(all_rows)},
         "by_ledger_kind": summarize_by(settled_rows, "ledger_kind"),
-        "by_tour": summarize_by(settled_rows, "tour"),
-        "by_series": summarize_by(settled_rows, "series"),
-        "by_surface": summarize_by(settled_rows, "surface"),
-        "by_bucket": summarize_by(settled_rows, "bucket"),
-        "by_source": summarize_by(settled_rows, "source"),
+        "by_tour": summarize_by(settled_rows, "tour", all_rows),
+        "by_series": summarize_by(settled_rows, "series", all_rows),
+        "by_surface": summarize_by(settled_rows, "surface", all_rows),
+        "by_bucket": summarize_by(settled_rows, "bucket", all_rows),
+        "by_source": summarize_by(settled_rows, "source", all_rows),
         "all_picks": all_rows,  # Per-pick audit with pending status
     }
 
@@ -863,6 +1101,9 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         "",
         f"- archived pick rows: {report.get('archived_pick_rows', 0)}",
         f"- archived pick dates: {len(report.get('archived_pick_dates', []))}",
+        f"- ledger pick rows (in window): {report.get('ledger_pick_rows', 0)}",
+        f"- duplicate rows merged (same match + selection re-picked): {report.get('duplicates_merged', 0)}",
+        f"- stale history rows pruned (pick no longer in ledger): {report.get('stale_rows_pruned', 0)}",
         f"- settled picks: {overall.get('settled_picks', 0)}",
         f"- wins: {overall.get('wins', 0)}",
         f"- hit rate: {overall.get('hit_rate')}",
@@ -892,9 +1133,24 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         "- walkovers settle VOID (stake returned); retirements settle to the advancer and are flagged",
         "- ROI uses the archived pick price; paper-priced (scrape/estimated) legs are split out as ROI (paper)",
         "",
+        "## Ledger reconciliation",
+        "",
+        f"- ledger rows in window ({report.get('ledger_kind')}): {report.get('ledger_pick_rows', 0)}",
+        f"- duplicate rows merged (same match + selection in multiple daily ledgers): {report.get('duplicates_merged', 0)}",
+        f"- stale history rows pruned (pick no longer in any archived ledger): {report.get('stale_rows_pruned', 0)}",
+        f"- audited rows: {report.get('archived_pick_rows', 0)}",
+        "- identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)",
+    ]
+    reasons = report.get("pending_reasons") or {}
+    if reasons:
+        lines.append("- unresolved rows by reason:")
+        for label, count in reasons.items():
+            lines.append(f"  - {label}: {count}")
+    lines.extend([
+        "",
         "## Per-pick audit (won/lost/pending)",
         "",
-    ]
+    ])
     all_picks = report.get("all_picks", [])
     if all_picks:
         for pp in all_picks:
@@ -910,54 +1166,46 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
             else:
                 basis = f"{pp.get('settle_source', '')}@{pp.get('settle_date', '')}:{pp.get('settle_score', '')}"
                 extra = f" basis={basis}"
+            dups = pp.get("duplicate_picks")
+            if dups:
+                extra += f" dup_merged=[{'; '.join(dups)}]"
             lines.append(f"- {d} {match} selected={sel} winner={winner} status={status}{extra}")
     else:
         lines.append("- none")
-    lines.extend(["", "## By Tour", ""])
-    by_tour = report.get("by_tour", {})
-    if not by_tour:
-        lines.append("- none")
-    else:
-        for key, summary in by_tour.items():
-            lines.append(
-                f"- `{key}`: settled={summary.get('settled_picks', 0)}, wins={summary.get('wins', 0)}, hit_rate={summary.get('hit_rate')}, ROI={summary.get('roi')}"
-            )
-    lines.extend(["", "## By Series", ""])
-    by_series = report.get("by_series", {})
-    if not by_series:
-        lines.append("- none")
-    else:
-        for key, summary in by_series.items():
-            lines.append(
-                f"- `{key}`: settled={summary.get('settled_picks', 0)}, wins={summary.get('wins', 0)}, hit_rate={summary.get('hit_rate')}, ROI={summary.get('roi')}"
-            )
-    lines.extend(["", "## By Surface", ""])
-    by_surface = report.get("by_surface", {})
-    if not by_surface:
-        lines.append("- none")
-    else:
-        for key, summary in by_surface.items():
-            lines.append(
-                f"- `{key}`: settled={summary.get('settled_picks', 0)}, wins={summary.get('wins', 0)}, hit_rate={summary.get('hit_rate')}, ROI={summary.get('roi')}"
-            )
-    lines.extend(["", "## By Bucket", ""])
-    by_bucket = report.get("by_bucket", {})
-    if not by_bucket:
-        lines.append("- none")
-    else:
-        for key, summary in by_bucket.items():
-            lines.append(
-                f"- `{key}`: settled={summary.get('settled_picks', 0)}, wins={summary.get('wins', 0)}, hit_rate={summary.get('hit_rate')}, ROI={summary.get('roi')}"
-            )
-    lines.extend(["", "## By Source", ""])
-    by_source = report.get("by_source", {})
-    if not by_source:
-        lines.append("- none")
-    else:
-        for key, summary in by_source.items():
-            lines.append(
-                f"- `{key}`: settled={summary.get('settled_picks', 0)}, wins={summary.get('wins', 0)}, hit_rate={summary.get('hit_rate')}, ROI={summary.get('roi')}"
-            )
+
+    def _group_section(title: str, data: dict[str, dict[str, Any]]) -> None:
+        lines.extend(["", f"## {title}", ""])
+        if not data:
+            lines.append("- none")
+            return
+        for key, summary in data.items():
+            if "total_picks" in summary:
+                entry = (
+                    f"total={summary.get('total_picks', 0)}, "
+                    f"settled={summary.get('settled_picks', 0)}, "
+                    f"wins={summary.get('wins', 0)}, "
+                    f"hit_rate={summary.get('hit_rate')}, "
+                    f"ROI={summary.get('roi')}, "
+                    f"pending={summary.get('pending_picks', 0)}"
+                )
+                if summary.get("void_picks"):
+                    entry += f", void={summary['void_picks']}"
+                if summary.get("conflict_picks"):
+                    entry += f", conflict={summary['conflict_picks']}"
+            else:
+                entry = (
+                    f"settled={summary.get('settled_picks', 0)}, "
+                    f"wins={summary.get('wins', 0)}, "
+                    f"hit_rate={summary.get('hit_rate')}, "
+                    f"ROI={summary.get('roi')}"
+                )
+            lines.append(f"- `{key}`: {entry}")
+
+    _group_section("By Tour", report.get("by_tour", {}))
+    _group_section("By Series", report.get("by_series", {}))
+    _group_section("By Surface", report.get("by_surface", {}))
+    _group_section("By Bucket", report.get("by_bucket", {}))
+    _group_section("By Source", report.get("by_source", {}))
     path.write_text("\n".join(lines) + "\n")
 
 
@@ -1004,7 +1252,10 @@ def main() -> int:
 
     overall = report.get("overall", {})
     print(f"Recent picks audit — {start} to {end.isoformat()}")
+    print(f" ledger pick rows: {report.get('ledger_pick_rows', 0)}")
     print(f" archived pick rows: {report.get('archived_pick_rows', 0)}")
+    print(f" duplicate rows merged: {report.get('duplicates_merged', 0)}")
+    print(f" stale rows pruned: {report.get('stale_rows_pruned', 0)}")
     print(f" archived pick dates: {len(report.get('archived_pick_dates', []))}")
     print(f" ledger kind: {report.get('ledger_kind')}")
     print(f" same-day rows excluded: {report.get('same_day_excluded', 0)}")
