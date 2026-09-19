@@ -666,6 +666,24 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
         calib_prob = ml_predict_proba(pick, registry, source_weights, clv)
         ev = ml_ev(pick, registry, source_weights, clv)
 
+        # FADE lane: the pick bets AGAINST the model's pick, so the
+        # model-trust heuristics above are structurally inverted for it (the
+        # Disagree penalty, the low-fade-side-confidence penalty, and the
+        # model-direction context registry all fire on exactly the shapes that
+        # make a fade an edge). The fade's edge basis is the validated fade
+        # slice itself (edge_n / edge_grade / roi_estimate on the pick), and
+        # the FADE bucket builds its own audit track for future context vetos.
+        is_fade = str(pick.get("bucket")) == "FADE"
+        if is_fade:
+            scoring = {
+                "strength_score": 0.0,
+                "veto_reasons": [],
+                "boost_reasons": ["fade lane: slice-validated contrarian (model-trust heuristics exempt)"],
+                "w_score": None,
+                "should_veto": False,
+                "should_boost": False,
+            }
+
         pick = dict(pick)
         pick["ml_strength_score"] = scoring["strength_score"]
         pick["ml_veto_reasons"] = scoring["veto_reasons"]
@@ -706,7 +724,12 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
                     ev = None  # mark as handled to skip further checks
         except Exception:
             pass
-        if ev is not None and ev < min_ev_real:
+        # Capital-protection gate: model-EV based. Fades are exempt — their
+        # model-EV is structurally negative (the model favours its own side),
+        # which is precisely the signal the fade slice validates against.
+        # The fade's own EV floor is enforced at export time on the slice-EV
+        # basis (expected_value < min_ev -> SKIPPED_DEAD_EDGE).
+        if not is_fade and ev is not None and ev < min_ev_real:
             # Allow only if BOOST with high strength >=0.5 and Both agree and High conf >=70
             is_boost_high = scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.5
             cross = str(pick.get("cross_source_agree") or "")
@@ -726,7 +749,7 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
             if "NO_ODDS" in str(pick.get("bucket")) and scoring["strength_score"] >= 0.2:
                 kept.append(pick)
             else:
-                if str(pick.get("bucket")) in {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION"}:
+                if str(pick.get("bucket")) in {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "FADE"}:
                     pick["bucket"] = "SKIPPED_VETO"
                     pick["skip_reason"] = "; ".join(scoring["veto_reasons"][:2])
                 vetoed.append(pick)
