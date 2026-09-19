@@ -240,7 +240,7 @@ def _settled_row(i, *, day="2026-09-01", won=True):
             "prediction_prob": 0.75, "_is_live": False, "_comment": ""}
 
 
-def _run_mine(tmp_path, monkeypatch, rows, target):
+def _run_mine(tmp_path, monkeypatch, rows, target, bet_side="favorite"):
     import pandas as pd
 
     monkeypatch.setattr(mine_edges, "ROOT", tmp_path)
@@ -252,7 +252,7 @@ def _run_mine(tmp_path, monkeypatch, rows, target):
     monkeypatch.setattr(
         mine_edges.sys, "argv",
         ["mine_edges", "--warehouse", str(wh), "--date", target,
-         "--bet-side", "favorite"],
+         "--bet-side", bet_side],
     )
     rc = mine_edges.main()
     assert rc == 0
@@ -444,6 +444,165 @@ def test_mine_min_ev_cli_flag_beats_env_and_default(tmp_path, monkeypatch):
     picks = json.loads((tmp_path / "localdata" / f"picks_{target}.json").read_text())
     assert len(picks) == 1
     assert picks[0]["bucket"] == "SKIPPED_DEAD_EDGE"  # 0.016 < 0.05 explicit floor
+
+
+def _fade_settled_row(i, *, won_model=False):
+    """Settled row whose model pick (dog @2.2, 65%) LOSES ~80% of the time:
+    the model side is a ROBBER, the fade side (favourite @1.8) is the edge.
+    """
+    a, b = f"Fade Fav{i}", f"Fade Dog{i}"
+    return {"match_date": "2026-09-01", "tour": "CHALLENGER",
+            "tournament": "Challenger Test", "_series": "Challenger Series",
+            "player_a": a, "player_b": b, "winner": b if won_model else a,
+            "odds_a": 1.8, "odds_b": 2.2, "rank_a": 10, "rank_b": 50,
+            "predicted_winner": "player_b", "prediction_prob": 0.65,
+            "_is_live": False, "_comment": ""}
+
+
+def _fade_fixture_rows(target):
+    """120 settled rows (model side loses 96/120) + one live row in the same
+    shape: the validated edge sits on the OPPOSITE of the model's pick."""
+    rows = [_fade_settled_row(i, won_model=(i % 5 == 0)) for i in range(120)]
+    rows.append({"match_date": target, "tour": "CHALLENGER",
+                 "tournament": "Challenger Test", "_series": "Challenger Series",
+                 "player_a": "Today Fav", "player_b": "Today Dog",
+                 "winner": "", "odds_a": 1.8, "odds_b": 2.2, "rank_a": 10,
+                 "rank_b": 50, "predicted_winner": "player_b",
+                 "prediction_prob": 0.65, "_is_live": True,
+                 "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    return rows
+
+
+def test_fade_lane_exports_faded_side(tmp_path, monkeypatch, caplog):
+    # The model's pick in this shape is a ROBBER (loses ~80%); the fade side
+    # (favourite @1.8) wins ~80% at +44% ROI archived -> the slice validates
+    # on the fade side and the live row must export as a FADE pick: flipped
+    # side, fade-side price, slice win-rate EV basis (NOT model probability),
+    # and confidence = the faded side's model probability (100 - 65 = 35).
+    monkeypatch.delenv("RACKET_FACTORY_EXPORT_NO_SLICE", raising=False)
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
+    target = "2026-09-13"
+    with caplog.at_level("INFO", logger="edge_miner"):
+        picks = _run_mine(tmp_path, monkeypatch, _fade_fixture_rows(target), target, bet_side="prediction")
+    assert "Fade lane: 1 today rows" in caplog.text
+    assert len(picks) == 1
+    pick = picks[0]
+    assert pick["bucket"] == "FADE"
+    assert pick["_selection_basis"] == "fade"
+    assert pick["selected_player"] == "Today Fav"  # the model's pick is the DOG
+    assert pick["odds"] == pytest.approx(1.8)
+    assert pick["confidence"] == pytest.approx(35.0)
+    assert str(pick["slice_matched"]).startswith("FADE ")
+    assert pick["edge_verdict"] in ("EDGE CONFIRMED", "WATCHLIST")
+    # EV basis = slice (shrunk) win rate at the live fade price:
+    # 0.79*1.8 - 1 ~= +42%, far above the floor.
+    assert pick["expected_value"] > 0.20
+    assert pick["ml_verdict"] == "ALLOW"  # model-EV gate is exempt for fades
+
+
+def test_fade_row_beats_live_only_fallback(tmp_path, monkeypatch):
+    # No actionable MODEL slices, but a validated fade slice exists: a live
+    # row in a DIFFERENT shape (no fade match) still gets the live-only
+    # fallback, while the matching row becomes FADE (one pick each, no dupes).
+    monkeypatch.delenv("RACKET_FACTORY_EXPORT_NO_SLICE", raising=False)
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
+    target = "2026-09-13"
+    rows = _fade_fixture_rows(target)
+    rows.append({"match_date": target, "tour": "ATP", "tournament": "Other Open",
+                 "_series": "Other Series", "player_a": "Other A",
+                 "player_b": "Other B", "winner": "", "odds_a": 1.5,
+                 "odds_b": 2.5, "rank_a": 5, "rank_b": 40,
+                 "predicted_winner": "player_a", "prediction_prob": 0.70,
+                 "_is_live": True, "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    picks = _run_mine(tmp_path, monkeypatch, rows, target, bet_side="prediction")
+    by_match = {p["match"]: p for p in picks}
+    assert by_match["Today Fav vs Today Dog"]["bucket"] == "FADE"
+    other = by_match["Other A vs Other B"]
+    assert other["bucket"] == "WATCHLIST"
+    assert other["slice_matched"] == "live_only_fallback"
+
+
+def test_model_slice_beats_fade_slice(tmp_path, monkeypatch):
+    # A row backed by a validated MODEL slice is exported as a model pick,
+    # never as a fade (opposing bets on one match are one pick, model wins).
+    monkeypatch.delenv("RACKET_FACTORY_EXPORT_NO_SLICE", raising=False)
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
+    target = "2026-09-13"
+    rows = _fade_fixture_rows(target)
+    # Second shape where the model's pick (favourite @1.5, High conf) wins
+    # 54/60 -> a model-side GOLD slice exists for this shape.
+    for i in range(60):
+        a, b = f"Vega Gold{i}", f"Cruz Gold{i}"
+        rows.append({"match_date": "2026-09-01", "tour": "WTA",
+                     "tournament": "Gold Open", "_series": "Gold Series",
+                     "player_a": a, "player_b": b,
+                     "winner": a if i % 10 != 9 else b, "odds_a": 1.5,
+                     "odds_b": 2.5, "rank_a": 5, "rank_b": 40,
+                     "predicted_winner": "player_a", "prediction_prob": 0.75,
+                     "_is_live": False, "_comment": ""})
+    rows.append({"match_date": target, "tour": "WTA", "tournament": "Gold Open",
+                 "_series": "Gold Series", "player_a": "Vega Gold",
+                 "player_b": "Cruz Gold", "winner": "", "odds_a": 1.5,
+                 "odds_b": 2.5, "rank_a": 5, "rank_b": 40,
+                 "predicted_winner": "player_a", "prediction_prob": 0.75,
+                 "_is_live": True, "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    picks = _run_mine(tmp_path, monkeypatch, rows, target, bet_side="prediction")
+    by_match = {p["match"]: p for p in picks}
+    model_pick = by_match["Vega Gold vs Cruz Gold"]
+    assert model_pick["bucket"] == "CERTIFIED_CLEAN"
+    assert model_pick["selected_player"] == "Vega Gold"
+    fade_pick = by_match["Today Fav vs Today Dog"]
+    assert fade_pick["bucket"] == "FADE"
+    assert fade_pick["selected_player"] == "Today Fav"
+    # No opposing-side duplicate for either match.
+    assert len(picks) == 2
+
+
+def test_fade_ml_exempt_from_model_ev_gate(tmp_path, monkeypatch):
+    # A FADE pick's model-EV is structurally negative (the model favours its
+    # own side) — the capital-protection gate must not veto it, while the
+    # identical row as a normal WATCHLIST pick IS vetoed (control).
+    from racketfactory import ml
+    monkeypatch.setattr(ml, "LOCALDATA", tmp_path / "localdata")
+    (tmp_path / "localdata").mkdir(parents=True, exist_ok=True)
+    base = {"match": "A vs B", "bucket": "FADE", "odds": 1.8,
+            "confidence": 35.0, "cross_source_agree": "Disagree",
+            "source": "Forebet", "source_count": 1, "tour": "CHALLENGER",
+            "surface": "Hard", "series": "Challenger", "selected_side": "player_a",
+            "slice_matched": "FADE tour:CHALLENGER", "expected_value": 0.42,
+            "roi_estimate": "44.00%"}
+    fade = dict(base)
+    wl = dict(base, bucket="WATCHLIST")
+    kept, _ = ml.ml_filter_picks([fade, wl])
+    by_bucket = {p["bucket"]: p for p in kept}
+    assert by_bucket["FADE"]["ml_verdict"] == "ALLOW"
+    # Control: the identical row as a normal WATCHLIST pick IS vetoed by the
+    # capital-protection gate (model-EV -37% < +2%) and re-bucketed.
+    assert by_bucket["SKIPPED_VETO"]["ml_verdict"] == "VETO"
+
+
+def test_fade_row_without_prediction_not_faded(tmp_path, monkeypatch):
+    # A fade needs the model's pick to flip. A live row matching a fade
+    # slice's dims but carrying no prediction has no fade side: it must NOT
+    # be exported as FADE (it falls to the live-only fallback here).
+    monkeypatch.delenv("RACKET_FACTORY_EXPORT_NO_SLICE", raising=False)
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
+    target = "2026-09-13"
+    rows = [_fade_settled_row(i, won_model=(i % 5 == 0)) for i in range(120)]
+    rows.append({"match_date": target, "tour": "CHALLENGER",
+                 "tournament": "Challenger Test", "_series": "Challenger Series",
+                 "player_a": "NoPred A", "player_b": "NoPred B",
+                 "winner": "", "odds_a": 1.8, "odds_b": 2.2, "rank_a": 10,
+                 "rank_b": 50, "predicted_winner": None,
+                 "prediction_prob": None, "_is_live": True,
+                 "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    picks = _run_mine(tmp_path, monkeypatch, rows, target, bet_side="prediction")
+    assert all(p["bucket"] != "FADE" for p in picks)
+    assert any(p["slice_matched"] == "live_only_fallback" for p in picks)
 
 
 def test_no_slice_export_opt_in_never_dilutes_matched_days(tmp_path, monkeypatch):

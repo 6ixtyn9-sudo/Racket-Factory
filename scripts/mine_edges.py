@@ -1372,7 +1372,7 @@ def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
     kept = sorted(
         kept,
         key=lambda p: (
-            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2}.get(str(p.get("bucket")), 9),
+            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "FADE": 1, "CAUTION": 2}.get(str(p.get("bucket")), 9),
             -float(p.get("expected_value") or 0.0),
             -float(p.get("confidence") or 0.0),
             str(p.get("match") or ""),
@@ -1628,49 +1628,64 @@ def main() -> int:
                 if len(slice_df) < args.min_n:
                     continue
                 # ROI feedback veto for historical slices
-                combo_dict_tmp = dict(zip(subset, combo))
+                combo_dict = dict(zip(subset, combo))
+                # ROI-feedback veto is model-direction (the registry is built
+                # from model-side audit ROI), so it applies to the model side
+                # only. Fade sides are vetted by their own assay gates.
+                model_vetoed = False
                 try:
-                    veto, reason = should_veto_slice(combo_dict_tmp, _registry)
+                    veto, reason = should_veto_slice(combo_dict, _registry)
                     if veto:
-                        logger.debug("Slice vetoed by ROI feedback: %s (%s)", combo_dict_tmp, reason)
-                        continue
+                        logger.debug("Slice vetoed by ROI feedback: %s (%s)", combo_dict, reason)
+                        model_vetoed = True
                 except Exception:
                     pass
                 res = assay_segment(slice_df, bet_side=args.bet_side)
-                # REDTEAM Finding #1: ROBBER/FADE slices are still mined (so
-                # they can be shown in the slice report) but they cannot
-                # promote a live row to a pick. We continue to the slice
-                # collection but skip the export path later.
-                if res.grade not in ["GOLD", "PLATINUM", "SILVER"] and res.tier != "ROBBER":
-                    continue
+                side_results = [(args.bet_side, res)]
+                if args.bet_side == "prediction":
+                    # Fade lane: the opposite side is a different bet at a
+                    # different price, so it gets its own assay under the
+                    # identical gates (a model-side ROBBER is a candidate
+                    # fade, not a dead end).
+                    side_results.append(("fade", assay_segment(slice_df, bet_side="fade")))
+                for side, r in side_results:
+                    if side != "fade" and model_vetoed:
+                        continue
+                    # REDTEAM Finding #1: ROBBER/FADE slices are still mined (so
+                    # they can be shown in the slice report) but they cannot
+                    # promote a live row to a pick. We continue to the slice
+                    # collection but skip the export path later.
+                    if r.grade not in ["GOLD", "PLATINUM", "SILVER"] and r.tier != "ROBBER":
+                        continue
 
-                combo_dict = dict(zip(subset, combo))
-                signature = tuple(sorted(combo_dict.items()))
-                if signature in seen_signatures:
-                    continue
-                seen_signatures.add(signature)
+                    signature = (side, tuple(sorted(combo_dict.items())))
+                    if signature in seen_signatures:
+                        continue
+                    seen_signatures.add(signature)
 
-                results.append({
-                    "Slice": " | ".join([f"{n}:{v}" for n, v in combo_dict.items()]),
-                    "Combo_Dict": combo_dict,
-                    "Dims": len(combo_dict),
-                    "N": res.n,
-                    "WinRate": f"{res.win_rate:.2%}",
-                    "Shrunk": f"{res.shrunk_rate:.2%}",
-                    "ROI": f"{res.roi:.2%}",
-                    "Grade": res.grade,
-                    "Tier": res.tier,
-                    "Verdict": res.verdict,
-                    # REDTEAM Finding #5: mark exportability. Only slices that
-                    # survive the min-N gate AND are not ROBBER/FADE can be
-                    # used as actionable picks. The flag is consumed by the
-                    # pick export loop below.
-                    "Exportable": (
-                        res.tier != "ROBBER"
-                        and res.verdict != "FADE THIS SIGNAL"
-                        and res.n >= args.min_export_n
-                    ),
-                })
+                    slice_label = " | ".join([f"{n}:{v}" for n, v in combo_dict.items()])
+                    results.append({
+                        "Slice": f"FADE {slice_label}" if side == "fade" else slice_label,
+                        "Side": side,
+                        "Combo_Dict": combo_dict,
+                        "Dims": len(combo_dict),
+                        "N": r.n,
+                        "WinRate": f"{r.win_rate:.2%}",
+                        "Shrunk": f"{r.shrunk_rate:.2%}",
+                        "ROI": f"{r.roi:.2%}",
+                        "Grade": r.grade,
+                        "Tier": r.tier,
+                        "Verdict": r.verdict,
+                        # REDTEAM Finding #5: mark exportability. Only slices that
+                        # survive the min-N gate AND are not ROBBER/FADE can be
+                        # used as actionable picks. The flag is consumed by the
+                        # pick export loop below.
+                        "Exportable": (
+                            r.tier != "ROBBER"
+                            and r.verdict != "FADE THIS SIGNAL"
+                            and r.n >= args.min_export_n
+                        ),
+                    })
 
     if not results:
         logger.info("No high-conviction edges found.")
@@ -1838,26 +1853,30 @@ def main() -> int:
         return base
 
     # Fallback for live-only mode (no historical edges after cache eviction)
-    # If we have today candidates but no certified edges, export them as WATCHLIST
-    # using their own prediction confidence — allows factory to recover and
-    # generate auto_tickets even before full history backfill.
-    if not actionable_results and not today_df.empty:
+    # If we have today candidates but no certified MODEL edges, export them as
+    # WATCHLIST using their own prediction confidence — allows factory to
+    # recover and generate auto_tickets even before full history backfill.
+    # Per-row, applied AFTER the fade pass below: a row matched by a validated
+    # fade slice becomes a FADE pick, not a live-only WATCHLIST row.
+    actionable_model_results = [r for r in actionable_results if r.get("Side") != "fade"]
+    actionable_fade_results = [r for r in actionable_results if r.get("Side") == "fade"]
+    live_only_fallback_pending = (not actionable_model_results) and (not today_df.empty)
+    if live_only_fallback_pending:
         logger.warning("No historical edges found — live-only fallback: exporting today candidates as WATCHLIST")
-        for _, row in today_df.iterrows():
-            picks_to_export.append(_export_candidate_as_watchlist(row, "live_only_fallback", "live_only"))
 
     unmatched_slice_rows = 0
     matched_row_ids: set = set()
-    if not today_df.empty and actionable_results:
+    fade_exported = 0
+    if not today_df.empty and (actionable_results or live_only_fallback_pending):
         for _, row in today_df.iterrows():
             best_pick = None
             best_roi = -999.0
 
-            # REDTEAM Finding #1: ROBBER/FADE slices never promote a row to a
-            # pick, and exportable neutral slices (NO STAT SIG / NEUTRAL) are
-            # diagnostics-only. `actionable_results` is pre-filtered by
-            # _actionable_slices, the single source of truth for this gate.
-            for res in actionable_results:
+            # REDTEAM Finding #1: ROBBER/FADE model slices never promote a row
+            # to a pick, and exportable neutral slices (NO STAT SIG / NEUTRAL)
+            # are diagnostics-only. `actionable_model_results` is pre-filtered
+            # by _actionable_slices, the single source of truth for this gate.
+            for res in actionable_model_results:
                 combo = res["Combo_Dict"]
                 match_all = True
                 for dim_name, dim_val in combo.items():
@@ -1973,8 +1992,144 @@ def main() -> int:
                     base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
 
                 picks_to_export.append(base)
+                continue
+
+            # --- Fade lane: a row with no model-side backing may still carry a
+            # validated edge on the OTHER side. A fade slice is assayed on the
+            # opposite of the model's pick, so the pick flips side, prices the
+            # fade side, and uses the slice's (shrunk) win rate — not the
+            # model's probability — as the EV basis. ---
+            best_fade = None
+            best_fade_roi = -999.0
+            for res in actionable_fade_results:
+                combo = res["Combo_Dict"]
+                match_all = True
+                for dim_name, dim_val in combo.items():
+                    if _dim_mismatches_slice(row, dim_name, dim_val):
+                        match_all = False
+                        break
+                if match_all:
+                    slice_roi = float(str(res["ROI"]).strip('%')) / 100.0
+                    verdict_rank = {"EDGE CONFIRMED": 3, "WATCHLIST": 2}.get(res["Verdict"], 0)
+                    best_verdict_rank = -1 if best_fade is None else {"EDGE CONFIRMED": 3, "WATCHLIST": 2}.get(best_fade["Verdict"], 0)
+                    best_dims = -1 if best_fade is None else int(best_fade.get("Dims", 0))
+                    cur_dims = int(res.get("Dims", 0))
+                    if (
+                        best_fade is None
+                        or verdict_rank > best_verdict_rank
+                        or (verdict_rank == best_verdict_rank and cur_dims > best_dims)
+                        or (verdict_rank == best_verdict_rank and cur_dims == best_dims and slice_roi > best_fade_roi)
+                    ):
+                        best_fade_roi = slice_roi
+                        best_fade = res
+
+            if best_fade is not None:
+                base = select_player_from_row(row, target_date)
+                if base.get("_selection_basis") != "prediction" or base.get("selected_side") not in {"player_a", "player_b"}:
+                    # A fade needs the model's pick to flip; without one this
+                    # row has no fade side. Leave it for the fallback/no-slice
+                    # path below.
+                    if live_only_fallback_pending:
+                        picks_to_export.append(_export_candidate_as_watchlist(row, "live_only_fallback", "live_only"))
+                    else:
+                        unmatched_slice_rows += 1
+                    continue
+                base["selected_side"] = "player_b" if base["selected_side"] == "player_a" else "player_a"
+                base["selected_player"] = base["player_away"] if base["selected_side"] == "player_b" else base["player_home"]
+                base["_selection_basis"] = "fade"
+                prob = None
+                for col in prob_cols:
+                    pval = row.get(col)
+                    if pd.notna(pval) and str(pval).strip() not in {"nan", "<NA>", "None", ""}:
+                        try:
+                            v = float(pval)
+                            if v <= 1.0 and v > 0: v *= 100.0
+                            if prob is None or v > prob: prob = v
+                        except (TypeError, ValueError):
+                            pass
+                if prob is None:
+                    if live_only_fallback_pending:
+                        picks_to_export.append(_export_candidate_as_watchlist(row, "live_only_fallback", "live_only"))
+                    else:
+                        unmatched_slice_rows += 1
+                    continue
+                fade_prob = max(0.0, 100.0 - prob)
+                # Price the FADE side. The model-side probability is passed so
+                # the pair/source checks still apply and the suspicion guard
+                # only rejects when the fade-side price contradicts the model's
+                # own view (i.e. there is nothing to fade).
+                odds_val, odds_reject_reason = selected_odds_is_usable(row, base.get("selected_side"), prob)
+                odds_source = str(row.get("_odds_source") or row.get("odds_source") or "").strip()
+                odds_bookmaker = str(row.get("bookmaker") or row.get("odds_bookmaker") or "").strip()
+                oddsportal_match = ""
+                if odds_val is None:
+                    local_op = lookup_local_oddsportal_selected_odds(target_date, base)
+                    if local_op is not None:
+                        odds_val = local_op.get("odds")
+                        odds_reject_reason = None
+                        odds_source = "OddsPortal"
+                        odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
+                        oddsportal_match = str(local_op.get("matched_market") or "")
+                    else:
+                        bzzoiro_op = lookup_bzzoiro_selected_odds(target_date, base)
+                        if bzzoiro_op is not None:
+                            odds_val = bzzoiro_op.get("odds")
+                            odds_reject_reason = None
+                            odds_source = "Bzzoiro"
+                            odds_bookmaker = str(bzzoiro_op.get("bookmaker") or "Bzzoiro")
+                            oddsportal_match = str(bzzoiro_op.get("matched_market") or "")
+                # EV basis for a fade: the validated slice's (shrunk) win rate
+                # at the live fade price. Using the model's probability of the
+                # faded side would be structurally <50% and veto every fade.
+                ev = None
+                try:
+                    shrunk_fade = float(str(best_fade["Shrunk"]).strip('%')) / 100.0
+                except (TypeError, ValueError):
+                    shrunk_fade = None
+                if shrunk_fade is not None and odds_val is not None and odds_val > 1.0:
+                    ev = shrunk_fade * (odds_val - 1.0) - (1.0 - shrunk_fade)
+                basis, is_paper = market_basis_for_pick(odds_source, odds_val)
+                base.update({
+                    "bucket": "FADE",
+                    "pick": "FADE",
+                    "odds": odds_val,
+                    "odds_source": odds_source,
+                    "odds_bookmaker": odds_bookmaker,
+                    "odds_cross_checked": str(row.get("odds_cross_checked") or ""),
+                    "oddsportal_matched_market": oddsportal_match,
+                    "odds_reject_reason": odds_reject_reason,
+                    "_market_basis": basis,
+                    "_is_paper": is_paper,
+                    # Probability of the FADED (selected) side: 100 - model conf.
+                    "confidence": fade_prob,
+                    "expected_value": ev,
+                    "slice_matched": best_fade["Slice"],
+                    "edge_dims": best_fade.get("Dims"),
+                    "edge_n": best_fade.get("N"),
+                    "edge_grade": best_fade.get("Grade"),
+                    "edge_tier": best_fade.get("Tier") if basis == "api" else "WATCHLIST_ONLY",
+                    "edge_verdict": best_fade.get("Verdict"),
+                    "roi_estimate": best_fade.get("ROI"),
+                })
+                if odds_val is None and base.get("bucket") == "FADE":
+                    base["bucket"] = "WATCHLIST_NO_ODDS"
+                    base["skip_reason"] = odds_reject_reason or "missing selected-side odds"
+                if ev is not None and ev < args.min_ev:
+                    base["bucket"] = "SKIPPED_DEAD_EDGE"
+                    base["skip_reason"] = f"fade EV ({ev:.3f} < {args.min_ev:.3f}) at live fade price"
+                matched_row_ids.add(row.name)
+                picks_to_export.append(base)
+                fade_exported += 1
+                continue
+
+            # No model match, no fade match.
+            if live_only_fallback_pending:
+                picks_to_export.append(_export_candidate_as_watchlist(row, "live_only_fallback", "live_only"))
             else:
                 unmatched_slice_rows += 1
+
+    if fade_exported:
+        logger.info("Fade lane: %d today rows matched validated fade slices -> FADE picks", fade_exported)
 
     # --- No-slice candidates: opt-in export + per-row diagnostics ---
     # Run 35402614701: 81 live candidates, none matching any exportable slice,
@@ -2066,7 +2221,7 @@ def main() -> int:
     picks_to_export = sorted(
         picks_to_export,
         key=lambda p: (
-            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2,
+            {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "FADE": 1, "CAUTION": 2,
              "SKIPPED_DEAD_EDGE": 3, "WATCHLIST_NO_ODDS": 4, "WATCHLIST_UNKNOWN_CTX": 5,
              "SKIPPED_VETO": 6}.get(str(p.get("bucket")), 9),
             -float(p.get("expected_value") or 0.0),

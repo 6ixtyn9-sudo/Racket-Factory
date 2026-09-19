@@ -149,6 +149,12 @@ def _pick_side(row: pd.Series, bet_side: str) -> Optional[str]:
                 return 'b'
         return None
 
+    if bet_side == "fade":
+        # Fade lane: the opposite of the model's pick. A fade is a different
+        # bet at a different price than the model side, so it is assayed with
+        # its own odds/win/ROI (double assay in scripts/mine_edges.py).
+        return {"a": "b", "b": "a"}.get(_pick_side(row, "prediction"))
+
     raise ValueError(f"Unknown bet_side: {bet_side!r}")
 
 
@@ -159,6 +165,7 @@ def assay_segment(df: pd.DataFrame, break_even: Optional[float] = None, bet_side
     bet_side controls what side is treated as the simulated bet:
       - "favorite"   (default): we bet on the lower-odds side
       - "prediction":           we bet on whatever predicted_winner* column says
+      - "fade":                 we bet on the OPPOSITE of the model's pick
 
     Both modes require the slice to have settled outcomes (winner populated)
     and decimal odds. Rows with missing inputs are dropped from the assay.
