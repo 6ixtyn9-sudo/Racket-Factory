@@ -279,6 +279,11 @@ def test_mine_mines_unsettled_nonlive_row(tmp_path, monkeypatch):
 
 
 def test_mine_logs_today_rows_matching_no_slice(tmp_path, monkeypatch, caplog):
+    # Hermetic: the daily workflow sets RACKET_FACTORY_EXPORT_NO_SLICE=1
+    # job-wide (visible to the pytest step), which routes this row through
+    # the opt-in export and breaks the default-OFF assertion (run
+    # 35408980597). This test pins the default-OFF behavior, so unset it.
+    monkeypatch.delenv("RACKET_FACTORY_EXPORT_NO_SLICE", raising=False)
     target = "2026-09-13"
     # 60 settled rows, one dominant slice (GOLD: 55/60 @1.5, N>50).
     rows = [_settled_row(i, won=(i % 12 != 0)) for i in range(60)]
