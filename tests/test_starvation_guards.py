@@ -379,6 +379,68 @@ def test_no_slice_export_opt_in_exports_watchlist(tmp_path, monkeypatch, caplog)
     assert not (tmp_path / "localdata" / f"picks_unmatched_{target}.json").exists()
 
 
+def _low_ev_fallback_fixture(target):
+    """20 settled rows (no actionable slice -> live-only fallback) + a today
+    row with EV = 0.635*0.6 - 0.365 = +1.6% — inside the 1–2% band that
+    separates the post-RED-DAY tuning from the +2% policy floor."""
+    rows = [_settled_row(i) for i in range(20)]
+    rows.append({"match_date": target, "tour": "UTR", "tournament": "Madrid",
+                 "_series": "ITF", "player_a": "Today A", "player_b": "Today B",
+                 "winner": "", "odds_a": 1.6, "odds_b": 2.4, "rank_a": 150,
+                 "rank_b": 160, "predicted_winner": "player_a",
+                 "prediction_prob": 0.635, "_is_live": True,
+                 "_comment": "live_upcoming_injected",
+                 "_odds_source": "TheOddsAPI"})
+    return rows
+
+
+def test_mine_default_min_ev_matches_ml_two_percent_policy(tmp_path, monkeypatch):
+    # Gap closed (2026-09-19): mine_edges' export gate previously defaulted to
+    # 0.0 while ml.py enforced the +2% AGENT_PROMPT policy. A +1.6% EV row must
+    # now be SKIPPED_DEAD_EDGE by default (same floor as ml.get_min_ev_real).
+    monkeypatch.delenv("RACKET_FACTORY_MIN_EV", raising=False)
+    target = "2026-09-13"
+    picks = _run_mine(tmp_path, monkeypatch, _low_ev_fallback_fixture(target), target)
+    assert len(picks) == 1
+    assert picks[0]["bucket"] == "SKIPPED_DEAD_EDGE"
+    assert picks[0]["expected_value"] == pytest.approx(0.016)
+    assert "0.016 < 0.020" in picks[0]["skip_reason"]
+
+
+def test_mine_min_ev_env_var_restores_red_day_tuning(tmp_path, monkeypatch):
+    # The same env var ml.py reads (RACKET_FACTORY_MIN_EV) now governs the
+    # export gate too: 1% restores the post-RED-DAY tuning and the +1.6% row
+    # exports as WATCHLIST.
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
+    target = "2026-09-13"
+    picks = _run_mine(tmp_path, monkeypatch, _low_ev_fallback_fixture(target), target)
+    assert len(picks) == 1
+    assert picks[0]["bucket"] == "WATCHLIST"
+    assert picks[0]["expected_value"] == pytest.approx(0.016)
+
+
+def test_mine_min_ev_cli_flag_beats_env_and_default(tmp_path, monkeypatch):
+    # Explicit --min-ev still wins over env/default (diagnostics escape hatch).
+    monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
+    import pandas as pd
+
+    monkeypatch.setattr(mine_edges, "ROOT", tmp_path)
+    from racketfactory import ml as ml_module
+    monkeypatch.setattr(ml_module, "LOCALDATA", tmp_path / "localdata")
+    wh = tmp_path / "warehouse.csv.gz"
+    target = "2026-09-13"
+    pd.DataFrame(_low_ev_fallback_fixture(target)).to_csv(wh, index=False, compression="gzip")
+    monkeypatch.setattr(
+        mine_edges.sys, "argv",
+        ["mine_edges", "--warehouse", str(wh), "--date", target,
+         "--bet-side", "favorite", "--min-ev", "0.05"],
+    )
+    assert mine_edges.main() == 0
+    picks = json.loads((tmp_path / "localdata" / f"picks_{target}.json").read_text())
+    assert len(picks) == 1
+    assert picks[0]["bucket"] == "SKIPPED_DEAD_EDGE"  # 0.016 < 0.05 explicit floor
+
+
 def test_no_slice_export_opt_in_never_dilutes_matched_days(tmp_path, monkeypatch):
     # If the slice pass already exported a pick, the opt-in must NOT also
     # export the unmatched rows (no gate dilution on days that have picks).

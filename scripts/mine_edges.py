@@ -35,7 +35,7 @@ from racketfactory.warehouse import (
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.forebet import ForebetPredictor, forebet_cache_key
-from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice
+from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice, get_min_ev_real
 from racketfactory.odds_compare import fetch_comparison_rows
 
 logging.basicConfig(
@@ -1440,15 +1440,26 @@ def main() -> int:
                          "2026-09-17 only 1 slice n=54 exportable -> 1 bettable -> NO BET, 66 rows "
                          "no exportable slice). Anything smaller is kept for transparency but cannot "
                          "become a pick. User rule n<30 fluke, so 30 is minimum meaningful.")
-    ap.add_argument("--min-ev", type=float, default=0.0,
+    ap.add_argument("--min-ev", type=float, default=None,
                     help="REDTEAM Finding #4: minimum per-bet expected value (decimal) required "
-                         "for a pick to be exported. EV = conf*(odds-1) - (1-conf). Default 0.0 "
-                         "(drop non-positive-EV bets). Set to negative to disable.")
+                         "for a pick to be exported. EV = conf*(odds-1) - (1-conf). Default None "
+                         "resolves to ml.get_min_ev_real() (RACKET_FACTORY_MIN_EV, +2% policy — "
+                         "the same floor the ML capital-protection gate enforces on stakeable "
+                         "legs). Set explicitly (e.g. 0.0 or a negative value) to override.")
     ap.add_argument("--bet-side", choices=["favorite", "prediction"], default="favorite",
                     help="REDTEAM Finding #3: what side does the slice assay test? 'favorite' "
                          "(default, historical behaviour) or 'prediction' (follow predicted_winner*).")
     ap.add_argument("--date", default=None, help="Target date YYYY-MM-DD to extract specific picks (default: today)")
     args = ap.parse_args()
+
+    # Close the policy gap: when --min-ev is not passed on the CLI, resolve it
+    # through the SAME source the ML capital-protection gate uses (ml.py),
+    # i.e. RACKET_FACTORY_MIN_EV with a +2% default. Previously the export
+    # gate defaulted to 0.0 while ml.py enforced 2%, so a 0.5%-EV pick could
+    # be exported by mine_edges but the policy floor was +2%. One env var now
+    # governs both; an explicit --min-ev still wins for diagnostics.
+    if args.min_ev is None:
+        args.min_ev = get_min_ev_real()
 
     try:
         df = pd.read_csv(args.warehouse, low_memory=False)
