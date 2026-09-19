@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-19
 ============================================================
-Generated at: 2026-09-19 03:28:09
+Generated at: 2026-09-19 03:39:42
 
 
 CERTIFIED CLEAN PICKS
@@ -15,8 +15,6 @@ WATCHLIST PICKS
 ============================================================
   [no_slice_export] D. Altmaier vs D. Prizmic                  KO 13:30 -> D. ALTMAIER  conf 61% @2.50  EV +0.53u
      bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Tristan Schoolkate vs Harold Mayot         KO 12:30 -> TRISTAN SCHOOLKATE  conf 60% @1.81  EV +0.09u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] C. Burel vs L. S. Steur J.                 KO 15:00 -> L. S. STEUR J.  conf 52% @3.11  EV +0.62u
      bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] S. De Stefano vs L. Samsonova              KO 10:00 -> S. DE STEFANO  conf 52% @2.44  EV +0.27u
@@ -78,6 +76,8 @@ SKIPPED — VETO CONTEXT
   [no_slice_export] Samira De Stefano vs Laura Samson          KO 11:00 -> LAURA SAMSON  conf 71% @1.51  EV +0.07u
      bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] Nikolas Sanchez Izquierdo vs Luka Mikrut   KO 14:30 -> LUKA MIKRUT  conf 62% @1.71  EV +0.06u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Tristan Schoolkate vs Harold Mayot         KO 12:30 -> TRISTAN SCHOOLKATE  conf 60% @1.81  EV +0.09u
      bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] A. Tabilo vs D. Merida Aguilar             KO 16:00 -> A. TABILO  conf 54% @1.95  EV +0.05u
      bucket=SKIPPED_VETO  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice

@@ -6,23 +6,23 @@
 - archived pick dates: 7
 - ledger pick rows (in window): 139
 - duplicate rows merged (same match + selection re-picked): 1
-- stale history rows pruned (pick no longer in ledger): 1
-- settled picks: 53
+- stale history rows pruned (pick no longer in ledger): 0
+- settled picks: 54
 - wins: 26
-- hit rate: 0.490566
-- priced picks: 46
-- ROI: -0.202609
-- ROI (real-priced): -0.202609 (n=46)
+- hit rate: 0.481481
+- priced picks: 47
+- ROI: -0.219574
+- ROI (real-priced): -0.219574 (n=47)
 - ROI (paper-priced): None (n=0)
-- pending picks: 84
+- pending picks: 83
 - void picks: 0
 - conflict picks: 1
 - total picks: 138
-- set diagnostic picks: 53
-- selected won any set: 39 (0.735849)
-- selected won set 1: 27 (0.509434)
-- selected won set 2: 29 (0.54717)
-- selected won set 3: 9 (0.409091)
+- set diagnostic picks: 54
+- selected won any set: 40 (0.740741)
+- selected won set 1: 28 (0.518519)
+- selected won set 2: 29 (0.537037)
+- selected won set 3: 9 (0.391304)
 
 ## Settlement policy
 
@@ -40,11 +40,11 @@
 
 - ledger rows in window (official): 139
 - duplicate rows merged (same match + selection in multiple daily ledgers): 1
-- stale history rows pruned (pick no longer in any archived ledger): 1
+- stale history rows pruned (pick no longer in any archived ledger): 0
 - audited rows: 138
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
-  - pending_no_result: result not final: live/in-progress markers present: 74
+  - pending_no_result: result not final: live/in-progress markers present: 73
   - pending_no_result: no matching result rows found: 10
   - conflict: conflicting final results: Challenger_results@2026-09-18:Badosa P.(6-4 6-2); Forebet_results@2026-09-18:Badosa G. P.(4-6 2-6): 1
 
@@ -180,7 +180,7 @@
 - 2026-09-19 S. Kwon vs S. Nagal selected=S. Kwon winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Samira De Stefano vs Laura Samson selected=Laura Samson winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Sascha Gueymard Wayenburg vs Titouan Droguet selected=Titouan Droguet winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 Stoiana / Valdmannova vs Dang / You selected=Stoiana / Valdmannova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-19 Stoiana / Valdmannova vs Dang / You selected=Stoiana / Valdmannova winner=Dang Y. / You X. status=lost basis=Challenger_results@2026-09-19:4-6 6-3 10-7
 - 2026-09-19 T. Samuel vs A. Andrade selected=T. Samuel winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 T. Skatov vs M. Jones selected=M. Jones winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 T. Zidansek vs B. Jeong selected=T. Zidansek winner=? status=pending_no_result reason=result not final: live/in-progress markers present
@@ -193,28 +193,28 @@
 
 - `ATP`: total=35, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=34
 - `CHALLENGER`: total=67, settled=42, wins=20, hit_rate=0.47619, ROI=-0.202895, pending=25
-- `WTA`: total=36, settled=10, wins=5, hit_rate=0.5, ROI=-0.265714, pending=25, conflict=1
+- `WTA`: total=36, settled=11, wins=5, hit_rate=0.454545, ROI=-0.3575, pending=24, conflict=1
 
 ## By Series
 
 - `ATP250`: total=35, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=34
 - `Challenger`: total=67, settled=42, wins=20, hit_rate=0.47619, ROI=-0.202895, pending=25
-- `International`: total=36, settled=10, wins=5, hit_rate=0.5, ROI=-0.265714, pending=25, conflict=1
+- `International`: total=36, settled=11, wins=5, hit_rate=0.454545, ROI=-0.3575, pending=24, conflict=1
 
 ## By Surface
 
 - `Grass`: total=7, settled=1, wins=0, hit_rate=0.0, ROI=None, pending=6
-- `Hard`: total=131, settled=52, wins=26, hit_rate=0.5, ROI=-0.202609, pending=78, conflict=1
+- `Hard`: total=131, settled=53, wins=26, hit_rate=0.490566, ROI=-0.219574, pending=77, conflict=1
 
 ## By Bucket
 
-- `SKIPPED_DEAD_EDGE`: total=82, settled=26, wins=16, hit_rate=0.615385, ROI=-0.127692, pending=55, conflict=1
-- `SKIPPED_VETO`: total=11, settled=5, wins=3, hit_rate=0.6, ROI=0.042, pending=6
-- `WATCHLIST`: total=25, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=10
+- `SKIPPED_DEAD_EDGE`: total=82, settled=27, wins=16, hit_rate=0.592593, ROI=-0.16, pending=54, conflict=1
+- `SKIPPED_VETO`: total=12, settled=5, wins=3, hit_rate=0.6, ROI=0.042, pending=7
+- `WATCHLIST`: total=24, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=9
 - `WATCHLIST_NO_ODDS`: total=20, settled=7, wins=3, hit_rate=0.428571, ROI=None, pending=13
 
 ## By Source
 
-- `BetClan`: total=17, settled=10, wins=5, hit_rate=0.5, ROI=-0.143333, pending=7
+- `BetClan`: total=17, settled=11, wins=5, hit_rate=0.454545, ROI=-0.265714, pending=6
 - `BetClan, Forebet`: total=8, settled=1, wins=0, hit_rate=0.0, ROI=-1.0, pending=7
 - `Forebet`: total=113, settled=42, wins=21, hit_rate=0.5, ROI=-0.191282, pending=70, conflict=1
