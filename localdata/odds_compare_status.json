@@ -1,14 +1,4 @@
 {
-  "2026-09-13": {
-    "betexplorer_rows": 124,
-    "checked_at": "2026-09-13T21:45:26.172972+00:00",
-    "cross_checked": {
-      "single": 124
-    },
-    "errors": {},
-    "merged_rows": 124,
-    "oddsportal_upcoming_rows": 0
-  },
   "2026-09-14": {
     "betexplorer_rows": 224,
     "checked_at": "2026-09-14T06:09:32.485407+00:00",
@@ -62,13 +52,23 @@
     "oddsportal_upcoming_rows": 0
   },
   "2026-09-19": {
-    "betexplorer_rows": 154,
-    "checked_at": "2026-09-19T01:39:34.372491+00:00",
+    "betexplorer_rows": 149,
+    "checked_at": "2026-09-19T05:48:11.760690+00:00",
     "cross_checked": {
-      "single": 154
+      "single": 149
     },
     "errors": {},
-    "merged_rows": 154,
+    "merged_rows": 149,
+    "oddsportal_upcoming_rows": 0
+  },
+  "2026-09-20": {
+    "betexplorer_rows": 150,
+    "checked_at": "2026-09-19T05:48:37.828623+00:00",
+    "cross_checked": {
+      "single": 150
+    },
+    "errors": {},
+    "merged_rows": 150,
     "oddsportal_upcoming_rows": 0
   }
 }

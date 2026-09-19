@@ -2,27 +2,27 @@
 
 ## Overall
 
-- archived pick rows: 138
+- archived pick rows: 131
 - archived pick dates: 7
-- ledger pick rows (in window): 139
+- ledger pick rows (in window): 132
 - duplicate rows merged (same match + selection re-picked): 1
-- stale history rows pruned (pick no longer in ledger): 0
-- settled picks: 54
-- wins: 26
-- hit rate: 0.481481
-- priced picks: 47
-- ROI: -0.219574
-- ROI (real-priced): -0.219574 (n=47)
-- ROI (paper-priced): None (n=0)
-- pending picks: 83
+- stale history rows pruned (pick no longer in ledger): 9
+- settled picks: 56
+- wins: 29
+- hit rate: 0.517857
+- priced picks: 48
+- ROI: -0.173958
+- ROI (real-priced): -0.202609 (n=46)
+- ROI (paper-priced): 0.485 (n=2)
+- pending picks: 74
 - void picks: 0
 - conflict picks: 1
-- total picks: 138
-- set diagnostic picks: 54
-- selected won any set: 40 (0.740741)
-- selected won set 1: 28 (0.518519)
-- selected won set 2: 29 (0.537037)
-- selected won set 3: 9 (0.391304)
+- total picks: 131
+- set diagnostic picks: 56
+- selected won any set: 42 (0.75)
+- selected won set 1: 30 (0.535714)
+- selected won set 2: 30 (0.535714)
+- selected won set 3: 11 (0.458333)
 
 ## Settlement policy
 
@@ -38,13 +38,13 @@
 
 ## Ledger reconciliation
 
-- ledger rows in window (official): 139
+- ledger rows in window (official): 132
 - duplicate rows merged (same match + selection in multiple daily ledgers): 1
-- stale history rows pruned (pick no longer in any archived ledger): 0
-- audited rows: 138
+- stale history rows pruned (pick no longer in any archived ledger): 9
+- audited rows: 131
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
-  - pending_no_result: result not final: live/in-progress markers present: 73
+  - pending_no_result: result not final: live/in-progress markers present: 64
   - pending_no_result: no matching result rows found: 10
   - conflict: conflicting final results: Challenger_results@2026-09-18:Badosa P.(6-4 6-2); Forebet_results@2026-09-18:Badosa G. P.(4-6 2-6): 1
 
@@ -109,18 +109,15 @@
 - 2026-09-17 F. Jorge vs V. Jimenez Kasintseva selected=F. Jorge winner=Jorge F. status=won basis=Challenger_results@2026-09-17:6-2 4-6 6-4
 - 2026-09-17 Romero Gormaz / Selekhmeteva vs Christie / Silva selected=Christie / Silva winner=Romero Gormaz L. / Selekhmeteva O. status=lost basis=Challenger_results@2026-09-17:6-2 4-6 10-8
 - 2026-09-17 Samira De Stefano vs Alice Tubello selected=Samira De Stefano winner=De Stefano S. status=won basis=Challenger_results@2026-09-18:4-6 7-6 6-4
-- 2026-09-18 F. Auger-Aliassime vs Q. Halys selected=F. Auger-Aliassime winner=F. Auger-Aliassime status=won basis=Forebet_results@2026-09-18:7-6 4-6 10-0
+- 2026-09-18 F. Auger-Aliassime vs Q. Halys selected=F. Auger-Aliassime winner=F. Auger-Aliassime status=won basis=Forebet_results@2026-09-18:7-6 4-6 6-3
 - 2026-09-18 M. Bobichon vs T. Schoolkate selected=T. Schoolkate winner=Schoolkate T. status=won basis=Challenger_results@2026-09-18:6-2 6-1
 - 2026-09-18 M. Stoiana vs P. Badosa selected=P. Badosa winner=? status=conflict reason=conflicting final results: Challenger_results@2026-09-18:Badosa P.(6-4 6-2); Forebet_results@2026-09-18:Badosa G. P.(4-6 2-6)
 - 2026-09-19 A. Dougaz vs M. Murtaza selected=A. Dougaz winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 A. Fery vs A. Guillen Meza selected=A. Fery winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 A. Herrero Linana vs Y. Kabbaj selected=A. Herrero Linana winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 A. Ibragimova vs R. Saigo selected=A. Ibragimova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 A. Ito vs S. Lansere selected=A. Ito winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 A-L. Friedsam vs D. Krawczyk selected=A-L. Friedsam winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 A. Moro Canas vs J. Clarke selected=A. Moro Canas winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 A. Shevchenko vs K. Samrej selected=K. Samrej winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 A. Shubladze vs G. Jang selected=A. Shubladze winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 A. Tabilo vs D. Merida Aguilar selected=A. Tabilo winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 A. Zverev vs M. Dodig selected=A. Zverev winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 B. Artnak vs O. Kimhi selected=B. Artnak winner=? status=pending_no_result reason=result not final: live/in-progress markers present
@@ -138,19 +135,18 @@
 - 2026-09-19 Da Silva Fick / Kulambayeva vs Bhosale / Micic selected=Da Silva Fick / Kulambayeva winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 E. M. Desvignes vs K. Okamura selected=E. M. Desvignes winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 E. S. Liang vs S. Saito selected=E. S. Liang winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-19 F. Auger-Aliassime vs A. Rinderknech selected=F. Auger-Aliassime winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 F. J. Planinsek vs A. Vales selected=A. Vales winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 F. Roncadelli vs M. Molder selected=F. Roncadelli winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 G. Trismuwantara vs R. M. Papoe selected=R. M. Papoe winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 H. Chung vs D. Suresh selected=D. Suresh winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 H. Kaji vs D. Astakhova selected=D. Astakhova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 I. Simakin vs H. Heck selected=I. Simakin winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 J. Aguilar Cardozo vs O. Ojakaar selected=O. Ojakaar winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-19 H. Kaji vs D. Astakhova selected=D. Astakhova winner=Astakhova D. status=won basis=Challenger_results@2026-09-19:6-2 6-7 6-2
 - 2026-09-19 J. Garland vs E. Perez selected=J. Garland winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 J.J. Wolf vs Sebastian Gorzny selected=J.J. Wolf winner=S. Gorzny status=lost basis=Forebet_results@2026-09-18:7-6 1-6 30-40
+- 2026-09-19 J.J. Wolf vs Sebastian Gorzny selected=J.J. Wolf winner=Wolf J. status=won basis=Challenger_results@2026-09-19:7-6 1-6 7-5
 - 2026-09-19 J. Lehecka vs L. Tien selected=J. Lehecka winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 J. Mensik vs B. Shelton selected=B. Shelton winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 J. Rodionov vs Z. Bergs selected=J. Rodionov winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 J. Wang vs A. Kulikova selected=A. Kulikova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-19 J. Wang vs A. Kulikova selected=A. Kulikova winner=Kulikova A. status=won basis=Challenger_results@2026-09-19:6-4 7-5
 - 2026-09-19 Jakupovic / Karamoko vs Romero Gormaz / Selekhmeteva selected=Jakupovic / Karamoko winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 K. Bennani vs C. Abua selected=K. Bennani winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 K. Montsi vs D. Dzumhur selected=D. Dzumhur winner=? status=pending_no_result reason=result not final: live/in-progress markers present
@@ -160,14 +156,11 @@
 - 2026-09-19 M. Barthel vs N. Basiletti selected=M. Barthel winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 M. Echargui vs M. Shoaib selected=M. Echargui winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 M. Efstathiou vs O. Krutykh selected=O. Krutykh winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 M. Hontama vs E. Lee selected=M. Hontama winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 M. Kouame vs R. Pacheco Mendez selected=R. Pacheco Mendez winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 M. Pohankova vs G. Knutson selected=M. Pohankova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 M. Yamaguchi vs U. Eikeri selected=M. Yamaguchi winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 M. Zheng vs D. Blanch selected=M. Zheng winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Marat Sharipov vs Petr Bar Biryukov selected=Marat Sharipov winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 N. Hardt vs A. Elsayed selected=N. Hardt winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 N. Hibino vs N. C. Ng K. selected=N. Hibino winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-19 N. Podoroska vs P. Badosa selected=P. Badosa winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 N. Radisic vs V. Morvayova selected=V. Morvayova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Nikolas Sanchez Izquierdo vs Luka Mikrut selected=Luka Mikrut winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 P. Henning vs A. Nedic selected=A. Nedic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
@@ -192,29 +185,29 @@
 ## By Tour
 
 - `ATP`: total=35, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=34
-- `CHALLENGER`: total=67, settled=42, wins=20, hit_rate=0.47619, ROI=-0.202895, pending=25
-- `WTA`: total=36, settled=11, wins=5, hit_rate=0.454545, ROI=-0.3575, pending=24, conflict=1
+- `CHALLENGER`: total=64, settled=42, wins=21, hit_rate=0.5, ROI=-0.202895, pending=22
+- `WTA`: total=32, settled=13, wins=7, hit_rate=0.538462, ROI=-0.098889, pending=18, conflict=1
 
 ## By Series
 
 - `ATP250`: total=35, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=34
-- `Challenger`: total=67, settled=42, wins=20, hit_rate=0.47619, ROI=-0.202895, pending=25
-- `International`: total=36, settled=11, wins=5, hit_rate=0.454545, ROI=-0.3575, pending=24, conflict=1
+- `Challenger`: total=64, settled=42, wins=21, hit_rate=0.5, ROI=-0.202895, pending=22
+- `International`: total=32, settled=13, wins=7, hit_rate=0.538462, ROI=-0.098889, pending=18, conflict=1
 
 ## By Surface
 
-- `Grass`: total=7, settled=1, wins=0, hit_rate=0.0, ROI=None, pending=6
-- `Hard`: total=131, settled=53, wins=26, hit_rate=0.490566, ROI=-0.219574, pending=77, conflict=1
+- `Grass`: total=7, settled=1, wins=1, hit_rate=1.0, ROI=None, pending=6
+- `Hard`: total=124, settled=55, wins=28, hit_rate=0.509091, ROI=-0.173958, pending=68, conflict=1
 
 ## By Bucket
 
-- `SKIPPED_DEAD_EDGE`: total=82, settled=27, wins=16, hit_rate=0.592593, ROI=-0.16, pending=54, conflict=1
+- `SKIPPED_DEAD_EDGE`: total=78, settled=28, wins=18, hit_rate=0.642857, ROI=-0.083929, pending=49, conflict=1
 - `SKIPPED_VETO`: total=12, settled=5, wins=3, hit_rate=0.6, ROI=0.042, pending=7
-- `WATCHLIST`: total=24, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=9
-- `WATCHLIST_NO_ODDS`: total=20, settled=7, wins=3, hit_rate=0.428571, ROI=None, pending=13
+- `WATCHLIST`: total=23, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=8
+- `WATCHLIST_NO_ODDS`: total=18, settled=8, wins=4, hit_rate=0.5, ROI=None, pending=10
 
 ## By Source
 
-- `BetClan`: total=17, settled=11, wins=5, hit_rate=0.454545, ROI=-0.265714, pending=6
+- `BetClan`: total=17, settled=11, wins=6, hit_rate=0.545455, ROI=-0.143333, pending=6
 - `BetClan, Forebet`: total=8, settled=1, wins=0, hit_rate=0.0, ROI=-1.0, pending=7
-- `Forebet`: total=113, settled=42, wins=21, hit_rate=0.5, ROI=-0.191282, pending=70, conflict=1
+- `Forebet`: total=106, settled=44, wins=23, hit_rate=0.522727, ROI=-0.158293, pending=61, conflict=1

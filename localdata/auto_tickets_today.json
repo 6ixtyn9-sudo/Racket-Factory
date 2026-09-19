@@ -1,11 +1,11 @@
 {
   "date": "2026-09-19",
-  "generated_at": "2026-09-19T00:02:21+02:00",
+  "generated_at": "2026-09-19T07:41:12+02:00",
   "bank_pct": 194.536776,
   "stake_per_acca_pct": 0,
   "staked_pct": 0,
   "paper_staked_pct": 0,
   "accas": [],
   "skipped": [],
-  "frozen": true
+  "frozen": false
 }
