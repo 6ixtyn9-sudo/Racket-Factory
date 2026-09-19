@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-19
 ============================================================
-Generated at: 2026-09-19 01:26:17
+Generated at: 2026-09-19 02:40:40
 
 
 CERTIFIED CLEAN PICKS
@@ -13,11 +13,49 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  (none)
+  [no_slice_export] D. Altmaier vs D. Prizmic                  KO 13:30 -> D. ALTMAIER  conf 61% @2.50  EV +0.53u
+     bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] C. Burel vs L. S. Steur J.                 KO 15:00 -> L. S. STEUR J.  conf 52% @3.05  EV +0.59u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] S. De Stefano vs L. Samsonova              KO 10:00 -> S. DE STEFANO  conf 52% @2.44  EV +0.27u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] T. Skatov vs M. Jones                      KO 10:00 -> M. JONES  conf 51% @3.00  EV +0.53u
+     bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] L. Neumayer vs G. Onclin                   KO 12:00 -> G. ONCLIN  conf 51% @2.80  EV +0.43u
+     bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] J. Rodionov vs Z. Bergs                    KO 10:30 -> J. RODIONOV  conf 51% @2.65  EV +0.35u
+     bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] M. Kouame vs R. Pacheco Mendez             KO 04:30 -> R. PACHECO MENDEZ  conf 51% @2.14  EV +0.09u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] C. A. Caniato vs A. Barrena                KO 11:30 -> A. BARRENA  conf 51% @2.04  EV +0.04u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] K. Bennani vs C. Abua                      KO 10:00 -> K. BENNANI  conf 75% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] A-L. Friedsam vs D. Krawczyk               KO 03:00 -> A-L. FRIEDSAM  conf 70% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] C. Zhao vs Y. Ma                           KO 03:30 -> C. ZHAO  conf 66% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] P. Henning vs A. Nedic                     KO 13:00 -> A. NEDIC  conf 61% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] J.J. Wolf vs Sebastian Gorzny              KO 00:00 -> J.J. WOLF  conf 60% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] E. M. Desvignes vs K. Okamura              KO 07:30 -> E. M. DESVIGNES  conf 58% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] A. Shevchenko vs K. Samrej                 KO 08:30 -> K. SAMREJ  conf 58% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] D. Duran vs N. Borges                      KO 18:00 -> D. DURAN  conf 55% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] F. J. Planinsek vs A. Vales                KO 10:30 -> A. VALES  conf 55% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] P. Photiades vs G. Kravchenko              KO 08:00 -> P. PHOTIADES  conf 53% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] D. Phillips vs A. Magadan                  KO 14:00 -> D. PHILLIPS  conf 52% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] J. Aguilar Cardozo vs O. Ojakaar           KO 21:00 -> O. OJAKAAR  conf 51% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -25,11 +63,121 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [no_slice_export] Kaitlin Quevedo vs Anna Blinkova           KO 17:00 -> ANNA BLINKOVA  conf 72% @1.58  EV +0.14u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Samira De Stefano vs Laura Samson          KO 11:00 -> LAURA SAMSON  conf 71% @1.51  EV +0.07u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Nikolas Sanchez Izquierdo vs Luka Mikrut   KO 14:30 -> LUKA MIKRUT  conf 62% @1.71  EV +0.06u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Tristan Schoolkate vs Harold Mayot         KO 12:30 -> TRISTAN SCHOOLKATE  conf 60% @1.85  EV +0.11u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] A. Tabilo vs D. Merida Aguilar             KO 16:00 -> A. TABILO  conf 54% @1.95  EV +0.05u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
-  (none)
+  [no_slice_export] A. Shubladze vs G. Jang                    KO 02:00 -> A. SHUBLADZE  conf 86% @1.03  EV -0.11u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] C. Cruz vs J. Faria                        KO 19:30 -> J. FARIA  conf 84% @1.02  EV -0.14u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] M. Hontama vs E. Lee                       KO 03:30 -> M. HONTAMA  conf 79% @1.22  EV -0.04u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] T. Zidansek vs B. Jeong                    KO 05:00 -> T. ZIDANSEK  conf 77% @1.10  EV -0.15u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] R. Da Costa vs C. Cretu                    KO 04:30 -> C. CRETU  conf 77% @1.06  EV -0.18u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] A. Dougaz vs M. Murtaza                    KO 13:00 -> A. DOUGAZ  conf 77% @1.01  EV -0.22u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] R. Cid Subervi vs K. Mabrouk               KO 18:00 -> R. CID SUBERVI  conf 76% @1.07  EV -0.19u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Stoiana / Valdmannova vs Dang / You        KO 00:00 -> STOIANA / VALDMANNOVA  conf 71% @1.36  EV -0.03u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Clara Burel vs Joelle Lilly Sophie Steur   KO 17:30 -> CLARA BUREL  conf 71% @1.35  EV -0.04u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] M. Echargui vs M. Shoaib                   KO 11:30 -> M. ECHARGUI  conf 70% @1.06  EV -0.26u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] M. Efstathiou vs O. Krutykh                KO 09:30 -> O. KRUTYKH  conf 67% @1.52  EV +0.02u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] F. Roncadelli vs M. Molder                 KO 19:30 -> F. RONCADELLI  conf 67% @1.13  EV -0.24u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] E. S. Liang vs S. Saito                    KO 06:30 -> E. S. LIANG  conf 66% @1.36  EV -0.10u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] N. Hardt vs A. Elsayed                     KO 16:30 -> N. HARDT  conf 66% @1.14  EV -0.25u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] G. Trismuwantara vs R. M. Papoe            KO 06:00 -> R. M. PAPOE  conf 66% @1.09  EV -0.28u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] J. Garland vs E. Perez                     KO 06:00 -> J. GARLAND  conf 66% @1.02  EV -0.33u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] N. Hibino vs N. C. Ng K.                   KO 04:30 -> N. HIBINO  conf 66% @1.01  EV -0.33u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] S. Kwon vs S. Nagal                        KO 04:30 -> S. KWON  conf 65% @1.27  EV -0.17u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] A. Zverev vs M. Dodig                      KO 12:00 -> A. ZVEREV  conf 65% @1.03  EV -0.33u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] H. Kaji vs D. Astakhova                    KO 02:00 -> D. ASTAKHOVA  conf 63% @1.52  EV -0.04u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] K. Montsi vs D. Dzumhur                    KO 14:30 -> D. DZUMHUR  conf 63% @1.41  EV -0.11u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Marat Sharipov vs Petr Bar Biryukov        KO 10:30 -> MARAT SHARIPOV  conf 63% @1.18  EV -0.26u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] M. Yamaguchi vs U. Eikeri                  KO 07:30 -> M. YAMAGUCHI  conf 63% @1.10  EV -0.31u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Y. Dlimi vs D. Adeleye                     KO 11:30 -> Y. DLIMI  conf 63% @1.02  EV -0.36u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] L. Pigato vs J. Vandromme                  KO 11:30 -> J. VANDROMME  conf 62% @1.25  EV -0.23u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] J. Wang vs A. Kulikova                     KO 03:00 -> A. KULIKOVA  conf 61% @1.57  EV -0.04u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] A. Herrero Linana vs Y. Kabbaj             KO 16:30 -> A. HERRERO LINANA  conf 60% @1.51  EV -0.09u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Sascha Gueymard Wayenburg vs Titouan Drogu KO 14:00 -> TITOUAN DROGUET  conf 60% @1.37  EV -0.18u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] H. Chung vs D. Suresh                      KO 06:00 -> D. SURESH  conf 59% @1.49  EV -0.12u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] N. Radisic vs V. Morvayova                 KO 06:00 -> V. MORVAYOVA  conf 59% @1.24  EV -0.27u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] A. Fery vs A. Guillen Meza                 KO 13:30 -> A. FERY  conf 58% @1.06  EV -0.39u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Da Silva Fick / Kulambayeva vs Bhosale / M KO 16:00 -> DA SILVA FICK / KULAMBAYEVA  conf 57% @1.73  EV -0.01u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Jakupovic / Karamoko vs Romero Gormaz / Se KO 13:00 -> JAKUPOVIC / KARAMOKO  conf 57% @1.73  EV -0.01u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Cascino / Feng vs Kucmova / Laboutkova     KO 14:00 -> KUCMOVA / LABOUTKOVA  conf 57% @1.72  EV -0.02u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] M. Pohankova vs G. Knutson                 KO 10:00 -> M. POHANKOVA  conf 57% @1.68  EV -0.04u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] I. Simakin vs H. Heck                      KO 03:00 -> I. SIMAKIN  conf 56% @1.19  EV -0.33u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] A. Moro Canas vs J. Clarke                 KO 13:00 -> A. MORO CANAS  conf 55% @1.68  EV -0.08u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Thiago Monteiro vs Marco Trungelliti       KO 13:00 -> MARCO TRUNGELLITI  conf 55% @1.66  EV -0.09u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] T. Samuel vs A. Andrade                    KO 12:00 -> T. SAMUEL  conf 55% @1.20  EV -0.34u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] R. Mallory vs A. Hernandez                 KO 15:30 -> A. HERNANDEZ  conf 55% @1.05  EV -0.42u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Cristina Bucsa vs Iva Jovic                KO 00:00 -> IVA JOVIC  conf 54% @1.22  EV -0.34u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] J. Lehecka vs L. Tien                      KO 15:00 -> J. LEHECKA  conf 53% @1.92  EV +0.02u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Liudmila Samsonova vs Peyton Stearns       KO 01:30 -> LIUDMILA SAMSONOVA  conf 53% @1.65  EV -0.13u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] B. Artnak vs O. Kimhi                      KO 12:00 -> B. ARTNAK  conf 53% @1.23  EV -0.35u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Pavel Kotov vs Bernard Tomic               KO 12:00 -> PAVEL KOTOV  conf 52% @1.66  EV -0.14u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan, Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] M. Barthel vs N. Basiletti                 KO 11:30 -> M. BARTHEL  conf 52% @1.57  EV -0.18u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] X. Yao vs P. Hon                           KO 05:00 -> P. HON  conf 52% @1.56  EV -0.19u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] A. Ito vs S. Lansere                       KO 04:30 -> A. ITO  conf 52% @1.38  EV -0.28u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] A. Ibragimova vs R. Saigo                  KO 06:30 -> A. IBRAGIMOVA  conf 52% @1.24  EV -0.36u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] C. Garin vs R. Jodar                       KO 17:30 -> R. JODAR  conf 52% @1.18  EV -0.39u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] J. Mensik vs B. Shelton                    KO 13:30 -> B. SHELTON  conf 51% @1.51  EV -0.23u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=Forebet  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 ⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
 ⚠️  Bet only what you can afford to lose.
