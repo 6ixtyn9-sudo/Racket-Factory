@@ -526,6 +526,8 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
             except Exception:
                 pass
 
+    is_fade_pick = str(pick.get("bucket") or "").upper() == "FADE"
+
     # Reduced penalty after NO BET: VETO was 0.85 (15% cut) made 62% -> 51% -> EV negative -> veto loop
     # Now 0.92 for VETO, 0.97 for CAUTION, and skip penalty if Both agree and conf>=60 (winning context)
     cross_agree = str(pick.get("cross_source_agree") or "")
@@ -547,10 +549,33 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
         # Don't penalize surface-only VETO when Both agree (winning auto_tickets 85% hit)
         if skip_surface_penalty and dim == "surface":
             continue
-        if ctx.get("verdict") == "VETO":
-            base *= 0.92  # was 0.85
-        elif ctx.get("verdict") == "CAUTION":
-            base *= 0.97  # was 0.92
+        verdict = ctx.get("verdict")
+        if is_fade_pick:
+            # FADE is contrarian: VETO for model = BOOST for fade
+            if verdict == "VETO":
+                base *= 1.08
+            elif verdict == "CAUTION":
+                base *= 1.03
+            elif verdict == "BOOST":
+                base *= 0.92
+        else:
+            if verdict == "VETO":
+                base *= 0.92  # was 0.85
+            elif verdict == "CAUTION":
+                base *= 0.97  # was 0.92
+
+    # FADE bucket builds its own audit track
+    if is_fade_pick and registry:
+        fade_ctx = registry.get("bucket", {}).get("FADE")
+        if fade_ctx and fade_ctx.get("hit_rate") is not None:
+            try:
+                hr = float(fade_ctx["hit_rate"])
+                if 0 < hr <= 1:
+                    base = base * 0.5 + hr * 0.5
+                elif 1 < hr <= 100:
+                    base = base * 0.5 + (hr/100.0) * 0.5
+            except Exception:
+                pass
 
     return max(0.51, min(0.90, base))
 

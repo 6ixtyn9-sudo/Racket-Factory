@@ -2089,6 +2089,7 @@ def main() -> int:
                 if shrunk_fade is not None and odds_val is not None and odds_val > 1.0:
                     ev = shrunk_fade * (odds_val - 1.0) - (1.0 - shrunk_fade)
                 basis, is_paper = market_basis_for_pick(odds_source, odds_val)
+                fade_conf = (shrunk_fade * 100.0) if shrunk_fade is not None else fade_prob
                 base.update({
                     "bucket": "FADE",
                     "pick": "FADE",
@@ -2100,8 +2101,7 @@ def main() -> int:
                     "odds_reject_reason": odds_reject_reason,
                     "_market_basis": basis,
                     "_is_paper": is_paper,
-                    # Probability of the FADED (selected) side: 100 - model conf.
-                    "confidence": fade_prob,
+                    "confidence": fade_conf,
                     "expected_value": ev,
                     "slice_matched": best_fade["Slice"],
                     "edge_dims": best_fade.get("Dims"),
