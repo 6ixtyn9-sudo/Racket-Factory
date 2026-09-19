@@ -1066,7 +1066,7 @@ def write_official_pick_outputs(target_date: str, picks: list[dict]) -> None:
     for pick in picks:
         bucket = str(pick.get("bucket") or "UNKNOWN")
         bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
-    bettable_count = sum(bucket_counts.get(bucket, 0) for bucket in ("CERTIFIED_CLEAN", "WATCHLIST", "CAUTION"))
+    bettable_count = sum(bucket_counts.get(bucket, 0) for bucket in ("CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "FADE"))
     logger.info(
         "Wrote %d pick rows (%d bettable/review rows) to %s and %s; buckets=%s",
         len(picks),
@@ -1312,7 +1312,7 @@ def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
     include_no_odds = _env_bool("RACKET_FACTORY_FORECAST_INCLUDE_NO_ODDS", False)
     include_skipped = _env_bool("RACKET_FACTORY_FORECAST_INCLUDE_SKIPPED", False)
 
-    actionable_buckets = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION"}
+    actionable_buckets = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "FADE"}
     no_odds_buckets = {"WATCHLIST_NO_ODDS", "WATCHLIST_UNKNOWN_CTX"}
     skipped_buckets = {"SKIPPED_DEAD_EDGE", "SKIPPED_VETO"}
 
