@@ -2,27 +2,27 @@
 
 ## Overall
 
-- archived pick rows: 131
+- archived pick rows: 127
 - archived pick dates: 7
-- ledger pick rows (in window): 132
+- ledger pick rows (in window): 128
 - duplicate rows merged (same match + selection re-picked): 1
-- stale history rows pruned (pick no longer in ledger): 9
-- settled picks: 56
-- wins: 29
-- hit rate: 0.517857
-- priced picks: 48
-- ROI: -0.173958
+- stale history rows pruned (pick no longer in ledger): 4
+- settled picks: 54
+- wins: 27
+- hit rate: 0.5
+- priced picks: 46
+- ROI: -0.202609
 - ROI (real-priced): -0.202609 (n=46)
-- ROI (paper-priced): 0.485 (n=2)
-- pending picks: 74
+- ROI (paper-priced): None (n=0)
+- pending picks: 72
 - void picks: 0
 - conflict picks: 1
-- total picks: 131
-- set diagnostic picks: 56
-- selected won any set: 42 (0.75)
-- selected won set 1: 30 (0.535714)
-- selected won set 2: 30 (0.535714)
-- selected won set 3: 11 (0.458333)
+- total picks: 127
+- set diagnostic picks: 54
+- selected won any set: 40 (0.740741)
+- selected won set 1: 28 (0.518519)
+- selected won set 2: 29 (0.537037)
+- selected won set 3: 10 (0.434783)
 
 ## Settlement policy
 
@@ -38,13 +38,13 @@
 
 ## Ledger reconciliation
 
-- ledger rows in window (official): 132
+- ledger rows in window (official): 128
 - duplicate rows merged (same match + selection in multiple daily ledgers): 1
-- stale history rows pruned (pick no longer in any archived ledger): 9
-- audited rows: 131
+- stale history rows pruned (pick no longer in any archived ledger): 4
+- audited rows: 127
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
-  - pending_no_result: result not final: live/in-progress markers present: 64
+  - pending_no_result: result not final: live/in-progress markers present: 62
   - pending_no_result: no matching result rows found: 10
   - conflict: conflicting final results: Challenger_results@2026-09-18:Badosa P.(6-4 6-2); Forebet_results@2026-09-18:Badosa G. P.(4-6 2-6): 1
 
@@ -125,7 +125,6 @@
 - 2026-09-19 C. Burel vs L. S. Steur J. selected=L. S. Steur J. winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 C. Cruz vs J. Faria selected=J. Faria winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 C. Garin vs R. Jodar selected=R. Jodar winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 C. Zhao vs Y. Ma selected=C. Zhao winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Cascino / Feng vs Kucmova / Laboutkova selected=Kucmova / Laboutkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Clara Burel vs Joelle Lilly Sophie Steur selected=Clara Burel winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Cristina Bucsa vs Iva Jovic selected=Iva Jovic winner=Jovic I. status=won basis=Challenger_results@2026-09-19:6-4 6-1
@@ -140,13 +139,11 @@
 - 2026-09-19 F. Roncadelli vs M. Molder selected=F. Roncadelli winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 G. Trismuwantara vs R. M. Papoe selected=R. M. Papoe winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 H. Chung vs D. Suresh selected=D. Suresh winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 H. Kaji vs D. Astakhova selected=D. Astakhova winner=Astakhova D. status=won basis=Challenger_results@2026-09-19:6-2 6-7 6-2
 - 2026-09-19 J. Garland vs E. Perez selected=J. Garland winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 J.J. Wolf vs Sebastian Gorzny selected=J.J. Wolf winner=Wolf J. status=won basis=Challenger_results@2026-09-19:7-6 1-6 7-5
 - 2026-09-19 J. Lehecka vs L. Tien selected=J. Lehecka winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 J. Mensik vs B. Shelton selected=B. Shelton winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 J. Rodionov vs Z. Bergs selected=J. Rodionov winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 J. Wang vs A. Kulikova selected=A. Kulikova winner=Kulikova A. status=won basis=Challenger_results@2026-09-19:6-4 7-5
 - 2026-09-19 Jakupovic / Karamoko vs Romero Gormaz / Selekhmeteva selected=Jakupovic / Karamoko winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 K. Bennani vs C. Abua selected=K. Bennani winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 K. Montsi vs D. Dzumhur selected=D. Dzumhur winner=? status=pending_no_result reason=result not final: live/in-progress markers present
@@ -170,7 +167,6 @@
 - 2026-09-19 R. Da Costa vs C. Cretu selected=C. Cretu winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 R. Mallory vs A. Hernandez selected=A. Hernandez winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 S. De Stefano vs L. Samsonova selected=S. De Stefano winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-19 S. Kwon vs S. Nagal selected=S. Kwon winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Samira De Stefano vs Laura Samson selected=Laura Samson winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Sascha Gueymard Wayenburg vs Titouan Droguet selected=Titouan Droguet winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-19 Stoiana / Valdmannova vs Dang / You selected=Stoiana / Valdmannova winner=Dang Y. / You X. status=lost basis=Challenger_results@2026-09-19:4-6 6-3 10-7
@@ -184,30 +180,30 @@
 
 ## By Tour
 
-- `ATP`: total=35, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=34
+- `ATP`: total=34, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=33
 - `CHALLENGER`: total=64, settled=42, wins=21, hit_rate=0.5, ROI=-0.202895, pending=22
-- `WTA`: total=32, settled=13, wins=7, hit_rate=0.538462, ROI=-0.098889, pending=18, conflict=1
+- `WTA`: total=29, settled=11, wins=5, hit_rate=0.454545, ROI=-0.265714, pending=17, conflict=1
 
 ## By Series
 
-- `ATP250`: total=35, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=34
+- `ATP250`: total=34, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=33
 - `Challenger`: total=64, settled=42, wins=21, hit_rate=0.5, ROI=-0.202895, pending=22
-- `International`: total=32, settled=13, wins=7, hit_rate=0.538462, ROI=-0.098889, pending=18, conflict=1
+- `International`: total=29, settled=11, wins=5, hit_rate=0.454545, ROI=-0.265714, pending=17, conflict=1
 
 ## By Surface
 
 - `Grass`: total=7, settled=1, wins=1, hit_rate=1.0, ROI=None, pending=6
-- `Hard`: total=124, settled=55, wins=28, hit_rate=0.509091, ROI=-0.173958, pending=68, conflict=1
+- `Hard`: total=120, settled=53, wins=26, hit_rate=0.490566, ROI=-0.202609, pending=66, conflict=1
 
 ## By Bucket
 
-- `SKIPPED_DEAD_EDGE`: total=78, settled=28, wins=18, hit_rate=0.642857, ROI=-0.083929, pending=49, conflict=1
-- `SKIPPED_VETO`: total=12, settled=5, wins=3, hit_rate=0.6, ROI=0.042, pending=7
-- `WATCHLIST`: total=23, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=8
-- `WATCHLIST_NO_ODDS`: total=18, settled=8, wins=4, hit_rate=0.5, ROI=None, pending=10
+- `SKIPPED_DEAD_EDGE`: total=75, settled=26, wins=16, hit_rate=0.615385, ROI=-0.127692, pending=48, conflict=1
+- `SKIPPED_VETO`: total=11, settled=5, wins=3, hit_rate=0.6, ROI=0.042, pending=6
+- `WATCHLIST`: total=24, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=9
+- `WATCHLIST_NO_ODDS`: total=17, settled=8, wins=4, hit_rate=0.5, ROI=None, pending=9
 
 ## By Source
 
 - `BetClan`: total=17, settled=11, wins=6, hit_rate=0.545455, ROI=-0.143333, pending=6
 - `BetClan, Forebet`: total=8, settled=1, wins=0, hit_rate=0.0, ROI=-1.0, pending=7
-- `Forebet`: total=106, settled=44, wins=23, hit_rate=0.522727, ROI=-0.158293, pending=61, conflict=1
+- `Forebet`: total=102, settled=42, wins=21, hit_rate=0.5, ROI=-0.191282, pending=59, conflict=1

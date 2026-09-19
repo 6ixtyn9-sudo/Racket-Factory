@@ -18,20 +18,20 @@
     "match": "D. Altmaier vs D. Prizmic",
     "match_time": "13:30",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.527,
-    "ml_ev": 0.3703,
-    "ml_fair_odds": 1.9,
+    "ml_calibrated_prob": 0.5379,
+    "ml_ev": 0.3986,
+    "ml_fair_odds": 1.86,
     "ml_odds_answer": {
-      "edge_pct": 37.03,
-      "ev": 0.3703,
-      "explanation": "Odds 2.60 HIGH value vs fair 1.90 (prob 53%), EV +37.0%, edge +37.0%",
-      "fair_odds": 1.9,
+      "edge_pct": 39.86,
+      "ev": 0.3986,
+      "explanation": "Odds 2.60 HIGH value vs fair 1.86 (prob 54%), EV +39.9%, edge +39.9%",
+      "fair_odds": 1.86,
       "verdict": "HIGH_VALUE"
     },
     "ml_strength_score": -0.3,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -89,7 +89,7 @@
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
       "tour CHALLENGER CAUTION",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "series Challenger CAUTION",
       "source Forebet CAUTION"
     ],
@@ -147,7 +147,7 @@
     "ml_strength_score": -0.4,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -205,7 +205,7 @@
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -263,7 +263,7 @@
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -321,7 +321,7 @@
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
       "tour CHALLENGER CAUTION",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "series Challenger CAUTION",
       "source Forebet CAUTION"
     ],
@@ -346,6 +346,67 @@
     "surface": "Hard",
     "tour": "CHALLENGER",
     "tournament": "Ljubljana - Semi-finals"
+  },
+  {
+    "_is_paper": false,
+    "_market_basis": "api",
+    "_selection_basis": "prediction",
+    "bucket": "WATCHLIST",
+    "confidence": 60.0,
+    "context_used": "Challenger Rennes Prediction",
+    "cross_source_agree": "Disagree",
+    "date": "2026-09-19",
+    "edge_dims": 0,
+    "edge_grade": "SILVER",
+    "edge_n": 0,
+    "edge_tier": "BANKER",
+    "edge_verdict": "WATCHLIST",
+    "expected_value": 0.18199999999999994,
+    "kickoff": "12:30",
+    "match": "Tristan Schoolkate vs Harold Mayot",
+    "match_time": "12:30",
+    "ml_boost_reasons": [
+      "3 sources"
+    ],
+    "ml_calibrated_prob": 0.5585,
+    "ml_ev": 0.1002,
+    "ml_fair_odds": 1.79,
+    "ml_odds_answer": {
+      "edge_pct": 10.02,
+      "ev": 0.1002,
+      "explanation": "Odds 1.97 HIGH value vs fair 1.79 (prob 56%), EV +10.0%, edge +10.0%",
+      "fair_odds": 1.79,
+      "verdict": "HIGH_VALUE"
+    },
+    "ml_strength_score": -0.25,
+    "ml_verdict": "ALLOW",
+    "ml_veto_reasons": [
+      "Sources disagree",
+      "tour CHALLENGER CAUTION",
+      "series Challenger CAUTION",
+      "Low consensus w_score 0.0"
+    ],
+    "ml_w_score": 0.0,
+    "odds": 1.97,
+    "odds_bookmaker": "BetExplorer consensus",
+    "odds_cross_checked": "",
+    "odds_reject_reason": null,
+    "odds_source": "BetExplorer",
+    "pick": "WATCHLIST",
+    "picked_for": "2026-09-19",
+    "player_away": "Harold Mayot",
+    "player_home": "Tristan Schoolkate",
+    "pred_confidence": "Medium",
+    "roi_estimate": "no_slice",
+    "selected_player": "Tristan Schoolkate",
+    "selected_side": "1",
+    "series": "Challenger",
+    "slice_matched": "no_slice_export",
+    "source": "BetClan, Forebet",
+    "source_count": 3,
+    "surface": "Grass",
+    "tour": "CHALLENGER",
+    "tournament": "Challenger Rennes Prediction"
   },
   {
     "_is_paper": false,
@@ -381,7 +442,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour CHALLENGER CAUTION",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "series Challenger CAUTION",
       "source Forebet CAUTION"
     ],
@@ -426,22 +487,22 @@
     "match": "M. Efstathiou vs O. Krutykh",
     "match_time": "09:30",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5408,
-    "ml_ev": -0.178,
-    "ml_fair_odds": 1.85,
+    "ml_calibrated_prob": 0.5517,
+    "ml_ev": -0.1614,
+    "ml_fair_odds": 1.81,
     "ml_odds_answer": {
-      "edge_pct": -17.8,
-      "ev": -0.178,
-      "explanation": "Odds 1.52 short vs fair 1.85, EV -17.8% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.85,
+      "edge_pct": -16.14,
+      "ev": -0.1614,
+      "explanation": "Odds 1.52 short vs fair 1.81, EV -16.1% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.81,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.3,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.178 < 0.02 min (capital protection)"
+      "ML EV -0.161 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.52,
@@ -498,7 +559,7 @@
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.026 < 0.02 min (capital protection)"
     ],
@@ -558,7 +619,7 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "Doubles EV -0.118 < 0.05 min (doubles 0W/5L -40% ROI)"
     ],
     "ml_w_score": 0.0,
@@ -617,7 +678,7 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "Doubles EV -0.123 < 0.05 min (doubles 0W/5L -40% ROI)"
     ],
     "ml_w_score": 0.0,
@@ -676,7 +737,7 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "Doubles EV -0.123 < 0.05 min (doubles 0W/5L -40% ROI)"
     ],
     "ml_w_score": 0.0,
@@ -738,7 +799,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour CHALLENGER CAUTION",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "series Challenger CAUTION",
       "source Forebet CAUTION",
       "ML EV -0.138 < 0.02 min (capital protection)"
@@ -788,22 +849,22 @@
       "3 sources",
       "High conf 71%"
     ],
-    "ml_calibrated_prob": 0.5419,
-    "ml_ev": -0.2684,
-    "ml_fair_odds": 1.85,
+    "ml_calibrated_prob": 0.5853,
+    "ml_ev": -0.2098,
+    "ml_fair_odds": 1.71,
     "ml_odds_answer": {
-      "edge_pct": -26.84,
-      "ev": -0.2684,
-      "explanation": "Odds 1.35 short vs fair 1.85, EV -26.8% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.85,
+      "edge_pct": -20.98,
+      "ev": -0.2098,
+      "explanation": "Odds 1.35 short vs fair 1.71, EV -21.0% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.71,
       "verdict": "SHORT"
     },
     "ml_strength_score": 0.05,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
-      "ML EV -0.268 < 0.02 min (capital protection)"
+      "surface Hard VETO roi -0.173958 n=55",
+      "ML EV -0.210 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.35,
@@ -827,66 +888,6 @@
     "surface": "Hard",
     "tour": "WTA",
     "tournament": "WTA Valencia Prediction"
-  },
-  {
-    "_is_paper": true,
-    "_market_basis": "scraped_fallback",
-    "_selection_basis": "prediction",
-    "bucket": "SKIPPED_DEAD_EDGE",
-    "confidence": 61.0,
-    "context_used": "WTA Singapore - Semi-finals qualification",
-    "cross_source_agree": "Disagree",
-    "date": "2026-09-19",
-    "edge_dims": 0,
-    "edge_grade": "SILVER",
-    "edge_n": 0,
-    "edge_tier": "WATCHLIST_ONLY",
-    "edge_verdict": "WATCHLIST",
-    "expected_value": -0.06669999999999998,
-    "kickoff": "03:10",
-    "match": "J. Wang vs A. Kulikova",
-    "match_time": "03:10",
-    "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.527,
-    "ml_ev": -0.1937,
-    "ml_fair_odds": 1.9,
-    "ml_odds_answer": {
-      "edge_pct": -19.37,
-      "ev": -0.1937,
-      "explanation": "Odds 1.53 short vs fair 1.90, EV -19.4% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.9,
-      "verdict": "SHORT"
-    },
-    "ml_strength_score": -0.4,
-    "ml_verdict": "VETO",
-    "ml_veto_reasons": [
-      "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
-      "source Forebet CAUTION",
-      "ML EV -0.194 < 0.02 min (capital protection)"
-    ],
-    "ml_w_score": 0.0,
-    "odds": 1.53,
-    "odds_bookmaker": "Validated scrape",
-    "odds_cross_checked": "",
-    "odds_reject_reason": null,
-    "odds_source": "ScrapedFallback",
-    "pick": "WATCHLIST",
-    "picked_for": "2026-09-19",
-    "player_away": "A. Kulikova",
-    "player_home": "J. Wang",
-    "pred_confidence": "Medium",
-    "roi_estimate": "no_slice",
-    "selected_player": "A. Kulikova",
-    "selected_side": "player_b",
-    "series": "International",
-    "skip_reason": "negative EV (-0.067 < 0.020)",
-    "slice_matched": "no_slice_export",
-    "source": "Forebet",
-    "source_count": 2,
-    "surface": "Hard",
-    "tour": "WTA",
-    "tournament": "WTA Singapore - Semi-finals qualification"
   },
   {
     "_is_paper": false,
@@ -922,7 +923,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour CHALLENGER CAUTION",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "series Challenger CAUTION",
       "source Forebet CAUTION",
       "ML EV -0.138 < 0.02 min (capital protection)"
@@ -971,14 +972,14 @@
     "ml_boost_reasons": [
       "3 sources"
     ],
-    "ml_calibrated_prob": 0.51,
-    "ml_ev": -0.1534,
-    "ml_fair_odds": 1.96,
+    "ml_calibrated_prob": 0.5165,
+    "ml_ev": -0.1426,
+    "ml_fair_odds": 1.94,
     "ml_odds_answer": {
-      "edge_pct": -15.34,
-      "ev": -0.1534,
-      "explanation": "Odds 1.66 short vs fair 1.96, EV -15.3% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.96,
+      "edge_pct": -14.26,
+      "ev": -0.1426,
+      "explanation": "Odds 1.66 short vs fair 1.94, EV -14.3% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.94,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.35,
@@ -988,7 +989,7 @@
       "tour CHALLENGER CAUTION",
       "series Challenger CAUTION",
       "Low consensus w_score 0.0",
-      "ML EV -0.153 < 0.02 min (capital protection)"
+      "ML EV -0.143 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.66,
@@ -1032,23 +1033,23 @@
     "match": "E. S. Liang vs S. Saito",
     "match_time": "08:30",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5385,
-    "ml_ev": -0.2568,
-    "ml_fair_odds": 1.86,
+    "ml_calibrated_prob": 0.5494,
+    "ml_ev": -0.2418,
+    "ml_fair_odds": 1.82,
     "ml_odds_answer": {
-      "edge_pct": -25.68,
-      "ev": -0.2568,
-      "explanation": "Odds 1.38 short vs fair 1.86, EV -25.7% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.86,
+      "edge_pct": -24.18,
+      "ev": -0.2418,
+      "explanation": "Odds 1.38 short vs fair 1.82, EV -24.2% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.82,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.257 < 0.02 min (capital protection)"
+      "ML EV -0.242 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.38,
@@ -1066,66 +1067,6 @@
     "selected_side": "player_a",
     "series": "International",
     "skip_reason": "negative EV (-0.089 < 0.020)",
-    "slice_matched": "no_slice_export",
-    "source": "Forebet",
-    "source_count": 2,
-    "surface": "Hard",
-    "tour": "WTA",
-    "tournament": "WTA Seoul - Semi-finals qualification"
-  },
-  {
-    "_is_paper": true,
-    "_market_basis": "scraped_fallback",
-    "_selection_basis": "prediction",
-    "bucket": "SKIPPED_DEAD_EDGE",
-    "confidence": 63.0,
-    "context_used": "WTA Seoul - Semi-finals qualification",
-    "cross_source_agree": "Disagree",
-    "date": "2026-09-19",
-    "edge_dims": 0,
-    "edge_grade": "SILVER",
-    "edge_n": 0,
-    "edge_tier": "WATCHLIST_ONLY",
-    "edge_verdict": "WATCHLIST",
-    "expected_value": -0.09280000000000005,
-    "kickoff": "02:10",
-    "match": "H. Kaji vs D. Astakhova",
-    "match_time": "02:10",
-    "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5316,
-    "ml_ev": -0.2345,
-    "ml_fair_odds": 1.88,
-    "ml_odds_answer": {
-      "edge_pct": -23.45,
-      "ev": -0.2345,
-      "explanation": "Odds 1.44 short vs fair 1.88, EV -23.4% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.88,
-      "verdict": "SHORT"
-    },
-    "ml_strength_score": -0.4,
-    "ml_verdict": "VETO",
-    "ml_veto_reasons": [
-      "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
-      "source Forebet CAUTION",
-      "ML EV -0.234 < 0.02 min (capital protection)"
-    ],
-    "ml_w_score": 0.0,
-    "odds": 1.44,
-    "odds_bookmaker": "Validated scrape",
-    "odds_cross_checked": "",
-    "odds_reject_reason": null,
-    "odds_source": "ScrapedFallback",
-    "pick": "WATCHLIST",
-    "picked_for": "2026-09-19",
-    "player_away": "D. Astakhova",
-    "player_home": "H. Kaji",
-    "pred_confidence": "Medium",
-    "roi_estimate": "no_slice",
-    "selected_player": "D. Astakhova",
-    "selected_side": "player_b",
-    "series": "International",
-    "skip_reason": "negative EV (-0.093 < 0.020)",
     "slice_matched": "no_slice_export",
     "source": "Forebet",
     "source_count": 2,
@@ -1169,7 +1110,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour CHALLENGER CAUTION",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "series Challenger CAUTION",
       "source Forebet CAUTION",
       "ML EV -0.230 < 0.02 min (capital protection)"
@@ -1216,22 +1157,22 @@
     "match": "K. Montsi vs D. Dzumhur",
     "match_time": "14:30",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5316,
-    "ml_ev": -0.2504,
-    "ml_fair_odds": 1.88,
+    "ml_calibrated_prob": 0.5425,
+    "ml_ev": -0.2351,
+    "ml_fair_odds": 1.84,
     "ml_odds_answer": {
-      "edge_pct": -25.04,
-      "ev": -0.2504,
-      "explanation": "Odds 1.41 short vs fair 1.88, EV -25.0% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.88,
+      "edge_pct": -23.51,
+      "ev": -0.2351,
+      "explanation": "Odds 1.41 short vs fair 1.84, EV -23.5% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.84,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.3,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.250 < 0.02 min (capital protection)"
+      "ML EV -0.235 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.41,
@@ -1277,22 +1218,22 @@
     "ml_boost_reasons": [
       "High conf 75%"
     ],
-    "ml_calibrated_prob": 0.572,
-    "ml_ev": -0.325,
-    "ml_fair_odds": 1.75,
+    "ml_calibrated_prob": 0.5841,
+    "ml_ev": -0.3108,
+    "ml_fair_odds": 1.71,
     "ml_odds_answer": {
-      "edge_pct": -32.5,
-      "ev": -0.325,
-      "explanation": "Odds 1.18 short vs fair 1.75, EV -32.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.75,
+      "edge_pct": -31.08,
+      "ev": -0.3108,
+      "explanation": "Odds 1.18 short vs fair 1.71, EV -31.1% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.71,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.15,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.325 < 0.02 min (capital protection)"
+      "ML EV -0.311 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.18,
@@ -1411,7 +1352,7 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.255 < 0.02 min (capital protection)"
     ],
@@ -1459,22 +1400,22 @@
     "ml_boost_reasons": [
       "High conf 84%"
     ],
-    "ml_calibrated_prob": 0.5927,
-    "ml_ev": -0.3954,
-    "ml_fair_odds": 1.69,
+    "ml_calibrated_prob": 0.6048,
+    "ml_ev": -0.3831,
+    "ml_fair_odds": 1.65,
     "ml_odds_answer": {
-      "edge_pct": -39.54,
-      "ev": -0.3954,
-      "explanation": "Odds 1.02 short vs fair 1.69, EV -39.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.69,
+      "edge_pct": -38.31,
+      "ev": -0.3831,
+      "explanation": "Odds 1.02 short vs fair 1.65, EV -38.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.65,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.15,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.395 < 0.02 min (capital protection)"
+      "ML EV -0.383 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.02,
@@ -1520,22 +1461,22 @@
     "ml_boost_reasons": [
       "High conf 77%"
     ],
-    "ml_calibrated_prob": 0.5766,
-    "ml_ev": -0.36,
-    "ml_fair_odds": 1.73,
+    "ml_calibrated_prob": 0.5887,
+    "ml_ev": -0.3466,
+    "ml_fair_odds": 1.7,
     "ml_odds_answer": {
-      "edge_pct": -36.0,
-      "ev": -0.36,
-      "explanation": "Odds 1.11 short vs fair 1.73, EV -36.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.73,
+      "edge_pct": -34.66,
+      "ev": -0.3466,
+      "explanation": "Odds 1.11 short vs fair 1.70, EV -34.7% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.7,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.15,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.360 < 0.02 min (capital protection)"
+      "ML EV -0.347 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.11,
@@ -1581,22 +1522,22 @@
     "ml_boost_reasons": [
       "High conf 77%"
     ],
-    "ml_calibrated_prob": 0.5766,
-    "ml_ev": -0.3657,
-    "ml_fair_odds": 1.73,
+    "ml_calibrated_prob": 0.5887,
+    "ml_ev": -0.3525,
+    "ml_fair_odds": 1.7,
     "ml_odds_answer": {
-      "edge_pct": -36.57,
-      "ev": -0.3657,
-      "explanation": "Odds 1.10 short vs fair 1.73, EV -36.6% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.73,
+      "edge_pct": -35.25,
+      "ev": -0.3525,
+      "explanation": "Odds 1.10 short vs fair 1.70, EV -35.2% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.7,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.15,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.366 < 0.02 min (capital protection)"
+      "ML EV -0.352 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.1,
@@ -1642,14 +1583,14 @@
     "ml_boost_reasons": [
       "3 sources"
     ],
-    "ml_calibrated_prob": 0.5153,
-    "ml_ev": -0.2838,
-    "ml_fair_odds": 1.94,
+    "ml_calibrated_prob": 0.5585,
+    "ml_ev": -0.2237,
+    "ml_fair_odds": 1.79,
     "ml_odds_answer": {
-      "edge_pct": -28.38,
-      "ev": -0.2838,
-      "explanation": "Odds 1.39 short vs fair 1.94, EV -28.4% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.94,
+      "edge_pct": -22.37,
+      "ev": -0.2237,
+      "explanation": "Odds 1.39 short vs fair 1.79, EV -22.4% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.79,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.25,
@@ -1659,7 +1600,7 @@
       "tour CHALLENGER CAUTION",
       "series Challenger CAUTION",
       "Low consensus w_score 0.0",
-      "ML EV -0.284 < 0.02 min (capital protection)"
+      "ML EV -0.224 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.39,
@@ -1718,7 +1659,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour CHALLENGER CAUTION",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "series Challenger CAUTION",
       "source Forebet CAUTION",
       "ML EV -0.189 < 0.02 min (capital protection)"
@@ -1751,66 +1692,6 @@
     "_market_basis": "api",
     "_selection_basis": "prediction",
     "bucket": "SKIPPED_DEAD_EDGE",
-    "confidence": 65.0,
-    "context_used": "ATP Davis Cup - World Group",
-    "cross_source_agree": "Disagree",
-    "date": "2026-09-19",
-    "edge_dims": 0,
-    "edge_grade": "SILVER",
-    "edge_n": 0,
-    "edge_tier": "BANKER",
-    "edge_verdict": "WATCHLIST",
-    "expected_value": -0.17449999999999996,
-    "kickoff": "05:30",
-    "match": "S. Kwon vs S. Nagal",
-    "match_time": "05:30",
-    "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5362,
-    "ml_ev": -0.319,
-    "ml_fair_odds": 1.86,
-    "ml_odds_answer": {
-      "edge_pct": -31.9,
-      "ev": -0.319,
-      "explanation": "Odds 1.27 short vs fair 1.86, EV -31.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.86,
-      "verdict": "SHORT"
-    },
-    "ml_strength_score": -0.4,
-    "ml_verdict": "VETO",
-    "ml_veto_reasons": [
-      "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
-      "source Forebet CAUTION",
-      "ML EV -0.319 < 0.02 min (capital protection)"
-    ],
-    "ml_w_score": 0.0,
-    "odds": 1.27,
-    "odds_bookmaker": "BetExplorer consensus",
-    "odds_cross_checked": "",
-    "odds_reject_reason": null,
-    "odds_source": "BetExplorer",
-    "pick": "WATCHLIST",
-    "picked_for": "2026-09-19",
-    "player_away": "S. Nagal",
-    "player_home": "S. Kwon",
-    "pred_confidence": "Medium",
-    "roi_estimate": "no_slice",
-    "selected_player": "S. Kwon",
-    "selected_side": "player_a",
-    "series": "ATP250",
-    "skip_reason": "negative EV (-0.174 < 0.020)",
-    "slice_matched": "no_slice_export",
-    "source": "Forebet",
-    "source_count": 2,
-    "surface": "Hard",
-    "tour": "ATP",
-    "tournament": "ATP Davis Cup - World Group"
-  },
-  {
-    "_is_paper": false,
-    "_market_basis": "api",
-    "_selection_basis": "prediction",
-    "bucket": "SKIPPED_DEAD_EDGE",
     "confidence": 67.0,
     "context_used": "ATP Davis Cup - World Group II",
     "cross_source_agree": "MarketOnly",
@@ -1825,22 +1706,22 @@
     "match": "F. Roncadelli vs M. Molder",
     "match_time": "19:30",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5408,
-    "ml_ev": -0.3348,
-    "ml_fair_odds": 1.85,
+    "ml_calibrated_prob": 0.5517,
+    "ml_ev": -0.3214,
+    "ml_fair_odds": 1.81,
     "ml_odds_answer": {
-      "edge_pct": -33.48,
-      "ev": -0.3348,
-      "explanation": "Odds 1.23 short vs fair 1.85, EV -33.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.85,
+      "edge_pct": -32.14,
+      "ev": -0.3214,
+      "explanation": "Odds 1.23 short vs fair 1.81, EV -32.1% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.81,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.3,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.335 < 0.02 min (capital protection)"
+      "ML EV -0.321 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.23,
@@ -1886,22 +1767,22 @@
     "ml_boost_reasons": [
       "High conf 76%"
     ],
-    "ml_calibrated_prob": 0.5743,
-    "ml_ev": -0.3855,
-    "ml_fair_odds": 1.74,
+    "ml_calibrated_prob": 0.5864,
+    "ml_ev": -0.3726,
+    "ml_fair_odds": 1.71,
     "ml_odds_answer": {
-      "edge_pct": -38.55,
-      "ev": -0.3855,
-      "explanation": "Odds 1.07 short vs fair 1.74, EV -38.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.74,
+      "edge_pct": -37.26,
+      "ev": -0.3726,
+      "explanation": "Odds 1.07 short vs fair 1.71, EV -37.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.71,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.15,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.385 < 0.02 min (capital protection)"
+      "ML EV -0.373 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.07,
@@ -1959,7 +1840,7 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.204 < 0.02 min (capital protection)"
     ],
@@ -2018,7 +1899,7 @@
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.189 < 0.02 min (capital protection)"
     ],
@@ -2081,7 +1962,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour CHALLENGER CAUTION",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "series Challenger CAUTION",
       "source Forebet CAUTION",
       "ML EV -0.352 < 0.02 min (capital protection)"
@@ -2130,22 +2011,22 @@
     "ml_boost_reasons": [
       "High conf 77%"
     ],
-    "ml_calibrated_prob": 0.5766,
-    "ml_ev": -0.4176,
-    "ml_fair_odds": 1.73,
+    "ml_calibrated_prob": 0.5887,
+    "ml_ev": -0.4054,
+    "ml_fair_odds": 1.7,
     "ml_odds_answer": {
-      "edge_pct": -41.76,
-      "ev": -0.4176,
-      "explanation": "Odds 1.01 short vs fair 1.73, EV -41.8% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.73,
+      "edge_pct": -40.54,
+      "ev": -0.4054,
+      "explanation": "Odds 1.01 short vs fair 1.70, EV -40.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.7,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.15,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.418 < 0.02 min (capital protection)"
+      "ML EV -0.405 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.01,
@@ -2189,23 +2070,23 @@
     "match": "F. Auger-Aliassime vs A. Rinderknech",
     "match_time": "19:30",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5247,
-    "ml_ev": -0.3284,
-    "ml_fair_odds": 1.91,
+    "ml_calibrated_prob": 0.5356,
+    "ml_ev": -0.3144,
+    "ml_fair_odds": 1.87,
     "ml_odds_answer": {
-      "edge_pct": -32.84,
-      "ev": -0.3284,
-      "explanation": "Odds 1.28 short vs fair 1.91, EV -32.8% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.91,
+      "edge_pct": -31.44,
+      "ev": -0.3144,
+      "explanation": "Odds 1.28 short vs fair 1.87, EV -31.4% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.87,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.328 < 0.02 min (capital protection)"
+      "ML EV -0.314 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.28,
@@ -2251,14 +2132,14 @@
     "ml_boost_reasons": [
       "3 sources"
     ],
-    "ml_calibrated_prob": 0.5223,
-    "ml_ev": -0.3732,
-    "ml_fair_odds": 1.91,
+    "ml_calibrated_prob": 0.5655,
+    "ml_ev": -0.3214,
+    "ml_fair_odds": 1.77,
     "ml_odds_answer": {
-      "edge_pct": -37.32,
-      "ev": -0.3732,
-      "explanation": "Odds 1.20 short vs fair 1.91, EV -37.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.91,
+      "edge_pct": -32.14,
+      "ev": -0.3214,
+      "explanation": "Odds 1.20 short vs fair 1.77, EV -32.1% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.77,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.25,
@@ -2268,7 +2149,7 @@
       "tour CHALLENGER CAUTION",
       "series Challenger CAUTION",
       "Low consensus w_score 0.0",
-      "ML EV -0.373 < 0.02 min (capital protection)"
+      "ML EV -0.321 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.2,
@@ -2312,22 +2193,22 @@
     "match": "N. Hardt vs A. Elsayed",
     "match_time": "16:30",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5385,
-    "ml_ev": -0.3861,
-    "ml_fair_odds": 1.86,
+    "ml_calibrated_prob": 0.5494,
+    "ml_ev": -0.3737,
+    "ml_fair_odds": 1.82,
     "ml_odds_answer": {
-      "edge_pct": -38.61,
-      "ev": -0.3861,
-      "explanation": "Odds 1.14 short vs fair 1.86, EV -38.6% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.86,
+      "edge_pct": -37.37,
+      "ev": -0.3737,
+      "explanation": "Odds 1.14 short vs fair 1.82, EV -37.4% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.82,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.3,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.386 < 0.02 min (capital protection)"
+      "ML EV -0.374 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.14,
@@ -2373,22 +2254,22 @@
     "ml_boost_reasons": [
       "High conf 70%"
     ],
-    "ml_calibrated_prob": 0.5605,
-    "ml_ev": -0.4059,
-    "ml_fair_odds": 1.78,
+    "ml_calibrated_prob": 0.5726,
+    "ml_ev": -0.3931,
+    "ml_fair_odds": 1.75,
     "ml_odds_answer": {
-      "edge_pct": -40.59,
-      "ev": -0.4059,
-      "explanation": "Odds 1.06 short vs fair 1.78, EV -40.6% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.78,
+      "edge_pct": -39.31,
+      "ev": -0.3931,
+      "explanation": "Odds 1.06 short vs fair 1.75, EV -39.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.75,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.15,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.406 < 0.02 min (capital protection)"
+      "ML EV -0.393 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.06,
@@ -2432,23 +2313,23 @@
     "match": "M. Yamaguchi vs U. Eikeri",
     "match_time": "07:50",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5316,
-    "ml_ev": -0.378,
-    "ml_fair_odds": 1.88,
+    "ml_calibrated_prob": 0.5425,
+    "ml_ev": -0.3653,
+    "ml_fair_odds": 1.84,
     "ml_odds_answer": {
-      "edge_pct": -37.8,
-      "ev": -0.378,
-      "explanation": "Odds 1.17 short vs fair 1.88, EV -37.8% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.88,
+      "edge_pct": -36.53,
+      "ev": -0.3653,
+      "explanation": "Odds 1.17 short vs fair 1.84, EV -36.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.84,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.378 < 0.02 min (capital protection)"
+      "ML EV -0.365 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.17,
@@ -2505,7 +2386,7 @@
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.368 < 0.02 min (capital protection)"
     ],
@@ -2551,22 +2432,22 @@
     "match": "G. Trismuwantara vs R. M. Papoe",
     "match_time": "06:00",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5385,
-    "ml_ev": -0.413,
-    "ml_fair_odds": 1.86,
+    "ml_calibrated_prob": 0.5494,
+    "ml_ev": -0.4011,
+    "ml_fair_odds": 1.82,
     "ml_odds_answer": {
-      "edge_pct": -41.3,
-      "ev": -0.413,
-      "explanation": "Odds 1.09 short vs fair 1.86, EV -41.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.86,
+      "edge_pct": -40.11,
+      "ev": -0.4011,
+      "explanation": "Odds 1.09 short vs fair 1.82, EV -40.1% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.82,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.3,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.413 < 0.02 min (capital protection)"
+      "ML EV -0.401 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.09,
@@ -2610,23 +2491,23 @@
     "match": "J. Garland vs E. Perez",
     "match_time": "06:35",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5385,
-    "ml_ev": -0.4399,
-    "ml_fair_odds": 1.86,
+    "ml_calibrated_prob": 0.5494,
+    "ml_ev": -0.4286,
+    "ml_fair_odds": 1.82,
     "ml_odds_answer": {
-      "edge_pct": -43.99,
-      "ev": -0.4399,
-      "explanation": "Odds 1.04 short vs fair 1.86, EV -44.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.86,
+      "edge_pct": -42.86,
+      "ev": -0.4286,
+      "explanation": "Odds 1.04 short vs fair 1.82, EV -42.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.82,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.440 < 0.02 min (capital protection)"
+      "ML EV -0.429 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.04,
@@ -2670,23 +2551,23 @@
     "match": "A. Zverev vs M. Dodig",
     "match_time": "12:00",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5362,
-    "ml_ev": -0.4531,
-    "ml_fair_odds": 1.86,
+    "ml_calibrated_prob": 0.5471,
+    "ml_ev": -0.4419,
+    "ml_fair_odds": 1.83,
     "ml_odds_answer": {
-      "edge_pct": -45.31,
-      "ev": -0.4531,
-      "explanation": "Odds 1.02 short vs fair 1.86, EV -45.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.86,
+      "edge_pct": -44.19,
+      "ev": -0.4419,
+      "explanation": "Odds 1.02 short vs fair 1.83, EV -44.2% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.83,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.453 < 0.02 min (capital protection)"
+      "ML EV -0.442 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.02,
@@ -2744,7 +2625,7 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.388 < 0.02 min (capital protection)"
     ],
@@ -2803,7 +2684,7 @@
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.373 < 0.02 min (capital protection)"
     ],
@@ -2863,7 +2744,7 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.362 < 0.02 min (capital protection)"
     ],
@@ -2909,22 +2790,22 @@
     "match": "Y. Dlimi vs D. Adeleye",
     "match_time": "11:30",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5316,
-    "ml_ev": -0.4577,
-    "ml_fair_odds": 1.88,
+    "ml_calibrated_prob": 0.5425,
+    "ml_ev": -0.4466,
+    "ml_fair_odds": 1.84,
     "ml_odds_answer": {
-      "edge_pct": -45.77,
-      "ev": -0.4577,
-      "explanation": "Odds 1.02 short vs fair 1.88, EV -45.8% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.88,
+      "edge_pct": -44.66,
+      "ev": -0.4466,
+      "explanation": "Odds 1.02 short vs fair 1.84, EV -44.7% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.84,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.3,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
-      "ML EV -0.458 < 0.02 min (capital protection)"
+      "ML EV -0.447 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.02,
@@ -2982,7 +2863,7 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.398 < 0.02 min (capital protection)"
     ],
@@ -3042,7 +2923,7 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.464 < 0.02 min (capital protection)"
     ],
@@ -3101,7 +2982,7 @@
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.464 < 0.02 min (capital protection)"
     ],
@@ -3133,57 +3014,6 @@
     "_market_basis": "none",
     "_selection_basis": "prediction",
     "bucket": "WATCHLIST_NO_ODDS",
-    "confidence": 66.0,
-    "context_used": "WTA Seoul - Semi-finals qualification",
-    "cross_source_agree": "Disagree",
-    "date": "2026-09-19",
-    "edge_dims": 0,
-    "edge_grade": "SILVER",
-    "edge_n": 0,
-    "edge_tier": "WATCHLIST_ONLY",
-    "edge_verdict": "WATCHLIST",
-    "expected_value": null,
-    "kickoff": "05:35",
-    "match": "C. Zhao vs Y. Ma",
-    "match_time": "05:35",
-    "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5385,
-    "ml_ev": null,
-    "ml_fair_odds": 1.86,
-    "ml_strength_score": -0.5,
-    "ml_verdict": "ALLOW",
-    "ml_veto_reasons": [
-      "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
-      "source Forebet CAUTION"
-    ],
-    "ml_w_score": 0.0,
-    "odds": null,
-    "odds_bookmaker": "BetExplorer consensus",
-    "odds_cross_checked": "",
-    "odds_reject_reason": "prob/odds side disagreement on BetExplorer live odds (selected 3.1 vs alt 1.33) \u2014 not usable",
-    "odds_source": "BetExplorer",
-    "pick": "WATCHLIST",
-    "picked_for": "2026-09-19",
-    "player_away": "Y. Ma",
-    "player_home": "C. Zhao",
-    "pred_confidence": "Medium",
-    "roi_estimate": "no_slice",
-    "selected_player": "C. Zhao",
-    "selected_side": "player_a",
-    "series": "International",
-    "slice_matched": "no_slice_export",
-    "source": "Forebet",
-    "source_count": 2,
-    "surface": "Hard",
-    "tour": "WTA",
-    "tournament": "WTA Seoul - Semi-finals qualification"
-  },
-  {
-    "_is_paper": true,
-    "_market_basis": "none",
-    "_selection_basis": "prediction",
-    "bucket": "WATCHLIST_NO_ODDS",
     "confidence": 54.0,
     "context_used": "WTA Guadalajara Prediction",
     "cross_source_agree": "Disagree",
@@ -3205,7 +3035,7 @@
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53"
+      "surface Hard VETO roi -0.173958 n=55"
     ],
     "ml_w_score": 0.0,
     "odds": null,
@@ -3255,7 +3085,7 @@
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -3299,9 +3129,9 @@
     "match": "J.J. Wolf vs Sebastian Gorzny",
     "match_time": "00:00",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5153,
+    "ml_calibrated_prob": 0.5585,
     "ml_ev": null,
-    "ml_fair_odds": 1.94,
+    "ml_fair_odds": 1.79,
     "ml_strength_score": -0.4,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
@@ -3352,14 +3182,14 @@
     "ml_boost_reasons": [
       "High conf 71%"
     ],
-    "ml_calibrated_prob": 0.5419,
+    "ml_calibrated_prob": 0.5853,
     "ml_ev": null,
-    "ml_fair_odds": 1.85,
+    "ml_fair_odds": 1.71,
     "ml_strength_score": -0.25,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53"
+      "surface Hard VETO roi -0.173958 n=55"
     ],
     "ml_w_score": 0.0,
     "odds": null,
@@ -3408,7 +3238,7 @@
     "ml_strength_score": -0.5,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -3458,7 +3288,7 @@
     "ml_strength_score": -0.5,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -3508,7 +3338,7 @@
     "ml_strength_score": -0.5,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -3558,7 +3388,7 @@
     "ml_strength_score": -0.5,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -3604,13 +3434,13 @@
     "ml_boost_reasons": [
       "High conf 75%"
     ],
-    "ml_calibrated_prob": 0.572,
+    "ml_calibrated_prob": 0.5841,
     "ml_ev": null,
-    "ml_fair_odds": 1.75,
+    "ml_fair_odds": 1.71,
     "ml_strength_score": -0.25,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -3654,13 +3484,13 @@
     "match": "P. Henning vs A. Nedic",
     "match_time": "13:00",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.527,
+    "ml_calibrated_prob": 0.5379,
     "ml_ev": null,
-    "ml_fair_odds": 1.9,
+    "ml_fair_odds": 1.86,
     "ml_strength_score": -0.4,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -3710,7 +3540,7 @@
     "ml_strength_score": -0.5,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION"
     ],
     "ml_w_score": 0.0,
@@ -3740,69 +3570,6 @@
     "_market_basis": "api",
     "_selection_basis": "prediction",
     "bucket": "SKIPPED_VETO",
-    "confidence": 60.0,
-    "context_used": "Challenger Rennes Prediction",
-    "cross_source_agree": "Disagree",
-    "date": "2026-09-19",
-    "edge_dims": 0,
-    "edge_grade": "SILVER",
-    "edge_n": 0,
-    "edge_tier": "BANKER",
-    "edge_verdict": "WATCHLIST",
-    "expected_value": 0.18199999999999994,
-    "kickoff": "12:30",
-    "match": "Tristan Schoolkate vs Harold Mayot",
-    "match_time": "12:30",
-    "ml_boost_reasons": [
-      "3 sources"
-    ],
-    "ml_calibrated_prob": 0.5153,
-    "ml_ev": 0.0151,
-    "ml_fair_odds": 1.94,
-    "ml_odds_answer": {
-      "edge_pct": 1.51,
-      "ev": 0.0151,
-      "explanation": "Odds 1.97 fair vs 1.94, EV +1.5%",
-      "fair_odds": 1.94,
-      "verdict": "FAIR"
-    },
-    "ml_strength_score": -0.25,
-    "ml_verdict": "VETO",
-    "ml_veto_reasons": [
-      "Sources disagree",
-      "tour CHALLENGER CAUTION",
-      "series Challenger CAUTION",
-      "Low consensus w_score 0.0",
-      "ML EV 0.015 < 0.02 min (capital protection)"
-    ],
-    "ml_w_score": 0.0,
-    "odds": 1.97,
-    "odds_bookmaker": "BetExplorer consensus",
-    "odds_cross_checked": "",
-    "odds_reject_reason": null,
-    "odds_source": "BetExplorer",
-    "pick": "WATCHLIST",
-    "picked_for": "2026-09-19",
-    "player_away": "Harold Mayot",
-    "player_home": "Tristan Schoolkate",
-    "pred_confidence": "Medium",
-    "roi_estimate": "no_slice",
-    "selected_player": "Tristan Schoolkate",
-    "selected_side": "1",
-    "series": "Challenger",
-    "skip_reason": "Sources disagree; tour CHALLENGER CAUTION",
-    "slice_matched": "no_slice_export",
-    "source": "BetClan, Forebet",
-    "source_count": 3,
-    "surface": "Grass",
-    "tour": "CHALLENGER",
-    "tournament": "Challenger Rennes Prediction"
-  },
-  {
-    "_is_paper": false,
-    "_market_basis": "api",
-    "_selection_basis": "prediction",
-    "bucket": "SKIPPED_VETO",
     "confidence": 72.0,
     "context_used": "WTA Sao Paulo Prediction",
     "cross_source_agree": "Disagree",
@@ -3820,23 +3587,23 @@
       "3 sources",
       "High conf 72%"
     ],
-    "ml_calibrated_prob": 0.5442,
-    "ml_ev": -0.1402,
-    "ml_fair_odds": 1.84,
+    "ml_calibrated_prob": 0.5876,
+    "ml_ev": -0.0715,
+    "ml_fair_odds": 1.7,
     "ml_odds_answer": {
-      "edge_pct": -14.02,
-      "ev": -0.1402,
-      "explanation": "Odds 1.58 short vs fair 1.84, EV -14.0% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.84,
+      "edge_pct": -7.15,
+      "ev": -0.0715,
+      "explanation": "Odds 1.58 short vs fair 1.70, EV -7.2% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.7,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.1,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "Low consensus w_score 0.0",
-      "ML EV -0.140 < 0.02 min (capital protection)"
+      "ML EV -0.072 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.58,
@@ -3853,7 +3620,7 @@
     "selected_player": "Anna Blinkova",
     "selected_side": "2",
     "series": "International",
-    "skip_reason": "Sources disagree; surface Hard VETO roi -0.219574 n=53",
+    "skip_reason": "Sources disagree; surface Hard VETO roi -0.173958 n=55",
     "slice_matched": "no_slice_export",
     "source": "BetClan, Forebet",
     "source_count": 3,
@@ -3883,22 +3650,22 @@
       "3 sources",
       "High conf 71%"
     ],
-    "ml_calibrated_prob": 0.5419,
-    "ml_ev": -0.1817,
-    "ml_fair_odds": 1.85,
+    "ml_calibrated_prob": 0.5853,
+    "ml_ev": -0.1162,
+    "ml_fair_odds": 1.71,
     "ml_odds_answer": {
-      "edge_pct": -18.17,
-      "ev": -0.1817,
-      "explanation": "Odds 1.51 short vs fair 1.85, EV -18.2% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.85,
+      "edge_pct": -11.62,
+      "ev": -0.1162,
+      "explanation": "Odds 1.51 short vs fair 1.71, EV -11.6% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.71,
       "verdict": "SHORT"
     },
     "ml_strength_score": 0.05,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "Sources disagree",
-      "surface Hard VETO roi -0.219574 n=53",
-      "ML EV -0.182 < 0.02 min (capital protection)"
+      "surface Hard VETO roi -0.173958 n=55",
+      "ML EV -0.116 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.51,
@@ -3915,7 +3682,7 @@
     "selected_player": "Laura Samson",
     "selected_side": "2",
     "series": "International",
-    "skip_reason": "Sources disagree; surface Hard VETO roi -0.219574 n=53",
+    "skip_reason": "Sources disagree; surface Hard VETO roi -0.173958 n=55",
     "slice_matched": "no_slice_export",
     "source": "BetClan",
     "source_count": 3,
@@ -3944,14 +3711,14 @@
     "ml_boost_reasons": [
       "3 sources"
     ],
-    "ml_calibrated_prob": 0.52,
-    "ml_ev": -0.1057,
-    "ml_fair_odds": 1.92,
+    "ml_calibrated_prob": 0.5632,
+    "ml_ev": -0.0313,
+    "ml_fair_odds": 1.78,
     "ml_odds_answer": {
-      "edge_pct": -10.57,
-      "ev": -0.1057,
-      "explanation": "Odds 1.72 short vs fair 1.92, EV -10.6% \u2013 negative, avoid unless boosting acca",
-      "fair_odds": 1.92,
+      "edge_pct": -3.13,
+      "ev": -0.0313,
+      "explanation": "Odds 1.72 short vs fair 1.78, EV -3.1% \u2013 negative, avoid unless boosting acca",
+      "fair_odds": 1.78,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.25,
@@ -3961,7 +3728,7 @@
       "tour CHALLENGER CAUTION",
       "series Challenger CAUTION",
       "Low consensus w_score 0.0",
-      "ML EV -0.106 < 0.02 min (capital protection)"
+      "ML EV -0.031 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.72,
@@ -4018,7 +3785,7 @@
     "ml_strength_score": -0.4,
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
-      "surface Hard VETO roi -0.219574 n=53",
+      "surface Hard VETO roi -0.173958 n=55",
       "source Forebet CAUTION",
       "ML EV -0.006 < 0.02 min (capital protection)"
     ],
@@ -4037,7 +3804,7 @@
     "selected_player": "A. Tabilo",
     "selected_side": "player_a",
     "series": "ATP250",
-    "skip_reason": "surface Hard VETO roi -0.219574 n=53; source Forebet CAUTION",
+    "skip_reason": "surface Hard VETO roi -0.173958 n=55; source Forebet CAUTION",
     "slice_matched": "no_slice_export",
     "source": "Forebet",
     "source_count": 1,
