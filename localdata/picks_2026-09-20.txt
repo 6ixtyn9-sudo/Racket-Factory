@@ -1,0 +1,46 @@
+Racket Factory Picks — 2026-09-20
+============================================================
+Generated at: 2026-09-20 00:05:52
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  (none)
+
+FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
+============================================================
+  (none)
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  [no_slice_export] Michael Mmoh vs J.J. Wolf                  KO 00:00 -> J.J. WOLF  conf 63% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  [no_slice_export] Pavel Kotov vs Marat Sharipov              KO 12:00 -> MARAT SHARIPOV  conf 57% @1.82  EV +0.04u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  [no_slice_export] Jakupovic / Karamoko vs Burillo / Fossa Hu KO 13:00 -> JAKUPOVIC / KARAMOKO  conf 63% @1.57  EV -0.01u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Peyton Stearns vs Iva Jovic                KO 00:00 -> IVA JOVIC  conf 56% @1.28  EV -0.28u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Mona Barthel vs Samira De Stefano          KO 13:00 -> MONA BARTHEL  conf 54% @1.64  EV -0.11u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.
