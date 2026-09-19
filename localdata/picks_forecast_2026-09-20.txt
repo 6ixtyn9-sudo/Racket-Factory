@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-20
 ============================================================
-Generated at: 2026-09-19 02:40:45
-Snapshot as of: 2026-09-19T02:36:53+02:00
+Generated at: 2026-09-19 03:28:16
+Snapshot as of: 2026-09-19T03:19:09+02:00
 Ledger kind: forecast
 
 
@@ -14,6 +14,10 @@ CAUTION PICKS
   (none)
 
 WATCHLIST PICKS
+============================================================
+  (none)
+
+FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
 ============================================================
   (none)
 
