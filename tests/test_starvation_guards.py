@@ -479,7 +479,8 @@ def test_fade_lane_exports_faded_side(tmp_path, monkeypatch, caplog):
     # (favourite @1.8) wins ~80% at +44% ROI archived -> the slice validates
     # on the fade side and the live row must export as a FADE pick: flipped
     # side, fade-side price, slice win-rate EV basis (NOT model probability),
-    # and confidence = the faded side's model probability (100 - 65 = 35).
+    # and confidence = the fade slice's shrunk win rate (raw 80% -> shrunk
+    # ~79%; falls back to the faded side's model probability if absent).
     monkeypatch.delenv("RACKET_FACTORY_EXPORT_NO_SLICE", raising=False)
     monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
     target = "2026-09-13"
@@ -492,7 +493,7 @@ def test_fade_lane_exports_faded_side(tmp_path, monkeypatch, caplog):
     assert pick["_selection_basis"] == "fade"
     assert pick["selected_player"] == "Today Fav"  # the model's pick is the DOG
     assert pick["odds"] == pytest.approx(1.8)
-    assert pick["confidence"] == pytest.approx(35.0)
+    assert pick["confidence"] == pytest.approx(79.03, abs=0.5)
     assert str(pick["slice_matched"]).startswith("FADE ")
     assert pick["edge_verdict"] in ("EDGE CONFIRMED", "WATCHLIST")
     # EV basis = slice (shrunk) win rate at the live fade price:
