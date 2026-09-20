@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-20
 ============================================================
-Generated at: 2026-09-20 14:08:18
+Generated at: 2026-09-20 16:05:30
 
 
 CERTIFIED CLEAN PICKS
@@ -17,8 +17,6 @@ WATCHLIST PICKS
      bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] Alja Senica vs Enola Chiesa                KO 12:30 -> ENOLA CHIESA  conf 57% @1.86  EV +0.06u
      bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Pavel Kotov vs Marat Sharipov              KO 12:00 -> MARAT SHARIPOV  conf 57% @1.82  EV +0.04u
-     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
 ============================================================
@@ -28,7 +26,11 @@ WATCHLIST — NO MATCHED ODDS
 ============================================================
   [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Jessica Pieri vs Yana Morderger            KO 09:00 -> JESSICA PIERI  conf 89% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Tayisiya Morderger vs Katerina Tsygourova  KO 10:30 -> KATERINA TSYGOUROVA  conf 89% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=65  roi=21.57%
   [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Jamilah Snells vs Iva Primorac Pavicic     KO 09:00 -> IVA PRIMORAC PAVICIC  conf 89% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Jasmijn Gimbrere vs Reese Brantmeier       KO 11:00 -> REESE BRANTMEIER  conf 89% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=65  roi=21.57%
   [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Angelina Voloshchuk vs Jana Otzipka        KO 10:00 -> ANGELINA VOLOSHCHUK  conf 88% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=65  roi=21.57%
@@ -38,8 +40,14 @@ WATCHLIST — NO MATCHED ODDS
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
   [no_slice_export] Michael Mmoh vs J.J. Wolf                  KO 00:00 -> J.J. WOLF  conf 63% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Pavel Kotov vs Marat Sharipov              KO 12:00 -> MARAT SHARIPOV  conf 57% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
   [no_slice_export] Peyton Stearns vs Iva Jovic                KO 00:00 -> IVA JOVIC  conf 56% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Mona Barthel vs Samira De Stefano          KO 13:00 -> MONA BARTHEL  conf 54% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Nikolas Sanchez Izquierdo vs Thiago Montei KO 11:00 -> NIKOLAS SANCHEZ IZQUIERDO  conf 54% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -53,20 +61,12 @@ SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
   [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Dalila Spiteri vs Laura Boehner            KO 12:30 -> DALILA SPITERI  conf 95% @1.05  EV +0.00u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
-  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Jasmijn Gimbrere vs Reese Brantmeier       KO 11:00 -> REESE BRANTMEIER  conf 95% @1.05  EV +0.00u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
-  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Tayisiya Morderger vs Katerina Tsygourova  KO 10:30 -> KATERINA TSYGOUROVA  conf 93% @1.07  EV +0.00u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
   [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Aneta Laboutkova vs Maria Toma             KO 14:00 -> ANETA LABOUTKOVA  conf 89% @1.13  EV +0.01u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
   [no_slice_export] Harold Mayot vs Sascha Gueymard Wayenburg  KO 14:00 -> HAROLD MAYOT  conf 63% @1.59  EV +0.00u
      bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Mona Barthel vs Samira De Stefano          KO 13:00 -> MONA BARTHEL  conf 61% @1.64  EV -0.00u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] Sahaja Yamalapalli vs Maria Martinez Vaque KO 13:00 -> SAHAJA YAMALAPALLI  conf 57% @1.76  EV +0.00u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Nikolas Sanchez Izquierdo vs Thiago Montei KO 11:00 -> NIKOLAS SANCHEZ IZQUIERDO  conf 55% @1.81  EV +0.00u
-     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] Cascino / Feng vs Ciric Bagaric / Moratell KO 12:30 -> CASCINO / FENG  conf 54% @1.84  EV +0.00u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 

@@ -8,22 +8,22 @@
 - ledger pick rows (in window): 19
 - duplicate rows merged (same match + selection re-picked): 0
 - stale history rows pruned (pick no longer in ledger): 0
-- settled picks: 4
-- wins: 3
-- hit rate: 0.75
+- settled picks: 9
+- wins: 7
+- hit rate: 0.777778
 - priced picks: 0
 - ROI: None
 - ROI (real-priced): None (n=0)
 - ROI (paper-priced): None (n=0)
-- pending picks: 15
+- pending picks: 10
 - void picks: 0
 - conflict picks: 0
 - total picks: 19
-- set diagnostic picks: 4
-- selected won any set: 3 (0.75)
-- selected won set 1: 3 (0.75)
-- selected won set 2: 3 (0.75)
-- selected won set 3: 0 (None)
+- set diagnostic picks: 9
+- selected won any set: 8 (0.888889)
+- selected won set 1: 7 (0.777778)
+- selected won set 2: 7 (0.777778)
+- selected won set 3: 1 (0.5)
 
 ## Settlement policy
 
@@ -45,7 +45,7 @@
 - audited rows: 19
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
-  - pending_no_result: result not final: live/in-progress markers present: 15
+  - pending_no_result: result not final: live/in-progress markers present: 10
 
 ## Per-pick audit (won/lost/pending)
 
@@ -58,42 +58,42 @@
 - 2026-09-20 Harold Mayot vs Sascha Gueymard Wayenburg selected=Harold Mayot winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-20 Jakupovic / Karamoko vs Burillo / Fossa Huergo selected=Jakupovic / Karamoko winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-20 Jamilah Snells vs Iva Primorac Pavicic selected=Iva Primorac Pavicic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-20 Jasmijn Gimbrere vs Reese Brantmeier selected=Reese Brantmeier winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Jasmijn Gimbrere vs Reese Brantmeier selected=Reese Brantmeier winner=Brantmeier R. status=won basis=Challenger_results@2026-09-20:6-1 6-0
 - 2026-09-20 Jessica Pieri vs Yana Morderger selected=Jessica Pieri winner=Pieri J. status=won basis=Challenger_results@2026-09-20:7-5 6-3
 - 2026-09-20 Michael Mmoh vs J.J. Wolf selected=J.J. Wolf winner=Mmoh M. status=lost basis=Challenger_results@2026-09-20:6-2 6-2
-- 2026-09-20 Mona Barthel vs Samira De Stefano selected=Mona Barthel winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-20 Nikolas Sanchez Izquierdo vs Thiago Monteiro selected=Nikolas Sanchez Izquierdo winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-20 Pavel Kotov vs Marat Sharipov selected=Marat Sharipov winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Mona Barthel vs Samira De Stefano selected=Mona Barthel winner=De Stefano S. status=lost basis=Challenger_results@2026-09-20:3-6 6-1 7-5
+- 2026-09-20 Nikolas Sanchez Izquierdo vs Thiago Monteiro selected=Nikolas Sanchez Izquierdo winner=Sanchez Izquierdo N. status=won basis=Challenger_results@2026-09-20:4-6 6-3 7-6
+- 2026-09-20 Pavel Kotov vs Marat Sharipov selected=Marat Sharipov winner=Sharipov M. status=won basis=Challenger_results@2026-09-20:6-0 6-3
 - 2026-09-20 Peyton Stearns vs Iva Jovic selected=Iva Jovic winner=Jovic I. status=won basis=Challenger_results@2026-09-20:6-4 6-2
 - 2026-09-20 Sahaja Yamalapalli vs Maria Martinez Vaquero selected=Sahaja Yamalapalli winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-20 Semra Aksu vs Ekaterina Yashina selected=Ekaterina Yashina winner=Yashina E. status=won basis=Challenger_results@2026-09-20:6-2 6-4
-- 2026-09-20 Tayisiya Morderger vs Katerina Tsygourova selected=Katerina Tsygourova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Tayisiya Morderger vs Katerina Tsygourova selected=Katerina Tsygourova winner=Tsygourova K. status=won basis=Challenger_results@2026-09-20:6-3 6-3
 
 ## By Tour
 
-- `CHALLENGER`: total=4, settled=1, wins=0, hit_rate=0.0, ROI=None, pending=3
-- `WTA`: total=15, settled=3, wins=3, hit_rate=1.0, ROI=None, pending=12
+- `CHALLENGER`: total=4, settled=3, wins=2, hit_rate=0.666667, ROI=None, pending=1
+- `WTA`: total=15, settled=6, wins=5, hit_rate=0.833333, ROI=None, pending=9
 
 ## By Series
 
-- `Challenger`: total=4, settled=1, wins=0, hit_rate=0.0, ROI=None, pending=3
-- `International`: total=15, settled=3, wins=3, hit_rate=1.0, ROI=None, pending=12
+- `Challenger`: total=4, settled=3, wins=2, hit_rate=0.666667, ROI=None, pending=1
+- `International`: total=15, settled=6, wins=5, hit_rate=0.833333, ROI=None, pending=9
 
 ## By Surface
 
-- `Grass`: total=4, settled=1, wins=0, hit_rate=0.0, ROI=None, pending=3
-- `Hard`: total=15, settled=3, wins=3, hit_rate=1.0, ROI=None, pending=12
+- `Grass`: total=4, settled=3, wins=2, hit_rate=0.666667, ROI=None, pending=1
+- `Hard`: total=15, settled=6, wins=5, hit_rate=0.833333, ROI=None, pending=9
 
 ## By Bucket
 
-- `WATCHLIST_NO_ODDS`: total=7, settled=4, wins=3, hit_rate=0.75, ROI=None, pending=3
-- `WATCHLIST`: total=3, settled=0, wins=0, hit_rate=None, ROI=None, pending=3
-- `SKIPPED_DEAD_EDGE`: total=9, settled=0, wins=0, hit_rate=None, ROI=None, pending=9
+- `WATCHLIST_NO_ODDS`: total=12, settled=9, wins=7, hit_rate=0.777778, ROI=None, pending=3
+- `WATCHLIST`: total=2, settled=0, wins=0, hit_rate=None, ROI=None, pending=2
+- `SKIPPED_DEAD_EDGE`: total=5, settled=0, wins=0, hit_rate=None, ROI=None, pending=5
 
 ## By Source
 
-- `BetClan`: total=19, settled=4, wins=3, hit_rate=0.75, ROI=None, pending=15
+- `BetClan`: total=19, settled=9, wins=7, hit_rate=0.777778, ROI=None, pending=10
 
 ## By Regime
 
-- `genesis-2026-09-20`: total=19, settled=4, wins=3, hit_rate=0.75, ROI=None, pending=15
+- `genesis-2026-09-20`: total=19, settled=9, wins=7, hit_rate=0.777778, ROI=None, pending=10
