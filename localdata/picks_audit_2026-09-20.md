@@ -170,8 +170,8 @@
 
 ## By Bucket
 
-- `SKIPPED_DEAD_EDGE`: total=56, settled=34, wins=20, hit_rate=0.588235, ROI=-0.146471, pending=21, conflict=1
-- `SKIPPED_VETO`: total=10, settled=7, wins=3, hit_rate=0.428571, ROI=-0.255714, pending=3
+- `SKIPPED_DEAD_EDGE`: total=55, settled=34, wins=20, hit_rate=0.588235, ROI=-0.146471, pending=20, conflict=1
+- `SKIPPED_VETO`: total=11, settled=7, wins=3, hit_rate=0.428571, ROI=-0.255714, pending=4
 - `WATCHLIST`: total=16, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=1
 - `WATCHLIST_NO_ODDS`: total=18, settled=16, wins=8, hit_rate=0.5, ROI=None, pending=2
 

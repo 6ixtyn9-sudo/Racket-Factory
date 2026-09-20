@@ -2424,7 +2424,7 @@
     "won": false
   },
   {
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "SKIPPED_VETO",
     "date": "2026-09-20",
     "ledger_kind": "official",
     "match": "Alja Senica vs Enola Chiesa",

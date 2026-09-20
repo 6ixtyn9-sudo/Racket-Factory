@@ -1,9 +1,9 @@
 {
   "status": "merged",
-  "baseline_rows": 4317,
-  "fresh_rows": 4327,
-  "shared_keys": 4317,
-  "new_from_fresh": 10,
+  "baseline_rows": 4327,
+  "fresh_rows": 4335,
+  "shared_keys": 4327,
+  "new_from_fresh": 8,
   "baseline_only": 0,
   "settlement_updates": 0,
   "live_rows_from_fresh": 20,
@@ -22,6 +22,12 @@
       "fresh": "player_a"
     },
     {
+      "key": "2026-09-17|WTA|WTA Guadalajara Prediction|kayladay||liudmilasamsonova",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": "player_b"
+    },
+    {
       "key": "2026-09-17|CHALLENGER||dayk||samsonoval",
       "col": "predicted_winner_foretennis",
       "baseline": "player_a",
@@ -34,21 +40,15 @@
       "fresh": "player_b"
     },
     {
-      "key": "2026-09-17|WTA|WTA Guadalajara Prediction|kayladay||liudmilasamsonova",
-      "col": "predicted_winner_foretennis",
-      "baseline": "player_a",
-      "fresh": "player_b"
-    },
-    {
       "key": "2026-09-17|UNKNOWN|WTA Guadalajara - 1/8-finals|dayk||samsonoval",
       "col": "predicted_winner_foretennis",
       "baseline": "player_a",
       "fresh": "player_b"
     }
   ],
-  "merged_rows": 4327,
-  "generated_at": "2026-09-20T05:12:20.788582+00:00",
-  "baseline_sha256": "f49528f6631f593b5d607aeb5f1732d2759262c497a1df050a85990d219e7804",
-  "fresh_sha256": "3de1f1eee961f1dc5564d1e3efe6c953410a810648f445b0ca982c759fc88569",
-  "merged_sha256": "d6a96588476c55e7f2acec2fb6e1876078cbeaf3fedd083ee3606f8d4dbb7645"
+  "merged_rows": 4335,
+  "generated_at": "2026-09-20T06:06:12.750651+00:00",
+  "baseline_sha256": "d6a96588476c55e7f2acec2fb6e1876078cbeaf3fedd083ee3606f8d4dbb7645",
+  "fresh_sha256": "c350587f8abd19b8d7e517626cca8ac5d2230a5936ceea0af49e824892c387bc",
+  "merged_sha256": "968b3da45c9712af7b6dc455790d1bbd2540f8dc1a5c95aa99e00d4ddbd9a722"
 }

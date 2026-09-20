@@ -2291,7 +2291,7 @@
       "won": false
     },
     {
-      "bucket": "SKIPPED_DEAD_EDGE",
+      "bucket": "SKIPPED_VETO",
       "date": "2026-09-20",
       "ledger_kind": "official",
       "match": "Alja Senica vs Enola Chiesa",
@@ -2655,7 +2655,7 @@
     "SKIPPED_DEAD_EDGE": {
       "conflict_picks": 1,
       "hit_rate": 0.588235,
-      "pending_picks": 21,
+      "pending_picks": 20,
       "priced_paper": 0,
       "priced_picks": 34,
       "priced_real": 34,
@@ -2672,14 +2672,14 @@
       "selected_won_set3_rate": 0.4375,
       "set_diagnostic_picks": 34,
       "settled_picks": 34,
-      "total_picks": 56,
+      "total_picks": 55,
       "void_picks": 0,
       "wins": 20
     },
     "SKIPPED_VETO": {
       "conflict_picks": 0,
       "hit_rate": 0.428571,
-      "pending_picks": 3,
+      "pending_picks": 4,
       "priced_paper": 0,
       "priced_picks": 7,
       "priced_real": 7,
@@ -2696,7 +2696,7 @@
       "selected_won_set3_rate": 0.5,
       "set_diagnostic_picks": 7,
       "settled_picks": 7,
-      "total_picks": 10,
+      "total_picks": 11,
       "void_picks": 0,
       "wins": 3
     },

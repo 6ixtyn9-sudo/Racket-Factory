@@ -80,9 +80,9 @@
     "context_used": "WTA Tolentino Prediction",
     "player_home": "Alja Senica",
     "player_away": "Enola Chiesa",
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "SKIPPED_VETO",
     "pick": "WATCHLIST",
-    "odds": 1.76,
+    "odds": 1.79,
     "odds_source": "BetExplorer",
     "odds_bookmaker": "BetExplorer consensus",
     "odds_cross_checked": "",
@@ -90,7 +90,7 @@
     "_market_basis": "api",
     "_is_paper": false,
     "confidence": 57.0,
-    "expected_value": 0.003199999999999925,
+    "expected_value": 0.02029999999999993,
     "slice_matched": "no_slice_export",
     "edge_dims": 0,
     "edge_n": 0,
@@ -98,7 +98,6 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "no_slice",
-    "skip_reason": "negative EV (0.003 < 0.020)",
     "ml_strength_score": -0.5,
     "ml_veto_reasons": [
       "Sources disagree",
@@ -106,7 +105,7 @@
       "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.102 < 0.02 min (capital protection)"
+      "ML EV -0.087 < 0.02 min (capital protection)"
     ],
     "ml_boost_reasons": [
       "3 sources"
@@ -114,15 +113,16 @@
     "ml_w_score": 0.0,
     "ml_verdict": "VETO",
     "ml_calibrated_prob": 0.51,
-    "ml_ev": -0.1024,
+    "ml_ev": -0.0871,
     "ml_fair_odds": 1.96,
     "ml_odds_answer": {
       "verdict": "SHORT",
       "fair_odds": 1.96,
-      "ev": -0.1024,
-      "edge_pct": -10.24,
-      "explanation": "Odds 1.76 short vs fair 1.96, EV -10.2% \u2013 negative, avoid unless boosting acca"
-    }
+      "ev": -0.0871,
+      "edge_pct": -8.71,
+      "explanation": "Odds 1.79 short vs fair 1.96, EV -8.7% \u2013 negative, avoid unless boosting acca"
+    },
+    "skip_reason": "Sources disagree; tour WTA CAUTION"
   },
   {
     "match": "Aneta Laboutkova vs Maria Toma",
@@ -145,7 +145,7 @@
     "player_away": "Maria Toma",
     "bucket": "SKIPPED_DEAD_EDGE",
     "pick": "WATCHLIST",
-    "odds": 1.12,
+    "odds": 1.13,
     "odds_source": "BetExplorer",
     "odds_bookmaker": "BetExplorer consensus",
     "odds_cross_checked": "",
@@ -153,7 +153,7 @@
     "_market_basis": "api",
     "_is_paper": false,
     "confidence": 89.0,
-    "expected_value": -0.0031999999999998835,
+    "expected_value": 0.0056999999999999135,
     "slice_matched": "no_slice_export",
     "edge_dims": 0,
     "edge_n": 0,
@@ -161,7 +161,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "no_slice",
-    "skip_reason": "negative EV (-0.003 < 0.020)",
+    "skip_reason": "negative EV (0.006 < 0.020)",
     "ml_strength_score": -0.25,
     "ml_veto_reasons": [
       "Sources disagree",
@@ -169,7 +169,7 @@
       "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.365 < 0.02 min (capital protection)"
+      "ML EV -0.360 < 0.02 min (capital protection)"
     ],
     "ml_boost_reasons": [
       "3 sources",
@@ -178,14 +178,14 @@
     "ml_w_score": 0.0,
     "ml_verdict": "VETO",
     "ml_calibrated_prob": 0.5667,
-    "ml_ev": -0.3653,
+    "ml_ev": -0.3596,
     "ml_fair_odds": 1.76,
     "ml_odds_answer": {
       "verdict": "SHORT",
       "fair_odds": 1.76,
-      "ev": -0.3653,
-      "edge_pct": -36.53,
-      "explanation": "Odds 1.12 short vs fair 1.76, EV -36.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "ev": -0.3596,
+      "edge_pct": -35.96,
+      "explanation": "Odds 1.13 short vs fair 1.76, EV -36.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -837,7 +837,7 @@
     "player_away": "Katerina Tsygourova",
     "bucket": "SKIPPED_DEAD_EDGE",
     "pick": "WATCHLIST",
-    "odds": 1.06,
+    "odds": 1.05,
     "odds_source": "BetExplorer",
     "odds_bookmaker": "BetExplorer consensus",
     "odds_cross_checked": "",
@@ -845,7 +845,7 @@
     "_market_basis": "api",
     "_is_paper": false,
     "confidence": 89.0,
-    "expected_value": -0.056599999999999935,
+    "expected_value": -0.06549999999999995,
     "slice_matched": "no_slice_export",
     "edge_dims": 0,
     "edge_n": 0,
@@ -853,7 +853,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "roi_estimate": "no_slice",
-    "skip_reason": "negative EV (-0.057 < 0.020)",
+    "skip_reason": "negative EV (-0.065 < 0.020)",
     "ml_strength_score": -0.25,
     "ml_veto_reasons": [
       "Sources disagree",
@@ -861,7 +861,7 @@
       "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.399 < 0.02 min (capital protection)"
+      "ML EV -0.405 < 0.02 min (capital protection)"
     ],
     "ml_boost_reasons": [
       "3 sources",
@@ -870,14 +870,14 @@
     "ml_w_score": 0.0,
     "ml_verdict": "VETO",
     "ml_calibrated_prob": 0.5667,
-    "ml_ev": -0.3993,
+    "ml_ev": -0.405,
     "ml_fair_odds": 1.76,
     "ml_odds_answer": {
       "verdict": "SHORT",
       "fair_odds": 1.76,
-      "ev": -0.3993,
-      "edge_pct": -39.93,
-      "explanation": "Odds 1.06 short vs fair 1.76, EV -39.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "ev": -0.405,
+      "edge_pct": -40.5,
+      "explanation": "Odds 1.05 short vs fair 1.76, EV -40.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
