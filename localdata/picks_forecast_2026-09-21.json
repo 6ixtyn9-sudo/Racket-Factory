@@ -14,7 +14,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-20T05:48:39+02:00",
+    "forecast_as_of": "2026-09-20T07:08:00+02:00",
     "forecast_for": "2026-09-21",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -30,14 +30,14 @@
     "ml_boost_reasons": [
       "High conf 73%"
     ],
-    "ml_calibrated_prob": 0.5311,
+    "ml_calibrated_prob": 0.5321,
     "ml_ev": null,
     "ml_fair_odds": 1.88,
     "ml_strength_score": -0.45,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION"
     ],

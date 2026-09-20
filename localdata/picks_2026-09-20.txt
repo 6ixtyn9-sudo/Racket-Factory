@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-20
 ============================================================
-Generated at: 2026-09-20 05:54:08
+Generated at: 2026-09-20 07:12:29
 
 
 CERTIFIED CLEAN PICKS
@@ -43,11 +43,11 @@ SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] Jamilah Snells vs Iva Primorac Pavicic     KO 09:00 -> IVA PRIMORAC PAVICIC  conf 89% @1.08  EV -0.04u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Jessica Pieri vs Yana Morderger            KO 09:00 -> JESSICA PIERI  conf 89% @1.07  EV -0.05u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] Dalila Spiteri vs Laura Boehner            KO 12:30 -> DALILA SPITERI  conf 89% @1.06  EV -0.06u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Jessica Pieri vs Yana Morderger            KO 09:00 -> JESSICA PIERI  conf 89% @1.06  EV -0.06u
-     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Tayisiya Morderger vs Katerina Tsygourova  KO 10:30 -> KATERINA TSYGOUROVA  conf 89% @1.05  EV -0.07u
+  [no_slice_export] Tayisiya Morderger vs Katerina Tsygourova  KO 10:30 -> KATERINA TSYGOUROVA  conf 89% @1.06  EV -0.06u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] Jasmijn Gimbrere vs Reese Brantmeier       KO 11:00 -> REESE BRANTMEIER  conf 89% @1.04  EV -0.07u
      bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice

@@ -1,0 +1,54 @@
+{
+  "status": "merged",
+  "baseline_rows": 4317,
+  "fresh_rows": 4327,
+  "shared_keys": 4317,
+  "new_from_fresh": 10,
+  "baseline_only": 0,
+  "settlement_updates": 0,
+  "live_rows_from_fresh": 20,
+  "dim_drift_rows": 6,
+  "dim_drift_examples": [
+    {
+      "key": "2026-09-19|CHALLENGER||bucsacmelicharmartinezn||koborimplipuechp",
+      "col": "predicted_winner_betclan",
+      "baseline": "",
+      "fresh": "player_a"
+    },
+    {
+      "key": "2026-09-19|CHALLENGER||dabrowskigstefanil||dangyyoux",
+      "col": "predicted_winner_betclan",
+      "baseline": "",
+      "fresh": "player_a"
+    },
+    {
+      "key": "2026-09-17|CHALLENGER||dayk||samsonoval",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-17|WTA|WTA Guadalajara Open|kayladay||liudmilasamsonova",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-17|WTA|WTA Guadalajara Prediction|kayladay||liudmilasamsonova",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-17|UNKNOWN|WTA Guadalajara - 1/8-finals|dayk||samsonoval",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": "player_b"
+    }
+  ],
+  "merged_rows": 4327,
+  "generated_at": "2026-09-20T05:12:20.788582+00:00",
+  "baseline_sha256": "f49528f6631f593b5d607aeb5f1732d2759262c497a1df050a85990d219e7804",
+  "fresh_sha256": "3de1f1eee961f1dc5564d1e3efe6c953410a810648f445b0ca982c759fc88569",
+  "merged_sha256": "d6a96588476c55e7f2acec2fb6e1876078cbeaf3fedd083ee3606f8d4dbb7645"
+}

@@ -35,7 +35,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
       "ML EV -0.102 < 0.02 min (capital protection)"
@@ -85,14 +85,14 @@
       "3 sources",
       "High conf 89%"
     ],
-    "ml_calibrated_prob": 0.5657,
-    "ml_ev": -0.3664,
-    "ml_fair_odds": 1.77,
+    "ml_calibrated_prob": 0.5667,
+    "ml_ev": -0.3653,
+    "ml_fair_odds": 1.76,
     "ml_odds_answer": {
-      "edge_pct": -36.64,
-      "ev": -0.3664,
-      "explanation": "Odds 1.12 short vs fair 1.77, EV -36.6% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.77,
+      "edge_pct": -36.53,
+      "ev": -0.3653,
+      "explanation": "Odds 1.12 short vs fair 1.76, EV -36.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.76,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.25,
@@ -100,10 +100,10 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.366 < 0.02 min (capital protection)"
+      "ML EV -0.365 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.12,
@@ -162,7 +162,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
       "Doubles EV -0.062 < 0.05 min (doubles 0W/5L -40% ROI)"
@@ -224,7 +224,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
       "Doubles EV -0.199 < 0.05 min (doubles 0W/5L -40% ROI)"
@@ -336,13 +336,13 @@
     "ml_boost_reasons": [
       "3 sources"
     ],
-    "ml_calibrated_prob": 0.5358,
-    "ml_ev": -0.132,
+    "ml_calibrated_prob": 0.5346,
+    "ml_ev": -0.134,
     "ml_fair_odds": 1.87,
     "ml_odds_answer": {
-      "edge_pct": -13.2,
-      "ev": -0.132,
-      "explanation": "Odds 1.62 short vs fair 1.87, EV -13.2% \u2013 negative, avoid unless boosting acca",
+      "edge_pct": -13.4,
+      "ev": -0.134,
+      "explanation": "Odds 1.62 short vs fair 1.87, EV -13.4% \u2013 negative, avoid unless boosting acca",
       "fair_odds": 1.87,
       "verdict": "SHORT"
     },
@@ -353,7 +353,7 @@
       "tour CHALLENGER CAUTION",
       "series Challenger CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.132 < 0.02 min (capital protection)"
+      "ML EV -0.134 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.62,
@@ -400,13 +400,13 @@
       "3 sources",
       "High conf 77%"
     ],
-    "ml_calibrated_prob": 0.5398,
-    "ml_ev": -0.3199,
+    "ml_calibrated_prob": 0.5407,
+    "ml_ev": -0.3187,
     "ml_fair_odds": 1.85,
     "ml_odds_answer": {
-      "edge_pct": -31.99,
-      "ev": -0.3199,
-      "explanation": "Odds 1.26 short vs fair 1.85, EV -32.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "edge_pct": -31.87,
+      "ev": -0.3187,
+      "explanation": "Odds 1.26 short vs fair 1.85, EV -31.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
       "fair_odds": 1.85,
       "verdict": "SHORT"
     },
@@ -415,10 +415,10 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.320 < 0.02 min (capital protection)"
+      "ML EV -0.319 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.26,
@@ -465,13 +465,13 @@
       "3 sources",
       "High conf 83%"
     ],
-    "ml_calibrated_prob": 0.5527,
-    "ml_ev": -0.3588,
+    "ml_calibrated_prob": 0.5537,
+    "ml_ev": -0.3577,
     "ml_fair_odds": 1.81,
     "ml_odds_answer": {
-      "edge_pct": -35.88,
-      "ev": -0.3588,
-      "explanation": "Odds 1.16 short vs fair 1.81, EV -35.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "edge_pct": -35.77,
+      "ev": -0.3577,
+      "explanation": "Odds 1.16 short vs fair 1.81, EV -35.8% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
       "fair_odds": 1.81,
       "verdict": "SHORT"
     },
@@ -480,10 +480,10 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.359 < 0.02 min (capital protection)"
+      "ML EV -0.358 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.16,
@@ -529,14 +529,14 @@
     "ml_boost_reasons": [
       "High conf 89%"
     ],
-    "ml_calibrated_prob": 0.5657,
-    "ml_ev": -0.389,
-    "ml_fair_odds": 1.77,
+    "ml_calibrated_prob": 0.5667,
+    "ml_ev": -0.388,
+    "ml_fair_odds": 1.76,
     "ml_odds_answer": {
-      "edge_pct": -38.9,
-      "ev": -0.389,
-      "explanation": "Odds 1.08 short vs fair 1.77, EV -38.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.77,
+      "edge_pct": -38.8,
+      "ev": -0.388,
+      "explanation": "Odds 1.08 short vs fair 1.76, EV -38.8% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.76,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.45,
@@ -544,10 +544,10 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.389 < 0.02 min (capital protection)"
+      "ML EV -0.388 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.08,
@@ -568,6 +568,71 @@
     "slice_matched": "no_slice_export",
     "source": "BetClan",
     "source_count": 2,
+    "surface": "Hard",
+    "tour": "WTA",
+    "tournament": "WTA Tolentino Prediction"
+  },
+  {
+    "_is_paper": false,
+    "_market_basis": "api",
+    "_selection_basis": "prediction",
+    "bucket": "SKIPPED_DEAD_EDGE",
+    "confidence": 89.0,
+    "context_used": "WTA Tolentino Prediction",
+    "cross_source_agree": "Disagree",
+    "date": "2026-09-20",
+    "edge_dims": 0,
+    "edge_grade": "SILVER",
+    "edge_n": 0,
+    "edge_tier": "BANKER",
+    "edge_verdict": "WATCHLIST",
+    "expected_value": -0.04769999999999993,
+    "kickoff": "09:00",
+    "match": "Jessica Pieri vs Yana Morderger",
+    "match_time": "09:00",
+    "ml_boost_reasons": [
+      "3 sources",
+      "High conf 89%"
+    ],
+    "ml_calibrated_prob": 0.5667,
+    "ml_ev": -0.3936,
+    "ml_fair_odds": 1.76,
+    "ml_odds_answer": {
+      "edge_pct": -39.36,
+      "ev": -0.3936,
+      "explanation": "Odds 1.07 short vs fair 1.76, EV -39.4% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.76,
+      "verdict": "SHORT"
+    },
+    "ml_strength_score": -0.25,
+    "ml_verdict": "VETO",
+    "ml_veto_reasons": [
+      "Sources disagree",
+      "tour WTA CAUTION",
+      "surface Hard VETO roi -0.206731 n=64",
+      "series International CAUTION",
+      "source BetClan CAUTION",
+      "ML EV -0.394 < 0.02 min (capital protection)"
+    ],
+    "ml_w_score": 0.0,
+    "odds": 1.07,
+    "odds_bookmaker": "BetExplorer consensus",
+    "odds_cross_checked": "",
+    "odds_reject_reason": null,
+    "odds_source": "BetExplorer",
+    "pick": "WATCHLIST",
+    "picked_for": "2026-09-20",
+    "player_away": "Yana Morderger",
+    "player_home": "Jessica Pieri",
+    "pred_confidence": "High",
+    "roi_estimate": "no_slice",
+    "selected_player": "Jessica Pieri",
+    "selected_side": "1",
+    "series": "International",
+    "skip_reason": "negative EV (-0.048 < 0.020)",
+    "slice_matched": "no_slice_export",
+    "source": "BetClan",
+    "source_count": 3,
     "surface": "Hard",
     "tour": "WTA",
     "tournament": "WTA Tolentino Prediction"
@@ -608,7 +673,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
       "ML EV -0.102 < 0.02 min (capital protection)"
@@ -658,14 +723,14 @@
       "3 sources",
       "High conf 89%"
     ],
-    "ml_calibrated_prob": 0.5657,
-    "ml_ev": -0.4003,
-    "ml_fair_odds": 1.77,
+    "ml_calibrated_prob": 0.5667,
+    "ml_ev": -0.3993,
+    "ml_fair_odds": 1.76,
     "ml_odds_answer": {
-      "edge_pct": -40.03,
-      "ev": -0.4003,
-      "explanation": "Odds 1.06 short vs fair 1.77, EV -40.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.77,
+      "edge_pct": -39.93,
+      "ev": -0.3993,
+      "explanation": "Odds 1.06 short vs fair 1.76, EV -39.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.76,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.25,
@@ -673,10 +738,10 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.400 < 0.02 min (capital protection)"
+      "ML EV -0.399 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.06,
@@ -716,71 +781,6 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "expected_value": -0.056599999999999935,
-    "kickoff": "09:00",
-    "match": "Jessica Pieri vs Yana Morderger",
-    "match_time": "09:00",
-    "ml_boost_reasons": [
-      "3 sources",
-      "High conf 89%"
-    ],
-    "ml_calibrated_prob": 0.5657,
-    "ml_ev": -0.4003,
-    "ml_fair_odds": 1.77,
-    "ml_odds_answer": {
-      "edge_pct": -40.03,
-      "ev": -0.4003,
-      "explanation": "Odds 1.06 short vs fair 1.77, EV -40.0% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.77,
-      "verdict": "SHORT"
-    },
-    "ml_strength_score": -0.25,
-    "ml_verdict": "VETO",
-    "ml_veto_reasons": [
-      "Sources disagree",
-      "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
-      "series International CAUTION",
-      "source BetClan CAUTION",
-      "ML EV -0.400 < 0.02 min (capital protection)"
-    ],
-    "ml_w_score": 0.0,
-    "odds": 1.06,
-    "odds_bookmaker": "BetExplorer consensus",
-    "odds_cross_checked": "",
-    "odds_reject_reason": null,
-    "odds_source": "BetExplorer",
-    "pick": "WATCHLIST",
-    "picked_for": "2026-09-20",
-    "player_away": "Yana Morderger",
-    "player_home": "Jessica Pieri",
-    "pred_confidence": "High",
-    "roi_estimate": "no_slice",
-    "selected_player": "Jessica Pieri",
-    "selected_side": "1",
-    "series": "International",
-    "skip_reason": "negative EV (-0.057 < 0.020)",
-    "slice_matched": "no_slice_export",
-    "source": "BetClan",
-    "source_count": 3,
-    "surface": "Hard",
-    "tour": "WTA",
-    "tournament": "WTA Tolentino Prediction"
-  },
-  {
-    "_is_paper": false,
-    "_market_basis": "api",
-    "_selection_basis": "prediction",
-    "bucket": "SKIPPED_DEAD_EDGE",
-    "confidence": 89.0,
-    "context_used": "WTA Tolentino Prediction",
-    "cross_source_agree": "Disagree",
-    "date": "2026-09-20",
-    "edge_dims": 0,
-    "edge_grade": "SILVER",
-    "edge_n": 0,
-    "edge_tier": "BANKER",
-    "edge_verdict": "WATCHLIST",
-    "expected_value": -0.06549999999999995,
     "kickoff": "10:30",
     "match": "Tayisiya Morderger vs Katerina Tsygourova",
     "match_time": "10:30",
@@ -788,14 +788,14 @@
       "3 sources",
       "High conf 89%"
     ],
-    "ml_calibrated_prob": 0.5657,
-    "ml_ev": -0.406,
-    "ml_fair_odds": 1.77,
+    "ml_calibrated_prob": 0.5667,
+    "ml_ev": -0.3993,
+    "ml_fair_odds": 1.76,
     "ml_odds_answer": {
-      "edge_pct": -40.6,
-      "ev": -0.406,
-      "explanation": "Odds 1.05 short vs fair 1.77, EV -40.6% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.77,
+      "edge_pct": -39.93,
+      "ev": -0.3993,
+      "explanation": "Odds 1.06 short vs fair 1.76, EV -39.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.76,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.25,
@@ -803,13 +803,13 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.406 < 0.02 min (capital protection)"
+      "ML EV -0.399 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
-    "odds": 1.05,
+    "odds": 1.06,
     "odds_bookmaker": "BetExplorer consensus",
     "odds_cross_checked": "",
     "odds_reject_reason": null,
@@ -823,7 +823,7 @@
     "selected_player": "Katerina Tsygourova",
     "selected_side": "2",
     "series": "International",
-    "skip_reason": "negative EV (-0.065 < 0.020)",
+    "skip_reason": "negative EV (-0.057 < 0.020)",
     "slice_matched": "no_slice_export",
     "source": "BetClan",
     "source_count": 3,
@@ -852,14 +852,14 @@
     "ml_boost_reasons": [
       "High conf 89%"
     ],
-    "ml_calibrated_prob": 0.5657,
-    "ml_ev": -0.4116,
-    "ml_fair_odds": 1.77,
+    "ml_calibrated_prob": 0.5667,
+    "ml_ev": -0.4106,
+    "ml_fair_odds": 1.76,
     "ml_odds_answer": {
-      "edge_pct": -41.16,
-      "ev": -0.4116,
-      "explanation": "Odds 1.04 short vs fair 1.77, EV -41.2% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.77,
+      "edge_pct": -41.06,
+      "ev": -0.4106,
+      "explanation": "Odds 1.04 short vs fair 1.76, EV -41.1% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.76,
       "verdict": "SHORT"
     },
     "ml_strength_score": -0.45,
@@ -867,10 +867,10 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
-      "ML EV -0.412 < 0.02 min (capital protection)"
+      "ML EV -0.411 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 0.0,
     "odds": 1.04,
@@ -931,7 +931,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION",
       "ML EV -0.174 < 0.02 min (capital protection)"
@@ -988,7 +988,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION"
     ],
@@ -1033,7 +1033,7 @@
     "match": "Michael Mmoh vs J.J. Wolf",
     "match_time": "00:00",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5405,
+    "ml_calibrated_prob": 0.5393,
     "ml_ev": null,
     "ml_fair_odds": 1.85,
     "ml_strength_score": -0.5,
@@ -1093,7 +1093,7 @@
     "ml_veto_reasons": [
       "Sources disagree",
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION"
     ],
@@ -1211,14 +1211,14 @@
     "ml_boost_reasons": [
       "High conf 73%"
     ],
-    "ml_calibrated_prob": 0.5311,
+    "ml_calibrated_prob": 0.5321,
     "ml_ev": null,
     "ml_fair_odds": 1.88,
     "ml_strength_score": -0.45,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [
       "tour WTA CAUTION",
-      "surface Hard VETO roi -0.206731 n=63",
+      "surface Hard VETO roi -0.206731 n=64",
       "series International CAUTION",
       "source BetClan CAUTION"
     ],
