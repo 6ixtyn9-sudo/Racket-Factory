@@ -739,10 +739,10 @@ def run_once(args: argparse.Namespace) -> None:
             # Log Jina quota for burn visibility
             try:
                 import sys
-                sys.path.insert(0, str(ROOT / \"src\"))
+                sys.path.insert(0, str(ROOT / "src"))
                 from racketfactory.quota_guard import get_count as _q_cnt, get_limit as _q_lim
-                print(f\"quota jina: {_q_cnt('jina')}/{_q_lim('jina')} today\")
-                print(f\"quota bzzoiro: {_q_cnt('bzzoiro')}/{_q_lim('bzzoiro')} today\")
+                print(f"quota jina: {_q_cnt('jina')}/{_q_lim('jina')} today")
+                print(f"quota bzzoiro: {_q_cnt('bzzoiro')}/{_q_lim('bzzoiro')} today")
             except Exception:
                 pass
     except Exception as e:
