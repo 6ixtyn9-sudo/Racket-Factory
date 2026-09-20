@@ -729,6 +729,19 @@ def run_once(args: argparse.Namespace) -> None:
     else:
         run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_theoddsapi_scores.py --days-from 3 --output-dir localdata", "capture_theoddsapi_scores", env=child_env)
 
+    # 3b. Baseline snapshot — preserve the committed warehouse (previous
+    # run's mined snapshot) before the rebuild overwrites it, so the
+    # post-build merge can pin historical rows to it (deterministic slice
+    # mining; see scripts/merge_warehouse_baseline.py).
+    _wh_path = LOCALDATA / "warehouse.csv.gz"
+    _baseline_path = LOCALDATA / "warehouse_baseline.csv.gz"
+    try:
+        _baseline_path.unlink(missing_ok=True)
+        if _wh_path.exists():
+            _wh_path.replace(_baseline_path)
+    except OSError as e:
+        print(f"warehouse baseline save failed (continuing without baseline): {e}")
+
     # 4. Warehouse Resolution & Assembly (initial — for predictions)
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz", "build_warehouse_initial", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/resolve_pending.py --warehouse localdata/warehouse.csv.gz --data-dir localdata", "resolve_pending", env=child_env)
@@ -745,6 +758,11 @@ def run_once(args: argparse.Namespace) -> None:
         run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_theoddsapi_scores.py --days-from 3 --output-dir localdata", "capture_theoddsapi_scores second pass (results)", env=child_env)
     # Rebuild warehouse with new result rows so audit can settle
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/build_warehouse.py --data-dir localdata --output warehouse.csv.gz", "build_warehouse_with_results", env=child_env)
+
+    # 4c. Re-anchor the fresh warehouse onto the committed baseline: pin
+    # historical dimension columns, let settlements/new matches/live rows
+    # flow in. Soft — the fresh build stands alone if the merge fails.
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/merge_warehouse_baseline.py --baseline localdata/warehouse_baseline.csv.gz --fresh localdata/warehouse.csv.gz --output localdata/warehouse.csv.gz --report localdata/warehouse_merge_report.json", "merge_warehouse_baseline", env=child_env)
 
     # 5. Mine Edges
     run(f"{env_prefix} PYTHONPATH=src python3 scripts/mine_edges.py --warehouse localdata/warehouse.csv.gz --bet-side prediction --date {target}", "mine_edges", env=child_env)

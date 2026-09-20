@@ -78,6 +78,13 @@ data/cache/
 !localdata/settled_results.json
 !localdata/pipeline_health.json
 !localdata/auto_tickets_state.json.*
+# Assembled warehouse + mining-time slice table: the next run re-anchors
+# onto the committed snapshot (merge_warehouse_baseline.py) so slice
+# verdicts are reproducible; the slice table records the exact table each
+# run matched candidates against (2026-09-20 snapshot-drift incident).
+!localdata/warehouse.csv.gz
+!localdata/warehouse_merge_report.json
+!localdata/slice_table_*.json
 
 # Stray data files accidentally created in repo root (no extension)
 # Date-named files like "2026-06-14" should not be committed
