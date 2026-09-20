@@ -149,6 +149,14 @@ jobs:
           rm -f localdata/picks_audit_2026-0[6-8]-*.md localdata/picks_audit_2026-09-0[1-9].md localdata/picks_audit_2026-09-10.md || true
           rm -f localdata/picks_audit_forecast_*.md localdata/picks_forecast_2026-0[6-8]-*.json localdata/picks_forecast_2026-0[6-8]-*.txt localdata/picks_forecast_2026-09-0[1-9].* localdata/picks_forecast_2026-09-10.* || true
           rm -f localdata/tennisdata_tennis_*.csv.gz || true
+          echo "Pruning slice_table artifacts older than 30 days (retention)..."
+          find localdata -name "slice_table_*.json" -type f -mtime +30 -print -delete || true
+          echo "Cleaning transient warehouse baseline (not committed)..."
+          rm -f localdata/warehouse_baseline.csv.gz || true
+          echo "Current localdata inventory after prune:"
+          ls -lh localdata/ | tail -n 100 || true
+          echo "Warehouse + slice_table status:"
+          ls -lh localdata/warehouse.csv.gz localdata/warehouse_merge_report.json localdata/slice_table_*.json 2>&1 | head -n 20 || true
           git add -A localdata/ 2>/dev/null || true
           git diff --cached --quiet && echo "no changes" && exit 0
           git commit -m "feat: autonomous picks + auto_tickets $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
