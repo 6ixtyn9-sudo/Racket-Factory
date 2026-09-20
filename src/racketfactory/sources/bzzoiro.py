@@ -49,9 +49,13 @@ class BzzoiroPredictor:
                             logger.warning(f"Bzzoiro fallback {fb_url} failed: {fe}")
                             continue
                     tried_fallback = True
+                if response.status_code == 402:
+                    logger.warning(f"Bzzoiro API quota exhausted (402) on {url} — treating as empty, will use archived predictions")
+                    # 402 is quota/payment required, not retryable, break gracefully
+                    break
                 if response.status_code != 200:
                     logger.error(f"Bzzoiro API failed: HTTP {response.status_code}")
-                    if response.status_code == 404:
+                    if response.status_code in (404, 429):
                         # Try next fallback if not yet
                         if not tried_fallback:
                             for fb_url in fallback_urls:
