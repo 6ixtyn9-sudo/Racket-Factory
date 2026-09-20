@@ -25,6 +25,104 @@ from racketfactory.odds_compare import fetch_comparison_rows
 logger = logging.getLogger(__name__)
 
 
+def _normalize_predicted_winner_value(val: str | None) -> str | None:
+    """Normalize legacy 1/2 codes to player_a/player_b canonical form.
+
+    BetClan and PredixSport historically emitted "1"/"2" (home/away) while
+    Forebet/Bzzoiro/ForeTennis emit "player_a"/"player_b" after orientation
+    mapping.  For agree logic, "1" must mean player_a and "2" player_b in
+    the source file's own orientation; the orientation flip to warehouse
+    player_a/b is handled separately where warehouse mapping exists.
+    """
+    if val is None:
+        return None
+    try:
+        import pandas as pd
+        if pd.isna(val):
+            return None
+    except Exception:
+        pass
+    s = str(val).strip()
+    if not s or s.lower() in {"nan", "<na>", "none"}:
+        return None
+    if s == "1" or s.lower() == "player_a" or s.lower() == "a":
+        return "player_a"
+    if s == "2" or s.lower() == "player_b" or s.lower() == "b":
+        return "player_b"
+    # If value is a player name that looks like player_a/b already, keep as is
+    # but also try to handle if it's an actual name containing player_a/b substring?
+    # For safety, return as-is if it's already player_a/b, else try to map via name later
+    if s in ("player_a", "player_b"):
+        return s
+    return s  # fallback: keep original (could be player name, will be handled downstream)
+
+
+def _map_pred_winner_to_warehouse_orientation(
+    pred_player_a: str,
+    pred_player_b: str,
+    pred_winner: str | None,
+    wh_player_a: str,
+    wh_player_b: str,
+) -> str | None:
+    """Map a source's predicted winner to warehouse's player_a/player_b orientation.
+
+    Uses name_signature_strict matching to determine if source's player_a corresponds
+    to warehouse's player_a or player_b, then flips "player_a"/"player_b" accordingly.
+    Handles legacy "1"/"2" via _normalize first.
+    """
+    if not pred_winner:
+        return None
+    norm = _normalize_predicted_winner_value(pred_winner)
+    if norm not in ("player_a", "player_b"):
+        # If it's still a raw name, try to match it to warehouse players
+        # This handles cases where predicted_winner is actual player name
+        try:
+            from racketfactory.sources.forebet import name_signature_strict
+            sig_pred = name_signature_strict(str(pred_winner))
+            sig_wh_a = name_signature_strict(str(wh_player_a))
+            sig_wh_b = name_signature_strict(str(wh_player_b))
+            if sig_pred == sig_wh_a:
+                return "player_a"
+            if sig_pred == sig_wh_b:
+                return "player_b"
+            # Also try contains
+            pa_low = str(wh_player_a).lower()
+            pb_low = str(wh_player_b).lower()
+            pw_low = str(pred_winner).lower()
+            if pa_low in pw_low or pw_low in pa_low:
+                return "player_a"
+            if pb_low in pw_low or pw_low in pb_low:
+                return "player_b"
+        except Exception:
+            pass
+        return norm
+
+    # norm is player_a or player_b in source orientation
+    # Determine if source's player_a == warehouse's player_a
+    try:
+        from racketfactory.sources.forebet import name_signature_strict
+        sig_src_a = name_signature_strict(str(pred_player_a))
+        sig_src_b = name_signature_strict(str(pred_player_b))
+        sig_wh_a = name_signature_strict(str(wh_player_a))
+        sig_wh_b = name_signature_strict(str(wh_player_b))
+        src_a_is_wh_a = (sig_src_a == sig_wh_a) or (sig_src_a == sig_wh_b and sig_src_b != sig_wh_a)
+        # More robust: check both
+        if sig_src_a == sig_wh_a and sig_src_b == sig_wh_b:
+            # orientation same
+            return norm
+        if sig_src_a == sig_wh_b and sig_src_b == sig_wh_a:
+            # swapped
+            return "player_b" if norm == "player_a" else "player_a"
+        # Fallback: if only one matches, infer
+        if sig_src_a == sig_wh_a or sig_src_b == sig_wh_b:
+            return norm
+        if sig_src_a == sig_wh_b or sig_src_b == sig_wh_a:
+            return "player_b" if norm == "player_a" else "player_a"
+    except Exception:
+        pass
+    return norm
+
+
 def load_warehouse_env() -> None:
     """Load repo-local .env files before live odds/API enrichment.
 
@@ -2060,6 +2158,42 @@ def build_warehouse(
                 suffix = src.lower().replace(" ", "_").replace("-", "_")
                 logger.info("Merging secondary source '%s' (suffix: _%s): %d predictions",
                             src, suffix, len(merged))
+                # --- FIX: Normalize predicted_winner encoding (1/2 -> player_a/b) and orientation ---
+                # BetClan/PredixSport historically emitted "1"/"2" (home/away).  For agree logic
+                # we need canonical player_a/player_b in warehouse orientation.
+                if "predicted_winner" in merged.columns:
+                    # First, normalize 1/2 -> player_a/b in source orientation
+                    merged["predicted_winner"] = merged["predicted_winner"].apply(
+                        lambda v: _normalize_predicted_winner_value(v) or v
+                    )
+                    # Then, attempt orientation-aware mapping to warehouse's player_a/b
+                    # Build lookup from warehouse _merge_key -> (player_a, player_b)
+                    try:
+                        wh_lookup = {}
+                        if '_merge_key' in warehouse.columns:
+                            for _, wh_row in warehouse[['_merge_key', 'player_a', 'player_b']].dropna(subset=['_merge_key']).iterrows():
+                                k = wh_row['_merge_key']
+                                if k not in wh_lookup:
+                                    wh_lookup[k] = (str(wh_row['player_a']), str(wh_row['player_b']))
+                        # Apply mapping where we have both source players and warehouse players
+                        def _remap_row(r):
+                            mk = r.get('_merge_key')
+                            if not mk or mk not in wh_lookup:
+                                return r.get('predicted_winner')
+                            wh_pa, wh_pb = wh_lookup[mk]
+                            src_pa = str(r.get('player_a') or '')
+                            src_pb = str(r.get('player_b') or '')
+                            src_winner = r.get('predicted_winner')
+                            mapped = _map_pred_winner_to_warehouse_orientation(
+                                src_pa, src_pb, src_winner, wh_pa, wh_pb
+                            )
+                            return mapped if mapped is not None else src_winner
+                        # Only remap if we have player_a/b in merged
+                        if 'player_a' in merged.columns and 'player_b' in merged.columns:
+                            merged['predicted_winner'] = merged.apply(_remap_row, axis=1)
+                    except Exception as e:
+                        logger.debug("Secondary source %s orientation remap failed (non-fatal): %s", src, e)
+
                 rename_map = {c: f"{c}_{suffix}" for c in pred_cols if c != "source"}
                 merged_renamed = merged[['_merge_key'] + pred_cols].rename(columns=rename_map) # type: ignore
                 if "source" in merged_renamed.columns:
@@ -2127,6 +2261,55 @@ def build_warehouse(
         warehouse["odds_a"] = pd.to_numeric(warehouse["odds_a"], errors='coerce')
     if "odds_b" in warehouse.columns:
         warehouse["odds_b"] = pd.to_numeric(warehouse["odds_b"], errors='coerce')
+
+    # --- FIX: Create real market baseline from BetExplorer consensus odds ---
+    # predicted_winner_market was a ghost column (no source emitted it).  Derive it
+    # from the actual market odds: favorite (lower decimal) is market prediction.
+    # This gives a genuine market signal for cross_source_agree and EV gating.
+    try:
+        if "odds_a" in warehouse.columns and "odds_b" in warehouse.columns:
+            def _market_winner(row):
+                try:
+                    oa = float(row.get("odds_a")) if row.get("odds_a") is not None and str(row.get("odds_a")).strip() not in {"", "nan", "<NA>", "None"} else None
+                    ob = float(row.get("odds_b")) if row.get("odds_b") is not None and str(row.get("odds_b")).strip() not in {"", "nan", "<NA>", "None"} else None
+                    if oa is None or ob is None:
+                        return None
+                    if oa <= 0 or ob <= 0:
+                        return None
+                    # Lower odds = favorite = market predicted winner
+                    return "player_a" if oa < ob else "player_b"
+                except Exception:
+                    return None
+            # Only fill where market column is missing or ghost
+            if "predicted_winner_market" not in warehouse.columns:
+                warehouse["predicted_winner_market"] = None
+            # Create market prediction where odds exist and market column is empty
+            mask_need_market = warehouse["predicted_winner_market"].isna() | (warehouse["predicted_winner_market"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))
+            mask_has_odds = warehouse["odds_a"].notna() & warehouse["odds_b"].notna()
+            mask_fill = mask_need_market & mask_has_odds
+            if mask_fill.any():
+                warehouse.loc[mask_fill, "predicted_winner_market"] = warehouse[mask_fill].apply(_market_winner, axis=1)
+                logger.info("Derived predicted_winner_market from odds for %d rows (real market baseline)", int(mask_fill.sum()))
+            # Also derive prediction_prob_market as implied prob from favorite odds (1/odds)
+            if "prediction_prob_market" not in warehouse.columns:
+                warehouse["prediction_prob_market"] = None
+            def _market_prob(row):
+                try:
+                    oa = float(row.get("odds_a")) if row.get("odds_a") is not None else None
+                    ob = float(row.get("odds_b")) if row.get("odds_b") is not None else None
+                    if oa is None or ob is None or oa <= 0 or ob <= 0:
+                        return None
+                    # Implied prob of favorite
+                    fav_odds = min(oa, ob)
+                    return 1.0 / fav_odds if fav_odds > 0 else None
+                except Exception:
+                    return None
+            mask_need_prob = warehouse["prediction_prob_market"].isna() | (warehouse["prediction_prob_market"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))
+            mask_fill_prob = mask_need_prob & mask_has_odds
+            if mask_fill_prob.any():
+                warehouse.loc[mask_fill_prob, "prediction_prob_market"] = warehouse[mask_fill_prob].apply(_market_prob, axis=1)
+    except Exception as e:
+        logger.warning("Failed to derive market baseline from odds (non-fatal): %s", e)
 
     dest_path = data_path / output_file
     warehouse.to_csv(dest_path, index=False, compression="gzip")

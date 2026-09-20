@@ -243,12 +243,13 @@ class BetClanPredictor:
                             prob2 = int(m.group(1))
 
                     # Robustly determine predicted winner using probabilities or clean name matching
+                    # FIX: Normalize to player_a/player_b canonical form (was 1/2, caused Disagree with Forebet/Bzzoiro)
                     if prob1 is not None and prob2 is not None:
-                        pred_win = "1" if prob1 >= prob2 else "2"
+                        pred_win = "player_a" if prob1 >= prob2 else "player_b"
                     else:
                         clean_w = re.sub(r"[^a-z]", "", winner_name.lower())
                         clean_p1 = re.sub(r"[^a-z]", "", p1.lower())
-                        pred_win = "1" if clean_p1 in clean_w or clean_w in clean_p1 else "2"
+                        pred_win = "player_a" if clean_p1 in clean_w or clean_w in clean_p1 else "player_b"
 
                     # Robustly extract bookmaker odds from the prediction page itself.
                     # This is the historical behaviour; for many matches BetClan hides

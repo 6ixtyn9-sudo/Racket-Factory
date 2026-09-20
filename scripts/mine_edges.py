@@ -106,39 +106,102 @@ def get_confidence_band(prob: float) -> str:
     return "Low"
 
 
+def _normalize_winner_for_agree(val, row: pd.Series | None = None) -> str | None:
+    """Normalize legacy 1/2 codes and player names to player_a/player_b for agree check.
+
+    - "1"/"player_a"/"a"/"home" -> player_a
+    - "2"/"player_b"/"b"/"away" -> player_b
+    - If val is an actual player name, map to player_a/b via row's player_a/b
+    """
+    if val is None:
+        return None
+    try:
+        if pd.isna(val):
+            return None
+    except Exception:
+        pass
+    s = str(val).strip()
+    if not s or s.lower() in {"", "nan", "<na>", "none"}:
+        return None
+    low = s.lower()
+    if low in {"1", "player_a", "a", "home", "player_home"}:
+        return "player_a"
+    if low in {"2", "player_b", "b", "away", "player_away"}:
+        return "player_b"
+    # Try to map actual player name to player_a/b
+    if row is not None:
+        try:
+            pa = str(row.get("player_a") or "").strip()
+            pb = str(row.get("player_b") or "").strip()
+            if pa and pb:
+                if low == pa.lower() or pa.lower() in low or low in pa.lower():
+                    return "player_a"
+                if low == pb.lower() or pb.lower() in low or low in pb.lower():
+                    return "player_b"
+        except Exception:
+            pass
+    if low in ("player_a", "player_b"):
+        return low
+    return low
+
+
 def get_cross_source_agree(row: pd.Series, pred_cols: list[str]) -> str:
     """
-    Compare Market baseline vs ForeTennis AI predictions and other sources.
-    Returns one of: Both | Disagree | MarketOnly | ForeTennisOnly
-    """
-    mkt = row.get("predicted_winner_market")
-    ft = row.get("predicted_winner_foretennis")
-    has_mkt = pd.notna(mkt) and str(mkt).strip() not in {"", "nan", "<NA>", "None"}
-    has_ft = pd.notna(ft) and str(ft).strip() not in {"", "nan", "<NA>", "None"}
-    if has_mkt and has_ft:
-        return "Both" if mkt == ft else "Disagree"
-    if has_mkt:
-        return "MarketOnly"
-    if has_ft:
-        return "ForeTennisOnly"
+    Compare all prediction sources for consensus.
+    Returns one of: Both | Disagree | MarketOnly | ForeTennisOnly | Unknown
 
-    # Check all available predicted_winner columns for live upcoming matches
-    picks = set()
-    sources_count = 0
+    FIXES APPLIED:
+    - Normalizes legacy 1/2 codes (BetClan/PredixSport) to player_a/b
+    - Implements majority vote: 3-vs-1 consensus => Both, not Disagree
+    - Derives real market baseline from odds in warehouse.py (was ghost column)
+    - Previously: market vs foretennis special case ignored other sources;
+      now all predicted_winner_* columns participate in vote
+    """
+    from collections import Counter
+
+    # Collect all normalized picks across all prediction columns
+    picks = []
+    picks_by_col = {}
     for col in pred_cols:
         val = row.get(col)
-        if pd.notna(val) and str(val).strip() not in {"", "nan", "<NA>", "None"}:
-            picks.add(str(val).strip())
-            sources_count += 1
+        norm = _normalize_winner_for_agree(val, row)
+        if norm is not None:
+            picks.append(norm)
+            picks_by_col[col] = norm
 
-    if len(picks) > 1:
-        return "Disagree"
-    elif len(picks) == 1 and sources_count > 1:
-        return "Both"
-    elif len(picks) == 1:
+    if not picks:
+        return "Unknown"
+
+    unique_picks = set(picks)
+    sources_count = len(picks)
+
+    # Single source cases - preserve backward compat labels
+    if len(unique_picks) == 1 and sources_count == 1:
+        # Determine which single source it is for specific label
+        sole_col = list(picks_by_col.keys())[0] if picks_by_col else ""
+        if "foretennis" in sole_col.lower():
+            return "ForeTennisOnly"
+        if "market" in sole_col.lower():
+            return "MarketOnly"
+        # Generic single source (BetClan, Bzzoiro, etc) - historically labeled MarketOnly
         return "MarketOnly"
 
-    return "Unknown"
+    if len(unique_picks) == 1 and sources_count > 1:
+        return "Both"
+
+    # Multiple unique picks - majority vote logic
+    # Previously: any disagreement => Disagree (dead row for all 9 exportable slices)
+    # Now: if clear majority exists, treat as Both (consensus)
+    counter = Counter(picks)
+    most_common_pick, most_common_count = counter.most_common(1)[0]
+
+    # Majority: >50% and at least 2 votes agree
+    if most_common_count > len(picks) / 2 and most_common_count >= 2:
+        # e.g., 3 vs 1, or 2 vs 1 - consensus exists
+        return "Both"
+
+    # No majority (e.g., 2 vs 2 tie, or 1 vs 1 vs 1) => genuine Disagree
+    return "Disagree"
 
 
 def infer_tour_and_series(text: str, row: pd.Series | None = None) -> tuple[str, str]:

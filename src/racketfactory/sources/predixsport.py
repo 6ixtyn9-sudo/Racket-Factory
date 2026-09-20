@@ -127,7 +127,7 @@ class PredixSportPredictor:
                         "prob_away": prob2,
                         "odds_home": odds_home,
                         "odds_away": odds_away,
-                        "predicted_winner": "1" if prob1 >= prob2 else "2",
+                        "predicted_winner": "player_a" if prob1 >= prob2 else "player_b",  # FIX: canonical form (was 1/2, broke agree logic)
                         "predicted_winner_name": winner,
                         "tournament": tournament,
                         "country": country,
