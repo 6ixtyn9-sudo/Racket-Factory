@@ -43,7 +43,7 @@
     },
     "picks:priced_share": {
       "status": "OK",
-      "detail": "picks_2026-09-20.json: 6/6 priced"
+      "detail": "picks_2026-09-20.json: 2/2 priced"
     },
     "audit:rolling": {
       "status": "OK",
@@ -51,7 +51,7 @@
     },
     "tickets:bank": {
       "status": "OK",
-      "detail": "bank 194.536776% paper 100.0% open 1 history 10"
+      "detail": "bank 194.536776% paper 100.0% open 2 history 10"
     }
   }
 }

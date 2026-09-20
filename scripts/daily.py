@@ -715,12 +715,36 @@ def run_once(args: argparse.Namespace) -> None:
                 except Exception as e:
                     print(f"deep check failed {e}")
                     deep_needed = True
+        # Burn cut: deep limit 15->5 (RACKET_FACTORY_FOREBET_DEEP_LIMIT), 12h TTL via fetch_cache, empty boards never cached
+        deep_limit = 5
+        try:
+            deep_limit = int(os.getenv("RACKET_FACTORY_FOREBET_DEEP_LIMIT", "5"))
+        except Exception:
+            deep_limit = 5
         if deep_needed:
-            print("\n>>> DEEP SEARCH enabled: Forebet tournament backfill (limit 15 to reduce CF burst, was 50) to deepen warehouse")
-            run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode tournament --limit 15 --delay 5 --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet tournament deep 15", env=child_env)
-            # Also Bzzoiro historical 30d if token present
+            print(f"\n>>> DEEP SEARCH enabled: Forebet tournament backfill (limit {deep_limit} to reduce CF burst, was 50) to deepen warehouse")
+            run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode tournament --limit {deep_limit} --delay 5 --warehouse localdata/warehouse.csv.gz --output-dir localdata", f"backfill_forebet tournament deep {deep_limit}", env=child_env)
+            # Bzzoiro 30d backfill at most once per day (marker file) — 100 req/day free tank
             if os.getenv("BZZOIRO_TOKEN"):
-                run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_bzzoiro.py --start-date {(datetime.now()-timedelta(days=30)).date().isoformat()} --end-date {target} --output-dir localdata", "backfill_bzzoiro 30d deep", env=child_env)
+                marker = LOCALDATA / "quota" / f"bzzoiro_backfill_{date.today().isoformat()}.marker"
+                if marker.exists():
+                    print(f">>> Bzzoiro 30d backfill skipped — already ran today (marker {marker.name})")
+                else:
+                    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_bzzoiro.py --start-date {(datetime.now()-timedelta(days=30)).date().isoformat()} --end-date {target} --output-dir localdata", "backfill_bzzoiro 30d deep", env=child_env)
+                    try:
+                        marker.parent.mkdir(parents=True, exist_ok=True)
+                        marker.write_text(f"{datetime.now().isoformat()} {target}\n")
+                    except Exception:
+                        pass
+            # Log Jina quota for burn visibility
+            try:
+                import sys
+                sys.path.insert(0, str(ROOT / \"src\"))
+                from racketfactory.quota_guard import get_count as _q_cnt, get_limit as _q_lim
+                print(f\"quota jina: {_q_cnt('jina')}/{_q_lim('jina')} today\")
+                print(f\"quota bzzoiro: {_q_cnt('bzzoiro')}/{_q_lim('bzzoiro')} today\")
+            except Exception:
+                pass
     except Exception as e:
         print(f"deep search check failed: {e}")
     if os.getenv("RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES", "").strip().lower() in {"1", "true", "yes", "on"}:

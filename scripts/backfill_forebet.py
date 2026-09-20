@@ -41,6 +41,7 @@ from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources.forebet import (
     ForebetPredictor,
     forebet_cache_key,
+    FOREBET_CACHE_VERSION,
     forebet_tour_slug,
     forebet_tournament_slug,
     name_signature,
@@ -48,6 +49,25 @@ from racketfactory.sources.forebet import (
     read_relay_status,
     record_relay_status,
 )
+import os
+
+
+def forebet_tournament_cache_key(tour_slug: str, tournament_slug: str) -> str:
+    return f"forebet_tournament_{tour_slug}_{tournament_slug}_{FOREBET_CACHE_VERSION}"
+
+
+def get_forebet_deep_limit(default: int = 5) -> int:
+    try:
+        return int(os.getenv("RACKET_FACTORY_FOREBET_DEEP_LIMIT", str(default)))
+    except Exception:
+        return default
+
+
+def get_forebet_tournament_ttl_minutes() -> float:
+    try:
+        return float(os.getenv("RACKET_FACTORY_FOREBET_TTL_HOURS", "12")) * 60.0
+    except Exception:
+        return 720.0
 
 logging.basicConfig(
     level=logging.INFO,
@@ -297,9 +317,16 @@ def mode_tournament(args) -> int:
             i + 1, len(tournament_list), fetch_tour, fetch_tournament, len(group_df),
         )
 
-        preds = predictor.fetch_tournament_predictions(
-            str(rep["tour"]), str(rep["tournament"]),
-            tour_slug=fetch_tour, tournament_slug=fetch_tournament,
+        # 12h cross-run per-slug TTL: boards updated once/day, serve from cache with zero relay calls
+        # Empty boards never cached (fetch_cache rule), so failures keep retrying
+        t_key = forebet_tournament_cache_key(fetch_tour, fetch_tournament)
+        ttl = get_forebet_tournament_ttl_minutes()
+        preds = cached_fetch(
+            t_key,
+            lambda _ft=fetch_tour, _ftt=fetch_tournament, _rt=str(rep["tour"]), _rtt=str(rep["tournament"]): predictor.fetch_tournament_predictions(
+                _rt, _rtt, tour_slug=_ft, tournament_slug=_ftt
+            ),
+            ttl_minutes=ttl,
         )
         if not preds:
             time.sleep(args.delay)

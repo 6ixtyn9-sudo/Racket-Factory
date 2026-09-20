@@ -7,6 +7,14 @@ from dotenv import load_dotenv
 
 from racketfactory.sources.forebet import name_signature
 
+try:
+    from racketfactory.quota_guard import check_and_spend, record_402, get_count, get_limit
+except Exception:
+    def check_and_spend(service, n=1, day=None): return True
+    def record_402(service, day=None): return None
+    def get_count(service, day=None): return 0
+    def get_limit(service): return 100
+
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -30,6 +38,9 @@ class BzzoiroPredictor:
         tried_fallback = False
         while url:
             logger.info(f"Fetching Bzzoiro predictions from {url}")
+            if not check_and_spend("bzzoiro"):
+                logger.warning("Bzzoiro quota exhausted — skipping remaining pages, using archived predictions")
+                break
             try:
                 response = requests.get(url, headers=headers, params=params, timeout=20)
                 params = None
@@ -37,6 +48,8 @@ class BzzoiroPredictor:
                     # Try fallback endpoints
                     logger.warning(f"Bzzoiro 404 on {url}, trying fallback endpoints")
                     for fb_url in fallback_urls:
+                        if not check_and_spend("bzzoiro"):
+                            break
                         try:
                             logger.info(f"Trying Bzzoiro fallback {fb_url}")
                             fb_resp = requests.get(fb_url, headers=headers, params={"date_from": params.get("date_from") if isinstance(params, dict) else None, "date_to": params.get("date_to") if isinstance(params, dict) else None, "upcoming_only": "false"} if params else {"upcoming_only": "false"}, timeout=20)
@@ -45,12 +58,17 @@ class BzzoiroPredictor:
                                 response = fb_resp
                                 url = fb_url
                                 break
+                            if fb_resp.status_code == 402:
+                                record_402("bzzoiro")
+                                logger.warning(f"Bzzoiro API quota exhausted (402) on fallback {fb_url} — our spend today: {get_count('bzzoiro')}/{get_limit('bzzoiro')} — if under budget, the token's free trial/plan state is the likely cause (check the Bzzoiro account)")
+                                break
                         except Exception as fe:
                             logger.warning(f"Bzzoiro fallback {fb_url} failed: {fe}")
                             continue
                     tried_fallback = True
                 if response.status_code == 402:
-                    logger.warning(f"Bzzoiro API quota exhausted (402) on {url} — treating as empty, will use archived predictions")
+                    record_402("bzzoiro")
+                    logger.warning(f"Bzzoiro API quota exhausted (402) on {url} — our spend today: {get_count('bzzoiro')}/{get_limit('bzzoiro')} — if under budget, the token's free trial/plan state is the likely cause (check the Bzzoiro account) — treating as empty, will use archived predictions")
                     # 402 is quota/payment required, not retryable, break gracefully
                     break
                 if response.status_code != 200:

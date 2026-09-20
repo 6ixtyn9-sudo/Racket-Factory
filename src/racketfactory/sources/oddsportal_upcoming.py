@@ -462,6 +462,13 @@ def _fetch_via_jina(url: str) -> str:
     if not key:
         return ""
     try:
+        from racketfactory.quota_guard import check_and_spend as _q_spend
+        if not _q_spend("jina"):
+            logger.warning("quota jina exhausted — skipping OddsPortal relay fetch for %s", url)
+            return ""
+    except Exception:
+        pass
+    try:
         relay_url = f"https://r.jina.ai/{url}"
         req = urllib.request.Request(relay_url, headers={
             "Authorization": f"Bearer {key}",
@@ -539,6 +546,14 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
     return rows
 
 
+def _get_oddsportal_ttl_minutes() -> float:
+    try:
+        hours = float(os.getenv("RACKET_FACTORY_ODDSPORTAL_TTL_HOURS", "2"))
+        return hours * 60.0
+    except Exception:
+        return 120.0
+
+
 def fetch_oddsportal_upcoming_rows(target_date: str) -> list[dict[str, Any]]:
     """Priced upcoming rows for target_date (today/tomorrow), TheOddsAPI-shaped."""
     if os.getenv(DISABLE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}:
@@ -551,8 +566,9 @@ def fetch_oddsportal_upcoming_rows(target_date: str) -> list[dict[str, Any]]:
     p_path, cache_key = page
     today = date.today().isoformat()
     extra = TODAY_EXTRA_PATHS if target == today else TOMORROW_EXTRA_PATHS if target == (date.today() + timedelta(days=1)).isoformat() else []
+    ttl = _get_oddsportal_ttl_minutes()
     try:
-        rows = cached_fetch(cache_key, lambda: _fetch_live(p_path, target, extra_paths=extra))
+        rows = cached_fetch(cache_key, lambda: _fetch_live(p_path, target, extra_paths=extra), ttl_minutes=ttl)
     except Exception as exc:
         logger.warning("OddsPortal upcoming fetch failed: %s", exc)
         return []

@@ -635,7 +635,17 @@ def relay_get(url: str, timeout: int = 45, max_retries: int = 3,
 
     Jina API key: if JINA_API_KEY env is set, injects Authorization Bearer
     at call time (paid key bypasses anonymous shared IP CF challenges).
+
+    Quota: counts as jina usage via quota_guard (count-only, default 1000/day).
     """
+    try:
+        from racketfactory.quota_guard import check_and_spend as _q_spend
+        if not _q_spend("jina"):
+            raise RuntimeError("jina quota exhausted — skipping relay fetch")
+    except RuntimeError:
+        raise
+    except Exception:
+        pass
     base = dict(RELAY_HEADERS) if headers is None else dict(headers)
     # Dynamic auth injection — env may be set after import
     auth = _auth_headers()

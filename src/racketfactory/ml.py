@@ -506,36 +506,48 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
     # High 66.23% n=77 (was 84.2% n=38 overconfident), Medium 71.04% n=183 (was 77.2%), Low 51.04% n=337 (was 61.1%)
     # Overall hit 42.8% ROI -30.8% losing, so we must be conservative, not overconfident
     # Use Wilson LB and actual hit rates, not inflated priors
+    # Regime guard: if current regime has <20 settled picks, do NOT apply
+    # clv calibration — clv_rolling is built from warehouse (4352 rows) which
+    # includes legacy regimes, and would drag 88%->82% on day 1 (genesis).
+    # This matches the audit regime split: no calibration until current regime
+    # accumulates its own CLV data.
     try:
-        # Try to get real calibration from clv if available
-        calib_conf = None
-        if clv and isinstance(clv, dict):
-            calib_by_conf = clv.get("calibration_by_confidence", {})
-            bucket = str(pick.get("pred_confidence") or "").strip()
-            # Map bucket names: High -> High (70%+), Medium -> Medium (60-70%), Low -> Low (<60%)
-            if bucket == "High" and "High (70%+)" in calib_by_conf:
-                calib_conf = calib_by_conf["High (70%+)"] .get("hit_rate")
-            elif bucket == "Medium" and "Medium (60-70%)" in calib_by_conf:
-                calib_conf = calib_by_conf["Medium (60-70%)"].get("hit_rate")
-            elif bucket == "Low" and "Low (<60%)" in calib_by_conf:
-                calib_conf = calib_by_conf["Low (<60%)"].get("hit_rate")
-        if calib_conf is not None:
-            try:
-                ch = float(calib_conf)
-                if 0 < ch <= 1:
-                    # Blend 50/50 with raw conf to avoid overfitting, using real
-                    # current-regime hit rates from clv_rolling
-                    base = ch * 0.5 + base * 0.5
-            except Exception:
-                pass
+        audit_for_calib = load_audit_rolling()
+        overall_settled = 0
+        if isinstance(audit_for_calib, dict):
+            overall = audit_for_calib.get("overall", {})
+            if isinstance(overall, dict):
+                overall_settled = int(overall.get("settled_picks", 0) or 0)
+            else:
+                # fallback: check by_regime current
+                try:
+                    from racketfactory.regime import REGIME_ID as _RID
+                    by_regime = audit_for_calib.get("by_regime", {})
+                    cur = by_regime.get(_RID, {})
+                    overall_settled = int(cur.get("settled_picks", 0) or overall_settled)
+                except Exception:
+                    pass
+        # If current regime has <20 settled, skip clv calibration entirely
+        if overall_settled >= 20:
+            calib_conf = None
+            if clv and isinstance(clv, dict):
+                calib_by_conf = clv.get("calibration_by_confidence", {})
+                bucket = str(pick.get("pred_confidence") or "").strip()
+                if bucket == "High" and "High (70%+)" in calib_by_conf:
+                    calib_conf = calib_by_conf["High (70%+)"] .get("hit_rate")
+                elif bucket == "Medium" and "Medium (60-70%)" in calib_by_conf:
+                    calib_conf = calib_by_conf["Medium (60-70%)"].get("hit_rate")
+                elif bucket == "Low" and "Low (<60%)" in calib_by_conf:
+                    calib_conf = calib_by_conf["Low (<60%)"].get("hit_rate")
+            if calib_conf is not None:
+                try:
+                    ch = float(calib_conf)
+                    if 0 < ch <= 1:
+                        base = ch * 0.5 + base * 0.5
+                except Exception:
+                    pass
         else:
-            # No current-regime CLV data yet: apply NO calibration (n<30 = no
-            # claim). The previous fallback used constant priors (High 66.23% /
-            # Medium 71.04% / Low 51.04%) calibrated on pre-genesis (legacy)
-            # picks — a legacy regime's results were grading the new system's
-            # confidence. Removed on the 2026-09-20 regime birth: once the
-            # current regime accumulates CLV data, the branch above blends its
-            # real hit rates in automatically.
+            # No current-regime CLV data yet: apply NO calibration
             pass
     except Exception:
         pass
@@ -840,29 +852,41 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
         # which is precisely the signal the fade slice validates against.
         # The fade's own EV floor is enforced at export time on the slice-EV
         # basis (expected_value < min_ev -> SKIPPED_DEAD_EDGE).
-        # FIX: GOLD BANKER Both High with n>=50 and ROI>10% gets lower EV floor (0.0) — slice is proven +21% ROI
-        # Also no_slice_export Both agree gets 0.0 floor to improve priced_share >30%
+        # Policy (user 2026-09-16): min EV +2% and min odds 1.30, prefers NO BET
+        # over losing. BOOST exception: Both+High+strength>=0.5 may go to
+        # 1.15 with EV>=1% (was allowing negative EV shorts like 1.04 -6% EV).
         effective_min_ev_ml = min_ev_real
+        min_odds_base = get_min_odds_base()
+        min_odds_boost = 1.15
+        min_ev_boost = 0.01
+        # Enforce hard odds floor 1.15 for all REAL legs (capital protection)
         try:
-            g = str(pick.get("edge_grade") or "")
-            t = str(pick.get("edge_tier") or "")
-            v = str(pick.get("edge_verdict") or "")
-            n_v = pick.get("edge_n") or 0
-            try:
-                n_i = int(float(n_v))
-            except Exception:
-                n_i = 0
-            cross = str(pick.get("cross_source_agree") or "")
-            slice_matched = str(pick.get("slice_matched") or "")
-            if g in ("GOLD", "PLATINUM") and t == "BANKER" and v == "EDGE CONFIRMED" and n_i >= 50 and cross == "Both":
-                effective_min_ev_ml = min(effective_min_ev_ml, 0.0)
-            if slice_matched == "no_slice_export" and cross == "Both":
-                effective_min_ev_ml = min(effective_min_ev_ml, 0.0)
+            odds_f = float(pick.get("odds") or 0)
         except Exception:
-            pass
+            odds_f = 0
+        if not is_fade and odds_f and odds_f < min_odds_boost:
+            scoring["should_veto"] = True
+            scoring["veto_reasons"].append(f"ML odds {odds_f:.2f} < {min_odds_boost} hard floor (capital protection)")
+            pick["ml_verdict"] = "VETO"
+            ev = None  # skip further EV checks
+        elif not is_fade and odds_f and odds_f < min_odds_base:
+            # Below 1.30 but above 1.15: require BOOST + Both + High + EV>=1%
+            is_boost_candidate = scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.5
+            cross = str(pick.get("cross_source_agree") or "")
+            try:
+                conf_f = float(pick.get("confidence") or 0)
+                if conf_f <= 1.0:
+                    conf_f *= 100
+            except Exception:
+                conf_f = 0
+            if not (is_boost_candidate and cross == "Both" and conf_f >= 70 and ev is not None and ev >= min_ev_boost):
+                scoring["should_veto"] = True
+                scoring["veto_reasons"].append(f"ML odds {odds_f:.2f} < {min_odds_base} base (needs BOOST Both High EV>=0.01)")
+                pick["ml_verdict"] = "VETO"
+                ev = None
+
         if not is_fade and ev is not None and ev < effective_min_ev_ml:
-            # Allow only if BOOST with high strength >=0.5 and Both agree and High conf >=70
-            # OR GOLD BANKER Both High (proven winner) with EV>=0.0
+            # Allow BOOST exception only if EV>=1% and Both+High+strength>=0.5 and odds>=1.15
             is_boost_high = scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.5
             cross = str(pick.get("cross_source_agree") or "")
             try:
@@ -871,27 +895,8 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
                     conf_f *= 100
             except Exception:
                 conf_f = 0
-            # Strict: need BOOST + Both + High conf to allow low EV, OR GOLD BANKER Both High with EV>=0, OR no_slice Both with EV>=0
-            is_gold_banker_both_high = False
-            is_no_slice_both = False
-            try:
-                g = str(pick.get("edge_grade") or "")
-                t = str(pick.get("edge_tier") or "")
-                v = str(pick.get("edge_verdict") or "")
-                n_v = pick.get("edge_n") or 0
-                try:
-                    n_i = int(float(n_v))
-                except Exception:
-                    n_i = 0
-                if g in ("GOLD", "PLATINUM") and t == "BANKER" and v == "EDGE CONFIRMED" and n_i >= 50:
-                    if cross == "Both" and conf_f >= 70:
-                        is_gold_banker_both_high = True
-                slice_matched = str(pick.get("slice_matched") or "")
-                if slice_matched == "no_slice_export" and cross == "Both" and conf_f >= 55:
-                    is_no_slice_both = True
-            except Exception:
-                pass
-            if not ((is_boost_high and cross == "Both" and conf_f >= 70) or (is_gold_banker_both_high and ev >= 0.0) or (is_no_slice_both and ev >= 0.0)):
+            odds_ok = odds_f >= min_odds_boost if odds_f else True
+            if not (is_boost_high and cross == "Both" and conf_f >= 70 and ev >= min_ev_boost and odds_ok):
                 scoring["should_veto"] = True
                 scoring["veto_reasons"].append(f"ML EV {ev:.3f} < {effective_min_ev_ml} min (capital protection)")
                 pick["ml_verdict"] = "VETO"

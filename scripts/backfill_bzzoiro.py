@@ -2,10 +2,15 @@ import os
 import argparse
 import logging
 from collections import defaultdict
+from datetime import date, datetime
+from pathlib import Path
 import pandas as pd
 
 from racketfactory.sources.bzzoiro import BzzoiroPredictor
 from racketfactory.sources.forebet import name_signature
+
+ROOT = Path(__file__).resolve().parent.parent
+LOCALDATA = ROOT / "localdata"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
@@ -16,6 +21,13 @@ def main():
     parser.add_argument("--end-date", type=str, required=True, help="End date (YYYY-MM-DD)")
     parser.add_argument("--output-dir", type=str, default="localdata", help="Output directory")
     args = parser.parse_args()
+
+    # Once-per-day marker for 30d backfill (quota protection)
+    if (datetime.now().date() - datetime.strptime(args.start_date[:10], "%Y-%m-%d").date()).days >= 20:
+        marker = LOCALDATA / "quota" / f"bzzoiro_backfill_{date.today().isoformat()}.marker"
+        if marker.exists() and not os.getenv("RACKET_FACTORY_FORCE_BZZOIRO_BACKFILL"):
+            logging.getLogger(__name__).info("Bzzoiro backfill skipped — already ran today (marker %s); use RACKET_FACTORY_FORCE_BZZOIRO_BACKFILL=1 to force", marker.name)
+            return 0
 
     os.makedirs(args.output_dir, exist_ok=True)
     wh_path = os.path.join(args.output_dir, "warehouse.csv.gz")
@@ -82,6 +94,15 @@ def main():
     out_df.to_csv(out_file, index=False, compression="gzip")
     
     logger.info(f"Saved {len(out_df)} matched predictions to {out_file}")
+
+    # Write once-per-day marker on success for long backfills
+    if (datetime.now().date() - datetime.strptime(args.start_date[:10], "%Y-%m-%d").date()).days >= 20:
+        try:
+            marker = LOCALDATA / "quota" / f"bzzoiro_backfill_{date.today().isoformat()}.marker"
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.write_text(f"{datetime.now().isoformat()} {args.start_date} {args.end_date} {len(out_df)}\n")
+        except Exception:
+            pass
     return 0
 
 if __name__ == "__main__":

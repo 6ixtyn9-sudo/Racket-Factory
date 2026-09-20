@@ -36,9 +36,16 @@ from racketfactory.warehouse import (
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.forebet import ForebetPredictor, forebet_cache_key
-from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice, get_min_ev_real
+from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice, get_min_ev_real, get_min_odds_base
 from racketfactory.regime import REGIME_ID
 from racketfactory.odds_compare import fetch_comparison_rows
+try:
+    from racketfactory.quota_guard import check_and_spend as quota_check_and_spend, record_402 as quota_record_402, get_count as quota_get_count, get_limit as quota_get_limit
+except Exception:
+    def quota_check_and_spend(service, n=1, day=None): return True
+    def quota_record_402(service, day=None): return None
+    def quota_get_count(service, day=None): return 0
+    def quota_get_limit(service): return 100
 
 logging.basicConfig(
     level=logging.INFO,
@@ -833,12 +840,14 @@ def _bzzoiro_cache_path(target_date: str) -> Path:
 
 
 def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
-    """Paid v2 odds/best payload, read-through static disk cache.
+    """Paid v2 odds/best payload, read-through static disk cache + quota guard.
 
     One paid fetch per date ever: the payload is persisted to
     ``localdata/bzzoiro_odds_<date>.json`` and reused by every later run
     (CI reruns, audits, replays) without spending quota. A corrupt cache
     file is ignored and refetched when a token is available.
+    Quota: 100 req/day free (RACKET_FACTORY_QUOTA_BZZOIRO). When exhausted
+    or 402'd, we skip the call and return None.
     """
     import os
     if target_date in BZZOIRO_ODDS_CACHE:
@@ -858,12 +867,22 @@ def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
     if not token:
         BZZOIRO_ODDS_CACHE[target_date] = None
         return None
+    if not quota_check_and_spend("bzzoiro"):
+        logger.warning("Bzzoiro odds/best quota exhausted — skipping fetch for %s", target_date)
+        BZZOIRO_ODDS_CACHE[target_date] = None
+        return None
     try:
         import requests
         url = (f"https://sports.bzzoiro.com/tennis/api/v2/odds/best/"
                f"?date_from={target_date}&date_to={target_date}&limit=100")
         headers = {"Authorization": f"Token {token}"}
         resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code == 402:
+            quota_record_402("bzzoiro")
+            logger.warning("Bzzoiro odds/best returned 402 for %s — our spend today: %d/%d — if under budget, the token's free trial/plan state is the likely cause (check the Bzzoiro account)",
+                           target_date, quota_get_count("bzzoiro"), quota_get_limit("bzzoiro"))
+            BZZOIRO_ODDS_CACHE[target_date] = None
+            return None
         if resp.status_code != 200:
             logger.warning("Bzzoiro odds/best returned %s for %s",
                            resp.status_code, target_date)
@@ -1985,12 +2004,17 @@ def main() -> int:
             "edge_verdict": "WATCHLIST",
             "roi_estimate": roi_label,
         })
-        # FIX: no_slice_export gets lower EV floor (0.0) to improve priced_share >30%
-        # Previously EV 0.0 <0.02 caused SKIPPED_DEAD_EDGE, leaving 0 priced.
+        # Capital protection: enforce min EV +2% and min odds 1.30 (user 2026-09-16)
+        # no_slice_export previously had 0.0 floor to improve priced_share, but
+        # now priced_share is healthy (6/6) and we prefer NO BET over losing.
+        # Keep floor at args.min_ev (0.02) for all, including no_slice_export.
         effective_min_ev_watchlist = args.min_ev
-        if marker == "no_slice_export":
-            effective_min_ev_watchlist = min(effective_min_ev_watchlist, 0.0)
-        if ev is not None and ev < effective_min_ev_watchlist:
+        # Hard floor 1.15 blocks super-shorts like 1.04-1.07 with negative EV
+        min_odds_hard = 1.15
+        if odds_val is not None and odds_val < min_odds_hard:
+            base["bucket"] = "SKIPPED_DEAD_EDGE"
+            base["skip_reason"] = f"short odds {odds_val:.2f} < {min_odds_hard} hard floor (capital protection)"
+        elif ev is not None and ev < effective_min_ev_watchlist:
             base["bucket"] = "SKIPPED_DEAD_EDGE"
             base["skip_reason"] = f"negative EV ({ev:.3f} < {effective_min_ev_watchlist:.3f})"
         if base.get("_selection_basis") == "arbitrary_default":
@@ -2172,16 +2196,25 @@ def main() -> int:
                     base["bucket"] = "WATCHLIST_NO_ODDS"
                     base["skip_reason"] = odds_reject_reason or "missing selected-side odds"
 
+                # Capital protection: enforce min EV +2% and min odds 1.30
+                # Previously GOLD BANKER n>=50 had 0.0 floor to keep picks, but
+                # user wants +2% minimum and prefers NO BET over losing.
+                # Hard floor 1.15 blocks super-shorts (1.04-1.07) even if slice is GOLD.
                 effective_min_ev = args.min_ev
-                try:
-                    if grade in ("GOLD", "PLATINUM") and tier == "BANKER" and verdict == "EDGE CONFIRMED":
-                        if n_int >= 50:
-                            effective_min_ev = min(effective_min_ev, 0.0)
-                except Exception:
-                    pass
-                if ev is not None and ev < effective_min_ev:
+                min_odds_hard = 1.15
+                min_odds_base = get_min_odds_base()
+                if odds_val is not None and odds_val < min_odds_hard:
+                    base["bucket"] = "SKIPPED_DEAD_EDGE"
+                    base["skip_reason"] = f"short odds {odds_val:.2f} < {min_odds_hard} hard floor (capital protection)"
+                elif ev is not None and ev < effective_min_ev:
                     base["bucket"] = "SKIPPED_DEAD_EDGE"
                     base["skip_reason"] = f"negative EV ({ev:.3f} < {effective_min_ev:.3f})"
+                elif odds_val is not None and odds_val < min_odds_base:
+                    # Below 1.30 but above 1.15: allow only if EV>=1% and potential BOOST (Both+High)
+                    # This mirrors auto_tickets BOOST exception; here we keep it strict and let ML decide,
+                    # but mark as CAUTION for operator visibility if it survives.
+                    # For now, keep as is and let ML filter enforce BOOST+EV>=0.01.
+                    pass
 
                 picks_to_export.append(base)
                 continue

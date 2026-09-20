@@ -141,7 +141,7 @@
     "context_used": "WTA Tolentino Prediction",
     "player_home": "Aneta Laboutkova",
     "player_away": "Maria Toma",
-    "bucket": "CERTIFIED_CLEAN",
+    "bucket": "SKIPPED_DEAD_EDGE",
     "pick": "EDGE CONFIRMED",
     "odds": 1.13,
     "odds_source": "BetExplorer",
@@ -162,15 +162,18 @@
     "roi_estimate": "21.57%",
     "slice_winrate": "90.77%",
     "slice_shrunk": "88.41%",
+    "skip_reason": "short odds 1.13 < 1.15 hard floor (capital protection)",
     "ml_strength_score": 0.75,
-    "ml_veto_reasons": [],
+    "ml_veto_reasons": [
+      "ML odds 1.13 < 1.15 hard floor (capital protection)"
+    ],
     "ml_boost_reasons": [
       "Both sources agree",
       "4 sources",
       "High conf 89%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "BOOST",
+    "ml_verdict": "VETO",
     "ml_calibrated_prob": 0.89,
     "ml_ev": 0.0057,
     "ml_fair_odds": 1.12,
@@ -202,7 +205,7 @@
     "context_used": "WTA Tolentino Prediction",
     "player_home": "Tayisiya Morderger",
     "player_away": "Katerina Tsygourova",
-    "bucket": "CERTIFIED_CLEAN",
+    "bucket": "SKIPPED_DEAD_EDGE",
     "pick": "EDGE CONFIRMED",
     "odds": 1.07,
     "odds_source": "BetExplorer",
@@ -223,15 +226,18 @@
     "roi_estimate": "21.57%",
     "slice_winrate": "90.77%",
     "slice_shrunk": "88.41%",
+    "skip_reason": "short odds 1.07 < 1.15 hard floor (capital protection)",
     "ml_strength_score": 0.75,
-    "ml_veto_reasons": [],
+    "ml_veto_reasons": [
+      "ML odds 1.07 < 1.15 hard floor (capital protection)"
+    ],
     "ml_boost_reasons": [
       "Both sources agree",
       "4 sources",
       "High conf 93%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "BOOST",
+    "ml_verdict": "VETO",
     "ml_calibrated_prob": 0.9,
     "ml_ev": -0.037,
     "ml_fair_odds": 1.11,
@@ -263,7 +269,7 @@
     "context_used": "WTA Tolentino Prediction",
     "player_home": "Dalila Spiteri",
     "player_away": "Laura Boehner",
-    "bucket": "CERTIFIED_CLEAN",
+    "bucket": "SKIPPED_DEAD_EDGE",
     "pick": "EDGE CONFIRMED",
     "odds": 1.05,
     "odds_source": "BetExplorer",
@@ -284,15 +290,18 @@
     "roi_estimate": "21.57%",
     "slice_winrate": "90.77%",
     "slice_shrunk": "88.41%",
+    "skip_reason": "short odds 1.05 < 1.15 hard floor (capital protection)",
     "ml_strength_score": 0.75,
-    "ml_veto_reasons": [],
+    "ml_veto_reasons": [
+      "ML odds 1.05 < 1.15 hard floor (capital protection)"
+    ],
     "ml_boost_reasons": [
       "Both sources agree",
       "4 sources",
       "High conf 95%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "BOOST",
+    "ml_verdict": "VETO",
     "ml_calibrated_prob": 0.9,
     "ml_ev": -0.055,
     "ml_fair_odds": 1.11,
@@ -324,7 +333,7 @@
     "context_used": "WTA Porto Prediction",
     "player_home": "Jasmijn Gimbrere",
     "player_away": "Reese Brantmeier",
-    "bucket": "CERTIFIED_CLEAN",
+    "bucket": "SKIPPED_DEAD_EDGE",
     "pick": "EDGE CONFIRMED",
     "odds": 1.04,
     "odds_source": "BetExplorer",
@@ -345,15 +354,18 @@
     "roi_estimate": "21.57%",
     "slice_winrate": "90.77%",
     "slice_shrunk": "88.41%",
+    "skip_reason": "short odds 1.04 < 1.15 hard floor (capital protection)",
     "ml_strength_score": 0.75,
-    "ml_veto_reasons": [],
+    "ml_veto_reasons": [
+      "ML odds 1.04 < 1.15 hard floor (capital protection)"
+    ],
     "ml_boost_reasons": [
       "Both sources agree",
       "3 sources",
       "High conf 96%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "BOOST",
+    "ml_verdict": "VETO",
     "ml_calibrated_prob": 0.9,
     "ml_ev": -0.064,
     "ml_fair_odds": 1.11,
@@ -406,16 +418,18 @@
     "roi_estimate": "21.57%",
     "slice_winrate": "90.77%",
     "slice_shrunk": "88.41%",
-    "skip_reason": "negative EV (-0.000 < 0.000)",
+    "skip_reason": "short odds 1.08 < 1.15 hard floor (capital protection)",
     "ml_strength_score": 0.75,
-    "ml_veto_reasons": [],
+    "ml_veto_reasons": [
+      "ML odds 1.08 < 1.15 hard floor (capital protection)"
+    ],
     "ml_boost_reasons": [
       "Both sources agree",
       "4 sources",
       "High conf 93%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "BOOST",
+    "ml_verdict": "VETO",
     "ml_calibrated_prob": 0.9,
     "ml_ev": -0.028,
     "ml_fair_odds": 1.11,
@@ -468,16 +482,18 @@
     "roi_estimate": "21.57%",
     "slice_winrate": "90.77%",
     "slice_shrunk": "88.41%",
-    "skip_reason": "negative EV (-0.000 < 0.000)",
+    "skip_reason": "short odds 1.08 < 1.15 hard floor (capital protection)",
     "ml_strength_score": 0.75,
-    "ml_veto_reasons": [],
+    "ml_veto_reasons": [
+      "ML odds 1.08 < 1.15 hard floor (capital protection)"
+    ],
     "ml_boost_reasons": [
       "Both sources agree",
       "3 sources",
       "High conf 93%"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "BOOST",
+    "ml_verdict": "VETO",
     "ml_calibrated_prob": 0.9,
     "ml_ev": -0.028,
     "ml_fair_odds": 1.11,
