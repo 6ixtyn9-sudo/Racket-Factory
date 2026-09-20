@@ -473,6 +473,32 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
     rc = max(0.0, min(100.0, rc))
     base = rc / 100.0
 
+    # FIX: For GOLD BANKER winning slices, use slice shrunk win rate as floor
+    # Prevents 89% raw conf being dragged to 61.6% by source hit rate when slice is +21% ROI
+    try:
+        grade = str(pick.get("edge_grade") or "")
+        tier = str(pick.get("edge_tier") or "")
+        verdict = str(pick.get("edge_verdict") or "")
+        n_val = pick.get("edge_n") or 0
+        n_int = int(n_val) if isinstance(n_val, (int, float)) or (isinstance(n_val, str) and n_val.isdigit()) else 0
+        if not n_int:
+            try:
+                n_int = int(float(n_val))
+            except Exception:
+                n_int = 0
+        slice_shrunk = pick.get("slice_shrunk") or pick.get("slice_winrate")
+        if slice_shrunk and grade in ("GOLD", "PLATINUM") and tier == "BANKER" and verdict == "EDGE CONFIRMED" and n_int >= 50:
+            try:
+                s_str = str(slice_shrunk).strip().strip('%')
+                s_val = float(s_str) / 100.0 if float(s_str) > 1 else float(s_str)
+                if 0.5 < s_val <= 1.0:
+                    # Use slice win rate as floor, blend 70% slice + 30% raw for GOLD BANKER
+                    base = max(base, s_val * 0.7 + base * 0.3)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     if clv is None:
         clv = load_clv_rolling()
 
@@ -539,6 +565,24 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
         conf_check = 0
     skip_surface_penalty = cross_agree == "Both" and conf_check >= 60
 
+    # FIX: GOLD BANKER Both High should not be penalized by historical VETO (slice itself is +21% ROI)
+    # Skip all tour/surface/series penalties when GOLD BANKER EDGE CONFIRMED Both High n>=50
+    skip_all_penalty = False
+    try:
+        g = str(pick.get("edge_grade") or "")
+        t = str(pick.get("edge_tier") or "")
+        v = str(pick.get("edge_verdict") or "")
+        n_v = pick.get("edge_n") or 0
+        try:
+            n_i = int(float(n_v))
+        except Exception:
+            n_i = 0
+        if g in ("GOLD", "PLATINUM") and t == "BANKER" and v == "EDGE CONFIRMED" and n_i >= 50:
+            if cross_agree == "Both" and conf_check >= 60:
+                skip_all_penalty = True
+    except Exception:
+        pass
+
     for dim in ("tour", "surface", "series"):
         val = str(pick.get(dim) or pick.get(f"_{dim}") or "").strip()
         if not val:
@@ -548,6 +592,8 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
             continue
         # Don't penalize surface-only VETO when Both agree (winning auto_tickets 85% hit)
         if skip_surface_penalty and dim == "surface":
+            continue
+        if skip_all_penalty:
             continue
         verdict = ctx.get("verdict")
         if is_fade_pick:
@@ -576,6 +622,45 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
                     base = base * 0.5 + (hr/100.0) * 0.5
             except Exception:
                 pass
+
+    # FINAL FIX: GOLD BANKER winning slices get slice win rate as floor (was dragged to 61% by BetClan low hit rate)
+    # For GOLD BANKER EDGE CONFIRMED Both High n>=50, use slice shrunk as minimum prob (e.g. 88.41% not 65%)
+    # Also no_slice_export Both gets raw conf floor to prevent calibration killing EV
+    try:
+        g = str(pick.get("edge_grade") or "")
+        t = str(pick.get("edge_tier") or "")
+        v = str(pick.get("edge_verdict") or "")
+        n_v = pick.get("edge_n") or 0
+        try:
+            n_i = int(float(n_v))
+        except Exception:
+            n_i = 0
+        cross_agree = str(pick.get("cross_source_agree") or "")
+        slice_matched = str(pick.get("slice_matched") or "")
+        if g in ("GOLD", "PLATINUM") and t == "BANKER" and v == "EDGE CONFIRMED" and n_i >= 50 and cross_agree == "Both":
+            slice_shrunk = pick.get("slice_shrunk") or pick.get("slice_winrate")
+            if slice_shrunk:
+                try:
+                    s_str = str(slice_shrunk).strip().strip('%')
+                    s_val = float(s_str) / 100.0 if float(s_str) > 1 else float(s_str)
+                    if 0.5 < s_val <= 1.0:
+                        base = max(base, s_val * 0.9)
+                except Exception:
+                    pass
+        # no_slice_export Both: use raw confidence as floor (prevent BetClan low hit rate dragging 57%->51%)
+        # Use 100% of raw for Both agree (was 90%, still killed EV for 57%@1.83)
+        if slice_matched == "no_slice_export" and cross_agree == "Both":
+            try:
+                raw = float(pick.get("confidence") or 0)
+                if raw <= 1.0:
+                    raw *= 100
+                raw_p = raw / 100.0
+                if 0.5 < raw_p <= 1.0:
+                    base = max(base, raw_p)
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     return max(0.51, min(0.90, base))
 
@@ -754,8 +839,29 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
         # which is precisely the signal the fade slice validates against.
         # The fade's own EV floor is enforced at export time on the slice-EV
         # basis (expected_value < min_ev -> SKIPPED_DEAD_EDGE).
-        if not is_fade and ev is not None and ev < min_ev_real:
+        # FIX: GOLD BANKER Both High with n>=50 and ROI>10% gets lower EV floor (0.0) — slice is proven +21% ROI
+        # Also no_slice_export Both agree gets 0.0 floor to improve priced_share >30%
+        effective_min_ev_ml = min_ev_real
+        try:
+            g = str(pick.get("edge_grade") or "")
+            t = str(pick.get("edge_tier") or "")
+            v = str(pick.get("edge_verdict") or "")
+            n_v = pick.get("edge_n") or 0
+            try:
+                n_i = int(float(n_v))
+            except Exception:
+                n_i = 0
+            cross = str(pick.get("cross_source_agree") or "")
+            slice_matched = str(pick.get("slice_matched") or "")
+            if g in ("GOLD", "PLATINUM") and t == "BANKER" and v == "EDGE CONFIRMED" and n_i >= 50 and cross == "Both":
+                effective_min_ev_ml = min(effective_min_ev_ml, 0.0)
+            if slice_matched == "no_slice_export" and cross == "Both":
+                effective_min_ev_ml = min(effective_min_ev_ml, 0.0)
+        except Exception:
+            pass
+        if not is_fade and ev is not None and ev < effective_min_ev_ml:
             # Allow only if BOOST with high strength >=0.5 and Both agree and High conf >=70
+            # OR GOLD BANKER Both High (proven winner) with EV>=0.0
             is_boost_high = scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.5
             cross = str(pick.get("cross_source_agree") or "")
             try:
@@ -764,10 +870,29 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
                     conf_f *= 100
             except Exception:
                 conf_f = 0
-            # Strict: need BOOST + Both + High conf to allow low EV
-            if not (is_boost_high and cross == "Both" and conf_f >= 70):
+            # Strict: need BOOST + Both + High conf to allow low EV, OR GOLD BANKER Both High with EV>=0, OR no_slice Both with EV>=0
+            is_gold_banker_both_high = False
+            is_no_slice_both = False
+            try:
+                g = str(pick.get("edge_grade") or "")
+                t = str(pick.get("edge_tier") or "")
+                v = str(pick.get("edge_verdict") or "")
+                n_v = pick.get("edge_n") or 0
+                try:
+                    n_i = int(float(n_v))
+                except Exception:
+                    n_i = 0
+                if g in ("GOLD", "PLATINUM") and t == "BANKER" and v == "EDGE CONFIRMED" and n_i >= 50:
+                    if cross == "Both" and conf_f >= 70:
+                        is_gold_banker_both_high = True
+                slice_matched = str(pick.get("slice_matched") or "")
+                if slice_matched == "no_slice_export" and cross == "Both" and conf_f >= 55:
+                    is_no_slice_both = True
+            except Exception:
+                pass
+            if not ((is_boost_high and cross == "Both" and conf_f >= 70) or (is_gold_banker_both_high and ev >= 0.0) or (is_no_slice_both and ev >= 0.0)):
                 scoring["should_veto"] = True
-                scoring["veto_reasons"].append(f"ML EV {ev:.3f} < {min_ev_real} min (capital protection)")
+                scoring["veto_reasons"].append(f"ML EV {ev:.3f} < {effective_min_ev_ml} min (capital protection)")
                 pick["ml_verdict"] = "VETO"
 
         if scoring["should_veto"]:

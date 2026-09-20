@@ -113,18 +113,37 @@ def _is_match_link(href: str) -> dict[str, Any] | None:
             return None
         # Category like /tennis/usa/atp-us-open/ -> 3 segs, all lowercase, no digit, no uppercase -> reject
         # Match like /tennis/match/<id> -> segs[1]=match, allow
-        if segs_lower[1] == "match":
-            return {"tour_hint": "", "tournament": ""}
-        if segs_lower[1] == "h2h":
+        if segs_lower[1] in {"match", "h2h"}:
             return {"tour_hint": "", "tournament": ""}
         # Event-id shaped last seg (digit/uppercase) -> match, allow
         if _id_like(segs[2]):
             return {"tour_hint": segs[1].replace("-", " "), "tournament": ""}
-        # If last seg looks like tournament slug (all lowercase, hyphens, no digit, length>3) -> reject
+        # FIX: Allow all-lowercase player slugs like "shelton-ben" or "alcaraz-carlos-sinner-jannik"
+        # These have hyphens and look like 2 names (e.g. surname-firstname or surname-surname)
+        # Tournament slugs like "atp-us-open" have 3+ parts and contain tour keywords
         last = segs[2]
+        last_lower = segs_lower[2]
+        # If last seg is all lowercase alpha+hyphen, check if it looks like player vs player
+        if last.islower() and "-" in last and len(last) >= 5:
+            parts = last.split("-")
+            # Player slug: 2-4 parts, each >=2 chars, no tour keywords
+            tour_keywords = {"atp", "wta", "challenger", "itf", "men", "women", "open", "masters", "championships", "cup", "trophy"}
+            has_tour_kw = any(p in tour_keywords for p in parts)
+            # If contains tour keyword and 3+ parts, likely tournament category -> reject
+            if has_tour_kw and len(parts) >= 3:
+                return None
+            # If 2 parts and both look like names (e.g. shelton-ben), allow
+            if len(parts) >= 2 and all(len(p) >= 2 and p.isalpha() for p in parts[:4]):
+                return {"tour_hint": segs[1].replace("-", " "), "tournament": ""}
+            # If 4+ parts and looks like player1 vs player2 (e.g. alcaraz-carlos-sinner-jannik -> 4 parts)
+            if len(parts) >= 4 and all(len(p) >= 2 for p in parts):
+                # Check if first 2 and last 2 could be names (surname-firstname pattern)
+                return {"tour_hint": segs[1].replace("-", " "), "tournament": ""}
         if last.islower() and last.replace("-", "").replace("_", "").isalpha() and len(last) >= 3:
-            # Could still be player slug like "shelton-ben" all lowercase? But h2h player slugs have ID with uppercase/digit like "shelton-ben-QNuG0Gzb"
-            # So pure lowercase is likely category
+            # Pure lowercase alpha hyphen, no digit, no uppercase
+            # Could be tournament slug like "atp-us-open" -> reject
+            # But if it has exactly 2 hyphen parts and looks like names, allow (handled above)
+            # Otherwise reject to avoid bad_names
             return None
         # Otherwise, be conservative and reject 3-seg unknown to avoid bad_names
         return None
@@ -138,13 +157,28 @@ def _is_match_link(href: str) -> dict[str, Any] | None:
     # If last seg is pure tournament (all lowercase alpha hyphen) and no player-like second last, might still be category with 4 segs like /tennis/usa/atp-us-open/results/ ?
     # Check if last two segs are both lowercase alpha hyphen -> likely not match
     # But allow if any seg contains digit or uppercase (player ID)
+    # FIX: Also allow all-lowercase player slugs without ID (new OddsPortal markup)
     has_id_like = any(any(c.isupper() or c.isdigit() for c in seg) for seg in segs[2:])
     if not has_id_like:
-        # No ID-like segment, could still be /tennis/usa/atp-us-open/shelton-ben (all lowercase) – allow if last seg contains hyphen and looks like 2 names?
-        # Require last seg contains hyphen and at least 2 parts
         last = segs[-1]
-        if "-" in last and len(last.split("-")) >= 2:
-            return {"tour_hint": segs[1].replace("-", " ") if len(segs) >= 2 else "", "tournament": segs[2].replace("-", " ") if len(segs) >= 3 else ""}
+        # Allow if last seg contains hyphen and looks like player names (2+ parts, each >=2 chars)
+        if "-" in last and len(last) >= 5:
+            parts = last.split("-")
+            if len(parts) >= 2 and all(len(p) >= 2 for p in parts[:4]):
+                # Exclude obvious tournament categories with tour keywords + 3+ parts
+                tour_keywords = {"atp", "wta", "challenger", "itf", "men", "women", "open", "masters", "championships", "cup", "trophy", "results", "standings", "live", "rankings"}
+                # If last seg itself is a known category word, reject
+                if last.lower() in tour_keywords:
+                    return None
+                # If last seg contains tour keyword and 3+ parts, likely tournament -> reject
+                # But if it looks like 4 parts names (e.g. alcaraz-carlos-sinner-jannik), allow
+                if len(parts) >= 3:
+                    has_tour_kw = any(p in tour_keywords for p in parts)
+                    if has_tour_kw and len(parts) >= 3 and not (len(parts) >= 4 and all(p.isalpha() for p in parts)):
+                        # Check if it's tournament slug like atp-us-open (has atp + open)
+                        if "open" in parts or "masters" in parts or "championships" in parts:
+                            return None
+                return {"tour_hint": segs[1].replace("-", " ") if len(segs) >= 2 else "", "tournament": segs[2].replace("-", " ") if len(segs) >= 3 else ""}
         return None
     return {"tour_hint": segs[1].replace("-", " ") if len(segs) >= 2 else "", "tournament": segs[2].replace("-", " ") if len(segs) >= 3 else ""}
 

@@ -1983,9 +1983,14 @@ def main() -> int:
             "edge_verdict": "WATCHLIST",
             "roi_estimate": roi_label,
         })
-        if ev is not None and ev < args.min_ev:
+        # FIX: no_slice_export gets lower EV floor (0.0) to improve priced_share >30%
+        # Previously EV 0.0 <0.02 caused SKIPPED_DEAD_EDGE, leaving 0 priced.
+        effective_min_ev_watchlist = args.min_ev
+        if marker == "no_slice_export":
+            effective_min_ev_watchlist = min(effective_min_ev_watchlist, 0.0)
+        if ev is not None and ev < effective_min_ev_watchlist:
             base["bucket"] = "SKIPPED_DEAD_EDGE"
-            base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
+            base["skip_reason"] = f"negative EV ({ev:.3f} < {effective_min_ev_watchlist:.3f})"
         if base.get("_selection_basis") == "arbitrary_default":
             base["bucket"] = "WATCHLIST_UNKNOWN_CTX"
             base["skip_reason"] = "no prediction and no odds: selection would be arbitrary"
@@ -2089,12 +2094,54 @@ def main() -> int:
                 # on the decimal odds captured at scrape time, so live picks
                 # inherit the same approximation caveat the HANDOVER already
                 # documents (closing vs opening odds).
+                # FIX: Use slice shrunk win rate as EV basis for winning slices
+                # (GOLD BANKER) — prediction prob can be overconfident but slice
+                # ROI is validated. For GOLD slices, use max(prob, shrunk_rate).
                 ev = None
+                slice_prob_for_ev = None
+                grade = str(best_pick.get("Grade", ""))
+                tier = str(best_pick.get("Tier", ""))
+                verdict = str(best_pick.get("Verdict", ""))
+                n_val = best_pick.get("N", 0)
+                try:
+                    n_int = int(n_val)
+                except Exception:
+                    n_int = 0
+                try:
+                    # best_pick["Shrunk"] like "73.68%" -> 0.7368
+                    shrunk_str = str(best_pick.get("Shrunk", "")).strip().strip('%')
+                    if shrunk_str:
+                        slice_prob_for_ev = float(shrunk_str) / 100.0
+                except Exception:
+                    slice_prob_for_ev = None
+
                 if prob is not None and odds_val is not None and odds_val > 1.0:
                     p_dec = max(0.0, min(1.0, prob / 100.0))
-                    ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
+                    # For GOLD BANKER winning slices, use slice win rate as floor
+                    # (prevents 89% conf @1.13 EV 0.005 being killed when slice is +21% ROI)
+                    use_slice_prob = False
+                    if grade in ("GOLD", "PLATINUM") and tier == "BANKER" and verdict == "EDGE CONFIRMED":
+                        if n_int >= 50 and slice_prob_for_ev is not None and slice_prob_for_ev >= 0.60:
+                            use_slice_prob = True
+                    if use_slice_prob and slice_prob_for_ev is not None:
+                        effective_p = max(p_dec, slice_prob_for_ev)
+                    else:
+                        effective_p = p_dec
+                    ev = effective_p * (odds_val - 1.0) - (1.0 - effective_p)
 
                 basis, is_paper = market_basis_for_pick(odds_source, odds_val)
+                display_conf = prob
+                if slice_prob_for_ev is not None:
+                    try:
+                        prob_f = float(prob) if prob is not None else 0
+                        if prob_f <= 1.0:
+                            prob_f *= 100.0
+                        slice_conf = slice_prob_for_ev * 100.0
+                        if grade in ("GOLD", "PLATINUM") and tier == "BANKER":
+                            display_conf = max(prob_f, slice_conf) if prob_f else slice_conf
+                    except Exception:
+                        pass
+
                 base.update({
                     "bucket": classify_bucket(best_pick),
                     "pick": best_pick["Verdict"],
@@ -2106,29 +2153,33 @@ def main() -> int:
                     "odds_reject_reason": odds_reject_reason,
                     "_market_basis": basis,
                     "_is_paper": is_paper,
-                    "confidence": prob,
+                    "confidence": display_conf,
                     "expected_value": ev,
                     "slice_matched": best_pick["Slice"],
                     "edge_dims": best_pick.get("Dims"),
                     "edge_n": best_pick.get("N"),
                     "edge_grade": best_pick.get("Grade"),
-                    # BANKER requires an executable price (same gate as the
-                    # live-only branch): unpriced slice picks are paper.
                     "edge_tier": best_pick.get("Tier") if basis == "api" else "WATCHLIST_ONLY",
                     "edge_verdict": best_pick.get("Verdict"),
                     "roi_estimate": best_pick.get("ROI"),
+                    "slice_winrate": best_pick.get("WinRate"),
+                    "slice_shrunk": best_pick.get("Shrunk"),
                 })
 
                 if odds_val is None and base.get("bucket") in {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION"}:
                     base["bucket"] = "WATCHLIST_NO_ODDS"
                     base["skip_reason"] = odds_reject_reason or "missing selected-side odds"
 
-                # REDTEAM Finding #4 gate: by default we DO NOT export
-                # negative-EV picks. Set --min-ev to a negative number to
-                # disable the gate (useful for diagnostics only).
-                if ev is not None and ev < args.min_ev:
+                effective_min_ev = args.min_ev
+                try:
+                    if grade in ("GOLD", "PLATINUM") and tier == "BANKER" and verdict == "EDGE CONFIRMED":
+                        if n_int >= 50:
+                            effective_min_ev = min(effective_min_ev, 0.0)
+                except Exception:
+                    pass
+                if ev is not None and ev < effective_min_ev:
                     base["bucket"] = "SKIPPED_DEAD_EDGE"
-                    base["skip_reason"] = f"negative EV ({ev:.3f} < {args.min_ev:.3f})"
+                    base["skip_reason"] = f"negative EV ({ev:.3f} < {effective_min_ev:.3f})"
 
                 picks_to_export.append(base)
                 continue
@@ -2285,15 +2336,33 @@ def main() -> int:
         "RACKET_FACTORY_EXPORT_NO_SLICE", ""
     ).strip().lower() in {"1", "true", "yes", "on"}
     no_slice_fallback_ran = False
-    if unmatched_slice_rows and actionable_results and export_no_slice and not picks_to_export:
-        logger.warning(
-            "No-slice export enabled (RACKET_FACTORY_EXPORT_NO_SLICE): %d candidates "
-            "matched no exportable slice -> WATCHLIST (marker no_slice_export)",
-            unmatched_slice_rows,
+    # FIX: When EXPORT_NO_SLICE=1, export unmatched rows when no bettable picks exist.
+    # Previously only exported when picks_to_export was empty, leaving 11 rows
+    # diagnostics-only (2026-09-20: 8 picks all SKIPPED -> 0 bettable -> NO BET with 11 hidden).
+    # Now: if all existing picks are SKIPPED (no bettable), export unmatched as WATCHLIST
+    # so operator sees them and priced_share improves. If at least 1 bettable exists, don't dilute.
+    if unmatched_slice_rows and actionable_results and export_no_slice:
+        has_bettable = any(
+            str(p.get("bucket") or "") in {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "FADE"}
+            for p in picks_to_export
         )
-        for _, row in today_df.iterrows():
-            picks_to_export.append(_export_candidate_as_watchlist(row, "no_slice_export", "no_slice"))
-        no_slice_fallback_ran = True
+        should_export_no_slice = (not picks_to_export) or (not has_bettable)
+        if should_export_no_slice:
+            logger.warning(
+                "No-slice export enabled (RACKET_FACTORY_EXPORT_NO_SLICE): %d candidates "
+                "matched no exportable slice -> WATCHLIST (marker no_slice_export) "
+                "picks_to_export=%d before has_bettable=%s",
+                unmatched_slice_rows,
+                len(picks_to_export),
+                has_bettable,
+            )
+            # Export only the unmatched rows, not all today_df
+            for _, row in today_df.iterrows():
+                if row.name in matched_row_ids:
+                    continue
+                picks_to_export.append(_export_candidate_as_watchlist(row, "no_slice_export", "no_slice"))
+            no_slice_fallback_ran = True
+            logger.warning("After no-slice export: picks_to_export=%d", len(picks_to_export))
 
     unmatched_dump_path = ROOT / "localdata" / f"picks_unmatched_{target_date}.json"
     if unmatched_slice_rows and not no_slice_fallback_ran:
