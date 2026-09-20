@@ -523,19 +523,20 @@ def calibrated_prob_from_history(pick: dict, registry: dict, clv: dict | None = 
             try:
                 ch = float(calib_conf)
                 if 0 < ch <= 1:
-                    # Blend 50/50 with raw conf to avoid overfitting, but use real 66%/71%/51% not 84%/77%/61%
+                    # Blend 50/50 with raw conf to avoid overfitting, using real
+                    # current-regime hit rates from clv_rolling
                     base = ch * 0.5 + base * 0.5
             except Exception:
                 pass
         else:
-            # Fallback to updated priors: High 66.2% (was 84.2%), Medium 71.0% (was 77.2%), Low 51.0% (was 61.1%)
-            bucket = str(pick.get("pred_confidence") or "").strip()
-            if bucket == "High":
-                base = 0.6623 * 0.6 + base * 0.4
-            elif bucket == "Medium":
-                base = 0.7104 * 0.6 + base * 0.4
-            elif bucket == "Low":
-                base = 0.5104 * 0.6 + base * 0.4
+            # No current-regime CLV data yet: apply NO calibration (n<30 = no
+            # claim). The previous fallback used constant priors (High 66.23% /
+            # Medium 71.04% / Low 51.04%) calibrated on pre-genesis (legacy)
+            # picks — a legacy regime's results were grading the new system's
+            # confidence. Removed on the 2026-09-20 regime birth: once the
+            # current regime accumulates CLV data, the branch above blends its
+            # real hit rates in automatically.
+            pass
     except Exception:
         pass
 
