@@ -118,6 +118,23 @@ def test_source_weights_current_regime_overrides_defaults():
     assert weights["BetClan"] > 0.55
 
 
+def test_no_legacy_prior_when_no_current_regime_clv():
+    """Born-again: with no current-regime CLV data, raw confidence must NOT be
+    dragged by the old hardcoded legacy priors (High 66.23% / Medium 71.04% /
+    Low 51.04% — calibrated on pre-genesis picks)."""
+    from racketfactory import ml as mlmod
+
+    pick = {
+        "confidence": 88.41,
+        "pred_confidence": "High",
+        "source": "",
+        "cross_source_agree": "Both",
+    }
+    prob = mlmod.calibrated_prob_from_history(pick, {}, clv={})
+    # Legacy prior would have given 0.6623*0.6 + 0.8841*0.4 = 0.751
+    assert prob > 0.85
+
+
 def test_pick_row_is_tagged_with_regime():
     import mine_edges
 
