@@ -6,7 +6,7 @@
 - archived pick dates: 8
 - ledger pick rows (in window): 90
 - duplicate rows merged (same match + selection re-picked): 1
-- stale history rows pruned (pick no longer in ledger): 11
+- stale history rows pruned (pick no longer in ledger): 0
 - settled picks: 70
 - wins: 34
 - hit rate: 0.485714
@@ -40,7 +40,7 @@
 
 - ledger rows in window (official): 90
 - duplicate rows merged (same match + selection in multiple daily ledgers): 1
-- stale history rows pruned (pick no longer in any archived ledger): 11
+- stale history rows pruned (pick no longer in any archived ledger): 0
 - audited rows: 89
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
@@ -159,10 +159,11 @@
 
 ## By Bucket
 
-- `SKIPPED_DEAD_EDGE`: total=49, settled=34, wins=20, hit_rate=0.588235, ROI=-0.146471, pending=14, conflict=1
-- `SKIPPED_VETO`: total=9, settled=7, wins=3, hit_rate=0.428571, ROI=-0.255714, pending=2
+- `SKIPPED_DEAD_EDGE`: total=42, settled=34, wins=20, hit_rate=0.588235, ROI=-0.146471, pending=7, conflict=1
+- `SKIPPED_VETO`: total=15, settled=7, wins=3, hit_rate=0.428571, ROI=-0.255714, pending=8
 - `WATCHLIST`: total=16, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=1
 - `WATCHLIST_NO_ODDS`: total=15, settled=14, wins=7, hit_rate=0.5, ROI=None, pending=1
+- `CERTIFIED_CLEAN`: total=1, settled=0, wins=0, hit_rate=None, ROI=None, pending=1
 
 ## By Source
 

@@ -1,78 +1,78 @@
 {
   "status": "merged",
-  "baseline_rows": 4335,
-  "fresh_rows": 4358,
-  "shared_keys": 4335,
-  "new_from_fresh": 23,
+  "baseline_rows": 4358,
+  "fresh_rows": 4360,
+  "shared_keys": 4358,
+  "new_from_fresh": 2,
   "baseline_only": 0,
   "settlement_updates": 0,
   "live_rows_from_fresh": 20,
-  "dim_drift_rows": 85,
+  "dim_drift_rows": 841,
   "dim_drift_examples": [
     {
-      "key": "2026-09-20|CHALLENGER||mmohm||wolfj",
-      "col": "predicted_winner_betclan",
-      "baseline": "2",
+      "key": "2026-09-12|CHALLENGER||sheltonb||tiafoef",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_a"
+    },
+    {
+      "key": "2026-09-12|CHALLENGER||blinkovaa||jacquemote",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_a"
+    },
+    {
+      "key": "2026-09-11|CHALLENGER||blanchetu||masurd",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_a"
+    },
+    {
+      "key": "2026-09-11|CHALLENGER||bertrandr||lajalm",
+      "col": "predicted_winner_market",
+      "baseline": "",
       "fresh": "player_b"
     },
     {
-      "key": "2026-09-20|CHALLENGER||pachecomendezr||simakini",
-      "col": "predicted_winner_bzzoiro",
-      "baseline": "1",
+      "key": "2026-09-11|CHALLENGER||budkovkjaern||echarguim",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_a"
+    },
+    {
+      "key": "2026-09-11|CHALLENGER||droguett||glinkad",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_a"
+    },
+    {
+      "key": "2026-09-11|CHALLENGER||aboianv||martinezp",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_a"
+    },
+    {
+      "key": "2026-09-11|CHALLENGER||djerel||sakellaridiss",
+      "col": "predicted_winner_market",
+      "baseline": "",
       "fresh": "player_b"
     },
     {
-      "key": "2026-09-20|CHALLENGER||hoolec||joness",
-      "col": "predicted_winner_bzzoiro",
-      "baseline": "1",
+      "key": "2026-09-11|CHALLENGER||dallavallee||dodigm",
+      "col": "predicted_winner_market",
+      "baseline": "",
       "fresh": "player_a"
     },
     {
-      "key": "2026-09-20|CHALLENGER||andrewso||rogowskir",
-      "col": "predicted_winner_bzzoiro",
-      "baseline": "2",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-20|CHALLENGER||chame||demboj",
-      "col": "predicted_winner_bzzoiro",
-      "baseline": "2",
-      "fresh": "player_b"
-    },
-    {
-      "key": "2026-09-20|CHALLENGER||gamalg||katpellyr",
-      "col": "predicted_winner_bzzoiro",
-      "baseline": "2",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-20|CHALLENGER||calixton||suhn",
-      "col": "predicted_winner_bzzoiro",
-      "baseline": "1",
-      "fresh": "player_b"
-    },
-    {
-      "key": "2026-09-20|CHALLENGER||durrelsrojob||mafteim",
-      "col": "predicted_winner_bzzoiro",
-      "baseline": "1",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-20|CHALLENGER||escurraisnardih||varillasj",
-      "col": "predicted_winner_bzzoiro",
-      "baseline": "1",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-20|CHALLENGER||sheppa||shimabukuros",
-      "col": "predicted_winner_bzzoiro",
-      "baseline": "2",
+      "key": "2026-09-11|CHALLENGER||kuzmanovd||mayoth",
+      "col": "predicted_winner_market",
+      "baseline": "",
       "fresh": "player_a"
     }
   ],
-  "merged_rows": 4358,
-  "generated_at": "2026-09-20T07:22:45.950151+00:00",
-  "baseline_sha256": "968b3da45c9712af7b6dc455790d1bbd2540f8dc1a5c95aa99e00d4ddbd9a722",
-  "fresh_sha256": "bb74d2feb8a9c78f6c10650d9d4baab86cbabc6a7e9ff72b0fae2462fa7bc627",
-  "merged_sha256": "c13e64a5594d08708db2ac8930af30caf80470eae32f6612508b2e729aa7e2fb"
+  "merged_rows": 4360,
+  "generated_at": "2026-09-20T07:42:49.604576+00:00",
+  "baseline_sha256": "c13e64a5594d08708db2ac8930af30caf80470eae32f6612508b2e729aa7e2fb",
+  "fresh_sha256": "3c9a407fa5175690522e3e6b01935ba1a784fe9e86da1f6726c164a44c3bad12",
+  "merged_sha256": "d348bb19f274df0677bd1b4d756ed62a7f98787d34238f71dfcf4520cae83011"
 }

@@ -207,12 +207,12 @@
       "wins": 248
     },
     "Low (<60%)": {
-      "calibration_error": 0.0738,
+      "calibration_error": 0.0737,
       "expected": 0.5,
-      "hit_rate": 0.5738,
-      "n": 962,
-      "wilson_lb": 0.5423,
-      "wins": 552
+      "hit_rate": 0.5737,
+      "n": 964,
+      "wilson_lb": 0.5422,
+      "wins": 553
     },
     "Medium (60-70%)": {
       "calibration_error": 0.097,
@@ -226,10 +226,10 @@
   "calibration_by_source": {
     "bzzoiro": {
       "expected": null,
-      "hit_rate": 0.6712,
-      "n": 873,
-      "wilson_lb": 0.6394,
-      "wins": 586
+      "hit_rate": 0.6709,
+      "n": 875,
+      "wilson_lb": 0.639,
+      "wins": 587
     },
     "foretennis": {
       "expected": null,
@@ -256,10 +256,10 @@
     },
     "CHALLENGER": {
       "expected": null,
-      "hit_rate": 0.6211,
-      "n": 1251,
-      "wilson_lb": 0.5939,
-      "wins": 777
+      "hit_rate": 0.6209,
+      "n": 1253,
+      "wilson_lb": 0.5937,
+      "wins": 778
     },
     "UNKNOWN": {
       "expected": null,
@@ -283,5 +283,5 @@
       "wins": 11
     }
   },
-  "total_settled": 4338
+  "total_settled": 4340
 }

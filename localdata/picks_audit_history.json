@@ -2424,7 +2424,7 @@
     "won": false
   },
   {
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "SKIPPED_VETO",
     "date": "2026-09-20",
     "ledger_kind": "official",
     "match": "Aneta Laboutkova vs Maria Toma",
@@ -2441,7 +2441,7 @@
     "won": null
   },
   {
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "CERTIFIED_CLEAN",
     "date": "2026-09-20",
     "ledger_kind": "official",
     "match": "Angelina Voloshchuk vs Jana Otzipka",
@@ -2458,7 +2458,7 @@
     "won": null
   },
   {
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "SKIPPED_VETO",
     "date": "2026-09-20",
     "ledger_kind": "official",
     "match": "Dalila Spiteri vs Laura Boehner",
@@ -2492,7 +2492,7 @@
     "won": null
   },
   {
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "SKIPPED_VETO",
     "date": "2026-09-20",
     "ledger_kind": "official",
     "match": "Jasmijn Gimbrere vs Reese Brantmeier",
@@ -2509,7 +2509,7 @@
     "won": null
   },
   {
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "SKIPPED_VETO",
     "date": "2026-09-20",
     "ledger_kind": "official",
     "match": "Jessica Pieri vs Yana Morderger",
@@ -2526,7 +2526,7 @@
     "won": null
   },
   {
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "SKIPPED_VETO",
     "date": "2026-09-20",
     "ledger_kind": "official",
     "match": "Semra Aksu vs Ekaterina Yashina",
@@ -2543,7 +2543,7 @@
     "won": null
   },
   {
-    "bucket": "SKIPPED_DEAD_EDGE",
+    "bucket": "SKIPPED_VETO",
     "date": "2026-09-20",
     "ledger_kind": "official",
     "match": "Tayisiya Morderger vs Katerina Tsygourova",
