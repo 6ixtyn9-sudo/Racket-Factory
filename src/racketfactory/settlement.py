@@ -480,6 +480,8 @@ def row_finality(row: dict[str, Any]) -> Finality:
     blob = " ".join(clean_str(row.get(k)) for k in
                     ("score", "winner", "_comment", "_result_status",
                      "round", "tournament")).lower()
+    if "abandoned" in blob or "cancelled" in blob or "canceled" in blob:
+        return Finality(True, "match abandoned/cancelled", status="CANCELLED")
     if any(mark in blob for mark in _LIVE_MARKERS):
         return Finality(False, "live/in-progress markers present")
     if not winner:
@@ -489,8 +491,6 @@ def row_finality(row: dict[str, Any]) -> Finality:
             return Finality(True, "walkover: no sets played", status="WALKOVER")
     if _STATUS_RET.search(blob) or "retired" in str(row.get("_comment") or "").lower():
         return Finality(True, "retirement: advancer recorded", status="RETIRED")
-    if "abandoned" in blob or "cancelled" in blob:
-        return Finality(False, "match abandoned/cancelled")
     sets_pair = sets_only_pair(row)
     if not score and sets_pair is not None:
         # Scores-feed rows (completed events): sets won without per-set
@@ -634,8 +634,8 @@ def settle_selection(pick_match: object, selection: object,
         "tournament": clean_str(best.get("tournament")),
         "status": fin.status,
     }
-    if fin.status == "WALKOVER":
-        return Settlement("VOID", "walkover: stake returned", basis=basis,
+    if fin.status in ("WALKOVER", "CANCELLED", "ABANDONED"):
+        return Settlement("VOID", f"{fin.status.lower()}: stake returned", basis=basis,
                           bare_surname=bare_used)
     if won is True:
         return Settlement("WON", f"settled from {basis['source']} "
