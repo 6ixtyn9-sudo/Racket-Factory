@@ -455,9 +455,30 @@ def _strip_fragment(href: str) -> str:
     return href.split("#", 1)[0]
 
 
+def _fetch_via_jina(url: str) -> str:
+    """Fetch via Jina reader relay when JINA_API_KEY is available (Cloudflare bypass)."""
+    import os, urllib.request, urllib.error
+    key = (os.getenv("JINA_API_KEY") or os.getenv("JINA_READER_API_KEY") or "").strip()
+    if not key:
+        return ""
+    try:
+        relay_url = f"https://r.jina.ai/{url}"
+        req = urllib.request.Request(relay_url, headers={
+            "Authorization": f"Bearer {key}",
+            "X-Return-Format": "html",
+        })
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.read().decode("utf-8", "replace")
+    except Exception as exc:
+        logger.debug("OddsPortal Jina relay failed for %s: %s", url, exc)
+        return ""
+
 def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = None) -> list[dict[str, Any]]:
-    # Primary page
-    html = fetch_page_html(BASE_URL + path, SOURCE_NAME)
+    # Primary page - try Jina relay first when available (GitHub Actions is blocked by Cloudflare)
+    url = BASE_URL + path
+    html = _fetch_via_jina(url)
+    if not html:
+        html = fetch_page_html(url, SOURCE_NAME)
     all_links: list[dict[str, Any]] = []
     seen_keys: set[str] = set()
     if html:
@@ -468,10 +489,13 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
                 seen_keys.add(key)
                 all_links.append(lk)
 
-    # Extra category pages (broadens coverage for Challenger/ITF)
+    # Extra category pages (broadens coverage for Challenger/ITF) - Jina first
     for extra in (extra_paths or []):
         try:
-            ehtml = fetch_page_html(BASE_URL + extra, SOURCE_NAME)
+            eurl = BASE_URL + extra
+            ehtml = _fetch_via_jina(eurl)
+            if not ehtml:
+                ehtml = fetch_page_html(eurl, SOURCE_NAME)
             if not ehtml:
                 continue
             elinks = parse_tennis_page(ehtml, page_date)
@@ -491,7 +515,10 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
         if "inplay-odds" in href:
             n_live += 1
             continue
-        mhtml = fetch_page_html(urljoin(BASE_URL, _strip_fragment(href)), SOURCE_NAME)
+        murl = urljoin(BASE_URL, _strip_fragment(href))
+        mhtml = _fetch_via_jina(murl)
+        if not mhtml:
+            mhtml = fetch_page_html(murl, SOURCE_NAME)
         logger.info("OddsPortal match %s - %s: %d bytes payout=%s betslip=%d challenged=%s",
                     link.get("player_home"), link.get("player_away"), len(mhtml),
                     "Payout" in mhtml, mhtml.count(_BETSLIP_HREF),
