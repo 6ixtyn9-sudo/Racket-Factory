@@ -45,15 +45,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.63,
-    "ml_ev": 0.134,
-    "ml_fair_odds": 1.59,
+    "ml_calibrated_prob": 0.69,
+    "ml_ev": 0.242,
+    "ml_fair_odds": 1.45,
     "ml_odds_answer": {
       "verdict": "HIGH_VALUE",
-      "fair_odds": 1.59,
-      "ev": 0.134,
-      "edge_pct": 13.4,
-      "explanation": "Odds 1.80 HIGH value vs fair 1.59 (prob 63%), EV +13.4%, edge +13.4%"
+      "fair_odds": 1.45,
+      "ev": 0.242,
+      "edge_pct": 24.2,
+      "explanation": "Odds 1.80 HIGH value vs fair 1.45 (prob 69%), EV +24.2%, edge +24.2%"
     }
   },
   {
@@ -78,7 +78,7 @@
     "player_away": "Enola Chiesa",
     "bucket": "WATCHLIST",
     "pick": "WATCHLIST",
-    "odds": 1.85,
+    "odds": 1.86,
     "odds_source": "BetExplorer",
     "odds_bookmaker": "BetExplorer consensus",
     "odds_cross_checked": "",
@@ -86,7 +86,7 @@
     "_market_basis": "api",
     "_is_paper": false,
     "confidence": 57.0,
-    "expected_value": 0.05449999999999994,
+    "expected_value": 0.060199999999999976,
     "slice_matched": "no_slice_export",
     "edge_dims": 0,
     "edge_n": 0,
@@ -102,15 +102,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.57,
-    "ml_ev": 0.0545,
-    "ml_fair_odds": 1.75,
+    "ml_calibrated_prob": 0.66,
+    "ml_ev": 0.2276,
+    "ml_fair_odds": 1.52,
     "ml_odds_answer": {
-      "verdict": "VALUE",
-      "fair_odds": 1.75,
-      "ev": 0.0545,
-      "edge_pct": 5.45,
-      "explanation": "Odds 1.85 value vs fair 1.75, EV +5.4%"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.52,
+      "ev": 0.2276,
+      "edge_pct": 22.76,
+      "explanation": "Odds 1.86 HIGH value vs fair 1.52 (prob 66%), EV +22.8%, edge +22.8%"
     }
   },
   {
@@ -159,15 +159,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.57,
-    "ml_ev": 0.0374,
-    "ml_fair_odds": 1.75,
+    "ml_calibrated_prob": 0.66,
+    "ml_ev": 0.2012,
+    "ml_fair_odds": 1.52,
     "ml_odds_answer": {
-      "verdict": "VALUE",
-      "fair_odds": 1.75,
-      "ev": 0.0374,
-      "edge_pct": 3.74,
-      "explanation": "Odds 1.82 value vs fair 1.75, EV +3.7%"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.52,
+      "ev": 0.2012,
+      "edge_pct": 20.12,
+      "explanation": "Odds 1.82 HIGH value vs fair 1.52 (prob 66%), EV +20.1%, edge +20.1%"
     }
   },
   {
@@ -223,15 +223,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.89,
-    "ml_ev": 0.0057,
-    "ml_fair_odds": 1.12,
+    "ml_calibrated_prob": 0.82,
+    "ml_ev": -0.0734,
+    "ml_fair_odds": 1.22,
     "ml_odds_answer": {
-      "verdict": "FAIR",
-      "fair_odds": 1.12,
-      "ev": 0.0057,
-      "edge_pct": 0.57,
-      "explanation": "Odds 1.13 fair vs 1.12, EV +0.6% | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "verdict": "SHORT",
+      "fair_odds": 1.22,
+      "ev": -0.0734,
+      "edge_pct": -7.34,
+      "explanation": "Odds 1.13 short vs fair 1.22, EV -7.3% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -287,15 +287,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.9,
-    "ml_ev": -0.037,
-    "ml_fair_odds": 1.11,
+    "ml_calibrated_prob": 0.8423,
+    "ml_ev": -0.0987,
+    "ml_fair_odds": 1.19,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.11,
-      "ev": -0.037,
-      "edge_pct": -3.7,
-      "explanation": "Odds 1.07 short vs fair 1.11, EV -3.7% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.19,
+      "ev": -0.0987,
+      "edge_pct": -9.87,
+      "explanation": "Odds 1.07 short vs fair 1.19, EV -9.9% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -338,24 +338,22 @@
     "roi_estimate": "no_slice",
     "skip_reason": "negative EV (0.000 < 0.020)",
     "ml_strength_score": 0.5,
-    "ml_veto_reasons": [
-      "ML EV 0.000 < 0.02 min (capital protection)"
-    ],
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree",
       "4 sources"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5525,
-    "ml_ev": 0.0,
-    "ml_fair_odds": 1.81,
+    "ml_verdict": "BOOST",
+    "ml_calibrated_prob": 0.6512,
+    "ml_ev": 0.1787,
+    "ml_fair_odds": 1.54,
     "ml_odds_answer": {
-      "verdict": "FAIR",
-      "fair_odds": 1.81,
-      "ev": 0.0,
-      "edge_pct": 0.0,
-      "explanation": "Odds 1.81 fair vs 1.81, EV +0.0%"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.54,
+      "ev": 0.1787,
+      "edge_pct": 17.87,
+      "explanation": "Odds 1.81 HIGH value vs fair 1.54 (prob 65%), EV +17.9%, edge +17.9%"
     }
   },
   {
@@ -398,24 +396,22 @@
     "roi_estimate": "no_slice",
     "skip_reason": "negative EV (0.000 < 0.020)",
     "ml_strength_score": 0.5,
-    "ml_veto_reasons": [
-      "ML EV 0.000 < 0.02 min (capital protection)"
-    ],
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree",
       "4 sources"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5682,
-    "ml_ev": 0.0,
-    "ml_fair_odds": 1.76,
+    "ml_verdict": "BOOST",
+    "ml_calibrated_prob": 0.6591,
+    "ml_ev": 0.16,
+    "ml_fair_odds": 1.52,
     "ml_odds_answer": {
-      "verdict": "FAIR",
-      "fair_odds": 1.76,
-      "ev": 0.0,
-      "edge_pct": 0.0,
-      "explanation": "Odds 1.76 fair vs 1.76, EV +0.0%"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.52,
+      "ev": 0.16,
+      "edge_pct": 16.0,
+      "explanation": "Odds 1.76 HIGH value vs fair 1.52 (prob 66%), EV +16.0%, edge +16.0%"
     }
   },
   {
@@ -471,15 +467,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.9,
-    "ml_ev": -0.055,
-    "ml_fair_odds": 1.11,
+    "ml_calibrated_prob": 0.8512,
+    "ml_ev": -0.1062,
+    "ml_fair_odds": 1.17,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.11,
-      "ev": -0.055,
-      "edge_pct": -5.5,
-      "explanation": "Odds 1.05 short vs fair 1.11, EV -5.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.17,
+      "ev": -0.1062,
+      "edge_pct": -10.62,
+      "explanation": "Odds 1.05 short vs fair 1.17, EV -10.6% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -535,15 +531,15 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.9,
-    "ml_ev": -0.055,
-    "ml_fair_odds": 1.11,
+    "ml_calibrated_prob": 0.8512,
+    "ml_ev": -0.1062,
+    "ml_fair_odds": 1.17,
     "ml_odds_answer": {
       "verdict": "SHORT",
-      "fair_odds": 1.11,
-      "ev": -0.055,
-      "edge_pct": -5.5,
-      "explanation": "Odds 1.05 short vs fair 1.11, EV -5.5% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
+      "fair_odds": 1.17,
+      "ev": -0.1062,
+      "edge_pct": -10.62,
+      "explanation": "Odds 1.05 short vs fair 1.17, EV -10.6% \u2013 negative, avoid unless boosting acca | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
     }
   },
   {
@@ -586,24 +582,22 @@
     "roi_estimate": "no_slice",
     "skip_reason": "negative EV (0.000 < 0.020)",
     "ml_strength_score": 0.6,
-    "ml_veto_reasons": [
-      "ML EV 0.000 < 0.02 min (capital protection)"
-    ],
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree",
       "4 sources"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6289,
-    "ml_ev": 0.0,
-    "ml_fair_odds": 1.59,
+    "ml_verdict": "BOOST",
+    "ml_calibrated_prob": 0.6895,
+    "ml_ev": 0.0962,
+    "ml_fair_odds": 1.45,
     "ml_odds_answer": {
-      "verdict": "FAIR",
-      "fair_odds": 1.59,
-      "ev": 0.0,
-      "edge_pct": 0.0,
-      "explanation": "Odds 1.59 fair vs 1.59, EV +0.0%"
+      "verdict": "VALUE",
+      "fair_odds": 1.45,
+      "ev": 0.0962,
+      "edge_pct": 9.62,
+      "explanation": "Odds 1.59 value vs fair 1.45, EV +9.6%"
     }
   },
   {
@@ -646,24 +640,22 @@
     "roi_estimate": "no_slice",
     "skip_reason": "negative EV (0.000 < 0.020)",
     "ml_strength_score": 0.5,
-    "ml_veto_reasons": [
-      "Doubles EV 0.000 < 0.05 min (doubles 0W/5L -40% ROI)"
-    ],
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree",
       "3 sources"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.5435,
-    "ml_ev": 0.0,
-    "ml_fair_odds": 1.84,
+    "ml_verdict": "BOOST",
+    "ml_calibrated_prob": 0.6467,
+    "ml_ev": 0.19,
+    "ml_fair_odds": 1.55,
     "ml_odds_answer": {
-      "verdict": "FAIR",
-      "fair_odds": 1.84,
-      "ev": 0.0,
-      "edge_pct": 0.0,
-      "explanation": "Odds 1.84 fair vs 1.84, EV +0.0%"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.55,
+      "ev": 0.19,
+      "edge_pct": 19.0,
+      "explanation": "Odds 1.84 HIGH value vs fair 1.55 (prob 65%), EV +19.0%, edge +19.0%"
     }
   },
   {
@@ -706,24 +698,22 @@
     "roi_estimate": "no_slice",
     "skip_reason": "negative EV (-0.000 < 0.020)",
     "ml_strength_score": 0.6,
-    "ml_veto_reasons": [
-      "ML EV -0.000 < 0.02 min (capital protection)"
-    ],
+    "ml_veto_reasons": [],
     "ml_boost_reasons": [
       "Both sources agree",
       "4 sources"
     ],
     "ml_w_score": 1.0,
-    "ml_verdict": "VETO",
-    "ml_calibrated_prob": 0.6098,
-    "ml_ev": -0.0,
-    "ml_fair_odds": 1.64,
+    "ml_verdict": "BOOST",
+    "ml_calibrated_prob": 0.6799,
+    "ml_ev": 0.115,
+    "ml_fair_odds": 1.47,
     "ml_odds_answer": {
-      "verdict": "FAIR",
-      "fair_odds": 1.64,
-      "ev": -0.0,
-      "edge_pct": -0.0,
-      "explanation": "Odds 1.64 fair vs 1.64, EV -0.0%"
+      "verdict": "HIGH_VALUE",
+      "fair_odds": 1.47,
+      "ev": 0.115,
+      "edge_pct": 11.5,
+      "explanation": "Odds 1.64 HIGH value vs fair 1.47 (prob 68%), EV +11.5%, edge +11.5%"
     }
   },
   {
@@ -778,9 +768,9 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.8841,
+    "ml_calibrated_prob": 0.8171,
     "ml_ev": null,
-    "ml_fair_odds": 1.13
+    "ml_fair_odds": 1.22
   },
   {
     "match": "Gabriella Da Silva Fick vs Valentina Steiner",
@@ -829,9 +819,9 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.65,
+    "ml_calibrated_prob": 0.7,
     "ml_ev": null,
-    "ml_fair_odds": 1.54
+    "ml_fair_odds": 1.43
   },
   {
     "match": "Jessica Pieri vs Yana Morderger",
@@ -885,9 +875,9 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.89,
+    "ml_calibrated_prob": 0.82,
     "ml_ev": null,
-    "ml_fair_odds": 1.12
+    "ml_fair_odds": 1.22
   },
   {
     "match": "Semra Aksu vs Ekaterina Yashina",
@@ -941,9 +931,9 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.8841,
+    "ml_calibrated_prob": 0.8171,
     "ml_ev": null,
-    "ml_fair_odds": 1.13
+    "ml_fair_odds": 1.22
   },
   {
     "match": "Jamilah Snells vs Iva Primorac Pavicic",
@@ -996,9 +986,9 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.89,
+    "ml_calibrated_prob": 0.82,
     "ml_ev": null,
-    "ml_fair_odds": 1.12
+    "ml_fair_odds": 1.22
   },
   {
     "match": "Michael Mmoh vs J.J. Wolf",
@@ -1046,9 +1036,9 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "BOOST",
-    "ml_calibrated_prob": 0.63,
+    "ml_calibrated_prob": 0.69,
     "ml_ev": null,
-    "ml_fair_odds": 1.59
+    "ml_fair_odds": 1.45
   },
   {
     "match": "Peyton Stearns vs Iva Jovic",
@@ -1096,8 +1086,8 @@
     ],
     "ml_w_score": 1.0,
     "ml_verdict": "ALLOW",
-    "ml_calibrated_prob": 0.56,
+    "ml_calibrated_prob": 0.655,
     "ml_ev": null,
-    "ml_fair_odds": 1.79
+    "ml_fair_odds": 1.53
   }
 ]

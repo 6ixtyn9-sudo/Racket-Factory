@@ -15,7 +15,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.0692000000000001,
-    "forecast_as_of": "2026-09-20T13:05:57+02:00",
+    "forecast_as_of": "2026-09-20T14:05:05+02:00",
     "forecast_for": "2026-09-21",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -31,14 +31,14 @@
     "ml_boost_reasons": [
       "High conf 81%"
     ],
-    "ml_calibrated_prob": 0.81,
-    "ml_ev": 0.0692,
-    "ml_fair_odds": 1.23,
+    "ml_calibrated_prob": 0.78,
+    "ml_ev": 0.0296,
+    "ml_fair_odds": 1.28,
     "ml_odds_answer": {
-      "edge_pct": 6.92,
-      "ev": 0.0692,
-      "explanation": "Odds 1.32 value vs fair 1.23, EV +6.9% | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
-      "fair_odds": 1.23,
+      "edge_pct": 2.96,
+      "ev": 0.0296,
+      "explanation": "Odds 1.32 value vs fair 1.28, EV +3.0% | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca).",
+      "fair_odds": 1.28,
       "verdict": "VALUE"
     },
     "ml_strength_score": 0.15,
@@ -82,7 +82,7 @@
     "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "expected_value": null,
-    "forecast_as_of": "2026-09-20T13:05:57+02:00",
+    "forecast_as_of": "2026-09-20T14:05:05+02:00",
     "forecast_for": "2026-09-21",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -98,9 +98,9 @@
     "ml_boost_reasons": [
       "High conf 73%"
     ],
-    "ml_calibrated_prob": 0.73,
+    "ml_calibrated_prob": 0.74,
     "ml_ev": null,
-    "ml_fair_odds": 1.37,
+    "ml_fair_odds": 1.35,
     "ml_strength_score": 0.05,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [],

@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-20
 ============================================================
-Generated at: 2026-09-20 13:09:16
+Generated at: 2026-09-20 14:08:18
 
 
 CERTIFIED CLEAN PICKS
@@ -15,7 +15,7 @@ WATCHLIST PICKS
 ============================================================
   [no_slice_export] Jakupovic / Karamoko vs Burillo / Fossa Hu KO 14:00 -> JAKUPOVIC / KARAMOKO  conf 63% @1.80  EV +0.13u
      bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Alja Senica vs Enola Chiesa                KO 12:30 -> ENOLA CHIESA  conf 57% @1.85  EV +0.05u
+  [no_slice_export] Alja Senica vs Enola Chiesa                KO 12:30 -> ENOLA CHIESA  conf 57% @1.86  EV +0.06u
      bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] Pavel Kotov vs Marat Sharipov              KO 12:00 -> MARAT SHARIPOV  conf 57% @1.82  EV +0.04u
      bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
