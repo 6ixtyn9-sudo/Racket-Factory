@@ -2,26 +2,26 @@
 
 ## Overall
 
-- archived pick rows: 86
+- archived pick rows: 100
 - archived pick dates: 8
-- ledger pick rows (in window): 87
+- ledger pick rows (in window): 101
 - duplicate rows merged (same match + selection re-picked): 1
 - stale history rows pruned (pick no longer in ledger): 0
-- settled picks: 70
-- wins: 34
-- hit rate: 0.485714
+- settled picks: 72
+- wins: 35
+- hit rate: 0.486111
 - priced picks: 56
 - ROI: -0.231786
 - ROI (real-priced): -0.231786 (n=56)
 - ROI (paper-priced): None (n=0)
-- pending picks: 15
+- pending picks: 27
 - void picks: 0
 - conflict picks: 1
-- total picks: 86
-- set diagnostic picks: 70
-- selected won any set: 52 (0.742857)
-- selected won set 1: 35 (0.5)
-- selected won set 2: 40 (0.571429)
+- total picks: 100
+- set diagnostic picks: 72
+- selected won any set: 53 (0.736111)
+- selected won set 1: 36 (0.5)
+- selected won set 2: 41 (0.569444)
 - selected won set 3: 11 (0.37931)
 
 ## Settlement policy
@@ -38,14 +38,14 @@
 
 ## Ledger reconciliation
 
-- ledger rows in window (official): 87
+- ledger rows in window (official): 101
 - duplicate rows merged (same match + selection in multiple daily ledgers): 1
 - stale history rows pruned (pick no longer in any archived ledger): 0
-- audited rows: 86
+- audited rows: 100
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
+  - pending_no_result: result not final: live/in-progress markers present: 17
   - pending_no_result: no matching result rows found: 10
-  - pending_no_result: result not final: live/in-progress markers present: 5
   - conflict: conflicting final results: Challenger_results@2026-09-18:Badosa P.(6-4 6-2); Forebet_results@2026-09-18:Badosa G. P.(4-6 2-6): 1
 
 ## Per-pick audit (won/lost/pending)
@@ -131,38 +131,52 @@
 - 2026-09-19 Stoiana / Valdmannova vs Dang / You selected=Stoiana / Valdmannova winner=Dang Y. / You X. status=lost basis=Challenger_results@2026-09-19:4-6 6-3 10-7
 - 2026-09-19 Thiago Monteiro vs Marco Trungelliti selected=Marco Trungelliti winner=Monteiro T. status=lost basis=Challenger_results@2026-09-19:6-4 3-6 6-3
 - 2026-09-19 Tristan Schoolkate vs Harold Mayot selected=Tristan Schoolkate winner=Mayot H. status=lost basis=Challenger_results@2026-09-19:6-3 6-3
+- 2026-09-20 Alja Senica vs Enola Chiesa selected=Enola Chiesa winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Aneta Laboutkova vs Maria Toma selected=Aneta Laboutkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Angelina Voloshchuk vs Jana Otzipka selected=Angelina Voloshchuk winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Cascino / Feng vs Ciric Bagaric / Moratelli selected=Cascino / Feng winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Dalila Spiteri vs Laura Boehner selected=Dalila Spiteri winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Gabriella Da Silva Fick vs Valentina Steiner selected=Valentina Steiner winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Harold Mayot vs Sascha Gueymard Wayenburg selected=Harold Mayot winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-20 Jakupovic / Karamoko vs Burillo / Fossa Huergo selected=Jakupovic / Karamoko winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-20 Michael Mmoh vs J.J. Wolf selected=J.J. Wolf winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Jamilah Snells vs Iva Primorac Pavicic selected=Iva Primorac Pavicic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Jasmijn Gimbrere vs Reese Brantmeier selected=Reese Brantmeier winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Jessica Pieri vs Yana Morderger selected=Jessica Pieri winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Michael Mmoh vs J.J. Wolf selected=J.J. Wolf winner=Mmoh M. status=lost basis=Challenger_results@2026-09-20:6-2 6-2
 - 2026-09-20 Mona Barthel vs Samira De Stefano selected=Mona Barthel winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Nikolas Sanchez Izquierdo vs Thiago Monteiro selected=Nikolas Sanchez Izquierdo winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-20 Pavel Kotov vs Marat Sharipov selected=Marat Sharipov winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-20 Peyton Stearns vs Iva Jovic selected=Iva Jovic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Peyton Stearns vs Iva Jovic selected=Iva Jovic winner=Jovic I. status=won basis=Challenger_results@2026-09-20:6-4 6-2
+- 2026-09-20 Sahaja Yamalapalli vs Maria Martinez Vaquero selected=Sahaja Yamalapalli winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Semra Aksu vs Ekaterina Yashina selected=Ekaterina Yashina winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-20 Tayisiya Morderger vs Katerina Tsygourova selected=Katerina Tsygourova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 
 ## By Tour
 
 - `ATP`: total=1, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=0
-- `CHALLENGER`: total=58, settled=48, wins=23, hit_rate=0.479167, ROI=-0.236667, pending=10
-- `WTA`: total=27, settled=21, wins=10, hit_rate=0.47619, ROI=-0.253077, pending=5, conflict=1
+- `CHALLENGER`: total=60, settled=49, wins=23, hit_rate=0.469388, ROI=-0.236667, pending=11
+- `WTA`: total=39, settled=22, wins=11, hit_rate=0.5, ROI=-0.253077, pending=16, conflict=1
 
 ## By Series
 
 - `ATP250`: total=1, settled=1, wins=1, hit_rate=1.0, ROI=0.25, pending=0
-- `Challenger`: total=58, settled=48, wins=23, hit_rate=0.479167, ROI=-0.236667, pending=10
-- `International`: total=27, settled=21, wins=10, hit_rate=0.47619, ROI=-0.253077, pending=5, conflict=1
+- `Challenger`: total=60, settled=49, wins=23, hit_rate=0.469388, ROI=-0.236667, pending=11
+- `International`: total=39, settled=22, wins=11, hit_rate=0.5, ROI=-0.253077, pending=16, conflict=1
 
 ## By Surface
 
-- `Grass`: total=9, settled=7, wins=3, hit_rate=0.428571, ROI=-0.5575, pending=2
-- `Hard`: total=77, settled=63, wins=31, hit_rate=0.492063, ROI=-0.206731, pending=13, conflict=1
+- `Grass`: total=11, settled=8, wins=3, hit_rate=0.375, ROI=-0.5575, pending=3
+- `Hard`: total=89, settled=64, wins=32, hit_rate=0.5, ROI=-0.206731, pending=24, conflict=1
 
 ## By Bucket
 
-- `SKIPPED_DEAD_EDGE`: total=44, settled=34, wins=20, hit_rate=0.588235, ROI=-0.146471, pending=9, conflict=1
+- `SKIPPED_DEAD_EDGE`: total=56, settled=34, wins=20, hit_rate=0.588235, ROI=-0.146471, pending=21, conflict=1
 - `SKIPPED_VETO`: total=10, settled=7, wins=3, hit_rate=0.428571, ROI=-0.255714, pending=3
 - `WATCHLIST`: total=16, settled=15, wins=4, hit_rate=0.266667, ROI=-0.414, pending=1
-- `WATCHLIST_NO_ODDS`: total=16, settled=14, wins=7, hit_rate=0.5, ROI=None, pending=2
+- `WATCHLIST_NO_ODDS`: total=18, settled=16, wins=8, hit_rate=0.5, ROI=None, pending=2
 
 ## By Source
 
-- `BetClan`: total=33, settled=27, wins=13, hit_rate=0.481481, ROI=-0.2825, pending=6
+- `BetClan`: total=47, settled=29, wins=14, hit_rate=0.482759, ROI=-0.2825, pending=18
 - `BetClan, Forebet`: total=1, settled=1, wins=0, hit_rate=0.0, ROI=-1.0, pending=0
 - `Forebet`: total=52, settled=42, wins=21, hit_rate=0.5, ROI=-0.191282, pending=9, conflict=1

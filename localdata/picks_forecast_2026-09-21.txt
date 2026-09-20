@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-21
 ============================================================
-Generated at: 2026-09-20 00:06:00
-Snapshot as of: 2026-09-20T00:01:33+02:00
+Generated at: 2026-09-20 05:54:32
+Snapshot as of: 2026-09-20T05:48:39+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,8 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Vivian Wolff vs Oleksandra Oliynykova      KO 05:00 -> OLEKSANDRA OLIYNYKOVA  conf 73% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================

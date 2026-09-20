@@ -1,1 +1,66 @@
-[]
+[
+  {
+    "_is_paper": true,
+    "_market_basis": "none",
+    "_selection_basis": "prediction",
+    "bucket": "WATCHLIST_NO_ODDS",
+    "confidence": 73.0,
+    "context_used": "WTA Singapore Prediction | nan | WTA Singapore Prediction | WTA Singapore Prediction",
+    "cross_source_agree": "MarketOnly",
+    "date": "2026-09-21",
+    "edge_dims": 0,
+    "edge_grade": "SILVER",
+    "edge_n": 0,
+    "edge_tier": "WATCHLIST_ONLY",
+    "edge_verdict": "WATCHLIST",
+    "expected_value": null,
+    "forecast_as_of": "2026-09-20T05:48:39+02:00",
+    "forecast_for": "2026-09-21",
+    "forecast_hygiene": {
+      "include_no_odds": true,
+      "include_skipped": false,
+      "max_rows": 30,
+      "min_conf": 60.0,
+      "min_ev": 0.05
+    },
+    "kickoff": "05:00",
+    "ledger_kind": "forecast",
+    "match": "Vivian Wolff vs Oleksandra Oliynykova",
+    "match_time": "05:00",
+    "ml_boost_reasons": [
+      "High conf 73%"
+    ],
+    "ml_calibrated_prob": 0.5311,
+    "ml_ev": null,
+    "ml_fair_odds": 1.88,
+    "ml_strength_score": -0.45,
+    "ml_verdict": "ALLOW",
+    "ml_veto_reasons": [
+      "tour WTA CAUTION",
+      "surface Hard VETO roi -0.206731 n=63",
+      "series International CAUTION",
+      "source BetClan CAUTION"
+    ],
+    "ml_w_score": 0.0,
+    "odds": null,
+    "odds_bookmaker": "",
+    "odds_cross_checked": "",
+    "odds_reject_reason": "missing selected-side odds",
+    "odds_source": "",
+    "pick": "WATCHLIST",
+    "picked_for": "2026-09-21",
+    "player_away": "Oleksandra Oliynykova",
+    "player_home": "Vivian Wolff",
+    "pred_confidence": "High",
+    "roi_estimate": "no_slice",
+    "selected_player": "Oleksandra Oliynykova",
+    "selected_side": "player_b",
+    "series": "International",
+    "slice_matched": "no_slice_export",
+    "source": "BetClan",
+    "source_count": 1,
+    "surface": "Hard",
+    "tour": "WTA",
+    "tournament": "WTA Singapore Prediction"
+  }
+]
