@@ -12,6 +12,7 @@ import argparse
 import logging
 import sys
 import json
+import hashlib
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from itertools import combinations
@@ -1419,6 +1420,69 @@ def _dim_mismatches_slice(row: pd.Series, dim_name: str, dim_val) -> bool:
     return True
 
 
+def dump_slice_table(
+    target_date: str,
+    results: list[dict],
+    df: pd.DataFrame | None,
+    warehouse_path: str | Path,
+    out_path: str | Path,
+) -> Path | None:
+    """Write the mining-time slice table + warehouse fingerprint to JSON.
+
+    The match loop below decides on THIS table, and the table is not
+    reproducible from committed localdata alone (the CI build merges
+    runtime caches — 2026-09-20: Hard|1.1-1.3|High derived FADE here and
+    EDGE CONFIRMED in the offline rebuild). Committing the exact table +
+    warehouse hash makes every match/no-match decision auditable from the
+    repo without re-deriving anything. Non-fatal on failure.
+    """
+    try:
+        wh = Path(warehouse_path)
+        agree_dist: dict[str, int] = {}
+        n_rows = 0
+        if df is not None and "cross_source_agree" in df.columns:
+            agree_dist = {
+                str(k): int(v)
+                for k, v in df["cross_source_agree"].astype(str).value_counts().items()
+            }
+        if df is not None:
+            n_rows = int(len(df))
+        model_rows = [s for s in (results or []) if s.get("Side") == "prediction"]
+        fade_rows = [s for s in (results or []) if s.get("Side") == "fade"]
+        payload = {
+            "date": str(target_date),
+            "warehouse": str(wh),
+            "warehouse_sha256": (
+                hashlib.sha256(wh.read_bytes()).hexdigest() if wh.exists() else ""
+            ),
+            "warehouse_rows": n_rows,
+            "cross_source_agree": agree_dist,
+            "n_slices": len(results or []),
+            "n_model_slices": len(model_rows),
+            "n_fade_slices": len(fade_rows),
+            "n_exportable_model": sum(1 for s in model_rows if s.get("Exportable")),
+            "n_exportable_fade": sum(1 for s in fade_rows if s.get("Exportable")),
+            "slices": results or [],
+        }
+        out = Path(out_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(payload, indent=2, default=str))
+        logger.info(
+            "Wrote slice table artifact %s (%d slices: %d model / %d fade, "
+            "%d exportable model, %d exportable fade)",
+            out.name,
+            payload["n_slices"],
+            payload["n_model_slices"],
+            payload["n_fade_slices"],
+            payload["n_exportable_model"],
+            payload["n_exportable_fade"],
+        )
+        return out
+    except Exception as exc:
+        logger.warning("slice table dump failed (non-fatal): %s", exc)
+        return None
+
+
 def _nearest_slice_gap(row: pd.Series, res: dict) -> list[str]:
     """Human-readable list of the dims where ``row`` fails ``res``'s slice."""
     combo = res.get("Combo_Dict") or {}
@@ -1703,6 +1767,18 @@ def main() -> int:
         results = report.to_dict("records")
 
     target_date = args.date or datetime.now().strftime("%Y-%m-%d")
+
+    # Mining-time slice table artifact (committed): the exact table this run
+    # matched candidates against, with the warehouse fingerprint. See
+    # dump_slice_table for why (snapshot drift flips boundary verdicts).
+    dump_slice_table(
+        target_date,
+        results,
+        df,
+        args.warehouse,
+        ROOT / "localdata" / f"slice_table_{target_date}.json",
+    )
+
     # REDTEAM Finding #2 follow-up: today's pick candidates need BOTH
     # unsettled historical rows for `target_date` AND live-injected rows for
     # the same date. We excluded live rows from `df` (the slice-mining
