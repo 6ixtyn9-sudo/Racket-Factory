@@ -72,9 +72,8 @@
 
 ## By Bucket
 
-- `SKIPPED_VETO`: total=6, settled=0, wins=0, hit_rate=None, ROI=None, pending=6
-- `CERTIFIED_CLEAN`: total=1, settled=0, wins=0, hit_rate=None, ROI=None, pending=1
-- `SKIPPED_DEAD_EDGE`: total=1, settled=0, wins=0, hit_rate=None, ROI=None, pending=1
+- `CERTIFIED_CLEAN`: total=6, settled=0, wins=0, hit_rate=None, ROI=None, pending=6
+- `SKIPPED_DEAD_EDGE`: total=2, settled=0, wins=0, hit_rate=None, ROI=None, pending=2
 
 ## By Source
 

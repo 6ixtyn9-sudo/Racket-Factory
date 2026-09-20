@@ -1,7 +1,7 @@
 {
   "all_picks": [
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "CERTIFIED_CLEAN",
       "date": "2026-09-20",
       "ledger_kind": "official",
       "match": "Aneta Laboutkova vs Maria Toma",
@@ -35,7 +35,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "CERTIFIED_CLEAN",
       "date": "2026-09-20",
       "ledger_kind": "official",
       "match": "Dalila Spiteri vs Laura Boehner",
@@ -69,7 +69,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "CERTIFIED_CLEAN",
       "date": "2026-09-20",
       "ledger_kind": "official",
       "match": "Jasmijn Gimbrere vs Reese Brantmeier",
@@ -86,7 +86,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-20",
       "ledger_kind": "official",
       "match": "Jessica Pieri vs Yana Morderger",
@@ -103,7 +103,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "CERTIFIED_CLEAN",
       "date": "2026-09-20",
       "ledger_kind": "official",
       "match": "Semra Aksu vs Ekaterina Yashina",
@@ -120,7 +120,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "CERTIFIED_CLEAN",
       "date": "2026-09-20",
       "ledger_kind": "official",
       "match": "Tayisiya Morderger vs Katerina Tsygourova",
@@ -145,54 +145,6 @@
     "CERTIFIED_CLEAN": {
       "conflict_picks": 0,
       "hit_rate": null,
-      "pending_picks": 1,
-      "priced_paper": 0,
-      "priced_picks": 0,
-      "priced_real": 0,
-      "roi": null,
-      "roi_paper": null,
-      "roi_real": null,
-      "selected_won_any_set": 0,
-      "selected_won_any_set_rate": null,
-      "selected_won_set1": 0,
-      "selected_won_set1_rate": null,
-      "selected_won_set2": 0,
-      "selected_won_set2_rate": null,
-      "selected_won_set3": 0,
-      "selected_won_set3_rate": null,
-      "set_diagnostic_picks": 0,
-      "settled_picks": 0,
-      "total_picks": 1,
-      "void_picks": 0,
-      "wins": 0
-    },
-    "SKIPPED_DEAD_EDGE": {
-      "conflict_picks": 0,
-      "hit_rate": null,
-      "pending_picks": 1,
-      "priced_paper": 0,
-      "priced_picks": 0,
-      "priced_real": 0,
-      "roi": null,
-      "roi_paper": null,
-      "roi_real": null,
-      "selected_won_any_set": 0,
-      "selected_won_any_set_rate": null,
-      "selected_won_set1": 0,
-      "selected_won_set1_rate": null,
-      "selected_won_set2": 0,
-      "selected_won_set2_rate": null,
-      "selected_won_set3": 0,
-      "selected_won_set3_rate": null,
-      "set_diagnostic_picks": 0,
-      "settled_picks": 0,
-      "total_picks": 1,
-      "void_picks": 0,
-      "wins": 0
-    },
-    "SKIPPED_VETO": {
-      "conflict_picks": 0,
-      "hit_rate": null,
       "pending_picks": 6,
       "priced_paper": 0,
       "priced_picks": 0,
@@ -211,6 +163,30 @@
       "set_diagnostic_picks": 0,
       "settled_picks": 0,
       "total_picks": 6,
+      "void_picks": 0,
+      "wins": 0
+    },
+    "SKIPPED_DEAD_EDGE": {
+      "conflict_picks": 0,
+      "hit_rate": null,
+      "pending_picks": 2,
+      "priced_paper": 0,
+      "priced_picks": 0,
+      "priced_real": 0,
+      "roi": null,
+      "roi_paper": null,
+      "roi_real": null,
+      "selected_won_any_set": 0,
+      "selected_won_any_set_rate": null,
+      "selected_won_set1": 0,
+      "selected_won_set1_rate": null,
+      "selected_won_set2": 0,
+      "selected_won_set2_rate": null,
+      "selected_won_set3": 0,
+      "selected_won_set3_rate": null,
+      "set_diagnostic_picks": 0,
+      "settled_picks": 0,
+      "total_picks": 2,
       "void_picks": 0,
       "wins": 0
     }

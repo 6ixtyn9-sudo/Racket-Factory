@@ -1,9 +1,9 @@
 {
   "status": "merged",
   "baseline_rows": 4360,
-  "fresh_rows": 4360,
+  "fresh_rows": 4372,
   "shared_keys": 4360,
-  "new_from_fresh": 0,
+  "new_from_fresh": 12,
   "baseline_only": 0,
   "settlement_updates": 0,
   "live_rows_from_fresh": 20,
@@ -70,9 +70,9 @@
       "fresh": "player_a"
     }
   ],
-  "merged_rows": 4360,
-  "generated_at": "2026-09-20T07:59:11.021530+00:00",
-  "baseline_sha256": "d348bb19f274df0677bd1b4d756ed62a7f98787d34238f71dfcf4520cae83011",
-  "fresh_sha256": "02bf3097d7d9dd17340b14a4dfc50369368e878fcb69ea1df3e1ebb9ad7245b6",
-  "merged_sha256": "383d4ccab3ac131fe13dd773e09c2fd2ef82ba8bc53a092de715ab2998458269"
+  "merged_rows": 4372,
+  "generated_at": "2026-09-20T09:54:18.916689+00:00",
+  "baseline_sha256": "383d4ccab3ac131fe13dd773e09c2fd2ef82ba8bc53a092de715ab2998458269",
+  "fresh_sha256": "4509175a403cb9e1bea5375cc6db39a8559adf6785c4114d649f8c57edeab606",
+  "merged_sha256": "4d63685d66e15f0970a07b8968be147c1f8256b9dedbae58f3c72f9a3a80e6cd"
 }
