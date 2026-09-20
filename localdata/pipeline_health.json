@@ -11,7 +11,7 @@
     },
     "results:foretennis_results": {
       "status": "OK",
-      "detail": "4 files, 1175 rows, max_date 2026-09-19 (lag 1d, budget 3d)"
+      "detail": "4 files, 1176 rows, max_date 2026-09-19 (lag 1d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "OK",
@@ -19,7 +19,7 @@
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "1 files, 3493 rows, max_date 2026-09-20 (lag 0d, budget 3d)"
+      "detail": "1 files, 3495 rows, max_date 2026-09-20 (lag 0d, budget 3d)"
     },
     "results:theoddsapi_scores": {
       "status": "OK",
@@ -27,7 +27,7 @@
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "5183 result rows across all sources"
+      "detail": "5186 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",

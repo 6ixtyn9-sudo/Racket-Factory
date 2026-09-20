@@ -1,9 +1,9 @@
 {
   "status": "merged",
-  "baseline_rows": 4358,
+  "baseline_rows": 4360,
   "fresh_rows": 4360,
-  "shared_keys": 4358,
-  "new_from_fresh": 2,
+  "shared_keys": 4360,
+  "new_from_fresh": 0,
   "baseline_only": 0,
   "settlement_updates": 0,
   "live_rows_from_fresh": 20,
@@ -71,8 +71,8 @@
     }
   ],
   "merged_rows": 4360,
-  "generated_at": "2026-09-20T07:42:49.604576+00:00",
-  "baseline_sha256": "c13e64a5594d08708db2ac8930af30caf80470eae32f6612508b2e729aa7e2fb",
-  "fresh_sha256": "3c9a407fa5175690522e3e6b01935ba1a784fe9e86da1f6726c164a44c3bad12",
-  "merged_sha256": "d348bb19f274df0677bd1b4d756ed62a7f98787d34238f71dfcf4520cae83011"
+  "generated_at": "2026-09-20T07:59:11.021530+00:00",
+  "baseline_sha256": "d348bb19f274df0677bd1b4d756ed62a7f98787d34238f71dfcf4520cae83011",
+  "fresh_sha256": "02bf3097d7d9dd17340b14a4dfc50369368e878fcb69ea1df3e1ebb9ad7245b6",
+  "merged_sha256": "383d4ccab3ac131fe13dd773e09c2fd2ef82ba8bc53a092de715ab2998458269"
 }
