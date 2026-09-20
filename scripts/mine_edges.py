@@ -37,6 +37,7 @@ from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.forebet import ForebetPredictor, forebet_cache_key
 from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice, get_min_ev_real
+from racketfactory.regime import REGIME_ID
 from racketfactory.odds_compare import fetch_comparison_rows
 
 logging.basicConfig(
@@ -1053,6 +1054,7 @@ def select_player_from_row(row: pd.Series, target_date: str) -> dict:
         "kickoff": str(time_val),
         "selected_side": selected_pick,
         "selected_player": selected_player,
+        "_regime": REGIME_ID,
         "_selection_basis": selection_basis,
         "tournament": row.get("tournament"),
         "source": source_val,

@@ -36,6 +36,7 @@ from racketfactory.settlement import (  # noqa: E402
     settle_selection,
     teams_match,
 )
+from racketfactory.regime import REGIME_ID, row_regime  # noqa: E402
 
 
 @dataclass
@@ -1050,6 +1051,30 @@ def build_report(
     duplicates_merged = len(all_rows) - len(deduped_rows)
     all_rows = deduped_rows
 
+    # --- Regime scoping ("born again" semantics) ---
+    # Top-level stats describe the CURRENT regime only, so "daily ROI" always
+    # describes the system as it is right now. Other regimes still on disk are
+    # reported under by_regime so no number is ambiguous about which system
+    # produced it. ML vetoes/weights are built from the top-level stats and
+    # therefore can never cross regimes (an old regime's losses can never
+    # veto a new regime's picks).
+    regime_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for r in all_rows:
+        regime_rows[row_regime(r)].append(r)
+
+    def _regime_summary(rows_g: list[dict[str, Any]]) -> dict[str, Any]:
+        settled_g = [s for s in (settled_from_all_row(r) for r in rows_g) if s is not None]
+        pending_g = sum(1 for r in rows_g if str(r.get("status") or "").startswith("pending"))
+        return {
+            **summarize_scored(settled_g),
+            "pending_picks": pending_g,
+            "total_picks": len(rows_g),
+        }
+
+    by_regime = {g: _regime_summary(rows_g) for g, rows_g in sorted(regime_rows.items())}
+    # Scope all downstream stats (overall, by_*, all_picks) to the current regime.
+    all_rows = regime_rows.get(REGIME_ID, [])
+
     archived_dates = sorted({str(r.get("date") or "")[:10] for r in all_rows if r.get("date")})
     settled_rows = [s for s in (settled_from_all_row(r) for r in all_rows) if s is not None]
 
@@ -1079,6 +1104,8 @@ def build_report(
         "same_day_cutoff": today_local,
         "include_same_day": include_same_day,
         "ledger_kind": ledger_kind,
+        "regime": REGIME_ID,
+        "by_regime": by_regime,
         "overall": {**summarize_scored(settled_rows), "pending_picks": pending,
                     "void_picks": voids, "conflict_picks": conflicts,
                     "total_picks": len(all_rows)},
@@ -1099,6 +1126,7 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
         "",
         "## Overall",
         "",
+        f"- current regime: {report.get('regime', REGIME_ID)} (top-level stats are scoped to this regime; per-regime split in By Regime)",
         f"- archived pick rows: {report.get('archived_pick_rows', 0)}",
         f"- archived pick dates: {len(report.get('archived_pick_dates', []))}",
         f"- ledger pick rows (in window): {report.get('ledger_pick_rows', 0)}",
@@ -1206,6 +1234,7 @@ def write_markdown(path: Path, report: dict[str, Any]) -> None:
     _group_section("By Surface", report.get("by_surface", {}))
     _group_section("By Bucket", report.get("by_bucket", {}))
     _group_section("By Source", report.get("by_source", {}))
+    _group_section("By Regime", report.get("by_regime", {}))
     path.write_text("\n".join(lines) + "\n")
 
 
@@ -1258,6 +1287,11 @@ def main() -> int:
     print(f" stale rows pruned: {report.get('stale_rows_pruned', 0)}")
     print(f" archived pick dates: {len(report.get('archived_pick_dates', []))}")
     print(f" ledger kind: {report.get('ledger_kind')}")
+    print(f" regime: {report.get('regime', REGIME_ID)}")
+    for g, gs in sorted(report.get("by_regime", {}).items()):
+        marker = " (current)" if g == report.get("regime", REGIME_ID) else ""
+        print(f" regime {g}{marker}: total={gs.get('total_picks', 0)} settled={gs.get('settled_picks', 0)} "
+              f"wins={gs.get('wins', 0)} hit_rate={gs.get('hit_rate')} ROI={gs.get('roi')}")
     print(f" same-day rows excluded: {report.get('same_day_excluded', 0)}")
     print(f" settled picks: {overall.get('settled_picks', 0)}")
     print(f" hit rate: {overall.get('hit_rate')}")
