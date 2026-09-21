@@ -1,12 +1,12 @@
 {
   "date": "2026-09-21",
   "warehouse": "localdata/warehouse.csv.gz",
-  "warehouse_sha256": "cac9ffdb7834a0de3e87dd455568b5b6aaa50d3c3fdc000a63bd89bc0461ffcb",
-  "warehouse_rows": 4522,
+  "warehouse_sha256": "f811c511748fd2f25ec23bda123663448df3928efa4aeb311767011b48c7b1aa",
+  "warehouse_rows": 4567,
   "cross_source_agree": {
-    "Unknown": 2589,
+    "Unknown": 2630,
     "MarketOnly": 1118,
-    "Both": 477,
+    "Both": 481,
     "Disagree": 330,
     "ForeTennisOnly": 8
   },
@@ -1399,15 +1399,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 316,
-      "WinRate": "31.01%",
-      "Shrunk": "31.25%",
-      "ROI": "-43.58%",
+      "N": 320,
+      "WinRate": "30.94%",
+      "Shrunk": "31.17%",
+      "ROI": "-44.14%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -43.58
+      "ROI_num": -44.14
     },
     {
       "Slice": "FADE _surface:Hard | pred_confidence:Medium | cross_source_agree:Both",
@@ -4498,15 +4498,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 316,
-      "WinRate": "68.99%",
-      "Shrunk": "68.75%",
-      "ROI": "7.74%",
+      "N": 320,
+      "WinRate": "69.06%",
+      "Shrunk": "68.83%",
+      "ROI": "7.35%",
       "Grade": "SILVER",
       "Tier": "NEUTRAL",
       "Verdict": "NO STAT SIG",
       "Exportable": true,
-      "ROI_num": 7.74
+      "ROI_num": 7.35
     },
     {
       "Slice": "_surface:Hard | pred_confidence:Medium | cross_source_agree:Both",
