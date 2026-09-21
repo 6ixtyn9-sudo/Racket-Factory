@@ -15,7 +15,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "EDGE CONFIRMED",
     "expected_value": 0.06259999999999993,
-    "forecast_as_of": "2026-09-21T08:02:18+02:00",
+    "forecast_as_of": "2026-09-21T09:31:25+02:00",
     "forecast_for": "2026-09-22",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -31,20 +31,20 @@
     "ml_boost_reasons": [
       "High conf 77%"
     ],
-    "ml_calibrated_prob": 0.7517,
-    "ml_ev": 0.0373,
-    "ml_fair_odds": 1.33,
+    "ml_calibrated_prob": 0.7674,
+    "ml_ev": 0.0589,
+    "ml_fair_odds": 1.3,
     "ml_odds_answer": {
-      "edge_pct": 3.73,
-      "ev": 0.0373,
-      "explanation": "Odds 1.38 value vs fair 1.33, EV +3.7%",
-      "fair_odds": 1.33,
+      "edge_pct": 5.89,
+      "ev": 0.0589,
+      "explanation": "Odds 1.38 value vs fair 1.30, EV +5.9%",
+      "fair_odds": 1.3,
       "verdict": "VALUE"
     },
     "ml_strength_score": 0.15,
     "ml_verdict": "ALLOW",
     "ml_veto_reasons": [],
-    "ml_w_score": 0.0,
+    "ml_w_score": 1.0,
     "odds": 1.38,
     "odds_bookmaker": "",
     "odds_cross_checked": "single",

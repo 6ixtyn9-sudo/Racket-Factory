@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-21T08:08:37",
+  "generated_at": "2026-09-21T09:36:35",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 194.536776,
@@ -313,6 +313,12 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-21",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 88.41,
               "context_used": "WTA Porto Prediction",
@@ -367,19 +373,19 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Porto Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-21",
-                "score": ""
-              }
+              "tournament": "WTA Porto Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-21",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 88.41,
               "context_used": "WTA Ankara Prediction",
@@ -434,13 +440,7 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ankara Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-21",
-                "score": ""
-              }
+              "tournament": "WTA Ankara Prediction"
             }
           ],
           "odds": 1.6,
@@ -455,6 +455,12 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-21",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 75.0,
               "context_used": "WTA Tolentino Prediction",
@@ -509,19 +515,19 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Tolentino Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-21",
-                "score": ""
-              }
+              "tournament": "WTA Tolentino Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-21",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 77.0,
               "context_used": "WTA Singapore WD Prediction",
@@ -576,13 +582,7 @@
               "source_count": 3,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Singapore WD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-21",
-                "score": ""
-              }
+              "tournament": "WTA Singapore WD Prediction"
             }
           ],
           "odds": 2.12,

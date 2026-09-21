@@ -1,13 +1,13 @@
 {
   "date": "2026-09-21",
   "warehouse": "localdata/warehouse.csv.gz",
-  "warehouse_sha256": "f811c511748fd2f25ec23bda123663448df3928efa4aeb311767011b48c7b1aa",
-  "warehouse_rows": 4567,
+  "warehouse_sha256": "0bdac67c9f6dd00b6d99493f39da2ec19119ff7bd6f502bb01a993ab587333e4",
+  "warehouse_rows": 4571,
   "cross_source_agree": {
-    "Unknown": 2630,
-    "MarketOnly": 1118,
+    "Unknown": 2631,
+    "MarketOnly": 1119,
     "Both": 481,
-    "Disagree": 330,
+    "Disagree": 332,
     "ForeTennisOnly": 8
   },
   "n_slices": 232,
@@ -2533,9 +2533,9 @@
         "cross_source_agree": "MarketOnly"
       },
       "Dims": 3,
-      "N": 751,
-      "WinRate": "35.95%",
-      "Shrunk": "36.03%",
+      "N": 752,
+      "WinRate": "36.04%",
+      "Shrunk": "36.11%",
       "ROI": "-80.64%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
