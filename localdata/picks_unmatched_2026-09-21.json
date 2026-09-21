@@ -1,5 +1,39 @@
 [
   {
+    "match": "Bondar / Stollar vs Joint / Ruse",
+    "kickoff": "07:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 60.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
+    ]
+  },
+  {
+    "match": "Cho / Cho vs Liang / Yuan",
+    "kickoff": "07:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 63.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
     "match": "Daria Kasatkina vs Aliaksandra Sasnovich",
     "kickoff": "04:00",
     "tour": "WTA",
@@ -17,6 +51,23 @@
     ]
   },
   {
+    "match": "Kamilla Rakhimova vs Polina Kudermetova",
+    "kickoff": "05:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 66.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
     "match": "Alina Korneeva vs Mananchaya Sawangkaew",
     "kickoff": "05:30",
     "tour": "WTA",
@@ -26,6 +77,57 @@
     "cross_source_agree": "Both",
     "fav_odds_band": "1.3-1.6",
     "confidence": 66.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Aneta Laboutkova vs Katerina Tsygourova",
+    "kickoff": "10:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 55.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Dalila Spiteri vs Iva Primorac Pavicic",
+    "kickoff": "09:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 55.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Viktoria Hruncakova vs Polina Iatcenko",
+    "kickoff": "10:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 65.0,
     "odds": null,
     "odds_source": "nan",
     "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
@@ -51,6 +153,125 @@
     ]
   },
   {
+    "match": "Rebecca Sramkova vs Maja Chwalinska",
+    "kickoff": "07:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 65.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Sahaja Yamalapalli vs Naiktha Bains",
+    "kickoff": "12:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 61.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
+    ]
+  },
+  {
+    "match": "Sofia Johnson vs Reese Brantmeier",
+    "kickoff": "11:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 66.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Weronika Falkowska vs Alana Smith",
+    "kickoff": "10:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 69.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Jessica Pieri vs Aneta Kucmova",
+    "kickoff": "10:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 54.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Lina Gjorcheska vs Ayla Aksu",
+    "kickoff": "17:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 54.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Aliona Falei vs Fangran Tian",
+    "kickoff": "12:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 65.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
     "match": "Alycia Parks vs Janice Tjen",
     "kickoff": "05:00",
     "tour": "WTA",
@@ -68,6 +289,40 @@
     ]
   },
   {
+    "match": "Talia Gibson vs Fiona Ferro",
+    "kickoff": "07:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Grass",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 57.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Yuki Naito vs Julia Avdeeva",
+    "kickoff": "10:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 69.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
     "match": "Andrea Guerrieri vs Francesco Maestrelli",
     "kickoff": "14:00",
     "tour": "CHALLENGER",
@@ -77,7 +332,7 @@
     "cross_source_agree": "Both",
     "fav_odds_band": "1.6-2.0",
     "confidence": 57.0,
-    "odds": 1.73,
+    "odds": 1.6,
     "odds_source": "BetExplorer",
     "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
@@ -94,45 +349,11 @@
     "cross_source_agree": "Both",
     "fav_odds_band": "1.3-1.6",
     "confidence": 63.0,
-    "odds": 1.57,
+    "odds": 1.35,
     "odds_source": "BetExplorer",
     "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
       "pred_confidence=Medium!=Low"
-    ]
-  },
-  {
-    "match": "Bondar / Stollar vs Joint / Ruse",
-    "kickoff": "07:00",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.3-1.6",
-    "confidence": 60.0,
-    "odds": 1.55,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "pred_confidence=Medium!=Low"
-    ]
-  },
-  {
-    "match": "Cho / Cho vs Liang / Yuan",
-    "kickoff": "07:00",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.6-2.0",
-    "confidence": 63.0,
-    "odds": 1.78,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
-    "missing_dims": [
-      "fav_odds_band=1.6-2.0!=1.1-1.3"
     ]
   },
   {
@@ -145,62 +366,11 @@
     "cross_source_agree": "Both",
     "fav_odds_band": "1.6-2.0",
     "confidence": 66.0,
-    "odds": 1.63,
+    "odds": 2.09,
     "odds_source": "BetExplorer",
     "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
     "missing_dims": [
       "fav_odds_band=1.6-2.0!=1.1-1.3"
-    ]
-  },
-  {
-    "match": "Kamilla Rakhimova vs Polina Kudermetova",
-    "kickoff": "05:30",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.3-1.6",
-    "confidence": 66.0,
-    "odds": 1.38,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "pred_confidence=Medium!=Low"
-    ]
-  },
-  {
-    "match": "Aneta Laboutkova vs Katerina Tsygourova",
-    "kickoff": "10:30",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Low",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.6-2.0",
-    "confidence": 55.0,
-    "odds": 1.79,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "fav_odds_band=1.6-2.0!=1.3-1.6"
-    ]
-  },
-  {
-    "match": "Viktoria Hruncakova vs Polina Iatcenko",
-    "kickoff": "10:30",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.3-1.6",
-    "confidence": 65.0,
-    "odds": 1.54,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "pred_confidence=Medium!=Low"
     ]
   },
   {
@@ -213,28 +383,11 @@
     "cross_source_agree": "Both",
     "fav_odds_band": "1.3-1.6",
     "confidence": 66.0,
-    "odds": 1.48,
+    "odds": 1.49,
     "odds_source": "BetExplorer",
     "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
       "pred_confidence=Medium!=Low"
-    ]
-  },
-  {
-    "match": "Dalila Spiteri vs Iva Primorac Pavicic",
-    "kickoff": "09:00",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Low",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.6-2.0",
-    "confidence": 55.0,
-    "odds": 1.8,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "fav_odds_band=1.6-2.0!=1.3-1.6"
     ]
   },
   {
@@ -252,40 +405,6 @@
     "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
       "pred_confidence=Medium!=Low"
-    ]
-  },
-  {
-    "match": "Rebecca Sramkova vs Maja Chwalinska",
-    "kickoff": "07:00",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.3-1.6",
-    "confidence": 65.0,
-    "odds": 1.51,
-    "odds_source": "TheOddsAPI",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "pred_confidence=Medium!=Low"
-    ]
-  },
-  {
-    "match": "Sahaja Yamalapalli vs Naiktha Bains",
-    "kickoff": "12:30",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.6-2.0",
-    "confidence": 61.0,
-    "odds": 1.62,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
-    "missing_dims": [
-      "fav_odds_band=1.6-2.0!=1.1-1.3"
     ]
   },
   {
@@ -313,48 +432,13 @@
     "_surface": "Hard",
     "pred_confidence": "Low",
     "cross_source_agree": "Disagree",
-    "fav_odds_band": "1.6-2.0",
+    "fav_odds_band": "1.3-1.6",
     "confidence": 54.0,
-    "odds": 2.03,
+    "odds": 2.37,
     "odds_source": "BetExplorer",
     "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
-      "fav_odds_band=1.6-2.0!=1.3-1.6",
       "cross_source_agree=Disagree!=Both"
-    ]
-  },
-  {
-    "match": "Weronika Falkowska vs Alana Smith",
-    "kickoff": "10:30",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.3-1.6",
-    "confidence": 69.0,
-    "odds": 1.42,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "pred_confidence=Medium!=Low"
-    ]
-  },
-  {
-    "match": "Sofia Johnson vs Reese Brantmeier",
-    "kickoff": "11:00",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.3-1.6",
-    "confidence": 66.0,
-    "odds": 1.5,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "pred_confidence=Medium!=Low"
     ]
   },
   {
@@ -367,7 +451,7 @@
     "cross_source_agree": "Both",
     "fav_odds_band": "1.3-1.6",
     "confidence": 69.0,
-    "odds": 1.37,
+    "odds": 1.33,
     "odds_source": "BetExplorer",
     "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
@@ -382,13 +466,12 @@
     "_surface": "Hard",
     "pred_confidence": "Low",
     "cross_source_agree": "Disagree",
-    "fav_odds_band": "1.6-2.0",
+    "fav_odds_band": "1.1-1.3",
     "confidence": 52.0,
-    "odds": 2.1,
+    "odds": 4.13,
     "odds_source": "TheOddsAPI",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
     "missing_dims": [
-      "fav_odds_band=1.6-2.0!=1.3-1.6",
       "cross_source_agree=Disagree!=Both"
     ]
   },
@@ -402,77 +485,7 @@
     "cross_source_agree": "Both",
     "fav_odds_band": "1.3-1.6",
     "confidence": 66.0,
-    "odds": 1.51,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "pred_confidence=Medium!=Low"
-    ]
-  },
-  {
-    "match": "Jessica Pieri vs Aneta Kucmova",
-    "kickoff": "10:30",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Low",
-    "cross_source_agree": "Disagree",
-    "fav_odds_band": "1.6-2.0",
-    "confidence": 54.0,
-    "odds": 2.0,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "fav_odds_band=1.6-2.0!=1.3-1.6",
-      "cross_source_agree=Disagree!=Both"
-    ]
-  },
-  {
-    "match": "Lina Gjorcheska vs Ayla Aksu",
-    "kickoff": "17:00",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Low",
-    "cross_source_agree": "Disagree",
-    "fav_odds_band": "1.6-2.0",
-    "confidence": 54.0,
-    "odds": 1.9,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "fav_odds_band=1.6-2.0!=1.3-1.6",
-      "cross_source_agree=Disagree!=Both"
-    ]
-  },
-  {
-    "match": "Aliona Falei vs Fangran Tian",
-    "kickoff": "12:00",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.3-1.6",
-    "confidence": 65.0,
-    "odds": 1.52,
-    "odds_source": "BetExplorer",
-    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
-    "missing_dims": [
-      "pred_confidence=Medium!=Low"
-    ]
-  },
-  {
-    "match": "Yuki Naito vs Julia Avdeeva",
-    "kickoff": "10:30",
-    "tour": "WTA",
-    "_series": "International",
-    "_surface": "Hard",
-    "pred_confidence": "Medium",
-    "cross_source_agree": "Both",
-    "fav_odds_band": "1.3-1.6",
-    "confidence": 69.0,
-    "odds": 1.51,
+    "odds": 1.49,
     "odds_source": "BetExplorer",
     "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
@@ -489,7 +502,7 @@
     "cross_source_agree": "Both",
     "fav_odds_band": "1.6-2.0",
     "confidence": 61.0,
-    "odds": 1.62,
+    "odds": 1.63,
     "odds_source": "BetExplorer",
     "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
     "missing_dims": [
