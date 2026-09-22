@@ -1,13 +1,13 @@
 {
   "status": "merged",
-  "baseline_rows": 5000,
-  "fresh_rows": 5206,
-  "shared_keys": 4931,
-  "new_from_fresh": 275,
-  "baseline_only": 69,
-  "settlement_updates": 13,
-  "live_rows_from_fresh": 61,
-  "dim_drift_rows": 1147,
+  "baseline_rows": 5275,
+  "fresh_rows": 5365,
+  "shared_keys": 5142,
+  "new_from_fresh": 223,
+  "baseline_only": 133,
+  "settlement_updates": 23,
+  "live_rows_from_fresh": 0,
+  "dim_drift_rows": 1165,
   "dim_drift_examples": [
     {
       "key": "2026-09-12|CHALLENGER||sheltonb||tiafoef",
@@ -70,9 +70,9 @@
       "fresh": "player_a"
     }
   ],
-  "merged_rows": 5275,
-  "generated_at": "2026-09-22T14:07:50.939963+00:00",
-  "baseline_sha256": "a9692624d5dd81488bfd2ad7af41e9a57e52f56cb212451e66891d6a7b24a2bb",
-  "fresh_sha256": "18f5b4c621ab7639157461f00410035520f91cfa1b7b52f954e1c9a672ab6633",
-  "merged_sha256": "811fe3386bcebfb7c7cfe45903945484cc8421435437f9168335861cc0f4745c"
+  "merged_rows": 5498,
+  "generated_at": "2026-09-22T22:06:57.355913+00:00",
+  "baseline_sha256": "811fe3386bcebfb7c7cfe45903945484cc8421435437f9168335861cc0f4745c",
+  "fresh_sha256": "1a7db62eb563c59d0e3ff2d069abc58dfa6b7047a55d709b9633a6fe5592066e",
+  "merged_sha256": "46b8d24facf3efb4dc4e05eef38c1b3056792013779e656282e39fd1713c1ae9"
 }
