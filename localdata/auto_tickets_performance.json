@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-22T08:08:16",
+  "generated_at": "2026-09-22T16:09:06",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 145.90257599999998,
@@ -313,6 +313,17 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-22",
+                "score": "6-4 6-2",
+                "winner": "Timofeeva M.",
+                "result_id": "3329892.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-22 6-4 6-2",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 88.41,
               "context_used": "WTA Porto Prediction",
@@ -369,19 +380,19 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Porto Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-22",
-                "score": ""
-              }
+              "tournament": "WTA Porto Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-22",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 88.41,
               "context_used": "WTA Porto Prediction",
@@ -438,13 +449,7 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Porto Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-22",
-                "score": ""
-              }
+              "tournament": "WTA Porto Prediction"
             }
           ],
           "odds": 1.64,
@@ -459,6 +464,17 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-22",
+                "score": "6-2 6-4",
+                "winner": "Cengiz B.",
+                "result_id": "3328905.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "LOST",
+              "_settle_reason": "settled from Challenger_results 2026-09-22 6-2 6-4",
               "bucket": "WATCHLIST",
               "confidence": 73.0,
               "context_used": "WTA Ankara Prediction",
@@ -515,19 +531,19 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ankara Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-22",
-                "score": ""
-              }
+              "tournament": "WTA Ankara Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-22",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 85.0,
               "context_used": "WTA Ankara Prediction",
@@ -584,13 +600,7 @@
               "source_count": 3,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ankara Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-22",
-                "score": ""
-              }
+              "tournament": "WTA Ankara Prediction"
             }
           ],
           "odds": 1.99,
@@ -605,6 +615,12 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-22",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 71.0,
               "context_used": "WTA Porto Prediction",
@@ -661,19 +677,24 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Porto Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-22",
-                "score": ""
-              }
+              "tournament": "WTA Porto Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-22",
+                "score": "6-2 6-4",
+                "winner": "Jorda Sanchis D.",
+                "result_id": "3327862.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "LOST",
+              "_settle_reason": "settled from Challenger_results 2026-09-22 6-2 6-4",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 77.0,
               "context_used": "Challenger Saint-Tropez Prediction",
@@ -730,13 +751,7 @@
               "source_count": 4,
               "surface": "Grass",
               "tour": "CHALLENGER",
-              "tournament": "Challenger Saint-Tropez Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-22",
-                "score": ""
-              }
+              "tournament": "Challenger Saint-Tropez Prediction"
             }
           ],
           "odds": 2.0,
@@ -751,6 +766,12 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-22",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 77.0,
               "context_used": "Challenger Saint-Tropez Prediction",
@@ -807,19 +828,19 @@
               "source_count": 4,
               "surface": "Grass",
               "tour": "CHALLENGER",
-              "tournament": "Challenger Saint-Tropez Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-22",
-                "score": ""
-              }
+              "tournament": "Challenger Saint-Tropez Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-22",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 77.0,
               "context_used": "Challenger Saint-Tropez Prediction",
@@ -876,13 +897,7 @@
               "source_count": 4,
               "surface": "Grass",
               "tour": "CHALLENGER",
-              "tournament": "Challenger Saint-Tropez Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-22",
-                "score": ""
-              }
+              "tournament": "Challenger Saint-Tropez Prediction"
             }
           ],
           "odds": 1.93,

@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-23
 ============================================================
-Generated at: 2026-09-22 08:07:55
-Snapshot as of: 2026-09-22T08:01:46+02:00
+Generated at: 2026-09-22 16:08:38
+Snapshot as of: 2026-09-22T16:02:19+02:00
 Ledger kind: forecast
 
 
@@ -15,7 +15,7 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  [no_slice_export] Noemi Basiletti vs Mia Ristic              KO 09:00 -> MIA RISTIC  conf 63% @1.68  EV +0.06u
+  [no_slice_export] Noemi Basiletti vs Mia Ristic              KO 09:00 -> MIA RISTIC  conf 63% @1.74  EV +0.10u
      bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
@@ -28,7 +28,9 @@ WATCHLIST — NO MATCHED ODDS
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
   [no_slice_export] Dilek / Mert vs Haverlag / Kubka           KO 09:00 -> HAVERLAG / KUBKA  conf 89% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
-  [no_slice_export] Serban / Struplova vs Fossa Huergo / Herre KO 09:00 -> FOSSA HUERGO / HERRERO LINANA  conf 73% @n/a
+  [no_slice_export] Talia Gibson vs Amanda Anisimova           KO 04:00 -> AMANDA ANISIMOVA  conf 85% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Detiuc / Khromacheva vs Preston / Tararude KO 07:00 -> DETIUC / KHROMACHEVA  conf 75% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
@@ -37,10 +39,7 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  [no_slice_export] Talia Gibson vs Amanda Anisimova           KO 04:00 -> AMANDA ANISIMOVA  conf 85% @1.25  EV +0.06u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Garland / Hsieh vs Mihalikova / Nicholls   KO 05:00 -> MIHALIKOVA / NICHOLLS  conf 83% @1.30  EV +0.08u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  (none)
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================

@@ -3099,10 +3099,15 @@
               "_selection_basis": "prediction",
               "_settle_basis": {
                 "match_date": "2026-09-22",
-                "score": ""
+                "result_id": "3329892.0",
+                "score": "6-4 6-2",
+                "source": "Challenger_results",
+                "status": "",
+                "tournament": "",
+                "winner": "Timofeeva M."
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-22 6-4 6-2",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 88.41,
               "context_used": "WTA Porto Prediction",
@@ -3245,10 +3250,15 @@
               "_selection_basis": "prediction",
               "_settle_basis": {
                 "match_date": "2026-09-22",
-                "score": ""
+                "result_id": "3328905.0",
+                "score": "6-2 6-4",
+                "source": "Challenger_results",
+                "status": "",
+                "tournament": "",
+                "winner": "Cengiz B."
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "LOST",
+              "_settle_reason": "settled from Challenger_results 2026-09-22 6-2 6-4",
               "bucket": "WATCHLIST",
               "confidence": 73.0,
               "context_used": "WTA Ankara Prediction",
@@ -3460,10 +3470,15 @@
               "_selection_basis": "prediction",
               "_settle_basis": {
                 "match_date": "2026-09-22",
-                "score": ""
+                "result_id": "3327862.0",
+                "score": "6-2 6-4",
+                "source": "Challenger_results",
+                "status": "",
+                "tournament": "",
+                "winner": "Jorda Sanchis D."
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "LOST",
+              "_settle_reason": "settled from Challenger_results 2026-09-22 6-2 6-4",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 77.0,
               "context_used": "Challenger Saint-Tropez Prediction",
