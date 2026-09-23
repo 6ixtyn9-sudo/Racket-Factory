@@ -60,13 +60,13 @@
     "oddsportal_upcoming_rows": 0
   },
   "2026-09-24": {
-    "betexplorer_rows": 248,
-    "checked_at": "2026-09-23T14:08:09.117973+00:00",
+    "betexplorer_rows": 279,
+    "checked_at": "2026-09-23T22:07:59.079116+00:00",
     "cross_checked": {
-      "single": 248
+      "single": 279
     },
     "errors": {},
-    "merged_rows": 248,
+    "merged_rows": 279,
     "oddsportal_upcoming_rows": 0
   }
 }
