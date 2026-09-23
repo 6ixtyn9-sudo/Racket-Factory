@@ -1,17 +1,17 @@
 Racket Factory Auto Tickets — 2026-09-23
-Generated at: 2026-09-23T00:01:50+02:00
-Bank: 145.90% (cycle base 100.00%)
+Generated at: 2026-09-23T08:02:13+02:00
+Bank: 124.38% (cycle base 100.00%)
 Take profit target: 200.00%
 
 Strategy: strengths-focused, avoid super short odds (min leg 1.3, min acca 1.5), 4 accas max per track, NO SINGLES
 Stake: 25% of bank per day (priced track only; paper is hit-rate only)
 
-ACCA 1 [value_2leg_mutual] — Odds 2.35 — Stake 18.24%
-  - Sebastian Baez vs Jenson Brooksby -> Jenson Brooksby @ 1.59 (conf 73.68 ml 0.45 BOOST src BetClan odds_src BetExplorer)
-  - Elena Pridankina vs Ksenia Zaytseva -> Elena Pridankina @ 1.48 (conf 71.0 ml 0.25 ALLOW src BetClan odds_src BetExplorer)
+ACCA 1 [value_2leg_mutual] — Odds 1.88 — Stake 15.55%
+  - Elena Pridankina vs Ksenia Zaytseva -> Elena Pridankina @ 1.48 (conf 71.0 ml 0.65 BOOST src BetClan odds_src BetExplorer)
+  - Berfu Cengiz vs Aysegul Mert -> Berfu Cengiz @ 1.27 (conf 88.41 ml 0.65 BOOST src BetClan odds_src BetExplorer)
 
-ACCA 2 [value_2leg_mutual] — Odds 3.69 — Stake 18.24%
-  - Valentin Royer vs Adam Walton -> Valentin Royer @ 1.91 (conf 57.0 ml 0.2 ALLOW src BetClan odds_src BetExplorer)
-  - Aleksandar Vukic vs Kyrian Jacquet -> Aleksandar Vukic @ 1.93 (conf 55.0 ml 0.2 ALLOW src BetClan odds_src BetExplorer)
+ACCA 2 [value_2leg_mutual] — Odds 2.62 — Stake 15.55%
+  - Valentin Royer vs Adam Walton -> Valentin Royer @ 1.93 (conf 57.0 ml 0.4 BOOST src BetClan odds_src BetExplorer)
+  - Weronika Falkowska vs Polina Iatcenko -> Polina Iatcenko @ 1.36 (conf 76.0 ml 0.65 BOOST src BetClan odds_src BetExplorer)
 
-Total staked: 36.48% of bank
+Total staked: 31.10% of bank

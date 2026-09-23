@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-24
 ============================================================
-Generated at: 2026-09-23 00:07:14
-Snapshot as of: 2026-09-23T00:01:50+02:00
+Generated at: 2026-09-23 08:09:15
+Snapshot as of: 2026-09-23T08:02:13+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,10 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Ciric Bagaric / Pigossi vs Chiesa / Tubell KO 12:00 -> CIRIC BAGARIC / PIGOSSI  conf 76% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Zhizhen Zhang vs Coleman Wong              KO 05:00 -> COLEMAN WONG  conf 63% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
