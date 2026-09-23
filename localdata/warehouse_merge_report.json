@@ -1,78 +1,78 @@
 {
   "status": "merged",
-  "baseline_rows": 5498,
-  "fresh_rows": 5468,
-  "shared_keys": 5364,
-  "new_from_fresh": 104,
-  "baseline_only": 134,
-  "settlement_updates": 4,
-  "live_rows_from_fresh": 32,
-  "dim_drift_rows": 1350,
+  "baseline_rows": 5602,
+  "fresh_rows": 5734,
+  "shared_keys": 5467,
+  "new_from_fresh": 267,
+  "baseline_only": 135,
+  "settlement_updates": 102,
+  "live_rows_from_fresh": 41,
+  "dim_drift_rows": 1401,
   "dim_drift_examples": [
     {
-      "key": "2026-09-12|CHALLENGER||sheltonb||tiafoef",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
+      "key": "2026-09-09|ATP|US Open|alexanderblockx||karenkhachanov",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": ""
     },
     {
-      "key": "2026-09-12|CHALLENGER||blinkovaa||jacquemote",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-11|CHALLENGER||blanchetu||masurd",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-11|CHALLENGER||bertrandr||lajalm",
+      "key": "2026-09-14|WTA|WTA Guadalajara Open|carolinedolehide||renatazarazua",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_b"
     },
     {
-      "key": "2026-09-11|CHALLENGER||budkovkjaern||echarguim",
+      "key": "2026-09-14|WTA|WTA Guadalajara Open|magdalenafrech||naohibino",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_a"
     },
     {
-      "key": "2026-09-11|CHALLENGER||droguett||glinkad",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-11|CHALLENGER||aboianv||martinezp",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-11|CHALLENGER||djerel||sakellaridiss",
+      "key": "2026-09-14|WTA|WTA Guadalajara Open|carolemonnet||sloanestephens",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_b"
     },
     {
-      "key": "2026-09-11|CHALLENGER||dallavallee||dodigm",
+      "key": "2026-09-14|WTA|WTA Guadalajara Open|tatjanamaria||taylortownsend",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-11|UNKNOWN||gauffc||rybakinae",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_a"
     },
     {
-      "key": "2026-09-11|CHALLENGER||kuzmanovd||mayoth",
+      "key": "2026-09-14||WTA Guadalajara - 1/16-finals|cdolehide||rzarazua",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-14||WTA Guadalajara - 1/16-finals|tmaria||ttownsend",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-14||WTA Guadalajara - 1/16-finals|cmonnet||sstephens",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-11|WTA|WTA US Open - Semi-finals|gauffc||rybakinae",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_a"
     }
   ],
-  "merged_rows": 5602,
-  "generated_at": "2026-09-23T06:08:41.069266+00:00",
-  "baseline_sha256": "46b8d24facf3efb4dc4e05eef38c1b3056792013779e656282e39fd1713c1ae9",
-  "fresh_sha256": "823bbd6fe27954c7ec3462e9c6a644b8544f087fe7fc92a62499b5b8c04d537c",
-  "merged_sha256": "4c90e2d0a7dfd21ffdb814a6b924e92002d2b3af00ac33292d11bbc1a95b2f84"
+  "merged_rows": 5869,
+  "generated_at": "2026-09-23T14:07:43.006856+00:00",
+  "baseline_sha256": "4c90e2d0a7dfd21ffdb814a6b924e92002d2b3af00ac33292d11bbc1a95b2f84",
+  "fresh_sha256": "1dff7dcec889fd231881fafb6349980928d33615fa7bda7329bf72ed1fb3e278",
+  "merged_sha256": "fc06ca4eb17b5d90350d4a15db7222c9135e2d44c622e102fbeb6a33a4468fa5"
 }

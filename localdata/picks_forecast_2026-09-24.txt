@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-24
 ============================================================
-Generated at: 2026-09-23 08:09:15
-Snapshot as of: 2026-09-23T08:02:13+02:00
+Generated at: 2026-09-23 16:08:09
+Snapshot as of: 2026-09-23T16:01:55+02:00
 Ledger kind: forecast
 
 
@@ -15,7 +15,8 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  (none)
+  [no_slice_export] Samira De Stefano vs Oksana Selekhmeteva   KO 09:00 -> SAMIRA DE STEFANO  conf 65% @1.65  EV +0.07u
+     bucket=WATCHLIST  tour=WTA  series=International  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
 ============================================================
@@ -23,8 +24,6 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  [no_slice_export] Ciric Bagaric / Pigossi vs Chiesa / Tubell KO 12:00 -> CIRIC BAGARIC / PIGOSSI  conf 76% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
   [no_slice_export] Zhizhen Zhang vs Coleman Wong              KO 05:00 -> COLEMAN WONG  conf 63% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 

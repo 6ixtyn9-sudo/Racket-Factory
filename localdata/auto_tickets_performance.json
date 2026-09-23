@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-09-23T08:09:57",
+  "generated_at": "2026-09-23T16:08:38",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
-  "bank_pct": 124.38197199999999,
-  "multiple": 1.2438197199999999,
+  "bank_pct": 149.569246,
+  "multiple": 1.49569246,
   "cycle_base_pct": 100.0,
   "next_take_profit_pct": 200.0,
-  "bet_days": 13,
+  "bet_days": 14,
   "accas": {
-    "wins": 9,
+    "wins": 10,
     "losses": 10
   },
   "paper_accas": {
@@ -305,6 +305,8 @@
       "staked_pct": 0
     },
     {
+      "date": "2026-09-23",
+      "generated_at": "2026-09-23T08:02:13+02:00",
       "accas": [
         {
           "legs": [
@@ -313,6 +315,12 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-23",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 71.0,
               "context_used": "WTA Ankara Prediction",
@@ -369,19 +377,19 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ankara Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-23",
-                "score": ""
-              }
+              "tournament": "WTA Ankara Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-23",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 88.41,
               "context_used": "WTA Ankara Prediction",
@@ -438,170 +446,17 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "WTA",
-              "tournament": "WTA Ankara Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-23",
-                "score": ""
-              }
+              "tournament": "WTA Ankara Prediction"
             }
           ],
           "odds": 1.88,
           "paper": false,
           "stake_pct": 15.5477,
           "type": "value_2leg_mutual"
-        },
-        {
-          "legs": [
-            {
-              "_is_paper": false,
-              "_market_basis": "api",
-              "_regime": "genesis-2026-09-20",
-              "_selection_basis": "prediction",
-              "bucket": "WATCHLIST",
-              "confidence": 57.0,
-              "context_used": "ATP Hangzhou Prediction",
-              "cross_source_agree": "Both",
-              "date": "2026-09-23",
-              "edge_dims": 3,
-              "edge_grade": "SILVER",
-              "edge_n": 35,
-              "edge_tier": "BANKER",
-              "edge_verdict": "WATCHLIST",
-              "expected_value": 0.10009999999999986,
-              "kickoff": "12:30",
-              "match": "Valentin Royer vs Adam Walton",
-              "match_time": "12:30",
-              "ml_boost_reasons": [
-                "Both sources agree",
-                "4 sources"
-              ],
-              "ml_calibrated_prob": 0.6655,
-              "ml_ev": 0.2844,
-              "ml_fair_odds": 1.5,
-              "ml_odds_answer": {
-                "edge_pct": 28.44,
-                "ev": 0.2844,
-                "explanation": "Odds 1.93 HIGH value vs fair 1.50 (prob 67%), EV +28.4%, edge +28.4%",
-                "fair_odds": 1.5,
-                "verdict": "HIGH_VALUE"
-              },
-              "ml_strength_score": 0.4,
-              "ml_verdict": "BOOST",
-              "ml_veto_reasons": [
-                "source BetClan CAUTION"
-              ],
-              "ml_w_score": 1.0,
-              "odds": 1.93,
-              "odds_bookmaker": "BetExplorer consensus",
-              "odds_cross_checked": "",
-              "odds_reject_reason": null,
-              "odds_source": "BetExplorer",
-              "oddsportal_matched_market": "",
-              "pick": "WATCHLIST",
-              "player_away": "Adam Walton",
-              "player_home": "Valentin Royer",
-              "pred_confidence": "Low",
-              "roi_estimate": "21.85%",
-              "selected_player": "Valentin Royer",
-              "selected_side": "player_a",
-              "series": "ATP250",
-              "slice_matched": "tour:ATP | _surface:Hard | cross_source_agree:Both",
-              "slice_shrunk": "79.49%",
-              "slice_winrate": "82.86%",
-              "source": "BetClan",
-              "source_count": 4,
-              "surface": "Hard",
-              "tour": "ATP",
-              "tournament": "ATP Hangzhou Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-23",
-                "score": ""
-              }
-            },
-            {
-              "_is_paper": false,
-              "_market_basis": "api",
-              "_regime": "genesis-2026-09-20",
-              "_selection_basis": "prediction",
-              "bucket": "WATCHLIST",
-              "confidence": 76.0,
-              "context_used": "WTA Ankara Prediction",
-              "cross_source_agree": "Both",
-              "date": "2026-09-23",
-              "edge_dims": 3,
-              "edge_grade": "SILVER",
-              "edge_n": 115,
-              "edge_tier": "BANKER",
-              "edge_verdict": "WATCHLIST",
-              "expected_value": 0.033600000000000074,
-              "kickoff": "11:00",
-              "match": "Weronika Falkowska vs Polina Iatcenko",
-              "match_time": "11:00",
-              "ml_boost_reasons": [
-                "Both sources agree",
-                "4 sources",
-                "High conf 76%"
-              ],
-              "ml_calibrated_prob": 0.7557,
-              "ml_ev": 0.0278,
-              "ml_fair_odds": 1.32,
-              "ml_odds_answer": {
-                "edge_pct": 2.78,
-                "ev": 0.0278,
-                "explanation": "Odds 1.36 value vs fair 1.32, EV +2.8%",
-                "fair_odds": 1.32,
-                "verdict": "VALUE"
-              },
-              "ml_strength_score": 0.65,
-              "ml_verdict": "BOOST",
-              "ml_veto_reasons": [
-                "source BetClan CAUTION"
-              ],
-              "ml_w_score": 1.0,
-              "odds": 1.36,
-              "odds_bookmaker": "BetExplorer consensus",
-              "odds_cross_checked": "",
-              "odds_reject_reason": null,
-              "odds_source": "BetExplorer",
-              "oddsportal_matched_market": "",
-              "pick": "WATCHLIST",
-              "player_away": "Polina Iatcenko",
-              "player_home": "Weronika Falkowska",
-              "pred_confidence": "High",
-              "roi_estimate": "7.37%",
-              "selected_player": "Polina Iatcenko",
-              "selected_side": "player_b",
-              "series": "International",
-              "slice_matched": "_surface:Hard | pred_confidence:High | cross_source_agree:Both",
-              "slice_shrunk": "76.47%",
-              "slice_winrate": "77.39%",
-              "source": "BetClan",
-              "source_count": 4,
-              "surface": "Hard",
-              "tour": "WTA",
-              "tournament": "WTA Ankara Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-23",
-                "score": ""
-              }
-            }
-          ],
-          "odds": 2.62,
-          "paper": false,
-          "stake_pct": 15.5477,
-          "type": "value_2leg_mutual"
         }
       ],
-      "date": "2026-09-23",
-      "generated_at": "2026-09-23T08:02:13+02:00",
-      "stake_per_acca_pct": 15.5477,
-      "staked_pct": 31.0955
+      "staked_pct": 15.5477,
+      "stake_per_acca_pct": 15.5477
     }
   ],
   "events": [],
@@ -4050,6 +3905,180 @@
       "pnl_pct": -21.520604,
       "return_pct": 14.954996,
       "staked_pct": 36.4756
+    },
+    {
+      "date": "2026-09-23",
+      "staked_pct": 15.5477,
+      "return_pct": 40.734974,
+      "pnl_pct": 25.187274000000002,
+      "bank_pct": 149.569246,
+      "paper_staked_pct": 0.0,
+      "paper_return_pct": 0.0,
+      "paper_pnl_pct": 0.0,
+      "paper_bank_pct": 100.0,
+      "accas": [
+        {
+          "odds": 2.62,
+          "won": true,
+          "stake_pct": 15.5477,
+          "return_pct": 40.734974,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "_is_paper": false,
+              "_market_basis": "api",
+              "_regime": "genesis-2026-09-20",
+              "_selection_basis": "prediction",
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-23",
+                "score": "6-3 6-4",
+                "winner": "Royer V.",
+                "result_id": "3329369.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-23 6-3 6-4",
+              "bucket": "WATCHLIST",
+              "confidence": 57.0,
+              "context_used": "ATP Hangzhou Prediction",
+              "cross_source_agree": "Both",
+              "date": "2026-09-23",
+              "edge_dims": 3,
+              "edge_grade": "SILVER",
+              "edge_n": 35,
+              "edge_tier": "BANKER",
+              "edge_verdict": "WATCHLIST",
+              "expected_value": 0.10009999999999986,
+              "kickoff": "12:30",
+              "match": "Valentin Royer vs Adam Walton",
+              "match_time": "12:30",
+              "ml_boost_reasons": [
+                "Both sources agree",
+                "4 sources"
+              ],
+              "ml_calibrated_prob": 0.6655,
+              "ml_ev": 0.2844,
+              "ml_fair_odds": 1.5,
+              "ml_odds_answer": {
+                "edge_pct": 28.44,
+                "ev": 0.2844,
+                "explanation": "Odds 1.93 HIGH value vs fair 1.50 (prob 67%), EV +28.4%, edge +28.4%",
+                "fair_odds": 1.5,
+                "verdict": "HIGH_VALUE"
+              },
+              "ml_strength_score": 0.4,
+              "ml_verdict": "BOOST",
+              "ml_veto_reasons": [
+                "source BetClan CAUTION"
+              ],
+              "ml_w_score": 1.0,
+              "odds": 1.93,
+              "odds_bookmaker": "BetExplorer consensus",
+              "odds_cross_checked": "",
+              "odds_reject_reason": null,
+              "odds_source": "BetExplorer",
+              "oddsportal_matched_market": "",
+              "pick": "WATCHLIST",
+              "player_away": "Adam Walton",
+              "player_home": "Valentin Royer",
+              "pred_confidence": "Low",
+              "roi_estimate": "21.85%",
+              "selected_player": "Valentin Royer",
+              "selected_side": "player_a",
+              "series": "ATP250",
+              "slice_matched": "tour:ATP | _surface:Hard | cross_source_agree:Both",
+              "slice_shrunk": "79.49%",
+              "slice_winrate": "82.86%",
+              "source": "BetClan",
+              "source_count": 4,
+              "surface": "Hard",
+              "tour": "ATP",
+              "tournament": "ATP Hangzhou Prediction"
+            },
+            {
+              "_is_paper": false,
+              "_market_basis": "api",
+              "_regime": "genesis-2026-09-20",
+              "_selection_basis": "prediction",
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-23",
+                "score": "6-3 6-4",
+                "winner": "Iatcenko P.",
+                "result_id": "3330874.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-23 6-3 6-4",
+              "bucket": "WATCHLIST",
+              "confidence": 76.0,
+              "context_used": "WTA Ankara Prediction",
+              "cross_source_agree": "Both",
+              "date": "2026-09-23",
+              "edge_dims": 3,
+              "edge_grade": "SILVER",
+              "edge_n": 115,
+              "edge_tier": "BANKER",
+              "edge_verdict": "WATCHLIST",
+              "expected_value": 0.033600000000000074,
+              "kickoff": "11:00",
+              "match": "Weronika Falkowska vs Polina Iatcenko",
+              "match_time": "11:00",
+              "ml_boost_reasons": [
+                "Both sources agree",
+                "4 sources",
+                "High conf 76%"
+              ],
+              "ml_calibrated_prob": 0.7557,
+              "ml_ev": 0.0278,
+              "ml_fair_odds": 1.32,
+              "ml_odds_answer": {
+                "edge_pct": 2.78,
+                "ev": 0.0278,
+                "explanation": "Odds 1.36 value vs fair 1.32, EV +2.8%",
+                "fair_odds": 1.32,
+                "verdict": "VALUE"
+              },
+              "ml_strength_score": 0.65,
+              "ml_verdict": "BOOST",
+              "ml_veto_reasons": [
+                "source BetClan CAUTION"
+              ],
+              "ml_w_score": 1.0,
+              "odds": 1.36,
+              "odds_bookmaker": "BetExplorer consensus",
+              "odds_cross_checked": "",
+              "odds_reject_reason": null,
+              "odds_source": "BetExplorer",
+              "oddsportal_matched_market": "",
+              "pick": "WATCHLIST",
+              "player_away": "Polina Iatcenko",
+              "player_home": "Weronika Falkowska",
+              "pred_confidence": "High",
+              "roi_estimate": "7.37%",
+              "selected_player": "Polina Iatcenko",
+              "selected_side": "player_b",
+              "series": "International",
+              "slice_matched": "_surface:Hard | pred_confidence:High | cross_source_agree:Both",
+              "slice_shrunk": "76.47%",
+              "slice_winrate": "77.39%",
+              "source": "BetClan",
+              "source_count": 4,
+              "surface": "Hard",
+              "tour": "WTA",
+              "tournament": "WTA Ankara Prediction"
+            }
+          ],
+          "paper": false,
+          "refunded": false,
+          "unpriced": false
+        }
+      ],
+      "partial": true,
+      "pending_accas": 1
     }
   ]
 }
