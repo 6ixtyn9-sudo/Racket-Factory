@@ -336,3 +336,50 @@ def test_write_markdown_full_coverage_group_lines(tmp_path, monkeypatch):
     assert "## Ledger reconciliation" in text
     assert "WATCHLIST_NO_ODDS" in text
     assert "total=1, settled=0, wins=0, hit_rate=None, ROI=None, pending=1" in text
+
+
+def test_audit_rows_persist_edge_labels(tmp_path, monkeypatch):
+    """edge_grade/edge_tier/edge_verdict ride along on every audit row path
+    (settled, pending, same-day-excluded) into picks_audit_history.json, so
+    tier cohorts survive retention pruning of the daily pick files. A pick
+    without labels gets none (nothing invented, old rows need no backfill)."""
+    import scripts.audit_recent_picks as arp
+
+    monkeypatch.setattr(arp, "LOCALDATA", tmp_path)
+    monkeypatch.setattr(arp, "HISTORY_PATH", tmp_path / "picks_audit_history.json")
+    monkeypatch.setattr(arp, "local_today", lambda: "2026-09-21")
+
+    def pick(day, home, away, **labels):
+        return {"date": day, "match": f"{home} vs {away}", "player_home": home,
+                "player_away": away, "selected_player": home, "tour": "ATP",
+                "bucket": "WATCHLIST", "odds": 1.8, **labels}
+
+    gold = {"edge_grade": "GOLD", "edge_tier": "BANKER", "edge_verdict": "EDGE CONFIRMED"}
+    silver = {"edge_grade": "SILVER", "edge_tier": "WATCHLIST_ONLY", "edge_verdict": "WATCHLIST"}
+    (tmp_path / "picks_2026-09-20.json").write_text(json.dumps([
+        pick("2026-09-20", "Alpha One", "Beta Two", **gold),        # settles WON
+        pick("2026-09-20", "Gamma Three", "Delta Four", **silver),  # no result
+        pick("2026-09-20", "Eps Five", "Zeta Six", edge_grade=float("nan")),
+    ]))
+    (tmp_path / "picks_2026-09-21.json").write_text(json.dumps([
+        pick("2026-09-21", "Eta Seven", "Theta Eight", **gold),     # same day
+    ]))
+    warehouse = tmp_path / "warehouse.csv"
+    warehouse.write_text(
+        "player_a,player_b,winner,score,match_date,source\n"
+        "Alpha One,Beta Two,Alpha One,2-0 6-3 6-4,2026-09-20,test\n"
+    )
+
+    report = arp.build_report("2026-09-20", "2026-09-21", warehouse)
+
+    fields = ("edge_grade", "edge_tier", "edge_verdict")
+    history = json.loads(arp.HISTORY_PATH.read_text())
+    for rows in (history, report["all_picks"]):
+        by_match = {r["match"]: r for r in rows}
+        assert by_match["Alpha One vs Beta Two"]["status"] == "won"
+        assert {k: by_match["Alpha One vs Beta Two"][k] for k in fields} == gold
+        assert by_match["Gamma Three vs Delta Four"]["status"] == "pending_no_result"
+        assert {k: by_match["Gamma Three vs Delta Four"][k] for k in fields} == silver
+        assert by_match["Eta Seven vs Theta Eight"]["status"] == "pending_same_day_excluded"
+        assert by_match["Eta Seven vs Theta Eight"]["edge_tier"] == "BANKER"
+        assert not set(fields) & set(by_match["Eps Five vs Zeta Six"])
