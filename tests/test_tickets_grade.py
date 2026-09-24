@@ -74,3 +74,41 @@ def test_odds_trust_rules():
                                   "odds_reject_reason": "missing selected-side odds"})
     assert not _leg_odds_trusted({"odds": 2.05, "odds_source": ""})
     assert not _leg_odds_trusted({"odds": 1.0, "odds_source": "X"})
+
+
+def test_performance_merges_partial_history_passes(tmp_path, monkeypatch):
+    """A bet-day settled across several grading passes shows every acca.
+
+    Regression: 2026-09-23 settled in two passes — the @2.62 acca banked into
+    a "partial" history entry, the @1.88 acca settled the next run — and the
+    report kept only the newest history entry per date, so the day showed a
+    lone @1.88L and hid the @2.62W (while the bank already included it).
+    """
+    import auto_tickets_grade as g
+    monkeypatch.setattr(g, "LOCALDATA", tmp_path)
+    state = {
+        "bank": 120.0, "base_pct": 100.0, "cycle_base": 100.0,
+        "paper_bank": 100.0, "open_slips": [], "events": [],
+        "history": [
+            {"date": "2026-09-22", "bank_pct": 110.0, "accas": [
+                {"odds": 1.9, "won": True, "stake_pct": 10.0, "paper": False, "legs": []},
+            ]},
+            # 2026-09-23 settles over two passes: partial first, final later
+            {"date": "2026-09-23", "bank_pct": 134.0, "partial": True,
+             "pending_accas": 1, "accas": [
+                 {"odds": 2.62, "won": True, "stake_pct": 15.55, "paper": False, "legs": []},
+             ]},
+            {"date": "2026-09-23", "bank_pct": 120.0, "accas": [
+                {"odds": 1.88, "won": False, "stake_pct": 15.55, "paper": False, "legs": []},
+            ]},
+        ],
+    }
+    g.write_performance(state)
+    txt = (tmp_path / "auto_tickets_performance.txt").read_text()
+    day_lines = [ln for ln in txt.splitlines() if "2026-09-23" in ln]
+    assert len(day_lines) == 1                 # one line per bet-day
+    assert "@2.62W @1.88L" in day_lines[0]     # both passes on that line
+    assert "120.0%" in day_lines[0]            # end-of-day bank, not the partial 134.0
+    assert "134.0" not in txt                  # intermediate pass snapshot dropped
+    assert "REAL accas 2W/1L" in txt           # tallies still count every pass once
+

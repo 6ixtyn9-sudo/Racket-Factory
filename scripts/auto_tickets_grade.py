@@ -355,21 +355,29 @@ def write_performance(state):
     paper_bank = state.get("paper_bank")
     paper_pnl_total = round(sum(float(h.get("paper_pnl_pct") or 0) for h in history), 4)
 
-    # Deduplicate history by date for display and counting (avoid 3x 2026-09-13 @0.00W duplicates)
-    seen_dates_all = set()
-    unique_history = []
+    # Merge history by date for display and counting. A bet-day can settle in
+    # several passes: each grading run settles whichever accas have final
+    # results, banks them into a "partial" history entry, and carries the rest
+    # over as a new open slip. Every pass's accas belong to the same bet-day,
+    # so concatenate them and keep the last bank snapshot (end-of-day) instead
+    # of showing only the newest pass (which hid earlier wins/losses, e.g.
+    # 2026-09-23 showed only @1.88L while the @2.62W sat in the partial entry).
+    merged_by_date = {}
+    ordered_dates = []
     for h in history:
         d = h.get("date")
-        if d not in seen_dates_all:
-            seen_dates_all.add(d)
-            unique_history.append(h)
-        else:
-            # Keep latest per date (replace)
-            for i, uh in enumerate(unique_history):
-                if uh.get("date") == d:
-                    unique_history[i] = h
-                    break
-    unique_days = len(seen_dates_all)
+        if d not in merged_by_date:
+            merged_by_date[d] = {"date": d, "accas": [],
+                                 "bank_pct": h.get("bank_pct"), "paper_pnl_pct": 0.0}
+            ordered_dates.append(d)
+        m = merged_by_date[d]
+        m["accas"].extend(h.get("accas", []))
+        if h.get("bank_pct") is not None:
+            m["bank_pct"] = h.get("bank_pct")  # later pass = end-of-day bank
+        if h.get("paper_pnl_pct"):
+            m["paper_pnl_pct"] += float(h["paper_pnl_pct"])
+    unique_history = [merged_by_date[d] for d in ordered_dates]
+    unique_days = len(ordered_dates)
 
     lines = []
     lines.append("AUTO-TICKETS (TENNIS) PERFORMANCE — percentages of capital only")
@@ -386,16 +394,8 @@ def write_performance(state):
     lines.append(f"open slips {len(state.get('open_slips',[]))} · {len(state.get('events',[]))} take-profit notification(s)")
     lines.append("")
     lines.append("--- bet-days (most recent first) ---")
-    # For display, latest 15 unique dates
-    seen = set()
-    deduped = []
-    for h in reversed(history):
-        d = h.get("date")
-        if d not in seen:
-            deduped.append(h)
-            seen.add(d)
-        if len(deduped) >= 15:
-            break
+    # Latest 15 unique bet-days (already merged per date, newest first)
+    deduped = list(reversed(unique_history))[:15]
     for h in deduped:
         def fmt(a):
             try:

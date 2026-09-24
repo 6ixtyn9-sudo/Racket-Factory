@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-24T08:14:01",
+  "generated_at": "2026-09-24T07:52:36",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 134.021546,
@@ -28,13 +28,13 @@
               "_paper_reason": "no trusted market price",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-13",
-                "score": "6-2 6-2",
-                "winner": "Collins K.",
                 "result_id": "3322195.0",
+                "score": "6-2 6-2",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Collins K."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-13 6-2 6-2",
@@ -226,13 +226,13 @@
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
               "_settle_basis": {
-                "source": "Challenger_results",
                 "match_date": "2026-09-20",
-                "score": "6-2 6-4",
-                "winner": "Yashina E.",
                 "result_id": "3327194.0",
+                "score": "6-2 6-4",
+                "source": "Challenger_results",
+                "status": "",
                 "tournament": "",
-                "status": ""
+                "winner": "Yashina E."
               },
               "_settle_outcome": "WON",
               "_settle_reason": "settled from Challenger_results 2026-09-20 6-2 6-4",
@@ -313,6 +313,12 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-24",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 67.11409395973155,
               "context_used": "ATP Chengdu Prediction",
@@ -370,19 +376,19 @@
               "source_count": 5,
               "surface": "Hard",
               "tour": "ATP",
-              "tournament": "ATP Chengdu Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-24",
-                "score": ""
-              }
+              "tournament": "ATP Chengdu Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-24",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 77.23,
               "context_used": "Challenger Saint-Tropez Prediction",
@@ -439,13 +445,7 @@
               "source_count": 4,
               "surface": "Grass",
               "tour": "CHALLENGER",
-              "tournament": "Challenger Saint-Tropez Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-24",
-                "score": ""
-              }
+              "tournament": "Challenger Saint-Tropez Prediction"
             }
           ],
           "odds": 2.07,
@@ -460,6 +460,12 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-24",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 71.9,
               "context_used": "ATP Chengdu Prediction",
@@ -517,19 +523,19 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "ATP",
-              "tournament": "ATP Chengdu Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-24",
-                "score": ""
-              }
+              "tournament": "ATP Chengdu Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-24",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "CERTIFIED_CLEAN",
               "confidence": 73.68,
               "context_used": "ATP Hangzhou MD Prediction",
@@ -587,13 +593,7 @@
               "source_count": 3,
               "surface": "Hard",
               "tour": "ATP",
-              "tournament": "ATP Hangzhou MD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-24",
-                "score": ""
-              }
+              "tournament": "ATP Hangzhou MD Prediction"
             }
           ],
           "odds": 2.29,
