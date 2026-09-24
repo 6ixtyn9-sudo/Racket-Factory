@@ -1,1 +1,74 @@
-[]
+[
+  {
+    "_is_paper": false,
+    "_market_basis": "api",
+    "_regime": "genesis-2026-09-20",
+    "_selection_basis": "prediction",
+    "bucket": "WATCHLIST",
+    "confidence": 71.0,
+    "context_used": "WTA Ankara Prediction | nan | WTA Ankara Prediction | WTA Ankara Prediction",
+    "cross_source_agree": "MarketOnly",
+    "date": "2026-09-25",
+    "edge_dims": 0,
+    "edge_grade": "SILVER",
+    "edge_n": 0,
+    "edge_tier": "BANKER",
+    "edge_verdict": "WATCHLIST",
+    "expected_value": 0.09339999999999998,
+    "forecast_as_of": "2026-09-24T10:57:46+02:00",
+    "forecast_for": "2026-09-25",
+    "forecast_hygiene": {
+      "include_no_odds": true,
+      "include_skipped": false,
+      "max_rows": 30,
+      "min_conf": 60.0,
+      "min_ev": 0.05
+    },
+    "kickoff": "10:00",
+    "ledger_kind": "forecast",
+    "match": "Berfu Cengiz vs Han Shi",
+    "match_time": "10:00",
+    "ml_boost_reasons": [
+      "High conf 71%"
+    ],
+    "ml_calibrated_prob": 0.6697,
+    "ml_ev": 0.0313,
+    "ml_fair_odds": 1.49,
+    "ml_odds_answer": {
+      "edge_pct": 3.13,
+      "ev": 0.0313,
+      "explanation": "Odds 1.54 value vs fair 1.49, EV +3.1%",
+      "fair_odds": 1.49,
+      "verdict": "VALUE"
+    },
+    "ml_strength_score": -0.25,
+    "ml_verdict": "ALLOW",
+    "ml_veto_reasons": [
+      "tour WTA CAUTION",
+      "surface Hard CAUTION",
+      "series International CAUTION",
+      "source BetClan CAUTION"
+    ],
+    "ml_w_score": 1.0,
+    "odds": 1.54,
+    "odds_bookmaker": "",
+    "odds_cross_checked": "single",
+    "odds_reject_reason": null,
+    "odds_source": "BetExplorer",
+    "pick": "WATCHLIST",
+    "picked_for": "2026-09-25",
+    "player_away": "Han Shi",
+    "player_home": "Berfu Cengiz",
+    "pred_confidence": "High",
+    "roi_estimate": "no_slice",
+    "selected_player": "Han Shi",
+    "selected_side": "player_b",
+    "series": "International",
+    "slice_matched": "no_slice_export",
+    "source": "BetClan",
+    "source_count": 1,
+    "surface": "Hard",
+    "tour": "WTA",
+    "tournament": "WTA Ankara Prediction"
+  }
+]

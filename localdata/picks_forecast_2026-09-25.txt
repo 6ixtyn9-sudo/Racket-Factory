@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-25
 ============================================================
-Generated at: 2026-09-24 08:13:00
-Snapshot as of: 2026-09-24T08:01:46+02:00
+Generated at: 2026-09-24 11:02:53
+Snapshot as of: 2026-09-24T10:57:46+02:00
 Ledger kind: forecast
 
 
@@ -15,7 +15,8 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  (none)
+  [no_slice_export] Berfu Cengiz vs Han Shi                    KO 10:00 -> HAN SHI  conf 71% @1.54  EV +0.09u
+     bucket=WATCHLIST  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
 ============================================================

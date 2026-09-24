@@ -11,7 +11,7 @@
     },
     "results:foretennis_results": {
       "status": "OK",
-      "detail": "4 files, 1269 rows, max_date 2026-09-24 (lag 0d, budget 3d)"
+      "detail": "4 files, 1286 rows, max_date 2026-09-24 (lag 0d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "WARN",
@@ -19,7 +19,7 @@
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "1 files, 5453 rows, max_date 2026-09-24 (lag 0d, budget 3d)"
+      "detail": "1 files, 5579 rows, max_date 2026-09-24 (lag 0d, budget 3d)"
     },
     "results:theoddsapi_scores": {
       "status": "WARN",
@@ -27,15 +27,15 @@
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "7237 result rows across all sources"
+      "detail": "7380 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "16 files, 10900 rows, max_date 2026-09-25"
+      "detail": "15 files, 10706 rows, max_date 2026-09-25"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "6188 rows, max_date 2026-09-24"
+      "detail": "6236 rows, max_date 2026-09-24"
     },
     "warehouse:live_rows": {
       "status": "OK",
@@ -43,11 +43,11 @@
     },
     "picks:priced_share": {
       "status": "OK",
-      "detail": "picks_2026-09-24.json: 6/9 priced"
+      "detail": "picks_2026-09-24.json: 8/12 priced"
     },
     "audit:rolling": {
       "status": "OK",
-      "detail": "settled 87 conflicts 0 pending 50"
+      "detail": "settled 93 conflicts 0 pending 42"
     },
     "tickets:bank": {
       "status": "OK",
