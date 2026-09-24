@@ -112,3 +112,72 @@ def test_performance_merges_partial_history_passes(tmp_path, monkeypatch):
     assert "134.0" not in txt                  # intermediate pass snapshot dropped
     assert "REAL accas 2W/1L" in txt           # tallies still count every pass once
 
+
+
+def test_performance_price_band_ledger(tmp_path, monkeypatch):
+    """Staked legs bucketed <1.30 / 1.30-1.59 / 1.60+ with hit% vs breakeven%.
+
+    Paper accas, VOID/unsettled legs, and legs without numeric odds > 1.0
+    are excluded. Partial passes of one bet-day each carry distinct accas,
+    so every leg counts once. Band lower bounds are inclusive.
+    """
+    import json
+    import auto_tickets_grade as g
+    monkeypatch.setattr(g, "LOCALDATA", tmp_path)
+
+    def leg(odds, outcome):
+        out = {"match": "A vs B", "selected_player": "A", "odds": odds}
+        if outcome:
+            out["_settle_outcome"] = outcome
+        return out
+
+    state = {
+        "bank": 110.0, "base_pct": 100.0, "cycle_base": 100.0,
+        "paper_bank": 100.0, "open_slips": [], "events": [],
+        "history": [
+            {"date": "2026-09-20", "bank_pct": 105.0, "accas": [
+                {"odds": 3.3, "won": False, "paper": False, "legs": [
+                    leg(1.25, "WON"), leg(1.29, "LOST"),
+                    leg(1.30, "WON"), leg(1.59, "LOST")]},
+            ]},
+            {"date": "2026-09-21", "bank_pct": 115.0, "partial": True, "accas": [
+                {"odds": 2.3, "won": True, "paper": False, "legs": [
+                    leg("1.45", "WON"), leg(1.60, "WON"), leg(1.80, "VOID")]},
+            ]},
+            {"date": "2026-09-21", "bank_pct": 110.0, "accas": [
+                {"odds": 2.2, "won": False, "paper": False, "legs": [
+                    leg(2.20, "LOST"), leg(None, "WON"), leg("nan", "WON"),
+                    leg(1.0, "WON"), leg(1.50, None)]},
+            ]},
+            {"date": "2026-09-22", "bank_pct": 110.0, "accas": [
+                {"odds": 1.7, "won": True, "paper": True, "legs": [
+                    leg(1.40, "WON"), leg(1.20, "WON")]},
+            ]},
+        ],
+    }
+    g.write_performance(state)
+    txt = (tmp_path / "auto_tickets_performance.txt").read_text()
+    section = txt[txt.index("--- STAKED legs by price band"):].splitlines()
+    rows = {ln.split()[0]: " ".join(ln.split()) for ln in section[2:] if ln.strip()}
+    #       band      n  W-L  hit%   avg    breakeven spread
+    assert rows["<1.30"] == "<1.30 2 1-1 50.0% 1.270 78.7% -28.7pp"
+    assert rows["1.30-1.59"] == "1.30-1.59 3 2-1 66.7% 1.447 69.1% -2.4pp"
+    assert rows["1.60+"] == "1.60+ 2 1-1 50.0% 1.900 52.6% -2.6pp"
+    assert rows[">=1.30"] == ">=1.30 5 3-2 60.0% 1.628 61.4% -1.4pp"
+    assert rows["all"] == "all 7 4-3 57.1% 1.526 65.5% -8.4pp"
+
+    bands = json.loads((tmp_path / "auto_tickets_performance.json").read_text())["price_bands"]
+    assert [(b["band"], b["n"], b["wins"], b["losses"]) for b in bands["bands"]] == [
+        ("<1.30", 2, 1, 1), ("1.30-1.59", 3, 2, 1), ("1.60+", 2, 1, 1)]
+    assert bands[">=1.30"]["n"] == 5 and bands["all"]["n"] == 7
+    assert bands["bands"][0]["breakeven_pct"] == 78.7  # 100 / avg odds 1.27
+
+    # No settled staked legs yet: bands render as n=0 with dashes, no crash.
+    state["history"] = []
+    g.write_performance(state)
+    empty = (tmp_path / "auto_tickets_performance.txt").read_text()
+    assert " ".join(empty.splitlines()[-3].split()) == "1.60+ 0 0-0 — — — —"
+    assert json.loads((tmp_path / "auto_tickets_performance.json").read_text())[
+        "price_bands"]["all"] == {"band": "all", "n": 0, "wins": 0, "losses": 0,
+                                  "hit_pct": None, "avg_odds": None,
+                                  "breakeven_pct": None, "spread_pp": None}

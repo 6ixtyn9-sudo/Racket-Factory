@@ -338,6 +338,56 @@ def settle_open_slips(state, df, additional_df=None):
         pass
     return logs
 
+# Odds bands for the staked-leg price ledger (lower bound inclusive): does the
+# 1.30 per-leg floor (ml.get_min_odds_base) sit in the right place?
+PRICE_BANDS = (("<1.30", 0.0, 1.30), ("1.30-1.59", 1.30, 1.60), ("1.60+", 1.60, float("inf")))
+
+
+def _band_row(label, legs):
+    """n, W-L, hit%, avg odds, breakeven% (=100/avg odds), spread for (odds, won) legs."""
+    n = len(legs)
+    wins = sum(1 for _, won in legs if won)
+    row = {"band": label, "n": n, "wins": wins, "losses": n - wins,
+           "hit_pct": None, "avg_odds": None, "breakeven_pct": None, "spread_pp": None}
+    if n:
+        avg = sum(o for o, _ in legs) / n
+        hit, be = round(100.0 * wins / n, 1), round(100.0 / avg, 1)
+        row.update(hit_pct=hit, avg_odds=round(avg, 3), breakeven_pct=be,
+                   spread_pp=round(hit - be, 1))
+    return row
+
+
+def price_band_ledger(history):
+    """Hit% vs breakeven% per odds band over STAKED (non-paper) acca legs.
+
+    Every history entry settles an acca exactly once (partial passes carry
+    only the newly settled accas), so raw history counts each leg once, the
+    same basis as the REAL W/L tally. A leg needs numeric odds > 1.0 and a
+    WON/LOST _settle_outcome (VOID/PENDING/CONFLICT carry no verdict).
+    """
+    legs = []
+    for h in history:
+        for a in h.get("accas", []):
+            if a.get("paper"):
+                continue
+            for leg in a.get("legs", []):
+                outcome = leg.get("_settle_outcome")
+                if outcome not in ("WON", "LOST"):
+                    continue
+                try:
+                    odds = float(leg.get("odds"))
+                except (TypeError, ValueError):
+                    continue
+                if odds > 1.0:  # also rejects NaN
+                    legs.append((odds, outcome == "WON"))
+    return {
+        "bands": [_band_row(label, [x for x in legs if lo <= x[0] < hi])
+                  for label, lo, hi in PRICE_BANDS],
+        ">=1.30": _band_row(">=1.30", [x for x in legs if x[0] >= 1.30]),
+        "all": _band_row("all", legs),
+    }
+
+
 def write_performance(state):
     bank = state.get("bank", 100.0)
     base = state.get("base_pct", 100.0)
@@ -413,6 +463,19 @@ def write_performance(state):
     for e in state.get("events", []):
         lines.append(f"  🔔 {e['date']}: TAKE-PROFIT — +{e['gain_pct']:.1f}% (bank {e['bank_after_pct']:.1f}%, next {e['next_target_pct']:.1f}%)")
 
+    price_bands = price_band_ledger(history)
+    lines.append("")
+    lines.append("--- STAKED legs by price band: hit% vs breakeven% (paper excluded) ---")
+    lines.append(f"  {'band':<10}{'n':>4}{'W-L':>8}{'hit%':>8}{'avg odds':>10}{'breakeven':>11}{'spread':>10}")
+    for r in price_bands["bands"] + [price_bands[">=1.30"], price_bands["all"]]:
+        if r["n"]:
+            stats = (f"{r['hit_pct']:>7.1f}%{r['avg_odds']:>10.3f}{r['breakeven_pct']:>10.1f}%"
+                     f"{r['spread_pp']:>+8.1f}pp")
+        else:
+            stats = f"{'—':>8}{'—':>10}{'—':>11}{'—':>10}"
+        wl = f"{r['wins']}-{r['losses']}"
+        lines.append(f"  {r['band']:<10}{r['n']:>4}{wl:>8}{stats}")
+
     txt = "\n".join(lines)
     (LOCALDATA / "auto_tickets_performance.txt").write_text(txt + "\n")
     (LOCALDATA / "auto_tickets_performance.json").write_text(json.dumps({
@@ -427,6 +490,7 @@ def write_performance(state):
         "accas": {"wins": wins, "losses": losses},
         "paper_accas": {"wins": paper_wins, "losses": len(paper) - paper_wins,
                         "pnl_pct": paper_pnl_total, "bank_pct": paper_bank},
+        "price_bands": price_bands,
         "open_slips": state.get("open_slips", []),
         "events": state.get("events", []),
         "history": history,
