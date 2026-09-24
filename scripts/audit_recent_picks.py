@@ -163,6 +163,15 @@ def pick_players(pick: dict[str, Any]) -> tuple[str, str]:
 
 HISTORY_PATH = LOCALDATA / "picks_audit_history.json"
 
+# Slice-edge labels copied from the daily pick onto its audit row, so grade/
+# tier cohort tracking survives retention pruning of picks_<date>.json.
+EDGE_LABEL_FIELDS = ("edge_grade", "edge_tier", "edge_verdict")
+
+
+def edge_labels(pick: dict[str, Any]) -> dict[str, str]:
+    """Edge labels present on the pick; absent/blank ones are omitted, never invented."""
+    return {k: clean_text(pick.get(k)) for k in EDGE_LABEL_FIELDS if clean_text(pick.get(k))}
+
 
 def archived_picks_path(day: str) -> Path:
     return LOCALDATA / f"picks_{day}.json"
@@ -973,6 +982,7 @@ def build_report(
                 "status": "pending_same_day_excluded",
                 "won": None,
                 "ledger_kind": ledger_kind,
+                **edge_labels(pick),
             })
             continue
         settled, info = settle_pick(pick, df)
@@ -1010,6 +1020,7 @@ def build_report(
                 "selected_won_set1": settled.selected_won_set1,
                 "selected_won_set2": settled.selected_won_set2,
                 "selected_won_set3": settled.selected_won_set3,
+                **edge_labels(pick),
             })
         else:
             all_rows.append({
@@ -1028,6 +1039,7 @@ def build_report(
                 "settle_date": basis.get("match_date", ""),
                 "settle_score": basis.get("score", ""),
                 "ledger_kind": ledger_kind,
+                **edge_labels(pick),
             })
 
     # Cumulative history merge with pruning: rows of this ledger kind whose
