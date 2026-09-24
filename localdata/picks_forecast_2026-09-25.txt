@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-25
 ============================================================
-Generated at: 2026-09-24 11:02:53
-Snapshot as of: 2026-09-24T10:57:46+02:00
+Generated at: 2026-09-24 16:07:41
+Snapshot as of: 2026-09-24T16:01:54+02:00
 Ledger kind: forecast
 
 
@@ -24,7 +24,8 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Griekspoor / Van De Zandschulp vs Melo / S KO 08:00 -> MELO / SEGGERMAN  conf 57% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
