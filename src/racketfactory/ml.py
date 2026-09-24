@@ -756,19 +756,29 @@ def monitor_performance() -> dict:
     except Exception:
         pass
 
+    # clv_rolling.json (scripts/audit_clv.py) has no "by_bucket" key: its
+    # confidence table is "calibration_by_confidence", keyed "High (70%+)".
+    # The old by_bucket["High"] lookup never matched, so this loop never
+    # tightened. Only a present, numeric hit rate may tighten; a missing band
+    # or hit_rate=None (n=0) keeps the prior instead of guessing.
     high_hit = 0.8421
+    high_src = "prior, no clv High (70%+) hit_rate"
     try:
-        if isinstance(clv, dict) and clv.get("by_bucket", {}).get("High"):
-            high_hit = float(clv["by_bucket"]["High"].get("hit_rate", 0.84))
+        high_row = clv["calibration_by_confidence"]["High (70%+)"]
+        hr = high_row.get("hit_rate")
+        if isinstance(hr, (int, float)) and not isinstance(hr, bool) and 0.0 <= hr <= 1.0:
+            high_hit = float(hr)
+            high_src = f"clv n={high_row.get('n')}"
     except Exception:
         pass
 
     base_min_odds = get_min_odds_base()
     if high_hit >= 0.80:
         adjustments["min_odds_per_leg"] = base_min_odds
-        adjustments["reason"] = f"High conf hit {high_hit:.0%} >=80%, min leg {base_min_odds}"
+        adjustments["reason"] = f"High conf hit {high_hit:.1%} ({high_src}) >=80%, min leg {base_min_odds}"
     else:
         adjustments["min_odds_per_leg"] = 1.35
+        adjustments["reason"] = f"High conf hit {high_hit:.1%} ({high_src}) <80%, min leg 1.35"
 
     health["adjustments"] = adjustments
     return health
