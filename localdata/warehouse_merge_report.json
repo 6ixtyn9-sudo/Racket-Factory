@@ -1,78 +1,78 @@
 {
   "status": "merged",
-  "baseline_rows": 5869,
-  "fresh_rows": 5899,
-  "shared_keys": 5677,
-  "new_from_fresh": 222,
+  "baseline_rows": 6091,
+  "fresh_rows": 5996,
+  "shared_keys": 5899,
+  "new_from_fresh": 97,
   "baseline_only": 192,
-  "settlement_updates": 90,
-  "live_rows_from_fresh": 0,
-  "dim_drift_rows": 1400,
+  "settlement_updates": 89,
+  "live_rows_from_fresh": 54,
+  "dim_drift_rows": 1551,
   "dim_drift_examples": [
     {
-      "key": "2026-09-12|CHALLENGER||sheltonb||tiafoef",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
+      "key": "2026-09-09|ATP|US Open|alexanderblockx||karenkhachanov",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": ""
     },
     {
-      "key": "2026-09-12|CHALLENGER||blinkovaa||jacquemote",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-11|CHALLENGER||blanchetu||masurd",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-11|CHALLENGER||bertrandr||lajalm",
+      "key": "2026-09-14|WTA|WTA Guadalajara Open|carolinedolehide||renatazarazua",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_b"
     },
     {
-      "key": "2026-09-11|CHALLENGER||budkovkjaern||echarguim",
+      "key": "2026-09-14|WTA|WTA Guadalajara Open|magdalenafrech||naohibino",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_a"
     },
     {
-      "key": "2026-09-11|CHALLENGER||droguett||glinkad",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-11|CHALLENGER||aboianv||martinezp",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-11|CHALLENGER||djerel||sakellaridiss",
+      "key": "2026-09-14|WTA|WTA Guadalajara Open|carolemonnet||sloanestephens",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_b"
     },
     {
-      "key": "2026-09-11|CHALLENGER||dallavallee||dodigm",
+      "key": "2026-09-14|WTA|WTA Guadalajara Open|tatjanamaria||taylortownsend",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-11|UNKNOWN||gauffc||rybakinae",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_a"
     },
     {
-      "key": "2026-09-11|CHALLENGER||kuzmanovd||mayoth",
+      "key": "2026-09-14||WTA Guadalajara - 1/16-finals|cdolehide||rzarazua",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-14||WTA Guadalajara - 1/16-finals|tmaria||ttownsend",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-14||WTA Guadalajara - 1/16-finals|cmonnet||sstephens",
+      "col": "predicted_winner_market",
+      "baseline": "",
+      "fresh": "player_b"
+    },
+    {
+      "key": "2026-09-11|WTA|WTA US Open - Semi-finals|gauffc||rybakinae",
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_a"
     }
   ],
-  "merged_rows": 6091,
-  "generated_at": "2026-09-23T22:08:05.992220+00:00",
-  "baseline_sha256": "fc06ca4eb17b5d90350d4a15db7222c9135e2d44c622e102fbeb6a33a4468fa5",
-  "fresh_sha256": "147f26318c2e1333846042408c0df97bc6fab84acad7ee2b8441671833eaf0b2",
-  "merged_sha256": "0e21fa06a4120788a687c74d7274f2b039640bacc8922e278068bf5ddfc00350"
+  "merged_rows": 6188,
+  "generated_at": "2026-09-24T06:11:49.322043+00:00",
+  "baseline_sha256": "0e21fa06a4120788a687c74d7274f2b039640bacc8922e278068bf5ddfc00350",
+  "fresh_sha256": "eb25660b8d206b95a9f0de66b9bfacd2034054fc974ab65ae58d3c4d692e2bad",
+  "merged_sha256": "5734f7bf48e26a178486d269abf7dd10876ed5cc2b3639b1075f464e5514288e"
 }

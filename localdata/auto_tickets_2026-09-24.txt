@@ -1,25 +1,17 @@
 Racket Factory Auto Tickets — 2026-09-24
-Generated at: 2026-09-24T00:01:55+02:00
-Bank: 149.57% (cycle base 100.00%)
+Generated at: 2026-09-24T08:01:46+02:00
+Bank: 134.02% (cycle base 100.00%)
 Take profit target: 200.00%
 
 Strategy: strengths-focused, avoid super short odds (min leg 1.3, min acca 1.5), 4 accas max per track, NO SINGLES
 Stake: 25% of bank per day (priced track only; paper is hit-rate only)
 
-ACCA 1 [value_2leg_mutual] — Odds 1.81 — Stake 9.35%
-  - Fabian Marozsan vs Alex Bolt -> Fabian Marozsan @ 1.29 (conf 88.41 ml 0.85 BOOST src BetClan, PredixSport odds_src BetExplorer)
-  - Juncheng Shang vs Adrian Mannarino -> Juncheng Shang @ 1.4 (conf 71.42857142857143 ml 0.85 BOOST src BetClan, PredixSport odds_src BetExplorer)
+ACCA 1 [value_2leg_mutual] — Odds 2.07 — Stake 16.75%
+  - Lloyd Harris vs Aleksandar Kovacevic -> Lloyd Harris @ 1.49 (conf 67.11409395973155 ml 0.7 BOOST src BetClan, PredixSport odds_src BetExplorer)
+  - Andrea Guerrieri vs Jesper De Jong -> Jesper De Jong @ 1.39 (conf 77.23 ml 0.65 BOOST src BetClan odds_src BetExplorer)
 
-ACCA 2 [value_2leg_mutual] — Odds 1.95 — Stake 9.35%
-  - Miomir Kecmanovic vs Nikoloz Basilashvili -> Miomir Kecmanovic @ 1.52 (conf 69.0 ml 0.7 BOOST src BetClan, PredixSport odds_src BetExplorer)
-  - Naiktha Bains vs Reese Brantmeier -> Reese Brantmeier @ 1.28 (conf 88.41 ml 0.55 BOOST src BetClan odds_src BetExplorer)
+ACCA 2 [value_2leg_mutual] — Odds 2.29 — Stake 16.75%
+  - Martin Damm vs Shintaro Mochizuki -> Martin Damm @ 1.45 (conf 71.9 ml 0.55 BOOST src BetClan odds_src BetExplorer)
+  - Arends / Pel vs Stalder / Reyes-Varela -> Arends / Pel @ 1.58 (conf 73.68 ml 0.55 BOOST src BetClan odds_src BetExplorer)
 
-ACCA 3 [value_2leg_mutual] — Odds 1.99 — Stake 9.35%
-  - Ekaterine Gorgodze vs Barbora Palicova -> Barbora Palicova @ 1.45 (conf 71.0 ml 0.55 BOOST src BetClan odds_src BetExplorer)
-  - Andrea Guerrieri vs Jesper De Jong -> Jesper De Jong @ 1.37 (conf 77.23 ml 0.65 BOOST src BetClan odds_src BetExplorer)
-
-ACCA 4 [value_2leg_mutual] — Odds 2.37 — Stake 9.35%
-  - James Duckworth vs Lorenzo Sonego -> Lorenzo Sonego @ 1.72 (conf 61.0 ml 0.7 BOOST src BetClan, PredixSport odds_src BetExplorer)
-  - Carole Monnet vs Anastasia Gasanova -> Anastasia Gasanova @ 1.38 (conf 73.0 ml 0.55 BOOST src BetClan odds_src BetExplorer)
-
-Total staked: 37.39% of bank
+Total staked: 33.51% of bank

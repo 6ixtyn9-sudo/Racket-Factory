@@ -2596,7 +2596,7 @@
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-23",
       "duplicate_picks": [
-        "2026-09-24 SKIPPED_DEAD_EDGE (pending_no_result)"
+        "2026-09-24 WATCHLIST (pending_no_result)"
       ],
       "ledger_kind": "official",
       "match": "Jaime Faria vs Terence Atmane",
@@ -2616,7 +2616,7 @@
       "bucket": "WATCHLIST",
       "date": "2026-09-23",
       "duplicate_picks": [
-        "2026-09-24 WATCHLIST (pending_no_result)"
+        "2026-09-24 SKIPPED_DEAD_EDGE (pending_no_result)"
       ],
       "ledger_kind": "official",
       "match": "James Duckworth vs Lorenzo Sonego",
@@ -2782,6 +2782,9 @@
     {
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-23",
+      "duplicate_picks": [
+        "2026-09-24 SKIPPED_DEAD_EDGE (pending_no_result)"
+      ],
       "ledger_kind": "official",
       "match": "Mattia Bellucci vs Kamil Majchrzak",
       "reason": "result not final: live/in-progress markers present",
@@ -2820,7 +2823,7 @@
       "bucket": "SKIPPED_VETO",
       "date": "2026-09-23",
       "duplicate_picks": [
-        "2026-09-24 SKIPPED_VETO (pending_no_result)"
+        "2026-09-24 WATCHLIST_NO_ODDS (pending_no_result)"
       ],
       "ledger_kind": "official",
       "match": "Nuno Borges vs Camilo Ugo Carabelli",
@@ -3035,6 +3038,23 @@
       "won": null
     },
     {
+      "bucket": "SKIPPED_VETO",
+      "date": "2026-09-24",
+      "ledger_kind": "official",
+      "match": "Brantmeier / Collins vs Jorge / Jorge",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Jorge / Jorge",
+      "series": "International",
+      "settle_date": "2026-09-24",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "WTA",
+      "won": null
+    },
+    {
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-24",
       "ledger_kind": "official",
@@ -3086,7 +3106,41 @@
       "won": null
     },
     {
-      "bucket": "WATCHLIST",
+      "bucket": "SKIPPED_VETO",
+      "date": "2026-09-24",
+      "ledger_kind": "official",
+      "match": "Crawley / Daniel vs Haverlag / Kubka",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Haverlag / Kubka",
+      "series": "International",
+      "settle_date": "2026-09-24",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Grass",
+      "tour": "WTA",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_DEAD_EDGE",
+      "date": "2026-09-24",
+      "ledger_kind": "official",
+      "match": "Dane Sweeny vs Taro Daniel",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Taro Daniel",
+      "series": "ATP250",
+      "settle_date": "2026-09-24",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan, PredixSport",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "ATP",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_VETO",
       "date": "2026-09-24",
       "ledger_kind": "official",
       "match": "Ekaterine Gorgodze vs Barbora Palicova",
@@ -3140,23 +3194,6 @@
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-24",
       "ledger_kind": "official",
-      "match": "Juan Manuel Cerundolo vs Yi Zhou",
-      "reason": "result not final: live/in-progress markers present",
-      "selected_player": "Juan Manuel Cerundolo",
-      "series": "ATP250",
-      "settle_date": "2026-09-24",
-      "settle_score": "",
-      "settle_source": "",
-      "source": "BetClan",
-      "status": "pending_no_result",
-      "surface": "Hard",
-      "tour": "ATP",
-      "won": null
-    },
-    {
-      "bucket": "SKIPPED_VETO",
-      "date": "2026-09-24",
-      "ledger_kind": "official",
       "match": "Kucmova / Laboutkova vs Morderger / Morderger",
       "reason": "result not final: live/in-progress markers present",
       "selected_player": "Kucmova / Laboutkova",
@@ -3168,6 +3205,23 @@
       "status": "pending_no_result",
       "surface": "Hard",
       "tour": "WTA",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_DEAD_EDGE",
+      "date": "2026-09-24",
+      "ledger_kind": "official",
+      "match": "Lloyd Harris vs Aleksandar Kovacevic",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Lloyd Harris",
+      "series": "ATP250",
+      "settle_date": "2026-09-24",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan, PredixSport",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "ATP",
       "won": null
     },
     {
@@ -3188,7 +3242,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_DEAD_EDGE",
+      "bucket": "WATCHLIST",
       "date": "2026-09-24",
       "ledger_kind": "official",
       "match": "Martin Damm vs Shintaro Mochizuki",
@@ -3222,7 +3276,24 @@
       "won": null
     },
     {
-      "bucket": "CERTIFIED_CLEAN",
+      "bucket": "SKIPPED_VETO",
+      "date": "2026-09-24",
+      "ledger_kind": "official",
+      "match": "Monnet / Riera vs Jakupovic / Karamoko",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Jakupovic / Karamoko",
+      "series": "International",
+      "settle_date": "2026-09-24",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "WTA",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_VETO",
       "date": "2026-09-24",
       "ledger_kind": "official",
       "match": "Naiktha Bains vs Reese Brantmeier",
@@ -3242,9 +3313,9 @@
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-24",
       "ledger_kind": "official",
-      "match": "Routliffe / Sutjiadi vs Garland / Hsieh",
+      "match": "Pridankina / Tikhonova vs Kostovic / Micic",
       "reason": "result not final: live/in-progress markers present",
-      "selected_player": "Routliffe / Sutjiadi",
+      "selected_player": "Pridankina / Tikhonova",
       "series": "International",
       "settle_date": "2026-09-24",
       "settle_score": "",
@@ -3274,6 +3345,23 @@
     },
     {
       "bucket": "SKIPPED_DEAD_EDGE",
+      "date": "2026-09-24",
+      "ledger_kind": "official",
+      "match": "Snells / Walker vs Moratelli / Ruggeri",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Moratelli / Ruggeri",
+      "series": "International",
+      "settle_date": "2026-09-24",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "WTA",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_VETO",
       "date": "2026-09-24",
       "ledger_kind": "official",
       "match": "Talia Gibson vs Viktoria Morvayova",
@@ -3319,7 +3407,7 @@
       "settle_source": "",
       "source": "BetClan",
       "status": "pending_no_result",
-      "surface": "Grass",
+      "surface": "Hard",
       "tour": "WTA",
       "won": null
     },
@@ -3341,12 +3429,29 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_DEAD_EDGE",
+      "bucket": "SKIPPED_VETO",
       "date": "2026-09-24",
       "ledger_kind": "official",
-      "match": "Ye-Xin Ma vs Kimberly Birrell",
+      "match": "Veronika Podrez vs Mia Pohankova",
       "reason": "result not final: live/in-progress markers present",
-      "selected_player": "Kimberly Birrell",
+      "selected_player": "Mia Pohankova",
+      "series": "International",
+      "settle_date": "2026-09-24",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "WTA",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_VETO",
+      "date": "2026-09-24",
+      "ledger_kind": "official",
+      "match": "Xinyu Wang vs Joanna Garland",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Xinyu Wang",
       "series": "International",
       "settle_date": "2026-09-24",
       "settle_score": "",
@@ -3416,12 +3521,12 @@
     "2026-09-23",
     "2026-09-24"
   ],
-  "archived_pick_rows": 132,
+  "archived_pick_rows": 138,
   "by_bucket": {
     "CERTIFIED_CLEAN": {
       "conflict_picks": 0,
       "hit_rate": 0.6,
-      "pending_picks": 6,
+      "pending_picks": 5,
       "priced_paper": 0,
       "priced_picks": 5,
       "priced_real": 5,
@@ -3438,7 +3543,7 @@
       "selected_won_set3_rate": 0.0,
       "set_diagnostic_picks": 5,
       "settled_picks": 5,
-      "total_picks": 11,
+      "total_picks": 10,
       "void_picks": 0,
       "wins": 3
     },
@@ -3469,7 +3574,7 @@
     "SKIPPED_VETO": {
       "conflict_picks": 0,
       "hit_rate": 0.888889,
-      "pending_picks": 11,
+      "pending_picks": 18,
       "priced_paper": 0,
       "priced_picks": 9,
       "priced_real": 9,
@@ -3486,7 +3591,7 @@
       "selected_won_set3_rate": 1.0,
       "set_diagnostic_picks": 9,
       "settled_picks": 9,
-      "total_picks": 20,
+      "total_picks": 27,
       "void_picks": 0,
       "wins": 8
     },
@@ -3564,7 +3669,7 @@
   "by_regime": {
     "genesis-2026-09-20": {
       "hit_rate": 0.735632,
-      "pending_picks": 44,
+      "pending_picks": 50,
       "priced_paper": 0,
       "priced_picks": 34,
       "priced_real": 34,
@@ -3581,7 +3686,7 @@
       "selected_won_set3_rate": 0.555556,
       "set_diagnostic_picks": 87,
       "settled_picks": 87,
-      "total_picks": 132,
+      "total_picks": 138,
       "wins": 64
     }
   },
@@ -3589,7 +3694,7 @@
     "ATP250": {
       "conflict_picks": 0,
       "hit_rate": null,
-      "pending_picks": 22,
+      "pending_picks": 23,
       "priced_paper": 0,
       "priced_picks": 0,
       "priced_real": 0,
@@ -3606,7 +3711,7 @@
       "selected_won_set3_rate": null,
       "set_diagnostic_picks": 0,
       "settled_picks": 0,
-      "total_picks": 22,
+      "total_picks": 23,
       "void_picks": 0,
       "wins": 0
     },
@@ -3637,7 +3742,7 @@
     "International": {
       "conflict_picks": 0,
       "hit_rate": 0.746479,
-      "pending_picks": 21,
+      "pending_picks": 26,
       "priced_paper": 0,
       "priced_picks": 28,
       "priced_real": 28,
@@ -3654,7 +3759,7 @@
       "selected_won_set3_rate": 0.545455,
       "set_diagnostic_picks": 71,
       "settled_picks": 71,
-      "total_picks": 93,
+      "total_picks": 98,
       "void_picks": 1,
       "wins": 53
     }
@@ -3663,7 +3768,7 @@
     "BetClan": {
       "conflict_picks": 0,
       "hit_rate": 0.735632,
-      "pending_picks": 27,
+      "pending_picks": 31,
       "priced_paper": 0,
       "priced_picks": 34,
       "priced_real": 34,
@@ -3680,14 +3785,14 @@
       "selected_won_set3_rate": 0.555556,
       "set_diagnostic_picks": 87,
       "settled_picks": 87,
-      "total_picks": 115,
+      "total_picks": 119,
       "void_picks": 1,
       "wins": 64
     },
     "BetClan, PredixSport": {
       "conflict_picks": 0,
       "hit_rate": null,
-      "pending_picks": 2,
+      "pending_picks": 4,
       "priced_paper": 0,
       "priced_picks": 0,
       "priced_real": 0,
@@ -3704,7 +3809,7 @@
       "selected_won_set3_rate": null,
       "set_diagnostic_picks": 0,
       "settled_picks": 0,
-      "total_picks": 2,
+      "total_picks": 4,
       "void_picks": 0,
       "wins": 0
     },
@@ -3761,7 +3866,7 @@
     "Hard": {
       "conflict_picks": 0,
       "hit_rate": 0.742857,
-      "pending_picks": 42,
+      "pending_picks": 48,
       "priced_paper": 0,
       "priced_picks": 27,
       "priced_real": 27,
@@ -3778,7 +3883,7 @@
       "selected_won_set3_rate": 0.545455,
       "set_diagnostic_picks": 70,
       "settled_picks": 70,
-      "total_picks": 113,
+      "total_picks": 119,
       "void_picks": 1,
       "wins": 52
     }
@@ -3787,7 +3892,7 @@
     "ATP": {
       "conflict_picks": 0,
       "hit_rate": null,
-      "pending_picks": 22,
+      "pending_picks": 23,
       "priced_paper": 0,
       "priced_picks": 0,
       "priced_real": 0,
@@ -3804,7 +3909,7 @@
       "selected_won_set3_rate": null,
       "set_diagnostic_picks": 0,
       "settled_picks": 0,
-      "total_picks": 22,
+      "total_picks": 23,
       "void_picks": 0,
       "wins": 0
     },
@@ -3835,7 +3940,7 @@
     "WTA": {
       "conflict_picks": 0,
       "hit_rate": 0.746479,
-      "pending_picks": 21,
+      "pending_picks": 26,
       "priced_paper": 0,
       "priced_picks": 28,
       "priced_real": 28,
@@ -3852,20 +3957,20 @@
       "selected_won_set3_rate": 0.545455,
       "set_diagnostic_picks": 71,
       "settled_picks": 71,
-      "total_picks": 93,
+      "total_picks": 98,
       "void_picks": 1,
       "wins": 53
     }
   },
-  "duplicates_merged": 11,
+  "duplicates_merged": 12,
   "end": "2026-09-24",
   "include_same_day": true,
   "ledger_kind": "official",
-  "ledger_pick_rows": 143,
+  "ledger_pick_rows": 150,
   "overall": {
     "conflict_picks": 0,
     "hit_rate": 0.735632,
-    "pending_picks": 44,
+    "pending_picks": 50,
     "priced_paper": 0,
     "priced_picks": 34,
     "priced_real": 34,
@@ -3882,12 +3987,12 @@
     "selected_won_set3_rate": 0.555556,
     "set_diagnostic_picks": 87,
     "settled_picks": 87,
-    "total_picks": 132,
+    "total_picks": 138,
     "void_picks": 1,
     "wins": 64
   },
   "pending_reasons": {
-    "pending_no_result: result not final: live/in-progress markers present": 42,
+    "pending_no_result: result not final: live/in-progress markers present": 48,
     "pending_no_result: result not final: score not final: incomplete final set 1-1": 1,
     "pending_no_result: result not final: score not final: incomplete final set 5-2": 1,
     "void: walkover: stake returned": 1
@@ -3895,6 +4000,6 @@
   "regime": "genesis-2026-09-20",
   "same_day_cutoff": "2026-09-24",
   "same_day_excluded": 0,
-  "stale_rows_pruned": 0,
+  "stale_rows_pruned": 3,
   "start": "2026-09-20"
 }
