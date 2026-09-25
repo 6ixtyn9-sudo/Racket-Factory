@@ -3634,9 +3634,6 @@
     {
       "bucket": "SKIPPED_VETO",
       "date": "2026-09-24",
-      "duplicate_picks": [
-        "2026-09-25 SKIPPED_DEAD_EDGE (pending_no_result)"
-      ],
       "edge_grade": "SILVER",
       "edge_tier": "BANKER",
       "edge_verdict": "WATCHLIST",
@@ -4170,6 +4167,26 @@
       "edge_tier": "BANKER",
       "edge_verdict": "EDGE CONFIRMED",
       "ledger_kind": "official",
+      "match": "Chiesa / Tubello vs Kucmova / Laboutkova",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Kucmova / Laboutkova",
+      "series": "International",
+      "settle_date": "2026-09-25",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "WTA",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_DEAD_EDGE",
+      "date": "2026-09-25",
+      "edge_grade": "SILVER",
+      "edge_tier": "BANKER",
+      "edge_verdict": "WATCHLIST",
+      "ledger_kind": "official",
       "match": "Cui / Te vs King / Stevens",
       "reason": "result not final: live/in-progress markers present",
       "selected_player": "King / Stevens",
@@ -4181,6 +4198,26 @@
       "status": "pending_no_result",
       "surface": "Hard",
       "tour": "ATP",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_DEAD_EDGE",
+      "date": "2026-09-25",
+      "edge_grade": "GOLD",
+      "edge_tier": "BANKER",
+      "edge_verdict": "EDGE CONFIRMED",
+      "ledger_kind": "official",
+      "match": "Deniz Dilek vs Anastasia Gasanova",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Anastasia Gasanova",
+      "series": "International",
+      "settle_date": "2026-09-25",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Grass",
+      "tour": "WTA",
       "won": null
     },
     {
@@ -4344,23 +4381,23 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_DEAD_EDGE",
+      "bucket": "SKIPPED_VETO",
       "date": "2026-09-25",
-      "edge_grade": "SILVER",
+      "edge_grade": "GOLD",
       "edge_tier": "BANKER",
-      "edge_verdict": "WATCHLIST",
+      "edge_verdict": "EDGE CONFIRMED",
       "ledger_kind": "official",
-      "match": "Johnson / Zielinski vs Doumbia / Reboul",
+      "match": "Katie Volynets vs Kimberly Birrell",
       "reason": "result not final: live/in-progress markers present",
-      "selected_player": "Doumbia / Reboul",
-      "series": "ATP250",
+      "selected_player": "Katie Volynets",
+      "series": "International",
       "settle_date": "2026-09-25",
       "settle_score": "",
       "settle_source": "",
       "source": "BetClan",
       "status": "pending_no_result",
       "surface": "Hard",
-      "tour": "ATP",
+      "tour": "WTA",
       "won": null
     },
     {
@@ -4450,49 +4487,9 @@
       "edge_tier": "BANKER",
       "edge_verdict": "WATCHLIST",
       "ledger_kind": "official",
-      "match": "Peers / Venus vs Stevenson / Willis",
-      "reason": "result not final: live/in-progress markers present",
-      "selected_player": "Peers / Venus",
-      "series": "ATP250",
-      "settle_date": "2026-09-25",
-      "settle_score": "",
-      "settle_source": "",
-      "source": "BetClan",
-      "status": "pending_no_result",
-      "surface": "Hard",
-      "tour": "ATP",
-      "won": null
-    },
-    {
-      "bucket": "WATCHLIST",
-      "date": "2026-09-25",
-      "edge_grade": "SILVER",
-      "edge_tier": "BANKER",
-      "edge_verdict": "WATCHLIST",
-      "ledger_kind": "official",
       "match": "Reynolds / Watt vs Gille / Verbeek",
       "reason": "result not final: live/in-progress markers present",
       "selected_player": "Reynolds / Watt",
-      "series": "ATP250",
-      "settle_date": "2026-09-25",
-      "settle_score": "",
-      "settle_source": "",
-      "source": "BetClan",
-      "status": "pending_no_result",
-      "surface": "Hard",
-      "tour": "ATP",
-      "won": null
-    },
-    {
-      "bucket": "SKIPPED_DEAD_EDGE",
-      "date": "2026-09-25",
-      "edge_grade": "SILVER",
-      "edge_tier": "BANKER",
-      "edge_verdict": "WATCHLIST",
-      "ledger_kind": "official",
-      "match": "Rinky Hijikata vs Andrey Rublev",
-      "reason": "result not final: live/in-progress markers present",
-      "selected_player": "Andrey Rublev",
       "series": "ATP250",
       "settle_date": "2026-09-25",
       "settle_score": "",
@@ -4524,7 +4521,7 @@
       "won": null
     },
     {
-      "bucket": "CERTIFIED_CLEAN",
+      "bucket": "SKIPPED_VETO",
       "date": "2026-09-25",
       "edge_grade": "GOLD",
       "edge_tier": "BANKER",
@@ -4557,7 +4554,7 @@
     "CERTIFIED_CLEAN": {
       "conflict_picks": 0,
       "hit_rate": 0.666667,
-      "pending_picks": 1,
+      "pending_picks": 0,
       "priced_paper": 0,
       "priced_picks": 9,
       "priced_real": 9,
@@ -4574,7 +4571,7 @@
       "selected_won_set3_rate": 0.666667,
       "set_diagnostic_picks": 9,
       "settled_picks": 9,
-      "total_picks": 10,
+      "total_picks": 9,
       "void_picks": 0,
       "wins": 6
     },
@@ -4605,7 +4602,7 @@
     "SKIPPED_VETO": {
       "conflict_picks": 0,
       "hit_rate": 0.846154,
-      "pending_picks": 9,
+      "pending_picks": 11,
       "priced_paper": 0,
       "priced_picks": 13,
       "priced_real": 13,
@@ -4622,14 +4619,14 @@
       "selected_won_set3_rate": 0.666667,
       "set_diagnostic_picks": 13,
       "settled_picks": 13,
-      "total_picks": 22,
+      "total_picks": 24,
       "void_picks": 0,
       "wins": 11
     },
     "WATCHLIST": {
       "conflict_picks": 0,
       "hit_rate": 0.4,
-      "pending_picks": 10,
+      "pending_picks": 9,
       "priced_paper": 0,
       "priced_picks": 10,
       "priced_real": 10,
@@ -4646,7 +4643,7 @@
       "selected_won_set3_rate": 0.5,
       "set_diagnostic_picks": 10,
       "settled_picks": 10,
-      "total_picks": 20,
+      "total_picks": 19,
       "void_picks": 0,
       "wins": 4
     },
@@ -4725,7 +4722,7 @@
     "ATP250": {
       "conflict_picks": 0,
       "hit_rate": 0.5625,
-      "pending_picks": 23,
+      "pending_picks": 20,
       "priced_paper": 0,
       "priced_picks": 14,
       "priced_real": 14,
@@ -4742,7 +4739,7 @@
       "selected_won_set3_rate": 0.5,
       "set_diagnostic_picks": 16,
       "settled_picks": 16,
-      "total_picks": 39,
+      "total_picks": 36,
       "void_picks": 0,
       "wins": 9
     },
@@ -4773,7 +4770,7 @@
     "International": {
       "conflict_picks": 0,
       "hit_rate": 0.759036,
-      "pending_picks": 10,
+      "pending_picks": 13,
       "priced_paper": 0,
       "priced_picks": 31,
       "priced_real": 31,
@@ -4790,7 +4787,7 @@
       "selected_won_set3_rate": 0.56,
       "set_diagnostic_picks": 83,
       "settled_picks": 83,
-      "total_picks": 94,
+      "total_picks": 97,
       "void_picks": 1,
       "wins": 63
     }
@@ -4873,7 +4870,7 @@
     "Grass": {
       "conflict_picks": 0,
       "hit_rate": 0.722222,
-      "pending_picks": 1,
+      "pending_picks": 2,
       "priced_paper": 0,
       "priced_picks": 8,
       "priced_real": 8,
@@ -4890,14 +4887,14 @@
       "selected_won_set3_rate": 0.666667,
       "set_diagnostic_picks": 18,
       "settled_picks": 18,
-      "total_picks": 19,
+      "total_picks": 20,
       "void_picks": 0,
       "wins": 13
     },
     "Hard": {
       "conflict_picks": 0,
       "hit_rate": 0.72449,
-      "pending_picks": 33,
+      "pending_picks": 32,
       "priced_paper": 0,
       "priced_picks": 44,
       "priced_real": 44,
@@ -4914,7 +4911,7 @@
       "selected_won_set3_rate": 0.555556,
       "set_diagnostic_picks": 98,
       "settled_picks": 98,
-      "total_picks": 132,
+      "total_picks": 131,
       "void_picks": 1,
       "wins": 71
     }
@@ -4923,7 +4920,7 @@
     "ATP": {
       "conflict_picks": 0,
       "hit_rate": 0.5625,
-      "pending_picks": 23,
+      "pending_picks": 20,
       "priced_paper": 0,
       "priced_picks": 14,
       "priced_real": 14,
@@ -4940,7 +4937,7 @@
       "selected_won_set3_rate": 0.5,
       "set_diagnostic_picks": 16,
       "settled_picks": 16,
-      "total_picks": 39,
+      "total_picks": 36,
       "void_picks": 0,
       "wins": 9
     },
@@ -4971,7 +4968,7 @@
     "WTA": {
       "conflict_picks": 0,
       "hit_rate": 0.759036,
-      "pending_picks": 10,
+      "pending_picks": 13,
       "priced_paper": 0,
       "priced_picks": 31,
       "priced_real": 31,
@@ -4988,16 +4985,16 @@
       "selected_won_set3_rate": 0.56,
       "set_diagnostic_picks": 83,
       "settled_picks": 83,
-      "total_picks": 94,
+      "total_picks": 97,
       "void_picks": 1,
       "wins": 63
     }
   },
-  "duplicates_merged": 5,
+  "duplicates_merged": 4,
   "end": "2026-09-25",
   "include_same_day": true,
   "ledger_kind": "official",
-  "ledger_pick_rows": 156,
+  "ledger_pick_rows": 155,
   "overall": {
     "conflict_picks": 0,
     "hit_rate": 0.724138,
@@ -5031,6 +5028,6 @@
   "regime": "genesis-2026-09-20",
   "same_day_cutoff": "2026-09-25",
   "same_day_excluded": 0,
-  "stale_rows_pruned": 0,
+  "stale_rows_pruned": 4,
   "start": "2026-09-20"
 }

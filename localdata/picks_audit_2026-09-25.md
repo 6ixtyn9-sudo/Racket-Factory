@@ -5,9 +5,9 @@
 - current regime: genesis-2026-09-20 (top-level stats are scoped to this regime; per-regime split in By Regime)
 - archived pick rows: 151
 - archived pick dates: 6
-- ledger pick rows (in window): 156
-- duplicate rows merged (same match + selection re-picked): 5
-- stale history rows pruned (pick no longer in ledger): 0
+- ledger pick rows (in window): 155
+- duplicate rows merged (same match + selection re-picked): 4
+- stale history rows pruned (pick no longer in ledger): 4
 - settled picks: 116
 - wins: 84
 - hit rate: 0.724138
@@ -39,9 +39,9 @@
 
 ## Ledger reconciliation
 
-- ledger rows in window (official): 156
-- duplicate rows merged (same match + selection in multiple daily ledgers): 5
-- stale history rows pruned (pick no longer in any archived ledger): 0
+- ledger rows in window (official): 155
+- duplicate rows merged (same match + selection in multiple daily ledgers): 4
+- stale history rows pruned (pick no longer in any archived ledger): 4
 - audited rows: 151
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
@@ -165,7 +165,7 @@
 - 2026-09-24 Chan / Wu vs Back / Jang selected=Chan / Wu winner=Chan H. / Wu F. status=won basis=Challenger_results@2026-09-24:6-1 6-2
 - 2026-09-24 Ciric Bagaric / Pigossi vs Chiesa / Tubello selected=Ciric Bagaric / Pigossi winner=Chiesa E. / Tubello A. status=lost basis=Challenger_results@2026-09-24:6-3 2-6 10-6
 - 2026-09-24 Ercan / Naito vs Monnet / Riera selected=Monnet / Riera winner=? status=void reason=walkover: stake returned
-- 2026-09-24 Fabian Marozsan vs Taro Daniel selected=Fabian Marozsan winner=? status=pending_no_result reason=result not final: live/in-progress markers present dup_merged=[2026-09-25 SKIPPED_DEAD_EDGE (pending_no_result)]
+- 2026-09-24 Fabian Marozsan vs Taro Daniel selected=Fabian Marozsan winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-24 Jaime Faria vs Hugo Gaston selected=Jaime Faria winner=? status=pending_no_result reason=result not final: live/in-progress markers present dup_merged=[2026-09-25 SKIPPED_DEAD_EDGE (pending_no_result)]
 - 2026-09-24 Kucmova / Laboutkova vs Morderger / Morderger selected=Kucmova / Laboutkova winner=Kucmova A. / Laboutkova A. status=won basis=Challenger_results@2026-09-24:6-1 6-2
 - 2026-09-24 Kyrian Jacquet vs Tomas Martin Etcheverry selected=Tomas Martin Etcheverry winner=? status=pending_no_result reason=result not final: live/in-progress markers present dup_merged=[2026-09-25 WATCHLIST (pending_no_result)]
@@ -184,7 +184,9 @@
 - 2026-09-25 Borges / Cerundolo vs Schnaitter / Wallner selected=Schnaitter / Wallner winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Cabral / Tracy vs Sun / Zhang selected=Cabral / Tracy winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Cash / Erler vs Frantzen / Haase selected=Frantzen / Haase winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-25 Chiesa / Tubello vs Kucmova / Laboutkova selected=Kucmova / Laboutkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Cui / Te vs King / Stevens selected=King / Stevens winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-25 Deniz Dilek vs Anastasia Gasanova selected=Anastasia Gasanova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Dino Prizmic vs Daniil Glinka selected=Dino Prizmic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Elena Malygina vs Sinja Kraus selected=Sinja Kraus winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Galloway / Goransson vs Mannarino / Muller selected=Galloway / Goransson winner=? status=pending_no_result reason=result not final: live/in-progress markers present
@@ -193,40 +195,38 @@
 - 2026-09-25 Halys / Miedler vs Marozsan / Rikl selected=Halys / Miedler winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Hu / Lu vs Wang / Zhou selected=Wang / Zhou winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Jenson Brooksby vs Lorenzo Sonego selected=Jenson Brooksby winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-25 Johnson / Zielinski vs Doumbia / Reboul selected=Doumbia / Reboul winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-25 Katie Volynets vs Kimberly Birrell selected=Katie Volynets winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Kato / Perez vs Lansere / Prozorova selected=Kato / Perez winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Mia Ristic vs Jessica Pieri selected=Mia Ristic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Mirra Andreeva vs Leylah Fernandez selected=Mirra Andreeva winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Nikoloz Basilashvili vs Botic Van De Zandschulp selected=Botic Van De Zandschulp winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-25 Peers / Venus vs Stevenson / Willis selected=Peers / Venus winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Reynolds / Watt vs Gille / Verbeek selected=Reynolds / Watt winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-25 Rinky Hijikata vs Andrey Rublev selected=Andrey Rublev winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Rojer / Winegar vs Lammons / Withrow selected=Lammons / Withrow winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Vit Kopriva vs Denis Shapovalov selected=Denis Shapovalov winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 
 ## By Tour
 
-- `ATP`: total=39, settled=16, wins=9, hit_rate=0.5625, ROI=-0.280714, pending=23
+- `ATP`: total=36, settled=16, wins=9, hit_rate=0.5625, ROI=-0.280714, pending=20
 - `CHALLENGER`: total=18, settled=17, wins=12, hit_rate=0.705882, ROI=-0.257143, pending=1
-- `WTA`: total=94, settled=83, wins=63, hit_rate=0.759036, ROI=-0.078387, pending=10, void=1
+- `WTA`: total=97, settled=83, wins=63, hit_rate=0.759036, ROI=-0.078387, pending=13, void=1
 
 ## By Series
 
-- `ATP250`: total=39, settled=16, wins=9, hit_rate=0.5625, ROI=-0.280714, pending=23
+- `ATP250`: total=36, settled=16, wins=9, hit_rate=0.5625, ROI=-0.280714, pending=20
 - `Challenger`: total=18, settled=17, wins=12, hit_rate=0.705882, ROI=-0.257143, pending=1
-- `International`: total=94, settled=83, wins=63, hit_rate=0.759036, ROI=-0.078387, pending=10, void=1
+- `International`: total=97, settled=83, wins=63, hit_rate=0.759036, ROI=-0.078387, pending=13, void=1
 
 ## By Surface
 
-- `Grass`: total=19, settled=18, wins=13, hit_rate=0.722222, ROI=-0.19375, pending=1
-- `Hard`: total=132, settled=98, wins=71, hit_rate=0.72449, ROI=-0.150227, pending=33, void=1
+- `Grass`: total=20, settled=18, wins=13, hit_rate=0.722222, ROI=-0.19375, pending=2
+- `Hard`: total=131, settled=98, wins=71, hit_rate=0.72449, ROI=-0.150227, pending=32, void=1
 
 ## By Bucket
 
-- `CERTIFIED_CLEAN`: total=10, settled=9, wins=6, hit_rate=0.666667, ROI=-0.132222, pending=1
+- `CERTIFIED_CLEAN`: total=9, settled=9, wins=6, hit_rate=0.666667, ROI=-0.132222, pending=0
 - `SKIPPED_DEAD_EDGE`: total=29, settled=20, wins=12, hit_rate=0.6, ROI=-0.2105, pending=9
-- `SKIPPED_VETO`: total=22, settled=13, wins=11, hit_rate=0.846154, ROI=0.043846, pending=9
-- `WATCHLIST`: total=20, settled=10, wins=4, hit_rate=0.4, ROI=-0.333, pending=10
+- `SKIPPED_VETO`: total=24, settled=13, wins=11, hit_rate=0.846154, ROI=0.043846, pending=11
+- `WATCHLIST`: total=19, settled=10, wins=4, hit_rate=0.4, ROI=-0.333, pending=9
 - `WATCHLIST_NO_ODDS`: total=70, settled=64, wins=51, hit_rate=0.796875, ROI=None, pending=5, void=1
 
 ## By Source

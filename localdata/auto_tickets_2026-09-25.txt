@@ -1,25 +1,21 @@
 Racket Factory Auto Tickets — 2026-09-25
-Generated at: 2026-09-25T00:01:51+02:00
-Bank: 155.63% (cycle base 100.00%)
+Generated at: 2026-09-25T06:30:55+02:00
+Bank: 173.56% (cycle base 100.00%)
 Take profit target: 200.00%
 
 Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 1.5), 4 accas max per track, NO SINGLES
 Stake: 25% of bank per day (priced track only; paper is hit-rate only)
 
-ACCA 1 [value_2leg_mutual] — Odds 1.99 — Stake 9.73%
-  - Kyrian Jacquet vs Tomas Martin Etcheverry -> Tomas Martin Etcheverry @ 1.57 (conf 70.0 ml 0.85 BOOST src BetClan, PredixSport odds_src BetExplorer)
-  - Vit Kopriva vs Denis Shapovalov -> Denis Shapovalov @ 1.27 (conf 88.41 ml 0.55 BOOST src BetClan odds_src BetExplorer)
+ACCA 1 [value_2leg_mutual] — Odds 2.31 — Stake 14.46%
+  - Halys / Miedler vs Marozsan / Rikl -> Halys / Miedler @ 1.57 (conf 73.0 ml 0.35 ALLOW src BetClan odds_src BetExplorer)
+  - Jaime Faria vs Hugo Gaston -> Jaime Faria @ 1.47 (conf 68.02721088435374 ml 0.6 BOOST src BetClan, PredixSport odds_src BetExplorer)
 
-ACCA 2 [value_2leg_mutual] — Odds 2.19 — Stake 9.73%
-  - Halys / Miedler vs Marozsan / Rikl -> Halys / Miedler @ 1.55 (conf 73.0 ml 0.55 BOOST src BetClan odds_src BetExplorer)
-  - Fabian Marozsan vs Taro Daniel -> Fabian Marozsan @ 1.41 (conf 72.0 ml 0.85 BOOST src BetClan, PredixSport odds_src BetExplorer)
+ACCA 2 [value_2leg_mutual] — Odds 2.15 — Stake 14.46%
+  - Arribage / Olivetti vs Escobar / Kaliyanda Poonacha -> Arribage / Olivetti @ 1.48 (conf 77.0 ml 0.35 ALLOW src BetClan odds_src BetExplorer)
+  - Borges / Cerundolo vs Schnaitter / Wallner -> Schnaitter / Wallner @ 1.45 (conf 71.0 ml 0.35 ALLOW src BetClan odds_src BetExplorer)
 
-ACCA 3 [value_2leg_mutual] — Odds 2.18 — Stake 9.73%
-  - Arribage / Olivetti vs Escobar / Kaliyanda Poonacha -> Arribage / Olivetti @ 1.48 (conf 77.0 ml 0.55 BOOST src BetClan odds_src BetExplorer)
-  - Jaime Faria vs Hugo Gaston -> Jaime Faria @ 1.47 (conf 68.02721088435374 ml 0.7 BOOST src BetClan, PredixSport odds_src BetExplorer)
+ACCA 3 [value_2leg_mutual] — Odds 2.36 — Stake 14.46%
+  - Alejandro Tabilo vs Adrian Mannarino -> Alejandro Tabilo @ 1.56 (conf 69.0 ml 0.2 ALLOW src BetClan odds_src BetExplorer)
+  - Nikoloz Basilashvili vs Botic Van De Zandschulp -> Botic Van De Zandschulp @ 1.51 (conf 69.0 ml 0.2 ALLOW src BetClan odds_src BetExplorer)
 
-ACCA 4 [value_2leg_mutual] — Odds 2.36 — Stake 9.73%
-  - Borges / Cerundolo vs Schnaitter / Wallner -> Schnaitter / Wallner @ 1.52 (conf 71.0 ml 0.55 BOOST src BetClan odds_src BetExplorer)
-  - Alejandro Tabilo vs Adrian Mannarino -> Alejandro Tabilo @ 1.55 (conf 69.0 ml 0.4 BOOST src BetClan odds_src BetExplorer)
-
-Total staked: 38.91% of bank
+Total staked: 43.39% of bank
