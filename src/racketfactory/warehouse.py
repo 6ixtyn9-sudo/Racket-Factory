@@ -995,18 +995,24 @@ def _redacted_key_label(index: int, total: int) -> str:
 
 
 def _local_date_from_api_time(value: object) -> str:
-    """Extract YYYY-MM-DD from The Odds API ISO commence_time.
+    """SAST date part of The Odds API ISO commence_time.
 
-    Keep this deliberately simple: The Odds API returns ISO UTC strings such
-    as 2026-06-29T10:00:00Z. For tennis schedule matching we only need the
-    date part, and we never print secrets here.
+    The Odds API returns ISO UTC strings such as 2026-06-29T10:00:00Z, but
+    every consumer of the warehouse (mine_edges, auto_tickets kickoff_guard,
+    WhatsApp digest) reads match_date/match_time as SAST wall time, so the
+    timestamp is converted to SAST at ingestion — date and time together,
+    so a 22:30Z commence_time correctly lands on the next SAST day as
+    00:30. We never print secrets here.
     """
-    raw = str(value or "").strip()
-    if not raw:
-        return ""
-    if "T" in raw:
-        return raw.split("T", 1)[0]
-    return raw[:10]
+    parts = _local_parts_from_api_time(value)
+    return parts[0]
+
+
+def _local_parts_from_api_time(value: object) -> tuple[str, str]:
+    """(SAST date, SAST HH:MM) from The Odds API ISO commence_time."""
+    from racketfactory.kickoff import utc_commence_to_sast
+
+    return utc_commence_to_sast(str(value or "").strip())
 
 
 def _the_odds_api_cache_file(target_date: str) -> Path:
@@ -1445,9 +1451,10 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
             if best_home is None and best_away is None:
                 continue
 
+            api_sast_date, api_sast_time = _local_parts_from_api_time(event.get("commence_time"))
             rows.append({
-                "match_date": _local_date_from_api_time(event.get("commence_time")) or str(target_date)[:10],
-                "match_time": str(event.get("commence_time") or "")[11:16],
+                "match_date": api_sast_date or str(target_date)[:10],
+                "match_time": api_sast_time,
                 "player_home": home,
                 "player_away": away,
                 "odds_home": best_home,

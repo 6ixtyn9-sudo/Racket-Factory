@@ -12,8 +12,30 @@ from datetime import date, timedelta
 from curl_cffi import requests
 
 from racketfactory.entities import normalize_player
+from racketfactory.kickoff import BETCLAN_TZ, parse_source_timestamp, to_sast_parts
 
 logger = logging.getLogger(__name__)
+
+
+def extract_kickoff_sast(page_text: str, target_date: str) -> tuple[str, str]:
+    """First kickoff stamp on a BetClan page, normalised to SAST.
+
+    BetClan stamps kickoffs with no explicit offset and they measured
+    exactly UTC+1 on 2026-09-24/25 (Betway's SAST time minus 1h on every
+    singles checked), so naive stamps are read as BETCLAN_TZ (fixed
+    UTC+1). When a stamp does carry an offset ("Z" / "+HH:MM") it is
+    honoured instead. Falls back to the SAST target date at midnight when
+    the page shows no stamp at all.
+    """
+    m = re.search(
+        r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)",
+        page_text or "",
+    )
+    if m:
+        ts = parse_source_timestamp(m.group(1), default_tz=BETCLAN_TZ)
+        if ts is not None:
+            return to_sast_parts(ts)
+    return target_date, "00:00"
 
 class BetClanPredictor:
     def __init__(self):
@@ -278,10 +300,7 @@ class BetClanPredictor:
                     if surface_m:
                         surface = surface_m.group(1).strip()
 
-                    m_date = re.search(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})", r.text)
-                    match_time_str = m_date.group(1).replace("T", " ") if m_date else target_date + " 00:00"
-                    match_date = match_time_str.split()[0]
-                    match_time = match_time_str.split()[1] if " " in match_time_str else ""
+                    match_date, match_time = extract_kickoff_sast(r.text, target_date)
 
                     if not any(
                         str(existing.get("match_date", "")) == match_date
