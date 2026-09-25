@@ -1,0 +1,85 @@
+Racket Factory Picks — 2026-09-26
+============================================================
+Generated at: 2026-09-26 00:06:29
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Juan Manuel Cerundolo vs Alejandro Davidov KO 06:00 -> ALEJANDRO DAVIDOVICH FOKINA  conf 65% @1.60  EV +0.04u
+     bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Federico Cina vs Alexandre Muller          KO 08:00 -> FEDERICO CINA  conf 55% @1.97  EV +0.09u
+     bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+
+FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
+============================================================
+  (none)
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  (none)
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Polina Leykina vs Wushuang Zheng           KO 09:00 -> WUSHUANG ZHENG  conf 88% @1.26  EV +0.11u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Daniil Medvedev vs Valentin Royer          KO 08:00 -> DANIIL MEDVEDEV  conf 88% @1.25  EV +0.11u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | pred_confidence:High | cross_source_agree:Both] Costoulas / Gibson vs Routliffe / Sutjiadi KO 08:00 -> ROUTLIFFE / SUTJIADI  conf 75% @1.41  EV +0.06u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=128  roi=1.89%
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Amelia Rajecki vs Hiroko Kuwata            KO 06:00 -> AMELIA RAJECKI  conf 95% @1.05  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Ekaterina Yashina vs Yujia Huang           KO 07:30 -> YUJIA HUANG  conf 94% @1.06  EV -0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Kristiana Sidorova vs Aruzhan Sagandykova  KO 06:00 -> KRISTIANA SIDOROVA  conf 93% @1.07  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Arribage / Olivetti vs Wang / Zhou         KO 10:30 -> ARRIBAGE / OLIVETTI  conf 89% @1.12  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Arends / Pel vs Nouza / Oberleitner        KO 13:00 -> NOUZA / OBERLEITNER  conf 66% @1.52  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Melo / Seggerman vs Schnaitter / Wallner   KO 09:00 -> SCHNAITTER / WALLNER  conf 63% @1.60  EV +0.01u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Quentin Halys vs Roman Safiullin           KO 08:00 -> ROMAN SAFIULLIN  conf 58% @1.71  EV -0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Yunchaokete Bu vs Kamil Majchrzak          KO 08:00 -> KAMIL MAJCHRZAK  conf 57% @1.74  EV -0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Peers / Venus vs Johnson / Zielinski       KO 08:00 -> JOHNSON / ZIELINSKI  conf 57% @1.76  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Galloway / Goransson vs Cash / Erler       KO 11:00 -> GALLOWAY / GORANSSON  conf 56% @1.77  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Valentin Vacherot vs Lloyd Harris          KO 08:00 -> VALENTIN VACHEROT  conf 55% @1.82  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+
+NO-SLICE CANDIDATES (diagnostic — matched no exportable slice; NOT bets)  [7 rows]
+============================================================
+  Coleman Wong vs Adolfo Daniel Vallejo      KO 08:30  ATP/Grass  conf=Medium  agree=Both  band=1.3-1.6  @n/a 69%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Martin Damm vs Hubert Hurkacz              KO 08:00  ATP/Grass  conf=High  agree=Both  band=1.3-1.6  @1.40 71%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Chan / Wu vs Liang / Yuan                  KO 06:00  WTA/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.69 57%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Teodora Kostovic vs Polina Iatcenko        KO 11:00  WTA/Hard  conf=Medium  agree=Both  band=1.6-2.0  @1.64 61%
+     nearest: _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:B  missing: fav_odds_band=1.6-2.0!=1.1-1.3
+  Leylah Fernandez vs Maja Chwalinska        KO 08:00  WTA/Grass  conf=Medium  agree=Both  band=1.6-2.0  @1.69 61%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: fav_odds_band=1.6-2.0!=1.3-1.6, pred_confidence=Medium!=Low
+  Nika Radisic vs Chengyiyi Yuan             KO 06:00  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.48 66%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+  Jiaqi Wang vs Ying Zhang                   KO 07:30  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.42 69%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.

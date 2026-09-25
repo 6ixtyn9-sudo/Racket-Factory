@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-09-25",
+  "as_of": "2026-09-26",
   "checks": {
     "localdata_exists": {
       "status": "OK",
@@ -11,47 +11,47 @@
     },
     "results:foretennis_results": {
       "status": "OK",
-      "detail": "4 files, 1336 rows, max_date 2026-09-25 (lag 0d, budget 3d)"
+      "detail": "4 files, 1340 rows, max_date 2026-09-25 (lag 1d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "WARN",
-      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 6d, budget 3d)"
+      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 7d, budget 3d)"
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "1 files, 5918 rows, max_date 2026-09-25 (lag 0d, budget 3d)"
+      "detail": "1 files, 5678 rows, max_date 2026-09-26 (lag 0d, budget 3d)"
     },
     "results:theoddsapi_scores": {
       "status": "WARN",
-      "detail": "1 files, 27 rows, max_date 2026-09-18 (lag 7d, budget 3d)"
+      "detail": "1 files, 27 rows, max_date 2026-09-18 (lag 8d, budget 3d)"
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "7769 result rows across all sources"
+      "detail": "7533 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "16 files, 12502 rows, max_date 2026-09-26"
+      "detail": "16 files, 12508 rows, max_date 2026-09-26"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "6809 rows, max_date 2026-09-25"
+      "detail": "6947 rows, max_date 2026-09-26"
     },
     "warehouse:live_rows": {
       "status": "OK",
-      "detail": "344 live-injected rows"
+      "detail": "371 live-injected rows"
     },
     "picks:priced_share": {
       "status": "OK",
-      "detail": "picks_2026-09-25.json: 1/19 priced"
+      "detail": "picks_2026-09-26.json: 2/2 priced"
     },
     "audit:rolling": {
       "status": "OK",
-      "detail": "settled 132 conflicts 0 pending 23"
+      "detail": "settled 138 conflicts 0 pending 29"
     },
     "tickets:bank": {
       "status": "OK",
-      "detail": "bank 173.557918% paper 100.0% open 3 history 17"
+      "detail": "bank 130.168518% paper 100.0% open 2 history 18"
     }
   }
 }

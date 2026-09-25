@@ -1,12 +1,13 @@
 AUTO-TICKETS (TENNIS) PERFORMANCE — percentages of capital only
 ==============================================================
-generated 2026-09-25T16:09:24
-bank 173.6% of capital (x1.74) · cycle baseline 100.0% · next take-profit at 200.0% (+100% per cycle)
-bet-days 9 (unique) · REAL accas 12W/11L (hit 52.2%)
+generated 2026-09-26T00:07:22
+bank 130.2% of capital (x1.30) · cycle baseline 100.0% · next take-profit at 200.0% (+100% per cycle)
+bet-days 10 (unique) · REAL accas 12W/13L (hit 48.0%)
 PAPER accas (phantom odds, excluded from bank): 3W/0L  paper-PnL +0.0%  paper-bank 100.0%
-open slips 3 · 0 take-profit notification(s)
+open slips 2 · 0 take-profit notification(s)
 
 --- bet-days (most recent first) ---
+  2026-09-25  @2.31L @2.88L                                bank   130.2%
   2026-09-24  @2.29W @2.07W                                bank   173.6%
   2026-09-23  @2.62W @1.88L                                bank   134.0%
   2026-09-22  @1.64W @1.99L @2.00L @1.93L                  bank   124.4%
@@ -20,7 +21,7 @@ open slips 3 · 0 take-profit notification(s)
 --- STAKED legs by price band: hit% vs breakeven% (paper excluded) ---
   band         n     W-L    hit%  avg odds  breakeven    spread
   <1.30       12    11-1   91.7%     1.242      80.5%   +11.2pp
-  1.30-1.59   29   16-13   55.2%     1.422      70.3%   -15.1pp
-  1.60+        5     4-1   80.0%     2.082      48.0%   +32.0pp
-  >=1.30      34   20-14   58.8%     1.519      65.8%    -7.0pp
-  all         46   31-15   67.4%     1.447      69.1%    -1.7pp
+  1.30-1.59   32   17-15   53.1%     1.431      69.9%   -16.8pp
+  1.60+        6     5-1   83.3%     2.053      48.7%   +34.6pp
+  >=1.30      38   22-16   57.9%     1.529      65.4%    -7.5pp
+  all         50   33-17   66.0%     1.460      68.5%    -2.5pp
