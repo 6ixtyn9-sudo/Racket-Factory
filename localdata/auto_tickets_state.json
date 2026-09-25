@@ -4449,12 +4449,18 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_bare_surname": true,
               "_settle_basis": {
                 "match_date": "2026-09-25",
-                "score": ""
+                "result_id": "3329615.0",
+                "score": "4-6 6-4 10-7",
+                "source": "Challenger_results",
+                "status": "",
+                "tournament": "",
+                "winner": "Halys Q. / Miedler L."
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-25 4-6 6-4 10-7",
               "bucket": "WATCHLIST",
               "confidence": 73.0,
               "context_used": "ATP Hangzhou MD Prediction",
@@ -4599,10 +4605,15 @@
               "_selection_basis": "prediction",
               "_settle_basis": {
                 "match_date": "2026-09-25",
-                "score": ""
+                "result_id": "3332228.0",
+                "score": "6-4 7-5",
+                "source": "Challenger_results",
+                "status": "",
+                "tournament": "",
+                "winner": "Basilashvili N."
               },
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
+              "_settle_outcome": "LOST",
+              "_settle_reason": "settled from Challenger_results 2026-09-25 6-4 7-5",
               "bucket": "WATCHLIST",
               "confidence": 69.0,
               "context_used": "ATP Chengdu Prediction",

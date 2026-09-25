@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-25T08:07:04",
+  "generated_at": "2026-09-25T16:09:24",
   "unit": "percent_of_capital",
   "base_pct": 100.0,
   "bank_pct": 173.557918,
@@ -367,6 +367,17 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-25",
+                "score": "4-6 6-4 10-7",
+                "winner": "Halys Q. / Miedler L.",
+                "result_id": "3329615.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "WON",
+              "_settle_reason": "settled from Challenger_results 2026-09-25 4-6 6-4 10-7",
               "bucket": "WATCHLIST",
               "confidence": 73.0,
               "context_used": "ATP Hangzhou MD Prediction",
@@ -425,18 +436,19 @@
               "surface": "Hard",
               "tour": "ATP",
               "tournament": "ATP Hangzhou MD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-25",
-                "score": ""
-              }
+              "_settle_bare_surname": true
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-25",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "SKIPPED_DEAD_EDGE",
               "confidence": 68.02721088435374,
               "context_used": "ATP Hangzhou Prediction",
@@ -494,13 +506,7 @@
               "source_count": 5,
               "surface": "Hard",
               "tour": "ATP",
-              "tournament": "ATP Hangzhou Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-25",
-                "score": ""
-              }
+              "tournament": "ATP Hangzhou Prediction"
             }
           ],
           "odds": 2.31,
@@ -515,6 +521,17 @@
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "source": "Challenger_results",
+                "match_date": "2026-09-25",
+                "score": "6-4 7-5",
+                "winner": "Basilashvili N.",
+                "result_id": "3332228.0",
+                "tournament": "",
+                "status": ""
+              },
+              "_settle_outcome": "LOST",
+              "_settle_reason": "settled from Challenger_results 2026-09-25 6-4 7-5",
               "bucket": "WATCHLIST",
               "confidence": 69.0,
               "context_used": "ATP Chengdu Prediction",
@@ -571,19 +588,19 @@
               "source_count": 4,
               "surface": "Hard",
               "tour": "ATP",
-              "tournament": "ATP Chengdu Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-25",
-                "score": ""
-              }
+              "tournament": "ATP Chengdu Prediction"
             },
             {
               "_is_paper": false,
               "_market_basis": "api",
               "_regime": "genesis-2026-09-20",
               "_selection_basis": "prediction",
+              "_settle_basis": {
+                "match_date": "2026-09-25",
+                "score": ""
+              },
+              "_settle_outcome": "PENDING",
+              "_settle_reason": "result not final: live/in-progress markers present",
               "bucket": "WATCHLIST",
               "confidence": 57.0,
               "context_used": "ATP Hangzhou MD Prediction",
@@ -640,13 +657,7 @@
               "source_count": 3,
               "surface": "Hard",
               "tour": "ATP",
-              "tournament": "ATP Hangzhou MD Prediction",
-              "_settle_outcome": "PENDING",
-              "_settle_reason": "result not final: live/in-progress markers present",
-              "_settle_basis": {
-                "match_date": "2026-09-25",
-                "score": ""
-              }
+              "tournament": "ATP Hangzhou MD Prediction"
             }
           ],
           "odds": 2.88,

@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-26
 ============================================================
-Generated at: 2026-09-25 08:06:21
-Snapshot as of: 2026-09-25T08:01:53+02:00
+Generated at: 2026-09-25 16:08:03
+Snapshot as of: 2026-09-25T16:01:54+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,7 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  [no_slice_export] Coleman Wong vs Adolfo Daniel Vallejo      KO 06:30 -> COLEMAN WONG  conf 69% @n/a
+  [no_slice_export] Coleman Wong vs Adolfo Daniel Vallejo      KO 08:30 -> COLEMAN WONG  conf 69% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
