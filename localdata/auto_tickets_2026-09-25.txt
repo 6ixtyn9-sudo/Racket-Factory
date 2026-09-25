@@ -1,21 +1,17 @@
 Racket Factory Auto Tickets — 2026-09-25
-Generated at: 2026-09-25T06:30:55+02:00
+Generated at: 2026-09-25T08:01:53+02:00
 Bank: 173.56% (cycle base 100.00%)
 Take profit target: 200.00%
 
 Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 1.5), 4 accas max per track, NO SINGLES
 Stake: 25% of bank per day (priced track only; paper is hit-rate only)
 
-ACCA 1 [value_2leg_mutual] — Odds 2.31 — Stake 14.46%
+ACCA 1 [value_2leg_mutual] — Odds 2.31 — Stake 21.69%
   - Halys / Miedler vs Marozsan / Rikl -> Halys / Miedler @ 1.57 (conf 73.0 ml 0.35 ALLOW src BetClan odds_src BetExplorer)
   - Jaime Faria vs Hugo Gaston -> Jaime Faria @ 1.47 (conf 68.02721088435374 ml 0.6 BOOST src BetClan, PredixSport odds_src BetExplorer)
 
-ACCA 2 [value_2leg_mutual] — Odds 2.15 — Stake 14.46%
-  - Arribage / Olivetti vs Escobar / Kaliyanda Poonacha -> Arribage / Olivetti @ 1.48 (conf 77.0 ml 0.35 ALLOW src BetClan odds_src BetExplorer)
-  - Borges / Cerundolo vs Schnaitter / Wallner -> Schnaitter / Wallner @ 1.45 (conf 71.0 ml 0.35 ALLOW src BetClan odds_src BetExplorer)
-
-ACCA 3 [value_2leg_mutual] — Odds 2.36 — Stake 14.46%
-  - Alejandro Tabilo vs Adrian Mannarino -> Alejandro Tabilo @ 1.56 (conf 69.0 ml 0.2 ALLOW src BetClan odds_src BetExplorer)
+ACCA 2 [value_2leg_mutual] — Odds 2.88 — Stake 21.69%
   - Nikoloz Basilashvili vs Botic Van De Zandschulp -> Botic Van De Zandschulp @ 1.51 (conf 69.0 ml 0.2 ALLOW src BetClan odds_src BetExplorer)
+  - Reynolds / Watt vs Gille / Verbeek -> Reynolds / Watt @ 1.91 (conf 57.0 ml 0.1 ALLOW src BetClan odds_src BetExplorer)
 
 Total staked: 43.39% of bank

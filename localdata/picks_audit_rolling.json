@@ -4101,10 +4101,10 @@
       "won": null
     },
     {
-      "bucket": "WATCHLIST",
+      "bucket": "WATCHLIST_NO_ODDS",
       "date": "2026-09-25",
       "edge_grade": "SILVER",
-      "edge_tier": "BANKER",
+      "edge_tier": "WATCHLIST_ONLY",
       "edge_verdict": "WATCHLIST",
       "ledger_kind": "official",
       "match": "Borges / Cerundolo vs Schnaitter / Wallner",
@@ -4261,6 +4261,26 @@
       "won": null
     },
     {
+      "bucket": "WATCHLIST_NO_ODDS",
+      "date": "2026-09-25",
+      "edge_grade": "GOLD",
+      "edge_tier": "WATCHLIST_ONLY",
+      "edge_verdict": "EDGE CONFIRMED",
+      "ledger_kind": "official",
+      "match": "Elise Mertens vs Maja Chwalinska",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Elise Mertens",
+      "series": "International",
+      "settle_date": "2026-09-25",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "WTA",
+      "won": null
+    },
+    {
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-25",
       "edge_grade": "GOLD",
@@ -4378,26 +4398,6 @@
       "status": "pending_no_result",
       "surface": "Hard",
       "tour": "ATP",
-      "won": null
-    },
-    {
-      "bucket": "SKIPPED_VETO",
-      "date": "2026-09-25",
-      "edge_grade": "GOLD",
-      "edge_tier": "BANKER",
-      "edge_verdict": "EDGE CONFIRMED",
-      "ledger_kind": "official",
-      "match": "Katie Volynets vs Kimberly Birrell",
-      "reason": "result not final: live/in-progress markers present",
-      "selected_player": "Katie Volynets",
-      "series": "International",
-      "settle_date": "2026-09-25",
-      "settle_score": "",
-      "settle_source": "",
-      "source": "BetClan",
-      "status": "pending_no_result",
-      "surface": "Hard",
-      "tour": "WTA",
       "won": null
     },
     {
@@ -4602,7 +4602,7 @@
     "SKIPPED_VETO": {
       "conflict_picks": 0,
       "hit_rate": 0.846154,
-      "pending_picks": 11,
+      "pending_picks": 10,
       "priced_paper": 0,
       "priced_picks": 13,
       "priced_real": 13,
@@ -4619,14 +4619,14 @@
       "selected_won_set3_rate": 0.666667,
       "set_diagnostic_picks": 13,
       "settled_picks": 13,
-      "total_picks": 24,
+      "total_picks": 23,
       "void_picks": 0,
       "wins": 11
     },
     "WATCHLIST": {
       "conflict_picks": 0,
       "hit_rate": 0.4,
-      "pending_picks": 9,
+      "pending_picks": 8,
       "priced_paper": 0,
       "priced_picks": 10,
       "priced_real": 10,
@@ -4643,14 +4643,14 @@
       "selected_won_set3_rate": 0.5,
       "set_diagnostic_picks": 10,
       "settled_picks": 10,
-      "total_picks": 19,
+      "total_picks": 18,
       "void_picks": 0,
       "wins": 4
     },
     "WATCHLIST_NO_ODDS": {
       "conflict_picks": 0,
       "hit_rate": 0.796875,
-      "pending_picks": 5,
+      "pending_picks": 7,
       "priced_paper": 0,
       "priced_picks": 0,
       "priced_real": 0,
@@ -4667,7 +4667,7 @@
       "selected_won_set3_rate": 0.666667,
       "set_diagnostic_picks": 64,
       "settled_picks": 64,
-      "total_picks": 70,
+      "total_picks": 72,
       "void_picks": 1,
       "wins": 51
     }
@@ -5028,6 +5028,6 @@
   "regime": "genesis-2026-09-20",
   "same_day_cutoff": "2026-09-25",
   "same_day_excluded": 0,
-  "stale_rows_pruned": 4,
+  "stale_rows_pruned": 1,
   "start": "2026-09-20"
 }

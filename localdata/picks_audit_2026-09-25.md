@@ -7,7 +7,7 @@
 - archived pick dates: 6
 - ledger pick rows (in window): 155
 - duplicate rows merged (same match + selection re-picked): 4
-- stale history rows pruned (pick no longer in ledger): 4
+- stale history rows pruned (pick no longer in ledger): 1
 - settled picks: 116
 - wins: 84
 - hit rate: 0.724138
@@ -41,7 +41,7 @@
 
 - ledger rows in window (official): 155
 - duplicate rows merged (same match + selection in multiple daily ledgers): 4
-- stale history rows pruned (pick no longer in any archived ledger): 4
+- stale history rows pruned (pick no longer in any archived ledger): 1
 - audited rows: 151
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
@@ -189,13 +189,13 @@
 - 2026-09-25 Deniz Dilek vs Anastasia Gasanova selected=Anastasia Gasanova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Dino Prizmic vs Daniil Glinka selected=Dino Prizmic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Elena Malygina vs Sinja Kraus selected=Sinja Kraus winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-25 Elise Mertens vs Maja Chwalinska selected=Elise Mertens winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Galloway / Goransson vs Mannarino / Muller selected=Galloway / Goransson winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Gonzalez / Molteni vs Gonzalez / Jebens selected=Gonzalez / Molteni winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Griekspoor / Van De Zandschulp vs Melo / Seggerman selected=Melo / Seggerman winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Halys / Miedler vs Marozsan / Rikl selected=Halys / Miedler winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Hu / Lu vs Wang / Zhou selected=Wang / Zhou winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Jenson Brooksby vs Lorenzo Sonego selected=Jenson Brooksby winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-25 Katie Volynets vs Kimberly Birrell selected=Katie Volynets winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Kato / Perez vs Lansere / Prozorova selected=Kato / Perez winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Mia Ristic vs Jessica Pieri selected=Mia Ristic winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-25 Mirra Andreeva vs Leylah Fernandez selected=Mirra Andreeva winner=? status=pending_no_result reason=result not final: live/in-progress markers present
@@ -225,9 +225,9 @@
 
 - `CERTIFIED_CLEAN`: total=9, settled=9, wins=6, hit_rate=0.666667, ROI=-0.132222, pending=0
 - `SKIPPED_DEAD_EDGE`: total=29, settled=20, wins=12, hit_rate=0.6, ROI=-0.2105, pending=9
-- `SKIPPED_VETO`: total=24, settled=13, wins=11, hit_rate=0.846154, ROI=0.043846, pending=11
-- `WATCHLIST`: total=19, settled=10, wins=4, hit_rate=0.4, ROI=-0.333, pending=9
-- `WATCHLIST_NO_ODDS`: total=70, settled=64, wins=51, hit_rate=0.796875, ROI=None, pending=5, void=1
+- `SKIPPED_VETO`: total=23, settled=13, wins=11, hit_rate=0.846154, ROI=0.043846, pending=10
+- `WATCHLIST`: total=18, settled=10, wins=4, hit_rate=0.4, ROI=-0.333, pending=8
+- `WATCHLIST_NO_ODDS`: total=72, settled=64, wins=51, hit_rate=0.796875, ROI=None, pending=7, void=1
 
 ## By Source
 

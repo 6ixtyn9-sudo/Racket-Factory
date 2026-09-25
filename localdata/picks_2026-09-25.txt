@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-09-25
 ============================================================
-Generated at: 2026-09-25 06:37:18
+Generated at: 2026-09-25 08:06:01
 
 
 CERTIFIED CLEAN PICKS
@@ -17,9 +17,7 @@ WATCHLIST PICKS
      bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
   [tour:ATP | _surface:Hard | cross_source_agree:Both] Halys / Miedler vs Marozsan / Rikl         KO 09:30 -> HALYS / MIEDLER  conf 73% @1.57  EV +0.15u
      bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
-  [tour:ATP | _surface:Hard | cross_source_agree:Both] Borges / Cerundolo vs Schnaitter / Wallner KO 07:30 -> SCHNAITTER / WALLNER  conf 71% @1.45  EV +0.03u
-     bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
-  [tour:ATP | _surface:Hard | cross_source_agree:Both] Kyrian Jacquet vs Tomas Martin Etcheverry  KO 06:30 -> TOMAS MARTIN ETCHEVERRY  conf 70% @1.55  EV +0.08u
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Kyrian Jacquet vs Tomas Martin Etcheverry  KO 06:30 -> TOMAS MARTIN ETCHEVERRY  conf 70% @1.56  EV +0.09u
      bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
   [tour:ATP | _surface:Hard | cross_source_agree:Both] Alejandro Tabilo vs Adrian Mannarino       KO 07:30 -> ALEJANDRO TABILO  conf 69% @1.56  EV +0.08u
      bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
@@ -29,7 +27,7 @@ WATCHLIST PICKS
      bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
   [tour:ATP | _surface:Hard | cross_source_agree:Both] Reynolds / Watt vs Gille / Verbeek         KO 11:00 -> REYNOLDS / WATT  conf 57% @1.91  EV +0.09u
      bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
-  [tour:ATP | _surface:Hard | cross_source_agree:Both] Rojer / Winegar vs Lammons / Withrow       KO 06:30 -> LAMMONS / WITHROW  conf 57% @1.80  EV +0.03u
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Rojer / Winegar vs Lammons / Withrow       KO 06:30 -> LAMMONS / WITHROW  conf 57% @1.81  EV +0.03u
      bucket=WATCHLIST  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
 
 FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
@@ -38,6 +36,10 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both] Elise Mertens vs Maja Chwalinska           KO 06:00 -> ELISE MERTENS  conf 85% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=117  roi=15.96%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Borges / Cerundolo vs Schnaitter / Wallner KO 07:30 -> SCHNAITTER / WALLNER  conf 71% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=35  roi=21.85%
   [tour:ATP | _surface:Hard | cross_source_agree:Both] Griekspoor / Van De Zandschulp vs Melo / S KO 08:00 -> MELO / SEGGERMAN  conf 57% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  n=35  roi=21.85%
 
@@ -47,8 +49,6 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Katie Volynets vs Kimberly Birrell         KO 04:00 -> KATIE VOLYNETS  conf 88% @1.29  EV +0.14u
-     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
   [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Kato / Perez vs Lansere / Prozorova        KO 10:00 -> KATO / PEREZ  conf 88% @1.28  EV +0.13u
      bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
   [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Mirra Andreeva vs Leylah Fernandez         KO 11:30 -> MIRRA ANDREEVA  conf 88% @1.28  EV +0.13u
@@ -80,24 +80,28 @@ SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
      bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan, PredixSport  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
   [tour:ATP | _surface:Hard | cross_source_agree:Both] Gonzalez / Molteni vs Gonzalez / Jebens    KO 06:30 -> GONZALEZ / MOLTENI  conf 62% @1.60  EV +0.00u
      bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
-  [tour:ATP | _surface:Hard | cross_source_agree:Both] Cash / Erler vs Frantzen / Haase           KO 06:30 -> FRANTZEN / HAASE  conf 61% @1.63  EV -0.00u
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Cash / Erler vs Frantzen / Haase           KO 06:30 -> FRANTZEN / HAASE  conf 62% @1.62  EV +0.00u
      bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
 
 NO-SLICE CANDIDATES (diagnostic — matched no exportable slice; NOT bets)  [28 rows]
 ============================================================
   Costoulas / Gibson vs Routliffe / Sutjiadi KO 06:00  WTA/Hard  conf=High  agree=Both  band=1.3-1.6  @1.32 75%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=High!=Low
-  Johnson / Zielinski vs Doumbia / Reboul    KO 04:00  ATP/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.49 65%
+  Johnson / Zielinski vs Doumbia / Reboul    KO 04:00  ATP/Grass  conf=Medium  agree=Both  band=1.3-1.6  @n/a 65%
      nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
-  Peers / Venus vs Stevenson / Willis        KO 04:00  ATP/Grass  conf=Medium  agree=Both  band=1.6-2.0  @1.78 61%
+  Peers / Venus vs Stevenson / Willis        KO 04:00  ATP/Grass  conf=Medium  agree=Both  band=1.6-2.0  @n/a 61%
      nearest: tour:ATP | _surface:Hard | cross_source_agree:Both  missing: _surface=Grass!=Hard
+  Chong / Hozumi vs Lee / Ye                 KO 04:00  WTA/Grass  conf=Medium  agree=Both  band=1.3-1.6  @n/a 65%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Katie Volynets vs Kimberly Birrell         KO 04:00  WTA/Hard  conf=High  agree=Both  band=1.3-1.6  @n/a 73%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=High!=Low
   Rinky Hijikata vs Andrey Rublev            KO 09:30  ATP/Grass  conf=High  agree=Both  band=1.3-1.6  @1.31 71%
      nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
   Fabian Marozsan vs Taro Daniel             KO 08:00  ATP/Grass  conf=High  agree=Both  band=1.3-1.6  @1.40 72%
      nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
   Murphy Cassone vs Daniel Masur             KO 10:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.49 66%
      nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
-  Titouan Droguet vs Mark Lajal              KO 09:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.6-2.0  @1.76 60%
+  Titouan Droguet vs Mark Lajal              KO 09:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.6-2.0  @1.78 60%
      nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: fav_odds_band=1.6-2.0!=1.3-1.6, pred_confidence=Medium!=Low
   Moratelli / Ruggeri vs Gorgodze / Papamich KO 09:00  WTA/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.86 54%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
@@ -109,8 +113,6 @@ NO-SLICE CANDIDATES (diagnostic — matched no exportable slice; NOT bets)  [28 
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
   Jorge / Jorge vs Corley / Corley           KO 16:00  WTA/Hard  conf=High  agree=Both  band=1.3-1.6  @1.40 71%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=High!=Low
-  Chong / Hozumi vs Lee / Ye                 KO 04:00  WTA/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.48 65%
-     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
   Guiomar Maristany Zuleta De Reales vs Rebe KO 11:30  WTA/Hard  conf=High  agree=Both  band=1.6-2.0  @1.77 73%
      nearest: fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_  missing: fav_odds_band=1.6-2.0!=1.1-1.3
   Ekaterine Gorgodze vs Oksana Selekhmeteva  KO 16:30  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.46 66%
@@ -119,21 +121,19 @@ NO-SLICE CANDIDATES (diagnostic — matched no exportable slice; NOT bets)  [28 
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=High!=Low
   Maria Timofeeva vs Gabriela Knutson        KO 14:30  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.39 61%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
-  Anna Bondar vs Elena-Gabriela Ruse         KO 05:30  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.56 63%
+  Anna Bondar vs Elena-Gabriela Ruse         KO 05:30  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.55 63%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
   Ksenia Zaytseva vs Polina Iatcenko         KO 10:00  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.45 69%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
   Nuria Brancaccio vs Julia Grabher          KO 18:30  WTA/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.68 57%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
-  Elise Mertens vs Maja Chwalinska           KO 06:00  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.46 69%
-     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
   Teodora Kostovic vs Fangran Tian           KO 10:00  WTA/Hard  conf=High  agree=Both  band=1.3-1.6  @1.31 75%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=High!=Low
   Taylah Preston vs Alina Korneeva           KO 07:00  WTA/Hard  conf=High  agree=Both  band=1.3-1.6  @1.30 75%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=High!=Low
   Lanlana Tararudee vs Maya Joint            KO 08:30  WTA/Hard  conf=Medium  agree=Both  band=1.6-2.0  @1.73 60%
      nearest: _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:B  missing: fav_odds_band=1.6-2.0!=1.1-1.3
-  Xinyu Wang vs Tatiana Prozorova            KO 07:30  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.44 63%
+  Xinyu Wang vs Tatiana Prozorova            KO 07:30  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.42 63%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
   Maria Sakkari vs Talia Gibson              KO 13:00  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.45 69%
      nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low

@@ -1,10 +1,10 @@
 {
   "date": "2026-09-26",
   "warehouse": "localdata/warehouse.csv.gz",
-  "warehouse_sha256": "3913ccbc420a7e91bdf0d98535e191b51c4b04cbd91de149305f62062ea44a78",
-  "warehouse_rows": 6297,
+  "warehouse_sha256": "d24b47d9554dc56cd66b12e8db6a0e1262b00f82af769c59e958bef41612c2e2",
+  "warehouse_rows": 6318,
   "cross_source_agree": {
-    "Unknown": 3900,
+    "Unknown": 3921,
     "MarketOnly": 1352,
     "Both": 650,
     "Disagree": 366,

@@ -215,11 +215,11 @@
       "wins": 749
     },
     "Medium (60-70%)": {
-      "calibration_error": 0.0851,
+      "calibration_error": 0.0838,
       "expected": 0.6,
-      "hit_rate": 0.6851,
-      "n": 562,
-      "wilson_lb": 0.6455,
+      "hit_rate": 0.6838,
+      "n": 563,
+      "wilson_lb": 0.6443,
       "wins": 385
     }
   },
@@ -240,18 +240,18 @@
     },
     "market": {
       "expected": null,
-      "hit_rate": 0.5923,
-      "n": 932,
-      "wilson_lb": 0.5604,
+      "hit_rate": 0.5916,
+      "n": 933,
+      "wilson_lb": 0.5598,
       "wins": 552
     }
   },
   "calibration_by_tour": {
     "ATP": {
       "expected": null,
-      "hit_rate": 0.6008,
-      "n": 248,
-      "wilson_lb": 0.5388,
+      "hit_rate": 0.5984,
+      "n": 249,
+      "wilson_lb": 0.5365,
       "wins": 149
     },
     "CHALLENGER": {
@@ -283,5 +283,5 @@
       "wins": 11
     }
   },
-  "total_settled": 6344
+  "total_settled": 6365
 }

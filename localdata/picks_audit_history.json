@@ -4141,10 +4141,10 @@
     "won": null
   },
   {
-    "bucket": "WATCHLIST",
+    "bucket": "WATCHLIST_NO_ODDS",
     "date": "2026-09-25",
     "edge_grade": "SILVER",
-    "edge_tier": "BANKER",
+    "edge_tier": "WATCHLIST_ONLY",
     "edge_verdict": "WATCHLIST",
     "ledger_kind": "official",
     "match": "Borges / Cerundolo vs Schnaitter / Wallner",
@@ -4301,6 +4301,26 @@
     "won": null
   },
   {
+    "bucket": "WATCHLIST_NO_ODDS",
+    "date": "2026-09-25",
+    "edge_grade": "GOLD",
+    "edge_tier": "WATCHLIST_ONLY",
+    "edge_verdict": "EDGE CONFIRMED",
+    "ledger_kind": "official",
+    "match": "Elise Mertens vs Maja Chwalinska",
+    "reason": "result not final: live/in-progress markers present",
+    "selected_player": "Elise Mertens",
+    "series": "International",
+    "settle_date": "2026-09-25",
+    "settle_score": "",
+    "settle_source": "",
+    "source": "BetClan",
+    "status": "pending_no_result",
+    "surface": "Hard",
+    "tour": "WTA",
+    "won": null
+  },
+  {
     "bucket": "SKIPPED_DEAD_EDGE",
     "date": "2026-09-25",
     "edge_grade": "GOLD",
@@ -4438,26 +4458,6 @@
     "status": "pending_no_result",
     "surface": "Hard",
     "tour": "ATP",
-    "won": null
-  },
-  {
-    "bucket": "SKIPPED_VETO",
-    "date": "2026-09-25",
-    "edge_grade": "GOLD",
-    "edge_tier": "BANKER",
-    "edge_verdict": "EDGE CONFIRMED",
-    "ledger_kind": "official",
-    "match": "Katie Volynets vs Kimberly Birrell",
-    "reason": "result not final: live/in-progress markers present",
-    "selected_player": "Katie Volynets",
-    "series": "International",
-    "settle_date": "2026-09-25",
-    "settle_score": "",
-    "settle_source": "",
-    "source": "BetClan",
-    "status": "pending_no_result",
-    "surface": "Hard",
-    "tour": "WTA",
     "won": null
   },
   {
