@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-09-26",
+  "as_of": "2026-09-27",
   "checks": {
     "localdata_exists": {
       "status": "OK",
@@ -11,43 +11,43 @@
     },
     "results:foretennis_results": {
       "status": "OK",
-      "detail": "4 files, 1362 rows, max_date 2026-09-26 (lag 0d, budget 3d)"
+      "detail": "4 files, 1363 rows, max_date 2026-09-26 (lag 1d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "WARN",
-      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 7d, budget 3d)"
+      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 8d, budget 3d)"
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "1 files, 5964 rows, max_date 2026-09-26 (lag 0d, budget 3d)"
+      "detail": "1 files, 5705 rows, max_date 2026-09-26 (lag 1d, budget 3d)"
     },
     "results:theoddsapi_scores": {
       "status": "WARN",
-      "detail": "1 files, 27 rows, max_date 2026-09-18 (lag 8d, budget 3d)"
+      "detail": "1 files, 27 rows, max_date 2026-09-18 (lag 9d, budget 3d)"
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "7841 result rows across all sources"
+      "detail": "7583 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "17 files, 12459 rows, max_date 2026-09-27"
+      "detail": "17 files, 12467 rows, max_date 2026-09-27"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "7111 rows, max_date 2026-09-26"
+      "detail": "7191 rows, max_date 2026-09-27"
     },
     "warehouse:live_rows": {
       "status": "OK",
-      "detail": "395 live-injected rows"
+      "detail": "421 live-injected rows"
     },
     "picks:priced_share": {
-      "status": "WARN",
-      "detail": "picks_2026-09-26.json: 0/16 priced"
+      "status": "OK",
+      "detail": "picks_2026-09-27.json: 1/1 priced"
     },
     "audit:rolling": {
       "status": "OK",
-      "detail": "settled 153 conflicts 0 pending 23"
+      "detail": "settled 157 conflicts 0 pending 29"
     },
     "tickets:bank": {
       "status": "OK",
