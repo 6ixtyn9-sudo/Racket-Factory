@@ -52,6 +52,12 @@ data/cache/
 !localdata/auto_tickets_*.json
 !localdata/auto_tickets_*.txt
 !localdata/auto_tickets_*.log
+# Durable kickoff-timezone evidence. MUST be committed: the only independent
+# UTC reference (The Odds API commence_time) lives in an uncommitted runtime
+# cache, so on an ephemeral CI runner the audit would restart from zero
+# evidence every day and could never leave UNKNOWN. This tiny append-only
+# ledger is what lets the verdict actually resolve. Bounded to 5000 rows.
+!localdata/kickoff_tz_samples.jsonl
 !localdata/auto_tickets_grade.log
 !localdata/auto_tickets_grade_*.log
 !localdata/auto_tickets_state.json

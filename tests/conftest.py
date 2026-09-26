@@ -33,3 +33,44 @@ def _bypass_fetch_cache(monkeypatch, tmp_path):
     real_cache = Path(__file__).resolve().parents[1] / "localdata" / "fetch_cache"
     if real_cache.exists():
         shutil.rmtree(real_cache, ignore_errors=True)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _localdata_is_not_a_scratch_dir():
+    """Fail the run if the suite mutated the committed ledger.
+
+    Found the hard way: tests calling auto_tickets_grade.settle_open_slips
+    wrote the real localdata/auto_tickets_grade.log and created a real
+    auto_tickets_stale_slips.json, because those writes target the module's
+    LOCALDATA at call time. A test suite that edits the live betting ledger
+    can turn a green run into a silent state change, so the guard is a hard
+    failure rather than a cleanup.
+
+    Uses git as the source of truth; skips silently outside a checkout.
+    """
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+
+    def dirty() -> set[str]:
+        try:
+            out = subprocess.run(
+                ["git", "status", "--porcelain", "--", "localdata"],
+                cwd=root, capture_output=True, text=True, timeout=60)
+        except Exception:
+            return set()
+        if out.returncode != 0:
+            return set()
+        return {line[3:].strip() for line in out.stdout.splitlines() if line.strip()}
+
+    before = dirty()
+    yield
+    after = dirty()
+    introduced = after - before
+    if introduced:
+        raise AssertionError(
+            "tests mutated the committed ledger under localdata/: "
+            + ", ".join(sorted(introduced))
+            + " — monkeypatch the module's LOCALDATA onto tmp_path instead."
+        )

@@ -3,23 +3,10 @@
     "reason": "delete autotickets and all picks before today per user request - rebase clean",
     "reset_at": "2026-09-12T19:45:00+02:00"
   },
-  "bank": 100.0,
+  "bank": 130.168518,
   "base_pct": 100.0,
   "cycle_base": 100.0,
-  "events": [
-    {
-      "at": "2026-09-26T11:01:09.200128+02:00",
-      "event": "execution_cycle_reset",
-      "execution_regime": "exec-2026-09-26",
-      "pick_regime": "genesis-2026-09-20",
-      "bank_before": 130.168518,
-      "bank_after": 100.0,
-      "booked_pnl_pct": 30.17,
-      "adjusted_pnl_pct": -58.09,
-      "history_entries_preserved": 18,
-      "note": "execution regime boundary 2026-09-26"
-    }
-  ],
+  "events": [],
   "history": [
     {
       "accas": [
@@ -4791,6 +4778,5 @@
       "staked_pct": 0
     }
   ],
-  "paper_bank": 100.0,
-  "_reset_20260926_exec-2026-09-26": true
+  "paper_bank": 100.0
 }

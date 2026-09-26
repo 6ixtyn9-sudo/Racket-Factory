@@ -33,9 +33,14 @@ def test_no_fabrication_entrypoint():
 
 
 def test_priced_and_paper_tracks_split():
+    # 1.55 x 1.60 = 2.48, inside the BOOST acca band (1.18-3.00). The old
+    # fixture was 1.9 x 2.1 = 3.99, which every acca gate rejects — it only
+    # produced a priced acca because the fallback path used to bypass those
+    # gates entirely (see tests/test_select_accas_golden.py). This test is
+    # about the priced/paper SPLIT, so it should not depend on that.
     pool = [
-        _pick("A1 vs B1", "A1", odds=1.9, src="TheOddsAPI"),
-        _pick("A2 vs B2", "A2", odds=2.1, src="Bzzoiro"),
+        _pick("A1 vs B1", "A1", odds=1.55, src="TheOddsAPI"),
+        _pick("A2 vs B2", "A2", odds=1.60, src="Bzzoiro"),
         _pick("C1 vs D1", "C1", bucket="WATCHLIST_NO_ODDS"),
         _pick("C2 vs D2", "C2", bucket="WATCHLIST_NO_ODDS"),
     ]

@@ -26,6 +26,59 @@ To bump a regime: change ``REGIME_ID`` and delete the previous regime's
 
 REGIME_ID = "genesis-2026-09-20"
 
+# --------------------------------------------------------------------------
+# Execution regime — a SEPARATE axis from the pick regime above.
+# --------------------------------------------------------------------------
+# REGIME_ID identifies the generation of *pick-generation* logic. It governs
+# the audit statistics and the ML context registry, and bumping it throws
+# away the settled pick history that feeds calibration.
+#
+# EXECUTION_REGIME_ID identifies the generation of *ticket-execution* logic:
+# how playable picks are assembled into accas, how they are staked, and how
+# they are settled. These are independent. On 2026-09-26 the execution layer
+# changed substantially (the ungated fallback was closed, staking moved to
+# free-bank sizing at 0.20, and the builder/grader paper split was unified)
+# while pick generation was left behaviourally untouched.
+#
+# The distinction matters because the two have opposite correct responses to
+# that change:
+#
+#   pick regime      UNCHANGED -> do NOT bump. The 141 settled picks and 50
+#                    staked legs remain valid evidence about pick quality,
+#                    and they are the scarce resource every pre-registered
+#                    hypothesis is waiting on. Bumping would reset n to zero
+#                    and blind the ML context registry for weeks.
+#   execution regime CHANGED   -> bump. Acca-level P&L, bank trajectory and
+#                    drawdown from before the boundary describe an engine
+#                    that no longer exists, and one of those accas was only
+#                    placed because of a bug.
+#
+# So acca-level performance is measured from the boundary forward, while
+# leg-level calibration keeps accruing unbroken across it.
+EXECUTION_REGIME_ID = "exec-2026-09-26"
+
+
+def row_execution_regime(row: dict | None) -> str:
+    """Execution regime of an archived acca / slip.
+
+    Untagged rows pre-date the boundary and belong to the regime that ran
+    before it, NOT the current one — the opposite default to row_regime(),
+    because here the absence of a tag is positive evidence that the row was
+    written by the old engine.
+    """
+    if row is None:
+        return PRE_EXECUTION_REGIME_ID
+    val = row.get("_exec_regime")
+    if val is None:
+        return PRE_EXECUTION_REGIME_ID
+    s = str(val).strip()
+    if not s or s.lower() in _EMPTY:
+        return PRE_EXECUTION_REGIME_ID
+    return s
+
+
+PRE_EXECUTION_REGIME_ID = "exec-pre-2026-09-26"
+
 _EMPTY = {"", "nan", "<na>", "none"}
 
 
