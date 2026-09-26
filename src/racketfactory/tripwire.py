@@ -64,6 +64,92 @@ PRICE_BANDS: tuple[tuple[str, float, float], ...] = (
 )
 
 
+# --------------------------------------------------------------------- #
+# rule-breach accounting
+# --------------------------------------------------------------------- #
+# The hard acca-odds ceiling. Any settled acca priced above this was never
+# admissible and its P&L is not evidence about the strategy.
+MAX_ACCA_ODDS_HARD_CAP = 4.0
+
+
+def acca_rule_breach(acca: Mapping[str, Any]) -> str | None:
+    """Why this settled acca should never have been placed, or None.
+
+    WHY THIS EXISTS: `fallback_2leg_mutual` used to append its pair with no
+    acca-level odds gate at all. On 2026-09-17 that placed a 4.08 acca against
+    a 4.00 ceiling; it won, and +88.26 of the book's +30.17 lifetime P&L came
+    from that one bet. Remove it and the REAL track is -58.09.
+
+    The gate is closed now, so nothing new can breach — but the HISTORY still
+    contains it, and a bank figure that silently includes it reads as edge
+    when it is a bug. Every report that quotes P&L is expected to quote the
+    breach-adjusted figure beside it until the contaminated days age out.
+    """
+    if acca.get("paper"):
+        return None
+    odds = _as_float(acca.get("odds"))
+    if odds is not None and odds > MAX_ACCA_ODDS_HARD_CAP + 1e-9:
+        return (f"acca odds {odds:.2f} exceeded the {MAX_ACCA_ODDS_HARD_CAP:.2f} "
+                f"ceiling (ungated fallback, fixed 2026-09-26)")
+    return None
+
+
+def adjusted_pnl(history: Iterable[Mapping[str, Any]]) -> dict:
+    """Real-track P&L as booked, and with never-admissible accas removed."""
+    staked = returned = 0.0
+    b_staked = b_returned = 0.0
+    breaches: list[dict] = []
+    for day in history or []:
+        for acca in day.get("accas", []) or []:
+            if acca.get("paper"):
+                continue
+            stake = _as_float(acca.get("stake_pct")) or 0.0
+            ret = _as_float(acca.get("return_pct")) or 0.0
+            staked += stake
+            returned += ret
+            reason = acca_rule_breach(acca)
+            if reason:
+                b_staked += stake
+                b_returned += ret
+                breaches.append({
+                    "date": day.get("date"), "type": acca.get("type"),
+                    "odds": _as_float(acca.get("odds")),
+                    "won": bool(acca.get("won")),
+                    "stake_pct": round(stake, 3),
+                    "pnl_pct": round(ret - stake, 2), "reason": reason,
+                })
+    booked = returned - staked
+    adjusted = (returned - b_returned) - (staked - b_staked)
+    return {
+        "staked_pct": round(staked, 2), "returned_pct": round(returned, 2),
+        "booked_pnl_pct": round(booked, 2),
+        "adjusted_pnl_pct": round(adjusted, 2),
+        "breach_pnl_pct": round(booked - adjusted, 2),
+        "breaches": breaches,
+        "roi_pct": round(100.0 * booked / staked, 2) if staked else None,
+        "adjusted_roi_pct": (round(100.0 * adjusted / (staked - b_staked), 2)
+                             if (staked - b_staked) else None),
+    }
+
+
+def render_adjusted_pnl(adj: Mapping[str, Any]) -> list[str]:
+    if not adj.get("breaches"):
+        return []
+    lines = ["", "  --- RECORD ADJUSTED FOR RULE BREACHES ---",
+             "  bets the engine's own rules should have rejected are not "
+             "evidence about the strategy:"]
+    for b in adj["breaches"]:
+        lines.append(f"    {b['date']} {b['type']} @ {b['odds']:.2f} "
+                     f"{'WON' if b['won'] else 'lost'} {b['pnl_pct']:+.2f} pts "
+                     f"— {b['reason']}")
+    lines.append(f"  booked   P&L {adj['booked_pnl_pct']:+.2f} pts "
+                 f"(ROI {_fmt(adj['roi_pct'], '+.2f')}%)")
+    lines.append(f"  ADJUSTED P&L {adj['adjusted_pnl_pct']:+.2f} pts "
+                 f"(ROI {_fmt(adj['adjusted_roi_pct'], '+.2f')}%) "
+                 f"<-- the engine's record on bets it was entitled to place")
+    return lines
+
+
 def _as_float(value: Any) -> float | None:
     try:
         out = float(value)
@@ -279,8 +365,10 @@ def price_band_table(legs: Sequence[Mapping[str, Any]]) -> dict:
 
 def build_report(history: Iterable[Mapping[str, Any]], *,
                  as_of: date | None = None) -> dict:
+    history = list(history or [])
     legs = leg_records(history)
     return {
+        "adjusted_pnl": adjusted_pnl(history),
         "n_legs": len(legs),
         "min_n": MIN_N,
         "window_days": PNL_WINDOW_DAYS,
@@ -355,4 +443,6 @@ def render_report(report: Mapping[str, Any]) -> list[str]:
             f"  worst calibration cell: {worst['band']} n={worst['n']} "
             f"promised {worst['promised_pct']}% delivered {worst['realised_pct']}% "
             f"z={worst['z']}{provisional}")
+
+    lines.extend(render_adjusted_pnl(report.get("adjusted_pnl") or {}))
     return lines

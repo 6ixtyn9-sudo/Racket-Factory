@@ -446,10 +446,47 @@ divergence is declared in `INTENTIONAL_DIVERGENCES` with its reason; the test
 asserts the change is confined to the `priced` track and fails loudly if the
 case ever silently re-matches.
 
-### Risk reduction taken (Tier 1)
+### Risk reduction taken (Tier 1) — justification CORRECTED
 
-`STAKE_FRAC` 0.25 → **0.20**. Not a search result — a dominance argument:
-identical log growth to four decimal places, 6.7 points less maximum drawdown.
+`STAKE_FRAC` 0.25 → **0.20**. This was first justified as a dominance
+argument: *"identical log growth to four decimal places, 6.7 points less
+maximum drawdown."* **That justification was wrong and is retracted.** The
+growth figures are not identical — 128.50757 vs 128.50844 final bank, with
+**0.25 fractionally ahead**. Two numbers agreeing to 4dp on one ordering of
+nine days is a coincidence, and reading it as dominance is the same
+winner's-curse error the null test exists to catch. It is embarrassing that it
+appeared in the same document that warns against it.
+
+What survives a paired bootstrap over resampled bet-day sequences
+(N = 20,000, `stake_dominance()`):
+
+| claim | probability |
+|---|---|
+| 0.20 max drawdown **not worse** than 0.25 | **1.000** |
+| 0.20 growth **not worse** than 0.25 | **0.499** |
+| 0.20 **dominates** 0.25 | 0.499 |
+
+So the honest claim is a **risk trade**: measurably less drawdown at no
+measurable growth cost. The change stands on the drawdown leg alone, which is
+the leg that holds up.
+
+**And the part that should not be buried.** Exclude the 2026-09-17 bet the
+fixed engine can no longer place, and the book is negative at *every*
+fraction:
+
+| frac | log growth/day | max drawdown |
+|---|---|---|
+| 0.10 | −0.01109 | 20.6% |
+| 0.15 | −0.01903 | 29.8% |
+| **0.20** | **−0.02864** | **38.3%** |
+| 0.25 | −0.04002 | 46.1% |
+| 0.50 | −0.12912 | 77.8% |
+
+On measured performance the growth-optimal stake is **zero**, and every
+fraction above it is a bet that an edge exists which has not been
+demonstrated. 0.20 is not "the right size"; it is a smaller wrong size than
+0.25 while the question is open. The level is registered as H6.
+
 Overridable via `RACKET_FACTORY_STAKE_FRAC` for replays.
 
 ### Instruments built (Tier 2)
@@ -478,6 +515,32 @@ stale justifications in the source (`doubles 0W/5L`, in `auto_tickets.py` and
 `ml.py`) were corrected in place to state the current evidence *and* the reason
 the constant is nonetheless unchanged: n = 11 is far below the bar, and acting
 on an 11-sample reversal is precisely the error the null test exists to prevent.
+
+### Follow-up pass — the four things the first pass left unhappy
+
+1. **The bank still read as earned.** `tripwire.acca_rule_breach` /
+   `adjusted_pnl` now detect any settled acca priced above the hard ceiling
+   and print the adjusted record wherever P&L is quoted — the grading report
+   and the forensics report both lead with *booked +30.17 / **ADJUSTED
+   −58.09***. A losing breach is stripped too, not just the flattering one
+   (`test_a_losing_breach_is_stripped_too_even_though_it_flatters_us`).
+2. **The tz audit could never resolve.** Its only reference,
+   `theoddsapi_odds_cache_{date}.json`, is an uncommitted runtime cache, so on
+   a fresh CI runner the audit restarted from zero evidence daily and was
+   structurally stuck on `UNKNOWN`. It now shadow-logs every matched fixture
+   to a committed, deduplicated, age- and size-bounded
+   `localdata/kickoff_tz_samples.jsonl`, so evidence accrues from day one.
+   Proven end to end: verdict resolves to `OK`, **survives deletion of the
+   cache**, and a planted +1h reference is caught as `DRIFT −60 min`.
+3. **The stake claim was unfalsifiable as written.** Now `stake_dominance()`,
+   re-run every day, reporting the growth and drawdown legs separately and
+   printing at 8dp precisely because 4dp is what created the false tie.
+4. **The pre-registration relied on someone remembering.** A hypothesis board
+   now scores H1–H6 against current data on every run and prints
+   `READY TO DECIDE` the moment a bar is met. Today: *"none have met their
+   bar — no constant may be changed on this evidence."* A test asserts the
+   board is capable of firing, so a permanently-silent board is a test
+   failure, not a comfort.
 
 `mine_edges.py`'s closing-odds ROI contamination is real but out of scope here;
 it already carries a module-level warning and a proper fix needs opening-odds

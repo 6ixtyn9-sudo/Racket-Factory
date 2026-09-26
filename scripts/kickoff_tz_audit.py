@@ -52,6 +52,34 @@ from racketfactory.kickoff import (  # noqa: E402
 
 OUT_FILE = LOCALDATA / "kickoff_tz_audit.json"
 
+# Durable evidence ledger.
+#
+# THE PROBLEM THIS SOLVES: the only independent UTC reference is The Odds API
+# `commence_time`, which lives in localdata/theoddsapi_odds_cache_{date}.json
+# — a RUNTIME cache that is not committed and does not exist on a fresh
+# checkout or a fresh CI runner. So the audit could only ever see the day it
+# ran, usually saw nothing, and correctly-but-uselessly reported UNKNOWN
+# forever. An alarm that can never leave UNKNOWN is not an alarm.
+#
+# Fix, borrowed from Edge's shadow-logging pattern: every time a run DOES see
+# the cache, the matched (betclan, reference) pairs are appended here. The
+# file is tiny, append-only, deduplicated, and committed, so the evidence
+# accrues across runs from day one and the verdict can actually resolve.
+EVIDENCE_NAME = "kickoff_tz_samples.jsonl"
+EVIDENCE_MAX_AGE_DAYS = 120   # a stale offset is not evidence about today
+EVIDENCE_MAX_ROWS = 5000      # hard bound: this file must never grow unbounded
+
+
+def evidence_file() -> Path:
+    """Resolved at CALL time from LOCALDATA, never frozen at import.
+
+    A module-level ``LOCALDATA / name`` captures the real repo path the moment
+    the module is imported, so a test that redirects ``LOCALDATA`` to a tmp
+    dir still writes to the live localdata. That is the same defect the grader
+    had, and it leaked straight past the first run of the new tests.
+    """
+    return LOCALDATA / EVIDENCE_NAME
+
 
 def _norm(name: str) -> str:
     text = unicodedata.normalize("NFKD", str(name or ""))
@@ -120,6 +148,84 @@ def theoddsapi_kickoffs(target_date: str) -> dict[str, str]:
     return out
 
 
+def _display_path(path: Path) -> str:
+    """Repo-relative when possible, absolute otherwise — never raises.
+
+    relative_to() throws when the path is outside ROOT, which happens the
+    moment a test points the evidence file at a tmp dir. A monitoring script must
+    not be able to die formatting its own log line.
+    """
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def load_evidence(max_age_days: int = EVIDENCE_MAX_AGE_DAYS,
+                  today: date | None = None) -> list[dict]:
+    """Previously observed samples, still fresh enough to mean something."""
+    path = evidence_file()
+    if not path.exists():
+        return []
+    cutoff = (today or date.today()) - timedelta(days=max_age_days)
+    rows: list[dict] = []
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except Exception:
+            continue          # a corrupt line must never take the audit down
+        if not isinstance(row, dict) or "delta_minutes" not in row:
+            continue
+        try:
+            when = datetime.strptime(str(row.get("date")), "%Y-%m-%d").date()
+        except Exception:
+            continue
+        if when >= cutoff:
+            rows.append(row)
+    return rows
+
+
+def record_evidence(samples: list[dict], existing: list[dict] | None = None) -> int:
+    """Append genuinely new samples. Returns how many were added.
+
+    Never raises: this is monitoring, and monitoring must not be able to
+    break the pipeline that feeds it.
+    """
+    if not samples:
+        return 0
+    try:
+        seen = {(row.get("date"), row.get("fixture"))
+                for row in (existing if existing is not None
+                            else load_evidence(max_age_days=10**6))}
+        fresh = [row for row in samples
+                 if (row.get("date"), row.get("fixture")) not in seen]
+        if not fresh:
+            return 0
+        path = evidence_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a") as handle:
+            for row in fresh:
+                handle.write(json.dumps(row, sort_keys=True) + "\n")
+        _trim_evidence()
+        return len(fresh)
+    except Exception:
+        return 0
+
+
+def _trim_evidence() -> None:
+    """Keep the newest EVIDENCE_MAX_ROWS lines; the file is append-only."""
+    try:
+        path = evidence_file()
+        lines = path.read_text().splitlines()
+        if len(lines) > EVIDENCE_MAX_ROWS:
+            path.write_text("\n".join(lines[-EVIDENCE_MAX_ROWS:]) + "\n")
+    except Exception:
+        pass
+
+
 def _median(values: list[float]) -> float:
     ordered = sorted(values)
     mid = len(ordered) // 2
@@ -128,9 +234,15 @@ def _median(values: list[float]) -> float:
     return (ordered[mid - 1] + ordered[mid]) / 2.0
 
 
-def audit(dates: list[str]) -> dict:
-    """Measure the BetClan-vs-reference kickoff offset over ``dates``."""
-    samples: list[dict] = []
+def audit(dates: list[str], *, persist: bool = True,
+          today: date | None = None) -> dict:
+    """Measure the BetClan-vs-reference kickoff offset over ``dates``.
+
+    Verdict is formed on live samples PLUS the durable evidence ledger, so a
+    run that happens to see no cache today still benefits from every match
+    any previous run observed.
+    """
+    fresh: list[dict] = []
     for target_date in dates:
         betclan = betclan_kickoffs(target_date)
         reference = theoddsapi_kickoffs(target_date)
@@ -140,9 +252,17 @@ def audit(dates: list[str]) -> dict:
             delta = minutes_between_wall_times(when, reference[key])
             if delta is None:
                 continue
-            samples.append({"date": target_date, "fixture": key,
-                            "betclan": when, "reference": reference[key],
-                            "delta_minutes": delta})
+            fresh.append({"date": target_date, "fixture": key,
+                          "betclan": when, "reference": reference[key],
+                          "delta_minutes": delta})
+
+    remembered = load_evidence(today=today)
+    added = record_evidence(fresh, existing=remembered) if persist else 0
+
+    live_keys = {(row["date"], row["fixture"]) for row in fresh}
+    samples = fresh + [row for row in remembered
+                       if (row.get("date"), row.get("fixture")) not in live_keys]
+
     offset = _median([s["delta_minutes"] for s in samples]) if samples else None
     status = betclan_tz_status(measured_offset_minutes=offset,
                                sample_size=len(samples))
@@ -150,6 +270,10 @@ def audit(dates: list[str]) -> dict:
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "dates_checked": dates,
         "matched_fixtures": len(samples),
+        "matched_this_run": len(fresh),
+        "remembered_samples": len(samples) - len(fresh),
+        "new_samples_recorded": added,
+        "evidence_file": _display_path(evidence_file()),
         "median_offset_minutes": offset,
         "samples": samples[:50],
         **status,
@@ -180,6 +304,15 @@ def main(argv=None) -> int:
     print(f"BetClan timezone assumption: {report['status']}")
     print(f"  assumed {report['assumed_tz']} · review {BETCLAN_TZ_REVIEW_DATE.isoformat()} "
           f"(in {report['days_to_review']} day(s))")
+    print(f"  evidence: {report['matched_this_run']} fixture(s) matched this run, "
+          f"{report['remembered_samples']} carried from {report['evidence_file']}"
+          + (f" (+{report['new_samples_recorded']} newly recorded)"
+             if report["new_samples_recorded"] else ""))
+    if report["matched_fixtures"] == 0:
+        print("  NOTE: still UNKNOWN because no run has yet seen an odds cache "
+              "alongside BetClan picks. Evidence accrues automatically — this "
+              "resolves itself on the first live daily run, and cannot be "
+              "green until it does.")
     print(f"  matched fixtures {report['matched_fixtures']} over {len(dates)} day(s)"
           + (f" · median offset {report['median_offset_minutes']:+.0f} min"
              if report["median_offset_minutes"] is not None else ""))

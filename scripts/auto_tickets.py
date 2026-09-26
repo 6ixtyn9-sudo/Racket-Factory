@@ -71,17 +71,31 @@ TZ = ZoneInfo("Africa/Johannesburg")
 
 # Day stake as a fraction of bank.
 #
-# 0.25 -> 0.20. This is NOT a search result and does not rest on the variant
-# battery (whose winner fails the null test). It is a dominance argument: a
-# stake sweep over the real 25-acca ledger gives
+# 0.25 -> 0.20. NOT a search result, and NOT the "dominance" argument this
+# comment originally claimed — that claim was wrong and is corrected here.
 #
-#   frac  bank    log-growth/day   max drawdown
-#   0.20  128.5%  +0.0279          29.4%
-#   0.25  128.5%  +0.0279          36.1%   <- live
+# The first version said 0.20 and 0.25 give "identical growth to four decimal
+# places". They do not: 128.50757 vs 128.50844 final bank, with 0.25
+# fractionally AHEAD. Two numbers agreeing to 4dp on one ordering of nine days
+# is a coincidence, not a tie, and reading it as dominance is the same
+# winner's-curse error the null test exists to catch.
 #
-# Identical growth to four decimal places, 6.7 points more drawdown. The
-# extra quarter buys nothing but variance, and it does so on a bank whose
-# bootstrapped p10 outcome is -118 points. Overridable for replays.
+# What actually survives a paired bootstrap over resampled bet-day sequences
+# (scripts/autobets_forensics.py, N=20000):
+#
+#   P(0.20 max drawdown not worse than 0.25) = 1.000   <- robust
+#   P(0.20 growth       not worse than 0.25) = 0.499   <- a coin flip
+#
+# So this is a RISK TRADE, honestly stated: measurably less drawdown at no
+# measurable growth cost. That is worth taking on a bank whose bootstrapped
+# p10 outcome is -118 points, but it is not evidence that 0.20 grows faster.
+#
+# The uncomfortable part: exclude the ungated-fallback bet the fixed engine
+# can no longer place (2026-09-17, 4.08 vs a 4.00 ceiling, +88.26 pts) and the
+# book is NEGATIVE at every fraction — so the growth-optimal stake on measured
+# performance is zero, and every fraction above it is a bet on an edge that
+# has not yet been demonstrated. The level is registered as H6, not settled.
+# Overridable via RACKET_FACTORY_STAKE_FRAC for replays.
 STAKE_FRAC_DEFAULT = 0.20
 
 

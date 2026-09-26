@@ -39,8 +39,21 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
 LOCALDATA = ROOT / "localdata"
 STATE = LOCALDATA / "auto_tickets_state.json"
+
+from racketfactory.tripwire import (  # noqa: E402
+    acca_rule_breach,
+    adjusted_pnl,
+    render_adjusted_pnl,
+)
+
+
+def rule_breach_accas(days: dict) -> list[tuple[str, dict]]:
+    """(bet-day, acca) for every settled acca the engine's rules barred."""
+    return [(day, acca) for day in sorted(days)
+            for acca in days[day] if acca_rule_breach(acca)]
 
 NOISE_N = 30          # Edge's bar: cells below this are noise, always labelled
 SEED = 2026
@@ -159,6 +172,72 @@ def replay(days, order, frac=0.25, **kw):
     return bank, logs, dd, nb
 
 
+def stake_dominance(days, order, rng, n_boot, lo=0.20, hi=0.25, exclude=()):
+    """Is a lower stake fraction actually better, or did one sequence flatter it?
+
+    THE MISTAKE THIS EXISTS TO PREVENT: the 0.25 -> 0.20 change was first
+    justified as "identical growth to four decimal places, 6.7pp less
+    drawdown". The growth was not identical — 128.50757 vs 128.50844 on the
+    real ledger, with 0.25 fractionally AHEAD. A point estimate that close is
+    a coincidence of one 9-day ordering, and reading it as dominance is
+    exactly the winner's-curse error the null test guards against elsewhere.
+
+    Resamples bet-days with replacement and re-runs both fractions on the
+    SAME resampled sequence (paired), so the comparison is not confounded by
+    which days got drawn. Reports the two components separately, because
+    they behave completely differently: the drawdown reduction is robust, the
+    growth difference is a coin flip.
+    """
+    gross = [g for d, g in _gross_by_day(days, order) if d not in exclude]
+    if len(gross) < 2:
+        return None
+
+    def run(sequence, frac):
+        bank, logs, peak, drawdown = 100.0, [], 100.0, 0.0
+        for g in sequence:
+            before = bank
+            bank = max(bank * (1 - frac * (1 - g)), 1e-9)
+            logs.append(math.log(bank / before))
+            peak = max(peak, bank)
+            drawdown = max(drawdown, (peak - bank) / peak)
+        return sum(logs) / len(logs), drawdown
+
+    point_lo, point_hi = run(gross, lo), run(gross, hi)
+    n = len(gross)
+    growth_wins = dd_wins = dominates = 0
+    for _ in range(n_boot):
+        sample = [gross[rng.randrange(n)] for _ in range(n)]
+        g_lo, d_lo = run(sample, lo)
+        g_hi, d_hi = run(sample, hi)
+        if g_lo >= g_hi:
+            growth_wins += 1
+        if d_lo <= d_hi:
+            dd_wins += 1
+        if g_lo >= g_hi and d_lo <= d_hi:
+            dominates += 1
+    return {
+        "lo": lo, "hi": hi, "bet_days": n, "excluded": list(exclude),
+        "point_lo_log_day": round(point_lo[0], 8),
+        "point_hi_log_day": round(point_hi[0], 8),
+        "point_lo_maxdd": round(point_lo[1], 4),
+        "point_hi_maxdd": round(point_hi[1], 4),
+        "p_growth_not_worse": round(growth_wins / n_boot, 3),
+        "p_drawdown_not_worse": round(dd_wins / n_boot, 3),
+        "p_dominates": round(dominates / n_boot, 3),
+    }
+
+
+def _gross_by_day(days, order):
+    """(date, gross return multiple) per bet-day: bank *= 1 - frac*(1 - g)."""
+    out = []
+    for day in order:
+        bets = build_card(days[day])
+        if not bets:
+            continue
+        out.append((day, sum(o for o, w in bets if w) / len(bets)))
+    return out
+
+
 def paired_bootstrap(arm, base, rng, n_boot):
     diffs = [a - b for a, b in zip(arm, base)]
     n = len(diffs)
@@ -251,17 +330,122 @@ PREREGISTRATION = [
     },
     {
         "id": "H6-stake-fraction",
-        "claim": "STAKE_FRAC above 0.20 buys drawdown and no growth.",
-        "as_of_2026_09_26": "0.20 and 0.25 both give +0.0279 log/day; max "
-                            "drawdown 29.4% vs 36.1%. ALREADY ACTED ON — this "
-                            "is a dominance argument, not a search result, so "
-                            "it did not need the null test.",
-        "test": "stake sweep, log growth and max drawdown",
-        "bar": "n/a (dominated alternative)",
-        "action_if_passed": "done 2026-09-26: STAKE_FRAC 0.25 -> 0.20",
-        "action_if_failed": "n/a",
+        "claim": "STAKE_FRAC above 0.20 buys drawdown without buying growth.",
+        "as_of_2026_09_26": "CORRECTED. The first justification claimed "
+                            "'identical growth to 4dp'; it was not identical "
+                            "(0.20 -> 128.50757, 0.25 -> 128.50844, i.e. 0.25 "
+                            "fractionally AHEAD) and the sweep included the "
+                            "ungated-fallback bet the fixed engine cannot "
+                            "place. Paired bootstrap, N=20000: "
+                            "P(0.20 drawdown not worse)=1.000, "
+                            "P(0.20 growth not worse)=0.499. So the drawdown "
+                            "reduction is robust and the growth difference is "
+                            "a coin flip — a RISK TRADE at no measurable "
+                            "growth cost, not a dominance. Excluding the bug "
+                            "bet every fraction loses money and lower is "
+                            "strictly better, because the measured edge is "
+                            "negative.",
+        "test": "stake_dominance(), paired over resampled bet-day sequences",
+        "bar": "P(drawdown not worse) >= 0.95 at n>=30 bet-days; revisit the "
+               "LEVEL (not just the direction) once the edge is non-negative",
+        "action_if_passed": "keep 0.20 (acted 2026-09-26 on the drawdown leg "
+                            "alone, which is the leg that holds up)",
+        "action_if_failed": "revert to 0.25 and say so in the commit",
     },
 ]
+
+
+def _perm_p(a_legs, b_legs, rng, n_boot) -> float | None:
+    """One-sided permutation p that a_legs underperforms b_legs on flat ROI."""
+    if not a_legs or not b_legs:
+        return None
+    observed = flat_roi(a_legs) - flat_roi(b_legs)
+    pool = list(a_legs) + list(b_legs)
+    cut, hits = len(a_legs), 0
+    for _ in range(n_boot):
+        rng.shuffle(pool)
+        diff = flat_roi(pool[:cut]) - flat_roi(pool[cut:])
+        if diff <= observed:
+            hits += 1
+    return hits / n_boot
+
+
+def evaluate_preregistration(legs, days, order, rng, n_boot) -> list[dict]:
+    """Score every registered hypothesis against the data as it stands today.
+
+    WHY THIS IS AUTOMATED: a pre-registration that a human has to remember to
+    re-check is a pre-registration that quietly expires. Each row reports how
+    far the evidence has come towards its own bar, so the moment a bar is met
+    the report says READY TO DECIDE instead of waiting to be asked.
+
+    Reporting only. Nothing here changes a constant.
+    """
+    rows: list[dict] = []
+    boost = [l for l in legs if l["verdict"] == "BOOST"]
+    allow = [l for l in legs if l["verdict"] == "ALLOW"]
+    rows.append({
+        "id": "H1-boost-privileges", "n": len(boost), "bar_n": 60,
+        "metric": f"BOOST {_pct(flat_roi(boost))} vs ALLOW {_pct(flat_roi(allow))}",
+        "p": _perm_p(boost, allow, rng, n_boot) if len(boost) >= 60 else None,
+    })
+
+    dbl = [l for l in legs if l["doubles"]]
+    sgl = [l for l in legs if not l["doubles"]]
+    rows.append({
+        "id": "H2-doubles-ev-surcharge", "n": len(dbl), "bar_n": 30,
+        "metric": f"doubles {_pct(flat_roi(dbl))} vs singles {_pct(flat_roi(sgl))}",
+        "p": _perm_p(sgl, dbl, rng, n_boot) if len(dbl) >= 30 else None,
+    })
+
+    band = [l for l in legs if 1.30 <= l["odds"] < 1.60]
+    ci = boot_ci(band, rng, min(n_boot, 5000)) if len(band) >= 60 else None
+    rows.append({
+        "id": "H3-leg-price-floor", "n": len(band), "bar_n": 60,
+        "metric": f"1.30-1.59 band {_pct(flat_roi(band))}"
+                  + (f", 80% CI {_pct(ci[0])}..{_pct(ci[1])}" if ci else ""),
+        "p": None,
+        "met": bool(ci and ci[1] < 0),
+    })
+
+    rows.append({
+        "id": "H4-acca-slots", "n": len(order), "bar_n": 60,
+        "metric": f"{len(order)} bet-day(s); battery winner still fails the "
+                  f"search-winner null test",
+        "p": None,
+    })
+
+    cell = [l for l in legs
+            if l.get("cp") is not None and 0.70 <= float(l["cp"]) < 0.75]
+    hit = (sum(1 for l in cell if l["won"]) / len(cell)) if cell else None
+    rows.append({
+        "id": "H5-calibration-band", "n": len(cell), "bar_n": 30,
+        "metric": (f"0.70-0.75 delivered {hit:.1%}" if hit is not None
+                   else "no legs in band"),
+        "p": None,
+    })
+
+    dom = stake_dominance(days, order, rng, min(n_boot, 5000))
+    rows.append({
+        "id": "H6-stake-fraction", "n": len(order), "bar_n": 30,
+        "metric": (f"P(drawdown not worse)={dom['p_drawdown_not_worse']:.3f}, "
+                   f"P(growth not worse)={dom['p_growth_not_worse']:.3f}"
+                   if dom else "insufficient bet-days"),
+        "p": None,
+        "met": bool(dom and dom["p_drawdown_not_worse"] >= 0.95
+                    and len(order) >= 30),
+    })
+
+    for row in rows:
+        if "met" not in row:
+            row["met"] = bool(row["n"] >= row["bar_n"]
+                              and row["p"] is not None and row["p"] < 0.05)
+        row["status"] = ("READY TO DECIDE" if row["met"]
+                         else f"not yet ({row['n']}/{row['bar_n']})")
+    return rows
+
+
+def _pct(value) -> str:
+    return "—" if value is None else f"{value * 100:+.2f}%"
 
 
 def print_preregistration() -> None:
@@ -409,14 +593,77 @@ def main() -> int:
         out["calibration"] = {"n": len(cal), "promised": mp, "realised": rl, "z": z}
 
     # ---- STAKING --------------------------------------------------------
-    print(f"\n{line}\n5. STAKING — the fraction curve on identical cards\n{line}")
+    # ---- THE RECORD ------------------------------------------------------
+    print(f"\n{line}\n5. THE RECORD — booked, and adjusted for rule breaches\n{line}")
+    adj = adjusted_pnl(state.get("history", []))
+    out["adjusted_pnl"] = adj
+    if adj["breaches"]:
+        for row in render_adjusted_pnl(adj):
+            print(row)
+        print("\n  Everything below is measured on the booked card, which "
+              "includes those bets.\n  Read every P&L figure against the "
+              "ADJUSTED line, not the booked one.")
+    else:
+        print(f"  booked P&L {adj['booked_pnl_pct']:+.2f} pts on "
+              f"{adj['staked_pct']:.2f} staked "
+              f"(ROI {adj['roi_pct']:+.2f}%) — no rule breaches in the ledger.")
+
+    print(f"\n{line}\n6. STAKING — the fraction curve on identical cards\n{line}")
     print(f"  {'frac':>6} {'final bank':>11} {'log/day':>9} {'maxDD':>8}")
     for f in (0.05, 0.10, 0.15, 0.20, 0.25, 0.33, 0.50):
         b, lg, dd, _ = replay(days, order, f)
         print(f"  {f:6.0%} {b:10.1f}% {sum(lg)/len(lg):+9.4f} {dd:8.1%}")
 
+    # The curve above is ONE ordering of a handful of days. Two fractions can
+    # land a thousandth of a point apart and mean nothing by it, so the
+    # comparison that drives the live constant is bootstrapped, and its two
+    # components are reported separately rather than collapsed into "better".
+    dom = stake_dominance(days, order, rng, min(args.bootstrap, 20000))
+    if dom:
+        print(f"\n  paired bootstrap, {dom['lo']:.0%} vs {dom['hi']:.0%} "
+              f"(n={dom['bet_days']} bet-days):")
+        # 8dp on purpose: at 4dp these two read as an exact tie, which is
+        # how the original (wrong) "identical growth" claim was born.
+        print(f"    point: log/day {dom['point_lo_log_day']:+.8f} vs "
+              f"{dom['point_hi_log_day']:+.8f}   "
+              f"maxDD {dom['point_lo_maxdd']:.1%} vs {dom['point_hi_maxdd']:.1%}")
+        print(f"    P(lower frac drawdown NOT worse) = {dom['p_drawdown_not_worse']:.3f}")
+        print(f"    P(lower frac growth   NOT worse) = {dom['p_growth_not_worse']:.3f}")
+        print(f"    P(lower frac DOMINATES)          = {dom['p_dominates']:.3f}")
+        if dom["p_dominates"] < 0.95 <= dom["p_drawdown_not_worse"]:
+            print("    READ: risk trade, NOT dominance — the drawdown "
+                  "reduction is robust, the growth difference is noise.")
+        elif dom["p_dominates"] >= 0.95:
+            print("    READ: genuine dominance at this n.")
+        else:
+            print("    READ: neither leg is robust. The live constant is not "
+                  "supported by this ledger.")
+        out["stake_dominance"] = dom
+
+    # Same question with the ungated-fallback day removed: that bet returned
+    # 4.08 and the fixed engine cannot place it, so leaving it in measures a
+    # staking policy against a card that no longer exists.
+    breach_days = sorted({d for d, _ in rule_breach_accas(days)})
+    if breach_days:
+        clean = stake_dominance(days, order, rng, min(args.bootstrap, 20000),
+                                exclude=tuple(breach_days))
+        if clean:
+            print(f"\n  excluding rule-breaching bet-day(s) {', '.join(breach_days)} "
+                  f"— what the FIXED engine could have done:")
+            print(f"    {'frac':>6} {'log/day':>10} {'maxDD':>8}")
+            for f in (0.10, 0.15, 0.20, 0.25, 0.50):
+                d2 = stake_dominance(days, order, rng, 1, lo=f, hi=f,
+                                     exclude=tuple(breach_days))
+                if d2:
+                    print(f"    {f:6.0%} {d2['point_lo_log_day']:+10.5f} "
+                          f"{d2['point_lo_maxdd']:8.1%}")
+            print(f"    P(lower frac drawdown NOT worse) = "
+                  f"{clean['p_drawdown_not_worse']:.3f}   "
+                  f"P(growth NOT worse) = {clean['p_growth_not_worse']:.3f}")
+            out["stake_dominance_excluding_breaches"] = clean
+
     # ---- VARIANTS -------------------------------------------------------
-    print(f"\n{line}\n6. VARIANTS — counterfactual cards, then PAIRED bootstrap\n{line}")
+    print(f"\n{line}\n7. VARIANTS — counterfactual cards, then PAIRED bootstrap\n{line}")
     variants = {
         "LIVE": {},
         "max_accas=2": dict(max_accas=2),
@@ -444,7 +691,7 @@ def main() -> int:
         print(f"  {name:24} {m:+10.4f} {f'{lo_b:+.4f}..{hi_b:+.4f}':>22} {pb:10.1%}")
 
     # ---- NULL TEST ------------------------------------------------------
-    print(f"\n{line}\n7. SEARCH-WINNER NULL TEST — read this before adopting anything\n{line}")
+    print(f"\n{line}\n8. SEARCH-WINNER NULL TEST — read this before adopting anything\n{line}")
     best = max(arms, key=lambda k: sum(arms[k]) / len(arms[k]))
     best_gap = (sum(arms[best]) / len(arms[best])) - (sum(base) / len(base))
     demeaned = {k: [x - sum(v) / len(v) for x in v] for k, v in arms.items()}
@@ -473,11 +720,25 @@ def main() -> int:
 
     print()
     print(line)
-    print("8. PRE-REGISTERED HYPOTHESES")
+    print("8. PRE-REGISTERED HYPOTHESES — scored against today's data")
     print(line)
-    for item in PREREGISTRATION:
-        print(f"  {item['id']:<26} bar: {item['bar']}")
+    board = evaluate_preregistration(legs, days, order, rng,
+                                     min(args.bootstrap, 5000))
+    print(f"  {'hypothesis':<26} {'status':<20} {'p':>7}  evidence")
+    for row in board:
+        p = f"{row['p']:.3f}" if row["p"] is not None else "—"
+        print(f"  {row['id']:<26} {row['status']:<20} {p:>7}  {row['metric']}")
+    ready = [row["id"] for row in board if row["met"]]
+    if ready:
+        print(f"\n  ** {len(ready)} HYPOTHESIS/ES HAVE MET THEIR BAR: "
+              f"{', '.join(ready)}")
+        print("  ** These were registered in advance. Decide them now, apply "
+              "the registered action, and record the outcome.")
+    else:
+        print("\n  none have met their bar — no constant may be changed on "
+              "this evidence.")
     print("  (full text: scripts/autobets_forensics.py --preregistration)")
+    out["preregistration_board"] = board
 
     if args.json:
         Path(args.json).write_text(json.dumps(out, indent=2))
