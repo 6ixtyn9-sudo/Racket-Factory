@@ -1,0 +1,29 @@
+{
+  "alarm_after_days": 3,
+  "generated_at": "2026-09-26T11:12:49+02:00",
+  "open_slips": 2,
+  "stale": [
+    {
+      "accas": 1,
+      "age_days": 13,
+      "committed_pct": 0,
+      "date": "2026-09-13",
+      "faults": [],
+      "reasons": [
+        "acca flagged paper by builder",
+        "no trusted market price"
+      ]
+    },
+    {
+      "accas": 1,
+      "age_days": 6,
+      "committed_pct": 0,
+      "date": "2026-09-20",
+      "faults": [],
+      "reasons": [
+        "acca flagged paper by builder",
+        "already started at generation time (stale price)"
+      ]
+    }
+  ]
+}

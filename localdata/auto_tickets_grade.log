@@ -2,3 +2,7 @@
 2026-09-13: still open (1 accas pending)
   2026-09-20 value_2leg_mutual_paper: leg PENDING: Angelina Voloshchuk vs Jana Otzipka -- result not final: live/in-progress markers present
 2026-09-20: still open (1 accas pending)
+ALARM 2 open slip(s) older than 3d — they are not 'pending', they are stuck:
+  2026-09-13 age 13d · 1 acca(s) · 0% committed · acca flagged paper by builder; no trusted market price
+  2026-09-20 age 6d · 1 acca(s) · 0% committed · acca flagged paper by builder; already started at generation time (stale price)
+  run auto_tickets_grade.py --close-stale-days N to void and close them.
