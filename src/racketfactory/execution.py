@@ -122,6 +122,19 @@ def stamp_leg(leg: dict) -> dict:
     return leg
 
 
+def stamp_acca(acca: dict) -> dict:
+    """Tag an acca with the execution regime that built it.
+
+    Acca-level P&L is only comparable within one execution regime: the
+    2026-09-26 boundary closed the ungated fallback, moved staking to
+    free-bank sizing at 0.20 and unified the builder/grader paper split.
+    Untagged accas pre-date the boundary.
+    """
+    from racketfactory.regime import EXECUTION_REGIME_ID
+    acca["_exec_regime"] = EXECUTION_REGIME_ID
+    return acca
+
+
 def leg_settlement_safe(leg: Mapping[str, Any]) -> bool:
     """Grader-side verdict: AND of the build-time stamp and a fresh recompute.
 

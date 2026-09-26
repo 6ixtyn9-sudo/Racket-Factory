@@ -33,8 +33,10 @@ LOCALDATA = ROOT / "localdata"
 # Re-exported here on purpose: these are the names the ticket engine and its
 # tests reach for, and keeping one import surface makes it obvious that the
 # builder owns no private copy of the paper/real rule.
+from racketfactory.regime import EXECUTION_REGIME_ID  # noqa: E402
 from racketfactory.execution import (  # noqa: E402,F401
     TRUSTED_MARKET_SOURCES,
+    stamp_acca,
     acca_execution_safe,
     committed_stake,
     leg_execution_block,
@@ -1374,7 +1376,15 @@ def main():
                     # per-acca figure any grader fallback would read).
                     "staked_pct": booked_real,
                     "stake_per_acca_pct": round(booked_real / len(priced), 4) if priced else 0,
+                    # Which generation of EXECUTION logic produced this slip.
+                    # Distinct from the pick regime on each leg: acca
+                    # assembly, staking and settlement changed on 2026-09-26
+                    # while pick generation did not, so acca-level P&L is
+                    # only comparable within one execution regime.
+                    "_exec_regime": EXECUTION_REGIME_ID,
                 }
+                for _acca in accas_out:
+                    stamp_acca(_acca)
                 state["open_slips"].append(new_slip)
                 print(f"Added open slip for {target_date} with {len(accas_out)} accas to state")
             save_state(state)
