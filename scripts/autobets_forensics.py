@@ -720,7 +720,7 @@ def main() -> int:
 
     print()
     print(line)
-    print("8. PRE-REGISTERED HYPOTHESES — scored against today's data")
+    print("9. PRE-REGISTERED HYPOTHESES — scored against today's data")
     print(line)
     board = evaluate_preregistration(legs, days, order, rng,
                                      min(args.bootstrap, 5000))
