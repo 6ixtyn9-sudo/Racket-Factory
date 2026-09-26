@@ -429,6 +429,15 @@ The single live instance is **2026-09-17**: a `fallback_2leg_mutual` at odds
 P&L came from a bet its own rules rejected. Part 1.2 said the bank is variance;
 this sharpens it: the bank is variance *plus a bug*.
 
+**The uncomfortable arithmetic.** Over the settled ledger the REAL track staked
+305.15 and returned 335.32 — **+30.17 points**. Remove that single bet, which
+the engine's own rules should never have placed, and the record is
+**−58.09 points**. So the honest reading is not "we were +30 and gave some
+back": it is *the engine has never been in profit on bets it was entitled to
+make*. Every conclusion in Parts 1–6 that leaned on the bank being above 100%
+should be re-read in that light, and the fix makes future days measure the
+strategy rather than the bug.
+
 Closing the gate has exactly one consequence on the seven captured pick-days:
 `2026-09-20` no longer produces its 3.35 fallback (legs cp 0.69 × 0.66 = 0.46,
 below the 0.65 floor; 3.35 above the 3.00 BOOST cap). **The golden fixture was
