@@ -20,6 +20,7 @@ Recipe v4 (ML winner chooser + BetExplorer REAL):
 """
 from __future__ import annotations
 import argparse, json, math, os, re, sys
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -28,6 +29,20 @@ import unicodedata
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 LOCALDATA = ROOT / "localdata"
+
+# Re-exported here on purpose: these are the names the ticket engine and its
+# tests reach for, and keeping one import surface makes it obvious that the
+# builder owns no private copy of the paper/real rule.
+from racketfactory.execution import (  # noqa: E402,F401
+    TRUSTED_MARKET_SOURCES,
+    acca_execution_safe,
+    committed_stake,
+    leg_execution_block,
+    leg_execution_safe,
+    leg_market_odds,
+    sanitise_acca_for_replay,
+    stamp_leg,
+)
 
 try:
     from racketfactory.ml import (
@@ -53,7 +68,36 @@ except Exception as _ml_e:
 GENERATE_HOUR_START = 6
 FREEZE_HOUR = 9
 TZ = ZoneInfo("Africa/Johannesburg")
-STAKE_FRAC = 0.25
+
+# Day stake as a fraction of bank.
+#
+# 0.25 -> 0.20. This is NOT a search result and does not rest on the variant
+# battery (whose winner fails the null test). It is a dominance argument: a
+# stake sweep over the real 25-acca ledger gives
+#
+#   frac  bank    log-growth/day   max drawdown
+#   0.20  128.5%  +0.0279          29.4%
+#   0.25  128.5%  +0.0279          36.1%   <- live
+#
+# Identical growth to four decimal places, 6.7 points more drawdown. The
+# extra quarter buys nothing but variance, and it does so on a bank whose
+# bootstrapped p10 outcome is -118 points. Overridable for replays.
+STAKE_FRAC_DEFAULT = 0.20
+
+
+def stake_frac() -> float:
+    raw = str(os.environ.get("RACKET_FACTORY_STAKE_FRAC", "")).strip()
+    if raw:
+        try:
+            value = float(raw)
+            if 0.0 < value <= 1.0:
+                return value
+        except ValueError:
+            pass
+    return STAKE_FRAC_DEFAULT
+
+
+STAKE_FRAC = stake_frac()
 MAX_ACCAS = 4
 MAX_LEGS = 8
 PLAYABLE_BUCKETS = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "FADE"}
@@ -84,13 +128,14 @@ MAX_ODDS_PER_LEG = 2.5  # fallback static
 MAX_ODDS_PER_LEG_BOOST = 2.8  # BOOST can go slightly higher when high prob
 
 
-def dynamic_max_odds(p: dict) -> float:
+def dynamic_max_odds(p: dict, knobs: "AccaKnobs | None" = None) -> float:
     """Dynamic max leg odds: not restrictive, but no stray dogs.
 
     - Base 1.8 = user's winning range 1.28-1.88 (stray dogs blocked here)
     - High prob + proven slice = up to 3.5 (allows 3.23 when 85%+ + 30n + 10% ROI)
     - Stray dog = low prob (<0.70) or low n (<10) stays 1.8, never chases
     """
+    k = knobs if knobs is not None else live_knobs()
     try:
         prob = float(p.get("ml_calibrated_prob") or p.get("prediction_prob") or 0)
         if prob <= 1.0 and prob > 0:
@@ -114,10 +159,10 @@ def dynamic_max_odds(p: dict) -> float:
     # Test/unknown picks with no audit data (n==0, roi==0) -> allow up to 2.5 to keep tests green
     if n == 0 and roi == 0.0:
         # No history: don't restrict unnecessarily, allow test picks like 1.9/2.1
-        return 2.5
+        return k.dynamic_max_unknown
     # Stray dog guard: low samples + low prob = never chase
     if n < 10 and prob < 0.70:
-        return 1.8
+        return k.dynamic_max_base
     # Not restrictive: proven high-EV dogs allowed up to 3.5
     # REVISED: allow high EV even with medium prob (e.g. Charaeva 2.23 EV 25% prob 56% n=54 ROI 17% should be allowed)
     # Check EV from ml_ev if available
@@ -126,7 +171,7 @@ def dynamic_max_odds(p: dict) -> float:
     except Exception:
         ev = 0.0
     if prob >= 0.85 and n >= 30 and roi >= 0.10:
-        cap = 3.5
+        cap = k.dynamic_max_cap
     elif ev >= 0.20 and n >= 20 and roi >= 0.05:  # High EV 20%+ like Charaeva 25% should be allowed up to 3.0
         cap = 3.0
     elif prob >= 0.80 and n >= 20 and roi >= 0.05:
@@ -140,20 +185,82 @@ def dynamic_max_odds(p: dict) -> float:
     elif ev >= 0.05 and n >= 15:  # Even low prob but EV 5%+ and proven n>=15 gets 2.2
         cap = 2.2
     else:
-        cap = 1.8
+        cap = k.dynamic_max_base
     # BANKER/CERTIFIED +0.2, BOOST +0.2 – rewards proven tiers
     if "BANKER" in tier or "CERTIFIED" in bucket:
-        cap += 0.2
-    if verdict == "BOOST":
-        cap += 0.2
-    # Hard bounds: 1.8 min, 3.5 max (allows 3.23 when truly proven, blocks 5.0+ stray)
-    return max(1.8, min(3.5, cap))
+        cap += k.tier_cap_bonus
+    if verdict == "BOOST" and k.boost_privileges:
+        cap += k.tier_cap_bonus
+    # Hard bounds: base min, cap max (allows 3.23 when truly proven, blocks 5.0+ stray)
+    return max(k.dynamic_max_base, min(k.dynamic_max_cap, cap))
 MIN_ACCA_ODDS = 1.5  # Lowered from 2.0 to 1.5 to allow user's winning accas: 1.34*1.22=1.63, 1.40*1.32=1.84, total 4-leg 3.02
 MIN_ACCA_ODDS_BOOST = 1.18  # BOOST can be super-short: 1.05*1.13=1.186 won with void, user ticket 1.70 total
 MAX_ACCA_ODDS = 4.0  # CAP acca odds: user complained 8.06/7.13 high, winners were 1.28-1.88, so cap at 4.0
 MAX_ACCA_ODDS_BOOST = 3.0
 TAKE_PROFIT_GAIN = 1.0
 STATE_FILE = LOCALDATA / "auto_tickets_state.json"
+
+
+# --- selection knobs -------------------------------------------------------
+# Every number above was hand-fitted to a handful of remembered tickets and
+# then frozen into the body of build_accas(), where nothing could vary it and
+# therefore nothing could ever measure it. A counterfactual replay could not
+# ask "what would 1 acca a day have returned?" without editing the engine —
+# so the engine was never replayed, and the constants were never tested.
+#
+# AccaKnobs makes them arguments. The defaults are byte-identical to the live
+# constants (tests/test_select_accas_golden.py pins the output of
+# select_accas(pool, LEGACY_KNOBS) against a pre-refactor capture on seven
+# real pick-days), so this is a refactor, not a retune.
+#
+# NOTHING IS RETUNED HERE, deliberately. A 5-arm variant battery over the
+# 9-bet-day ledger put max_accas=1 at +0.12 log-growth/day with a paired
+# bootstrap P(better)=100%; the search-winner null test then showed pure
+# noise beats that gap 14.4% of the time. The knobs exist so those questions
+# can be answered when n supports it — see AUTOBETS_DEEP_DIVE_2026-09-26.md.
+@dataclass(frozen=True)
+class AccaKnobs:
+    max_accas: int = MAX_ACCAS
+    legs_per_acca: int = 2
+    boost_legs: int = 3
+    min_odds_per_leg: float | None = None      # None -> live MIN_ODDS_PER_LEG
+    min_odds_boost: float = MIN_ODDS_BOOST
+    min_acca_odds: float = MIN_ACCA_ODDS
+    min_acca_odds_boost: float = MIN_ACCA_ODDS_BOOST
+    max_acca_odds: float = MAX_ACCA_ODDS
+    max_acca_odds_boost: float = MAX_ACCA_ODDS_BOOST
+    acca_overshoot: float = 1.2                # allowed overshoot when prob high
+    boost_acca_overshoot: float = 1.5
+    min_ev_real: float | None = None           # None -> ml.get_min_ev_real()
+    # Fitted to "doubles 0W/5L -40%". The settled ledger since then: doubles
+    # 8W-3L, +6.82% flat ROI, versus -6.90% for singles-match legs. The
+    # justification is falsified by its own data, but n=11 does not license
+    # a change — it licenses a pre-registered test.
+    min_ev_doubles: float = 0.05
+    dynamic_max_base: float = 1.8
+    dynamic_max_cap: float = 3.5
+    dynamic_max_unknown: float = 2.5
+    tier_cap_bonus: float = 0.2
+    kelly_cap_2leg: float = 0.15
+    kelly_cap_3leg: float = 0.10
+    # BOOST currently unlocks five separate overrides (lower leg floor, VETO
+    # override, EV override, higher odds cap, sort bonus) on the strength of
+    # the label alone. Measured over the settled ledger BOOST legs returned
+    # -13.83% (n=30) against ALLOW's +11.05% (n=20) — a 24.9pp gap at
+    # permutation p=0.126, i.e. unproven in BOTH directions. The switch makes
+    # the privilege testable instead of load-bearing-by-default.
+    boost_privileges: bool = True
+
+    def effective_min_odds_per_leg(self) -> float:
+        return MIN_ODDS_PER_LEG if self.min_odds_per_leg is None else self.min_odds_per_leg
+
+    def effective_min_ev_real(self) -> float:
+        return get_min_ev_real() if self.min_ev_real is None else self.min_ev_real
+
+
+def live_knobs() -> AccaKnobs:
+    """The knobs the production engine runs on right now."""
+    return AccaKnobs()
 
 def clean_text(v):
     if v is None:
@@ -245,39 +352,14 @@ def load_picks(target_date: str) -> list[dict]:
             continue
     return []
 
-# Market prices only: anything else (scraped fallback, ML estimates, blanks)
-# is paper-track, never staked. Mirrors market_basis_for_pick's api set.
-# BetExplorer legs quote the bookmaker consensus (indicative, not the ticket
-# price at any single book) — staked because EV gating runs on the same leg.
-_TRUSTED_MARKET_SOURCES = {"theoddsapi", "oddsportal", "bzzoiro", "betexplorer"}
-
-
-def _leg_real_odds(pick: dict):
-    """Real market odds for a leg, or None when unpriced.
-
-    NEVER estimated: legs without a trusted market price go to the paper
-    track (hit-rate only) instead of being staked on fabricated odds.
-    """
-    if pick.get("odds_reject_reason"):
-        return None
-    if pick.get("_is_paper"):
-        return None
-    src = str(pick.get("odds_source") or "").strip().lower()
-    if src not in _TRUSTED_MARKET_SOURCES:
-        return None
-    try:
-        o = float(pick.get("odds"))
-    except (TypeError, ValueError):
-        return None
-    return o if o > 1.0 else None
-
-
-def _leg_paper_reason(pick: dict) -> str:
-    if pick.get("_late_start"):
-        return "already started at generation time (stale price)"
-    if _leg_real_odds(pick) is None:
-        return "no trusted market price"
-    return ""
+# The paper/real boundary lives in racketfactory.execution and NOWHERE else.
+# It used to be defined twice — here and in auto_tickets_grade.py — with two
+# different rules, so a late-but-priced leg was paper to the builder and real
+# to the grader (live: the 2026-09-20 slip). Both sides now import the same
+# predicate; these aliases only keep the local call sites readable.
+_TRUSTED_MARKET_SOURCES = TRUSTED_MARKET_SOURCES
+_leg_real_odds = leg_market_odds
+_leg_paper_reason = leg_execution_block
 
 
 def is_playable(pick: dict) -> bool:
@@ -336,7 +418,16 @@ def is_playable(pick: dict) -> bool:
                 ev = float(pick.get("ml_ev") or -1)
                 match_str = str(pick.get("match") or "")
                 is_doubles = "/" in match_str
-                min_ev = 0.05 if is_doubles else 0.01  # doubles need 5%
+                # Doubles carry a 5x EV surcharge. The comment this rule
+                # shipped with said "Doubles 0W/5L -40%"; the settled ledger
+                # now says doubles are 8W-3L at +6.82% while singles-match
+                # legs are -6.90% — the only positive cohort in the book. It
+                # is NOT relaxed here: n=11 is far under the bar, and the
+                # deep dive's null test is exactly the reason this codebase
+                # stopped acting on 11-sample reversals. Registered as a
+                # pre-registered hypothesis instead (AccaKnobs.min_ev_doubles,
+                # scripts/autobets_forensics.py --preregistration).
+                min_ev = 0.05 if is_doubles else 0.01
                 if ev >= min_ev and odds_f >= 1.20 and (cp >= 0.70 or (conf >= 65 and odds_f <= 2.2)):
                     pass
                 else:
@@ -385,6 +476,11 @@ def is_playable(pick: dict) -> bool:
             return False
     return True
 
+def kickoff_fail_open() -> bool:
+    """Escape hatch for the fail-closed kickoff rule (default: closed)."""
+    return str(os.environ.get("RACKET_FACTORY_KICKOFF_FAIL_OPEN", "")).strip() in {"1", "true", "TRUE", "yes"}
+
+
 def parse_kickoff(pick: dict, target_date: str):
     raw = clean_text(pick.get("kickoff") or pick.get("match_time") or pick.get("time") or "")
     if not raw:
@@ -412,23 +508,71 @@ def parse_kickoff(pick: dict, target_date: str):
             return None
     return None
 
+def skip_record(pick: dict) -> dict:
+    """Compact identity for the ledger's `skipped` list.
+
+    The full pick dict used to be embedded here — 1 KB apiece, nothing in the
+    codebase reads it, and the fail-closed kickoff rule now routes up to 15
+    picks a day into this list (2026-09-23). That is ledger growth with no
+    reader. The full record is already in picks_{date}.json; this keeps the
+    (record, reason) pair shape so positional readers survive.
+    """
+    return {
+        "match": pick.get("match"),
+        "selected_player": pick.get("selected_player") or pick.get("selection"),
+        "kickoff": pick.get("kickoff"),
+        "bucket": pick.get("bucket"),
+        "ml_verdict": pick.get("ml_verdict"),
+        "odds": pick.get("odds"),
+    }
+
+
 def kickoff_guard(pool, target_date, now):
+    """Split the pool on "can we prove this match had not started?".
+
+    FAIL CLOSED (2026-09-26). The old rule returned the pick to the staked
+    pool whenever ``parse_kickoff`` returned None — i.e. an unreadable
+    kickoff was treated as "safe to bet". The live feed emits ``n/a``
+    kickoffs in bulk (22 across 2026-09-23..25, 15 on one day), so this was
+    not hypothetical: those legs were staked with no evidence the match was
+    still ahead of us, which is exactly how you buy a settled result at a
+    pre-match price.
+
+    Unprovable kickoffs are NOT dropped — dropping them would have starved
+    whole days and thrown away the hit-rate signal. They are flagged
+    ``_kickoff_unknown`` and routed to the paper track by
+    ``racketfactory.execution``: recorded, graded, never staked.
+
+    ``RACKET_FACTORY_KICKOFF_FAIL_OPEN=1`` restores the old behaviour.
+    """
     kept = []
     skipped = []
     is_today = target_date == now.date().isoformat()
+    fail_open = kickoff_fail_open()
     for pick in pool:
         ko = parse_kickoff(pick, target_date)
         if ko is None:
+            if not fail_open and is_today:
+                pick["_kickoff_unknown"] = True
+                raw = clean_text(pick.get("kickoff") or pick.get("match_time")
+                                 or pick.get("time") or "")
+                skipped.append((skip_record(pick), f"kickoff unreadable ({raw or 'absent'}) -> paper"))
             kept.append(pick)
             continue
+        pick.pop("_kickoff_unknown", None)
         if is_today and ko.date().isoformat() == target_date and ko <= now:
-            skipped.append((pick, "already started"))
+            skipped.append((skip_record(pick), "already started"))
         else:
             kept.append(pick)
     return kept, skipped
 
-def build_accas(pool):
+def select_accas(pool, knobs: AccaKnobs | None = None):
     """ML-driven mutually exclusive accas – ML chooses winners, monitors itself.
+
+    Returns ``(priced, paper, sorted_pool)``. ``knobs`` defaults to the live
+    production settings, so ``select_accas(pool)`` == the old
+    ``build_accas(pool)`` byte for byte; pass an ``AccaKnobs`` to run a
+    counterfactual without editing the engine.
 
     Two tracks, never mixed:
     - PRICED: every leg carries REAL market odds (BetExplorer consensus is REAL, now fixed bad=10).
@@ -439,6 +583,8 @@ def build_accas(pool):
     - MIN_ODDS dynamic: 1.20 base CAPITAL PROTECTION REVISED (was 1.30 too strict), BOOST 1.15 + EV>=1% (was 2% too strict, doubles 5%)
     - ML chooses winners via calibrated prob (High 84%, Medium 77%, Low 61%) + EV vs BetExplorer
     """
+    k = knobs if knobs is not None else live_knobs()
+    min_odds_per_leg = k.effective_min_odds_per_leg()
     audit = {}
     registry = {}
     weights = {}
@@ -564,17 +710,21 @@ def build_accas(pool):
         out = []
         for p in pool_sorted:
             o = get_odds(p)
-            late = bool(p.get("_late_start"))
+            # The two tracks are the two sides of ONE predicate, so they
+            # always partition the pool and can never disagree about a leg.
+            # (Previously each track re-derived "is this paper?" inline.)
+            blocked = leg_execution_block(p) != ""
             if paper:
-                if o is not None and not late:
+                if not blocked:
                     continue
             else:
-                if o is None or late:
+                if blocked:
                     continue
                 # Dynamic min odds: BOOST picks allowed down to 1.20 CAPITAL PROTECTION (was 1.10)
-                min_leg = MIN_ODDS_BOOST if str(p.get("ml_verdict")) == "BOOST" else MIN_ODDS_PER_LEG
+                is_boost_leg = k.boost_privileges and str(p.get("ml_verdict")) == "BOOST"
+                min_leg = k.min_odds_boost if is_boost_leg else min_odds_per_leg
                 # DYNAMIC MAX: scales with prob + ROI + edge_n (e.g. Bobichon 2.28 allowed only because 85%+51n+15.9% ROI)
-                max_leg = dynamic_max_odds(p)
+                max_leg = dynamic_max_odds(p, knobs=k)
                 if o < min_leg:
                     # CAPITAL PROTECTION: 1.05 EV -11.8% blocked by EV>=1%, not just odds
                     # Allow below min_leg only if BOOST + Both + High>=70 + EV>=1% + odds>=1.15 + prob>=75%
@@ -584,13 +734,13 @@ def build_accas(pool):
                         ml_ev_raw = p.get("ml_ev")
                         if ml_ev_raw is None:
                             # No EV data (test picks), allow if prob high
-                            if cp >= 0.75 and o >= 1.15 and str(p.get("ml_verdict"))=="BOOST":
+                            if cp >= 0.75 and o >= k.min_odds_boost and is_boost_leg:
                                 pass
                             else:
                                 continue
                         else:
                             ev = float(ml_ev_raw)
-                            if cp >= 0.75 and o >= 1.15 and ev >= 0.01 and str(p.get("ml_verdict"))=="BOOST":
+                            if cp >= 0.75 and o >= k.min_odds_boost and ev >= 0.01 and is_boost_leg:
                                 pass
                             else:
                                 continue
@@ -610,13 +760,13 @@ def build_accas(pool):
                         ev = float(ml_ev_raw)
                         match_str = str(p.get("match") or "")
                         is_doubles = "/" in match_str
-                        min_ev = 0.05 if is_doubles else get_min_ev_real()
+                        min_ev = k.min_ev_doubles if is_doubles else k.effective_min_ev_real()
                         if ev < min_ev:
                             if is_doubles:
                                 continue
                             if ev < -0.02:
                                 continue
-                            is_boost = str(p.get("ml_verdict")) == "BOOST"
+                            is_boost = is_boost_leg
                             cross = str(p.get("cross_source_agree") or "")
                             conf_f = conf_of(p)
                             if not (is_boost and cross == "Both" and conf_f >= 70):
@@ -624,7 +774,7 @@ def build_accas(pool):
                     # If ml_ev is None (test picks), skip EV gate
                     # REVISED 2026-09-17: allow prob 55-60% if high EV (>=10%) or conf>=60 and EV>=5%
                     # Charaeva 56% prob 25% EV 2.23 odds conf 62% should be allowed (was blocked at 2.2)
-                    if cp < 0.60 and str(p.get("ml_verdict")) != "BOOST":
+                    if cp < 0.60 and not is_boost_leg:
                         try:
                             ev_check = float(p.get("ml_ev") or 0) if p.get("ml_ev") is not None else 0
                         except Exception:
@@ -649,18 +799,18 @@ def build_accas(pool):
         # For paper, simple sequential is fine
         if paper:
             idx = 0
-            while idx < len(pool_sorted) and len(track) < MAX_ACCAS:
+            while idx < len(pool_sorted) and len(track) < k.max_accas:
                 chunk = []
-                while len(chunk) < 2 and idx < len(pool_sorted):
+                while len(chunk) < k.legs_per_acca and idx < len(pool_sorted):
                     p = pool_sorted[idx]
                     mk = match_key(p)
                     if mk not in used_matches:
                         chunk.append(p)
                         used_matches.add(mk)
                     idx += 1
-                if len(chunk) == 2:
+                if len(chunk) == k.legs_per_acca:
                     for leg in chunk:
-                        leg["_paper_reason"] = _leg_paper_reason(leg)
+                        stamp_leg(leg)
                     track.append({"legs": chunk, "odds": None, "type": f"value_2leg_mutual{suffix}",
                                   "prob": round(math.prod([get_prob(leg) for leg in chunk]), 4),
                                   "paper": True})
@@ -686,14 +836,15 @@ def build_accas(pool):
                     if oj is None:
                         continue
                     prod = oi * oj
-                    is_boost = any(str(leg.get("ml_verdict")) == "BOOST" for leg in (pi, pj))
-                    min_acca = MIN_ACCA_ODDS_BOOST if is_boost else MIN_ACCA_ODDS
-                    max_acca = MAX_ACCA_ODDS_BOOST if is_boost else MAX_ACCA_ODDS
+                    is_boost = k.boost_privileges and any(
+                        str(leg.get("ml_verdict")) == "BOOST" for leg in (pi, pj))
+                    min_acca = k.min_acca_odds_boost if is_boost else k.min_acca_odds
+                    max_acca = k.max_acca_odds_boost if is_boost else k.max_acca_odds
                     # Allow slight overshoot 1.2x if prob high
                     prob_prod = get_prob(pi) * get_prob(pj)
                     if prod < min_acca:
                         continue
-                    if prod > max_acca * 1.2:
+                    if prod > max_acca * k.acca_overshoot:
                         continue
                     if prod > max_acca and prob_prod < 0.65:
                         continue
@@ -719,7 +870,7 @@ def build_accas(pool):
                     candidates.append(( -score, prod, prob_prod, i, j, pi, pj))
             candidates.sort()
             for _, prod, prob_prod, i, j, pi, pj in candidates:
-                if len(track) >= MAX_ACCAS:
+                if len(track) >= k.max_accas:
                     break
                 mi = match_key(pi)
                 mj = match_key(pj)
@@ -728,46 +879,82 @@ def build_accas(pool):
                 used_matches.add(mi)
                 used_matches.add(mj)
                 kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod > 1 else 0
-                kelly_acca = max(0.0, min(0.15, kelly_acca))
+                kelly_acca = max(0.0, min(k.kelly_cap_2leg, kelly_acca))
+                for leg in (pi, pj):
+                    stamp_leg(leg)
                 track.append({"legs": [pi, pj], "odds": round(prod, 2), "type": "value_2leg_mutual",
                               "kelly": round(kelly_acca, 4), "prob": round(prob_prod, 4), "paper": False})
         if _ML_AVAILABLE:
             boost_picks = [p for p in pool_sorted if str(p.get("ml_verdict")) == "BOOST"]
             boost_unused = [p for p in boost_picks if match_key(p) not in used_matches]
-            if len(boost_unused) >= 3 and len(track) < MAX_ACCAS:
-                chunk = boost_unused[:3]
+            if k.boost_privileges and len(boost_unused) >= k.boost_legs and len(track) < k.max_accas:
+                chunk = boost_unused[:k.boost_legs]
                 for leg in chunk:
                     used_matches.add(match_key(leg))
                 if paper:
                     for leg in chunk:
-                        leg["_paper_reason"] = _leg_paper_reason(leg)
+                        stamp_leg(leg)
                     track.append({"legs": chunk, "odds": None, "type": f"high_strength_3leg_mutual{suffix}",
                                   "prob": round(math.prod([get_prob(leg) for leg in chunk]), 4),
                                   "paper": True})
                 else:
                     prod = math.prod([get_odds(leg) for leg in chunk])
-                    if prod >= MIN_ACCA_ODDS_BOOST and prod <= MAX_ACCA_ODDS_BOOST * 1.5:
+                    if prod >= k.min_acca_odds_boost and prod <= k.max_acca_odds_boost * k.boost_acca_overshoot:
                         prob_prod = math.prod([get_prob(leg) for leg in chunk])
                         kelly_acca = (prod * prob_prod - (1 - prob_prod)) / (prod - 1) if prod > 1 else 0
-                        kelly_acca = max(0.0, min(0.10, kelly_acca))
+                        kelly_acca = max(0.0, min(k.kelly_cap_3leg, kelly_acca))
+                        for leg in chunk:
+                            stamp_leg(leg)
                         track.append({"legs": chunk, "odds": round(prod, 2), "type": "high_strength_3leg_mutual",
                                       "kelly": round(kelly_acca, 4), "prob": round(prob_prod, 4), "paper": False})
-        if not track and len(pool_sorted) >= 2:
-            chunk1 = pool_sorted[:2]
+        if not track and len(pool_sorted) >= k.legs_per_acca:
+            chunk1 = pool_sorted[:k.legs_per_acca]
             if paper:
                 for leg in chunk1:
-                    leg["_paper_reason"] = _leg_paper_reason(leg)
+                    stamp_leg(leg)
                 track.append({"legs": chunk1, "odds": None, "type": f"fallback_2leg_mutual{suffix}", "paper": True})
             else:
                 prod1 = math.prod([get_odds(leg) for leg in chunk1])
-                track.append({"legs": chunk1, "odds": round(prod1, 2), "type": "fallback_2leg_mutual", "paper": False})
-        return track[:MAX_ACCAS]
+                # FOUND 2026-09-26 while red-teaming the knobs: this
+                # last-resort pair used to be appended with NO acca-level
+                # gate at all. It bypassed MIN_ACCA_ODDS and MAX_ACCA_ODDS
+                # entirely — the 2026-09-17 slip went on at 4.08 against a
+                # 4.00 cap and returned +88 points, i.e. a large slice of the
+                # entire bank gain came from a bet the engine's own rules
+                # said not to take. Winning does not make it legal.
+                #
+                # The fallback now clears the same bounds as every other
+                # acca. If it cannot, there is no bet, which is what the
+                # ticket text has always claimed ("zero qualifying bets is a
+                # valid outcome").
+                fb_boost = k.boost_privileges and any(
+                    str(leg.get("ml_verdict")) == "BOOST" for leg in chunk1)
+                fb_min = k.min_acca_odds_boost if fb_boost else k.min_acca_odds
+                fb_max = k.max_acca_odds_boost if fb_boost else k.max_acca_odds
+                fb_prob = math.prod([get_prob(leg) for leg in chunk1])
+                # Mirror the primary path's admission rule exactly, overshoot
+                # allowance included, so "last resort" means "same bar, fewer
+                # candidates" rather than "no bar".
+                fb_ok = (prod1 >= fb_min
+                         and prod1 <= fb_max * k.acca_overshoot
+                         and (prod1 <= fb_max or fb_prob >= 0.65))
+                if fb_ok:
+                    for leg in chunk1:
+                        stamp_leg(leg)
+                    track.append({"legs": chunk1, "odds": round(prod1, 2),
+                                  "type": "fallback_2leg_mutual", "paper": False})
+        return track[:k.max_accas]
 
     pool_sorted = sorted(pool, key=sort_key)
     used_matches: set = set()
     priced = build_track(eligible_pool(pool_sorted, False), False, used_matches)
     paper = build_track(eligible_pool(pool_sorted, True), True, used_matches)
     return priced, paper, pool_sorted
+
+
+def build_accas(pool):
+    """Back-compat shim: the live engine is select_accas() with live knobs."""
+    return select_accas(pool, live_knobs())
 
 
 def load_state():
@@ -785,6 +972,45 @@ def save_state(state):
 def take_profit_target(state):
     return state.get("cycle_base", 100.0) * (1.0 + TAKE_PROFIT_GAIN)
 
+
+def free_bank(state) -> float:
+    """Bank that is NOT already riding on an unsettled slip.
+
+    ``state["bank"]`` only moves at settlement, so with slips open the old
+    sizing staked capital that was already at risk: on 2026-09-20 the engine
+    sized a fresh day off 173.6% while two slips were still live. Edge sizes
+    off "total minus committed" and so does this now. Never negative — an
+    over-committed book stakes nothing rather than going short.
+    """
+    bank = float(state.get("bank", 100.0) or 0.0)
+    return round(max(0.0, bank - committed_stake(state.get("open_slips", []))), 4)
+
+
+def allocate_stakes(total_stake: float, accas) -> list[float]:
+    """Split the day's stake across accas so the parts NEVER exceed the whole.
+
+    Two failure modes, both borrowed from Edge's day-cap handling:
+      * weights that do not sum to 1 (the live weights are 0.283 / 0.15
+        literals) silently re-scale the day's exposure;
+      * rounding each share to 4dp can push the sum above the cap.
+    Both are fixed here: normalise, round down-safe, and hand any residual
+    rounding crumb to the largest stake so the total is exact.
+    """
+    weights = _acca_weights(accas)
+    if not accas or not weights or total_stake <= 0:
+        return [0.0] * len(accas)
+    stakes = [round(total_stake * w, 4) for w in weights]
+    drift = round(total_stake - sum(stakes), 4)
+    if drift and stakes:
+        biggest = max(range(len(stakes)), key=lambda i: stakes[i])
+        stakes[biggest] = round(stakes[biggest] + drift, 4)
+    # Hard cap: rounding must never make the book bigger than the day cap.
+    overflow = round(sum(stakes) - total_stake, 4)
+    if overflow > 0:
+        biggest = max(range(len(stakes)), key=lambda i: stakes[i])
+        stakes[biggest] = round(max(0.0, stakes[biggest] - overflow), 4)
+    return stakes
+
 def _acca_weights(accas):
     weights = []
     for acca in accas:
@@ -792,6 +1018,36 @@ def _acca_weights(accas):
         weights.append(0.15 if "3leg" in t else 0.283)
     s = sum(weights)
     return [w / s for w in weights] if s else []
+
+
+def format_skips(skipped_info) -> list[str]:
+    """Group the skip list by reason, worst-offender first."""
+    if not skipped_info:
+        return ["Skipped: none — the pool was empty before any guard ran."]
+    by_reason: dict[str, list[str]] = {}
+    for entry in skipped_info:
+        try:
+            record, reason = entry
+        except (TypeError, ValueError):
+            record, reason = {}, str(entry)
+        if not isinstance(record, dict):
+            record = {}
+        label = str(record.get("match") or "?")
+        sel = record.get("selected_player")
+        if sel:
+            label = f"{label} [{sel}]"
+        ko = record.get("kickoff")
+        if ko:
+            label = f"{label} ko {ko}"
+        by_reason.setdefault(str(reason), []).append(label)
+    lines = [f"Skipped {sum(len(v) for v in by_reason.values())} pick(s):"]
+    for reason, names in sorted(by_reason.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+        lines.append(f"  {len(names)}x {reason}")
+        for name in names[:6]:
+            lines.append(f"      - {name}")
+        if len(names) > 6:
+            lines.append(f"      ... and {len(names) - 6} more")
+    return lines
 
 
 def format_tickets_txt(target_date, accas, state, skipped_info):
@@ -813,8 +1069,12 @@ def format_tickets_txt(target_date, accas, state, skipped_info):
     if not priced:
         lines.append("NO BET — no priced legs available (zero qualifying bets is a valid outcome)")
         lines.append(f"Playable buckets: {PLAYABLE_BUCKETS} + ML NO_ODDS BOOST (paper track)")
-        if skipped_info:
-            lines.append(f"Skipped: {skipped_info}")
+        # This block is the answer to "why did the engine surface nothing
+        # today". It used to dump the raw list of (full pick dict, reason)
+        # tuples on one line, which is unreadable and is why a no-bet day
+        # needed a forensic investigation to explain.
+        for line in format_skips(skipped_info):
+            lines.append(line)
         lines.append("")
     else:
         total_stake = bank * STAKE_FRAC
@@ -866,28 +1126,44 @@ def _existing_ticket_ledger(path) -> dict | None:
 
 def should_write_ticket_files(existing: dict | None, new_acca_count: int,
                               *, force: bool = False, is_frozen_now: bool = False,
-                              target_date: str | None = None) -> bool:
+                              target_date: str | None = None,
+                              in_generation_window: bool = False) -> bool:
     """No-clobber rule for ticket ledgers.
 
-    * Frozen ledgers are immutable (the day is closed; regeneration is
-      meaningless) unless ``--force`` is passed.
     * An empty regeneration must never blank a ledger that has booked accas
       (observed 2026-09-12 evening: 1 acca -> 0 accas after picks starved).
-    * After generation window (06:00-09:00 SAST), same-day tickets are LOCKED
-      – late runs (e.g. 10:26) must not overwrite morning BOOST tickets with
-      VETO picks (user report 2026-09-15: 10:26 VETO overwrote 06:26 BOOST).
+    * Frozen ledgers are immutable (the day is closed; regeneration is
+      meaningless) unless ``--force``, or unless we are inside the 06:00-09:00
+      generation window and the ledger is for today (a ledger written frozen
+      at 00:00 must still be refreshable at 06:25).
+    * After the generation window, same-day tickets are LOCKED – late runs
+      (e.g. 10:26) must not overwrite morning BOOST tickets with VETO picks
+      (user report 2026-09-15: 10:26 VETO overwrote 06:26 BOOST).
+
+    BUG FIXED 2026-09-26 — the guard was disarmed in production. ``main()``
+    set ``effective_force=True`` for EVERY run inside the generation window
+    to work around the frozen-at-00:00 case, and ``force`` short-circuits
+    the whole function. So between 06:00 and 09:00 a starved pick feed
+    produced 0 accas and blanked a booked ledger: precisely the 2026-09-12
+    failure this function was written to prevent. The window exemption is
+    now its own narrowly-scoped argument, and the empty-regeneration check
+    is evaluated BEFORE it — order is load-bearing here.
     """
     if force:
         return True
     if not existing:
         return True
-    if existing.get("frozen") is True:
+    # FIRST, unconditionally: nothing may replace booked accas with nothing.
+    # Not --force (that is an explicit human override), but no automatic
+    # window/freeze exemption gets to skip past this line.
+    if new_acca_count == 0 and existing.get("accas"):
         return False
+    if existing.get("frozen") is True:
+        return bool(in_generation_window and target_date
+                    and existing.get("date") == target_date)
     # Lock after generation window: if we are now frozen (outside 06-09) and
     # existing is for same date, keep it (prevents 10:26 overwrite of 06:26)
     if is_frozen_now and target_date and existing.get("date") == target_date:
-        return False
-    if new_acca_count == 0 and existing.get("accas"):
         return False
     return True
 
@@ -908,53 +1184,78 @@ def main():
         late = [p for p in playable if p not in kept]
         for p in late:
             p["_late_start"] = True
-        skipped = [(p, "paper_late_included") for p in late]
+        # Append, don't replace: the kickoff-unknown reasons recorded above
+        # are part of the audit trail for why a leg went to the paper track.
+        skipped = skipped + [(skip_record(p), "paper_late_included") for p in late]
         kept = playable
     priced, paper, sorted_pool = build_accas(kept)
     accas = priced + paper
     state = load_state()
     bank = state.get("bank", 100.0)
-    total_stake = bank * STAKE_FRAC if priced else 0
-    weights = _acca_weights(priced)
+    # Size on FREE bank, not total bank: capital riding on unsettled slips is
+    # already at risk and must not be re-staked (see free_bank()).
+    stakeable = free_bank(state)
+    committed = round(bank - stakeable, 4)
+    if committed > 0:
+        print(f"Free bank {stakeable:.2f}% of {bank:.2f}% "
+              f"({committed:.2f}% committed to {len(state.get('open_slips', []))} open slip(s))")
+    day_cap = round(stakeable * STAKE_FRAC, 4)
+    total_stake = day_cap if priced else 0
     paper_bank = state.get("paper_bank", bank)
-    paper_stake_total = paper_bank * STAKE_FRAC if paper else 0
-    paper_weights = _acca_weights(paper)
+    paper_stake_total = round(paper_bank * STAKE_FRAC, 4) if paper else 0
+    real_stakes = allocate_stakes(total_stake, priced)
+    paper_stakes = allocate_stakes(paper_stake_total, paper)
     accas_out = []
     for i, acca in enumerate(priced):
-        stake_pct = total_stake * weights[i] if weights else 0
         accas_out.append({"legs": acca.get("legs", []), "odds": acca.get("odds", 1.0),
-                          "type": acca.get("type", ""), "stake_pct": round(stake_pct, 4),
+                          "type": acca.get("type", ""), "stake_pct": real_stakes[i],
                           "paper": False})
     for i, acca in enumerate(paper):
-        stake_pct = paper_stake_total * paper_weights[i] if paper_weights else 0
         accas_out.append({"legs": acca.get("legs", []), "odds": acca.get("odds"),
-                          "type": acca.get("type", ""), "stake_pct": round(stake_pct, 4),
+                          "type": acca.get("type", ""), "stake_pct": paper_stakes[i],
                           "paper": True})
+    booked_real = round(sum(real_stakes), 4)
+    # Belt and braces: the written ledger states what was actually allocated,
+    # so staked_pct can never be a number the accas do not add up to. A bare
+    # `assert` would be stripped under -O and would crash the run when it did
+    # fire; clamp loudly instead — over-staking is the failure we are
+    # preventing, and refusing to bet is always the safe direction.
+    if booked_real > day_cap + 1e-9:
+        print(f"OVERSTAKE GUARD: allocated {booked_real}% > day cap {day_cap}% — zeroing the book")
+        real_stakes = [0.0] * len(real_stakes)
+        booked_real = 0.0
     is_frozen = now.hour >= FREEZE_HOUR or now.hour < GENERATE_HOUR_START
+    in_generation_window = not is_frozen
     out = {
         "date": target_date,
         "generated_at": now.isoformat(),
         "bank_pct": bank,
-        "stake_per_acca_pct": round(total_stake / len(priced), 4) if priced else 0,
-        "staked_pct": round(total_stake, 4),
-        "paper_staked_pct": round(paper_stake_total, 4),
+        "free_bank_pct": stakeable,
+        "committed_pct": committed,
+        "day_cap_pct": day_cap,
+        "stake_frac": STAKE_FRAC,
+        "stake_per_acca_pct": round(booked_real / len(priced), 4) if priced else 0,
+        "staked_pct": booked_real,
+        "paper_staked_pct": round(sum(paper_stakes), 4),
         "accas": accas_out,
         "skipped": skipped,
         "frozen": is_frozen,
     }
     LOCALDATA.mkdir(parents=True, exist_ok=True)
     existing_ledger = _existing_ticket_ledger(LOCALDATA / f"auto_tickets_{target_date}.json")
-    # USER FIX: frozen guard blocked 06:10 SAST generation window – existing frozen at 00:00 refused overwrite at 06:25
-    # Allow overwrite if current run is in generation window (06:00-09:00) even if existing is frozen, for same date
-    effective_force = args.force
-    if not is_frozen and existing_ledger and existing_ledger.get("date") == target_date:
-        # In generation window, allow refresh of today's frozen tickets (e.g., after code fix low-odds 1.86 vs 7.45)
-        effective_force = True
-        print(f"Generation window {GENERATE_HOUR_START}:00-{FREEZE_HOUR}:00 SAST – allowing overwrite of frozen {target_date} ledger")
+    # The generation window may refresh a ledger that was written frozen at
+    # 00:00 — but it is NOT a blanket force. It used to be (effective_force =
+    # True), which switched the no-clobber guard off for every 06:00-09:00
+    # run and let an empty regeneration wipe booked accas.
+    if in_generation_window and existing_ledger and existing_ledger.get("frozen") is True \
+            and existing_ledger.get("date") == target_date:
+        print(f"Generation window {GENERATE_HOUR_START}:00-{FREEZE_HOUR}:00 SAST – "
+              f"frozen {target_date} ledger is refreshable (booked accas still protected)")
     if not should_write_ticket_files(
         existing_ledger,
-        len(accas_out), force=effective_force,
+        len(accas_out), force=args.force,
         is_frozen_now=is_frozen, target_date=target_date,
+        in_generation_window=in_generation_window,
     ):
         print(f"REFUSING to overwrite auto_tickets_{target_date}.* "
               f"(frozen/non-empty ledger guard; keeping existing files).")
@@ -990,12 +1291,28 @@ def main():
                     has_accas = bool(data.get("accas"))
                     print(f"    {d} has_accas={has_accas}, accas count={len(data.get('accas',[]))}")
                     if has_accas:
+                        # Replay accas through the execution predicate before
+                        # they re-enter state. The loop used to re-import the
+                        # ledger verbatim, which carried PAPER accas back into
+                        # open_slips still holding their real stake_pct — the
+                        # 2026-09-20 slip came back as paper:true with
+                        # stake_pct 25.0, and only an unrelated odds==None
+                        # check kept it off the bank.
+                        raw_accas = data.get("accas", []) or []
+                        safe_accas = [sanitise_acca_for_replay(a) for a in raw_accas]
+                        demoted = sum(1 for a, b in zip(raw_accas, safe_accas)
+                                      if float(a.get("stake_pct") or 0) != float(b.get("stake_pct") or 0))
+                        if demoted:
+                            print(f"    {d}: zeroed stake on {demoted} non-executable acca(s) before replay")
+                        real_staked = round(sum(float(a.get("stake_pct") or 0)
+                                                for a in safe_accas if not a.get("paper")), 4)
                         slip = {
                             "date": d,
                             "generated_at": data.get("generated_at") or f"{d}T00:00:00",
-                            "accas": data.get("accas", []),
-                            "staked_pct": data.get("staked_pct", 0),
+                            "accas": safe_accas,
+                            "staked_pct": real_staked,
                             "stake_per_acca_pct": data.get("stake_per_acca_pct", 0),
+                            "reconstructed": True,
                         }
                         reconstructed.append(slip)
                 except Exception as e:
@@ -1037,8 +1354,12 @@ def main():
                     "date": target_date,
                     "generated_at": now.isoformat(),
                     "accas": accas_out,
-                    "staked_pct": round(total_stake, 4),
-                    "stake_per_acca_pct": round(total_stake / len(accas), 4) if accas else 0,
+                    # Real exposure only, and divided by the accas that
+                    # actually carry it (it used to divide the real stake by
+                    # the count of real AND paper accas, understating the
+                    # per-acca figure any grader fallback would read).
+                    "staked_pct": booked_real,
+                    "stake_per_acca_pct": round(booked_real / len(priced), 4) if priced else 0,
                 }
                 state["open_slips"].append(new_slip)
                 print(f"Added open slip for {target_date} with {len(accas_out)} accas to state")

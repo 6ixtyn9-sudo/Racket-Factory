@@ -1,5 +1,7 @@
 # Autobets deep dive — measured, not asserted
 
+> **Status:** Parts 1–6 are the pre-fix review (2026-09-26 morning). **Part 7 is the implementation record** — the Tier 0 defects, the Tier 1 stake reduction and the Tier 2 instruments have all shipped, and a sixth defect was found while red-teaming the fix. Read Part 7 before treating anything in Parts 1–6 as live behaviour.
+
 **Date:** 2026-09-26
 **Scope:** `scripts/auto_tickets.py` (1,054 lines) + `scripts/auto_tickets_grade.py` (516 lines), measured against `localdata/auto_tickets_state.json`, and compared with Edge Factory's `scripts/auto_tickets.py` (2,639 lines) @ `27d8211`.
 **Re-runnable tool:** `PYTHONPATH=src python3 scripts/autobets_forensics.py`
@@ -385,3 +387,89 @@ The autobets engine currently:
 - and shows `bank 130.2%`, which the bootstrap places at the **36th percentile of a distribution whose 10th percentile is −118 points.**
 
 None of that is a reason to stop. It is a reason to fix the six correctness bugs, take the free risk reduction, build the instruments, and then — with 60 more bet-days and a pre-registered bar — find out whether there is an edge underneath. Edge Factory reached the same place with its own engine and wrote it down rather than tuning its way out of it. That discipline, more than any single mechanism, is the thing worth importing.
+
+---
+
+## PART 7 — IMPLEMENTATION RECORD (appended 2026-09-26, after the fixes landed)
+
+Parts 1–6 above were written as an advisory review. They are preserved verbatim
+as the pre-fix record. This part states what was actually changed, so the
+document cannot be read as describing live behaviour that no longer exists.
+
+**Verification contract for everything below:** `PYTHONPATH=src python3 -m pytest tests -q`
+→ **497 passed** (baseline before this work: 354). The daily workflow runs the
+suite as a blocking gate.
+
+### Defects fixed (Tier 0)
+
+| # | Defect | Fix | Proof |
+|---|---|---|---|
+| 1 | No-clobber guard disarmed for the whole build window | `should_write_ticket_files` checks the empty-regeneration case *before* the frozen/window branches; blanket `effective_force=True` removed from `main()` | `test_tickets_guards.py` |
+| 2 | Builder and grader disagreed on "paper" | Single predicate in new `src/racketfactory/execution.py`; both sides import it. Grader honours `acca["paper"]` as a hard floor and logs any demotion | `test_execution_contract.py`, `test_grade_settlement_faults.py` |
+| 3 | Reconstruction injected paper accas carrying real stakes | `sanitise_acca_for_replay` zeroes `stake_pct` **only** when the ledger had not already marked the acca paper (so a genuine real stake is not silently erased) | `test_tickets_guards.py` |
+| 4 | Stake sized against total bank, ignoring committed capital | `free_bank(state)` + `allocate_stakes()`; ledger now emits `free_bank_pct`, `committed_pct`, `day_cap_pct`, `stake_frac` | `test_tickets_guards.py` |
+| 5 | Kickoff correctness rested on an unverified assumption with a dated expiry | `scripts/kickoff_tz_audit.py` (fails **safe** to `UNKNOWN`, never green by default), `REVIEW_DUE` on 2026-10-25, env override, wired into `daily.py` before ticket generation | `test_kickoff_tz_drift.py` (26) |
+| **6** | **`fallback_2leg_mutual` appended its pair with NO acca-level odds gate** | **Found during red-teaming, not in Parts 1–6.** The fallback now applies the primary path's admission rule (probability product, overshoot allowance, min/max acca odds) | `test_select_accas_golden.py::test_ungated_fallback_is_closed` |
+
+Two further faults surfaced while writing the tests and were fixed:
+
+- **A legless acca was a free win.** `any([])` is `False`, so an acca with an
+  empty `legs` list matched no LOST and no VOID branch and fell through to
+  `elif priceable:` — paying out `stake × odds` on nothing. Now voided with a
+  full refund and a `FAULT` log line.
+- **A bare `assert booked_real <= day_cap`** (a no-op under `python -O`) is now
+  a loud **OVERSTAKE GUARD** that zeroes the book rather than shipping an
+  over-staked card.
+
+#### Defect 6 is the one that changes the record
+
+The single live instance is **2026-09-17**: a `fallback_2leg_mutual` at odds
+**4.08** against `MAX_ACCA_ODDS = 4.0`, legs 2.18 + 1.87. Both won. Stake 28.656
+→ **+88.26 points**, i.e. the clear majority of the engine's entire +30.17 net
+P&L came from a bet its own rules rejected. Part 1.2 said the bank is variance;
+this sharpens it: the bank is variance *plus a bug*.
+
+Closing the gate has exactly one consequence on the seven captured pick-days:
+`2026-09-20` no longer produces its 3.35 fallback (legs cp 0.69 × 0.66 = 0.46,
+below the 0.65 floor; 3.35 above the 3.00 BOOST cap). **The golden fixture was
+deliberately NOT re-baselined.** It stands as the pre-refactor record, and the
+divergence is declared in `INTENTIONAL_DIVERGENCES` with its reason; the test
+asserts the change is confined to the `priced` track and fails loudly if the
+case ever silently re-matches.
+
+### Risk reduction taken (Tier 1)
+
+`STAKE_FRAC` 0.25 → **0.20**. Not a search result — a dominance argument:
+identical log growth to four decimal places, 6.7 points less maximum drawdown.
+Overridable via `RACKET_FACTORY_STAKE_FRAC` for replays.
+
+### Instruments built (Tier 2)
+
+- **`src/racketfactory/tripwire.py`** — calibration and slice-ROI monitor,
+  appended to `auto_tickets_performance.txt` every grading run. Honest by
+  construction: `MIN_N = 30` means the z = −3.50 cell is still tagged `NOISE`,
+  a losing-but-inconclusive slice is `INCONCL.` rather than `OK`, and the worst
+  cell is named on its own line even when it is under the bar.
+- **`scripts/autobets_forensics.py`** — the measurement harness behind Part 1,
+  now wired into `daily.py` and carrying `--preregistration`.
+- **Stale-slip alarm** — `STALE_SLIP_ALARM_DAYS = 3`, written to
+  `auto_tickets_stale_slips.json` and shouted in the performance file. Closing
+  is `--close-stale-days N`: opt-in, human-invoked, never moves the bank.
+- **`select_accas(pool, knobs)`** — `build_accas` renamed and parameterised via
+  a frozen `AccaKnobs` dataclass (back-compat shim retained). Defaults are
+  byte-identical to the old hardcoded constants, pinned against a pre-refactor
+  capture on seven real pick-days.
+
+### Deliberately NOT changed
+
+Every finding in Part 1 that is a *tuning* claim was left alone and written
+down instead: `scripts/autobets_forensics.py --preregistration` lists H1–H6
+with their pass bars, registered **before** the data supports them. The two
+stale justifications in the source (`doubles 0W/5L`, in `auto_tickets.py` and
+`ml.py`) were corrected in place to state the current evidence *and* the reason
+the constant is nonetheless unchanged: n = 11 is far below the bar, and acting
+on an 11-sample reversal is precisely the error the null test exists to prevent.
+
+`mine_edges.py`'s closing-odds ROI contamination is real but out of scope here;
+it already carries a module-level warning and a proper fix needs opening-odds
+capture, not a patch.

@@ -170,6 +170,119 @@ def paired_bootstrap(arm, base, rng, n_boot):
             sum(1 for x in sims if x > 0) / n_boot)
 
 
+
+# --------------------------------------------------------------------------
+# pre-registration
+# --------------------------------------------------------------------------
+# Written BEFORE the data supports any of it. A hypothesis that only appears
+# after you have seen the answer is not a hypothesis, it is a story — and the
+# null test in section 7 exists because this ledger is short enough to tell
+# very convincing ones.
+#
+# Rules of engagement for every row below:
+#   1. Do not change the constant until n >= MIN_N settled legs (or bet-days)
+#      for that specific slice. n is the bar, not the p-value.
+#   2. The effect must clear the stated bar on OUT-OF-SAMPLE days — days that
+#      accrued after this file was committed (2026-09-26).
+#   3. Any change picked from a battery of variants must additionally clear
+#      the search-winner null test in section 7 at p < 0.05.
+#   4. A hypothesis that fails is recorded as failed. It does not get quietly
+#      re-tested with a different slicing until it passes.
+PREREGISTRATION = [
+    {
+        "id": "H1-boost-privileges",
+        "claim": "ML BOOST does not earn the five gate overrides it unlocks "
+                 "(lower leg floor 1.15, VETO override, EV override, higher "
+                 "odds cap, sort bonus).",
+        "as_of_2026_09_26": "BOOST n=30 -13.83% vs ALLOW n=20 +11.05%; "
+                            "permutation p=0.126 — unproven in BOTH directions.",
+        "test": "flat-stake ROI of BOOST legs vs ALLOW legs",
+        "bar": "n>=60 BOOST legs AND one-sided permutation p<0.05",
+        "action_if_passed": "set AccaKnobs.boost_privileges=False",
+        "action_if_failed": "leave BOOST privileges on and stop re-testing",
+    },
+    {
+        "id": "H2-doubles-ev-surcharge",
+        "claim": "The 5x EV surcharge on doubles (min_ev_doubles=0.05, fitted "
+                 "to 'doubles 0W/5L') suppresses the book's best cohort.",
+        "as_of_2026_09_26": "doubles 8W-3L +6.82% vs singles-match legs "
+                            "-6.90%; n=11.",
+        "test": "flat-stake ROI of doubles legs vs singles legs",
+        "bar": "n>=30 doubles legs AND one-sided permutation p<0.05",
+        "action_if_passed": "set AccaKnobs.min_ev_doubles to the singles floor",
+        "action_if_failed": "leave the surcharge at 0.05",
+    },
+    {
+        "id": "H3-leg-price-floor",
+        "claim": "The 1.30-1.59 price band is a structural sink and "
+                 "MIN_ODDS_PER_LEG points the engine straight into it.",
+        "as_of_2026_09_26": "1.30-1.44 n=18 -16.39%; 1.45-1.59 n=14 -34.21%; "
+                            "32 of 50 staked legs sit in the band.",
+        "test": "flat-stake ROI of the 1.30-1.59 band vs the rest",
+        "bar": "n>=60 legs in-band AND the band's 80% bootstrap CI entirely "
+               "below 0",
+        "action_if_passed": "re-derive the floor against the replay harness",
+        "action_if_failed": "leave the floor at its current value",
+    },
+    {
+        "id": "H4-acca-slots",
+        "claim": "Slots 3 and 4 destroy value and MAX_ACCAS should fall.",
+        "as_of_2026_09_26": "slot1 +79.78% (+111.83 pts), slot2 -28.62%, "
+                            "slot3 -0.84 pts, slot4 -100% (-29.97 pts). The "
+                            "max_accas=1 arm wins the battery at "
+                            "P(better)=100% and STILL fails the null test "
+                            "(p=0.144). Do not act on it.",
+        "test": "mean log growth per bet-day, max_accas arm vs live",
+        "bar": "n>=60 bet-days AND paired-bootstrap CI excluding 0 AND "
+               "search-winner null test p<0.05",
+        "action_if_passed": "set AccaKnobs.max_accas to the winning arm",
+        "action_if_failed": "leave MAX_ACCAS at 4",
+    },
+    {
+        "id": "H5-calibration-band",
+        "claim": "ml_calibrated_prob is broken in the 0.70-0.75 band "
+                 "specifically, not globally.",
+        "as_of_2026_09_26": "0.70-0.75 n=13 promised 73.6% delivered 30.8% "
+                            "z=-3.51; 0.75+ n=24 within +1.4pp.",
+        "test": "racketfactory.tripwire.calibration_table",
+        "bar": "n>=30 in-band AND status BLEEDING (z<=-2.0)",
+        "action_if_passed": "recalibrate or bench the band; do not stake it",
+        "action_if_failed": "leave calibration alone",
+    },
+    {
+        "id": "H6-stake-fraction",
+        "claim": "STAKE_FRAC above 0.20 buys drawdown and no growth.",
+        "as_of_2026_09_26": "0.20 and 0.25 both give +0.0279 log/day; max "
+                            "drawdown 29.4% vs 36.1%. ALREADY ACTED ON — this "
+                            "is a dominance argument, not a search result, so "
+                            "it did not need the null test.",
+        "test": "stake sweep, log growth and max drawdown",
+        "bar": "n/a (dominated alternative)",
+        "action_if_passed": "done 2026-09-26: STAKE_FRAC 0.25 -> 0.20",
+        "action_if_failed": "n/a",
+    },
+]
+
+
+def print_preregistration() -> None:
+    line = "=" * 78
+    print(line)
+    print("PRE-REGISTERED HYPOTHESES — registered 2026-09-26, before the data")
+    print(line)
+    print(__doc__.strip().splitlines()[0] if __doc__ else "")
+    print()
+    for item in PREREGISTRATION:
+        print(f"{item['id']}")
+        print(f"  claim   : {item['claim']}")
+        print(f"  as of   : {item['as_of_2026_09_26']}")
+        print(f"  test    : {item['test']}")
+        print(f"  BAR     : {item['bar']}")
+        print(f"  if pass : {item['action_if_passed']}")
+        print(f"  if fail : {item['action_if_failed']}")
+        print()
+    print("A change to any constant above without a passing bar is a guess.")
+
+
 # --------------------------------------------------------------------------
 # report
 # --------------------------------------------------------------------------
@@ -177,7 +290,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bootstrap", type=int, default=20000)
     ap.add_argument("--json", default=None)
+    ap.add_argument("--preregistration", action="store_true",
+                    help="print the pre-registered hypotheses and their pass "
+                         "bars, then exit")
     args = ap.parse_args()
+    if args.preregistration:
+        print_preregistration()
+        return 0
     rng = random.Random(SEED)
 
     if not STATE.exists():
@@ -350,6 +469,15 @@ def main() -> int:
     else:
         print(f"  VERDICT: survives the null at this n — still requires out-of-sample days.")
     out["null_test"] = {"best": best, "gap": best_gap, "p": p, "bet_days": n}
+    out["preregistration"] = PREREGISTRATION
+
+    print()
+    print(line)
+    print("8. PRE-REGISTERED HYPOTHESES")
+    print(line)
+    for item in PREREGISTRATION:
+        print(f"  {item['id']:<26} bar: {item['bar']}")
+    print("  (full text: scripts/autobets_forensics.py --preregistration)")
 
     if args.json:
         Path(args.json).write_text(json.dumps(out, indent=2))

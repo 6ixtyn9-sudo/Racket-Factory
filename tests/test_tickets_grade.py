@@ -176,7 +176,13 @@ def test_performance_price_band_ledger(tmp_path, monkeypatch):
     state["history"] = []
     g.write_performance(state)
     empty = (tmp_path / "auto_tickets_performance.txt").read_text()
-    assert " ".join(empty.splitlines()[-3].split()) == "1.60+ 0 0-0 — — — —"
+    # Locate the band by name, not by offset from the end of the file: the
+    # report grew a tripwire section below the bands and a negative index
+    # silently re-pointed this assertion at unrelated prose.
+    empty_rows = {ln.split()[0]: " ".join(ln.split())
+                  for ln in empty[empty.index("--- STAKED legs by price band"):].splitlines()[2:]
+                  if ln.strip() and not ln.startswith("---")}
+    assert empty_rows["1.60+"] == "1.60+ 0 0-0 — — — —"
     assert json.loads((tmp_path / "auto_tickets_performance.json").read_text())[
         "price_bands"]["all"] == {"band": "all", "n": 0, "wins": 0, "losses": 0,
                                   "hit_pct": None, "avg_odds": None,

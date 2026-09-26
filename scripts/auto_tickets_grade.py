@@ -7,12 +7,13 @@ Settles open slips whose matches have finished, updates bank % and history.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
 import sys
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 import pandas as pd
@@ -20,26 +21,44 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 from racketfactory.settlement import clean_str, settle_selection  # noqa: E402
+from racketfactory import tripwire  # noqa: E402
+from racketfactory.execution import (  # noqa: E402
+    acca_block_reasons,
+    acca_execution_safe,
+    leg_settlement_safe,
+)
 LOCALDATA = ROOT / "localdata"
 STATE_FILE = LOCALDATA / "auto_tickets_state.json"
 WAREHOUSE = LOCALDATA / "warehouse.csv.gz"
 
 TZ = ZoneInfo("Africa/Johannesburg")
 
-def _leg_odds_trusted(leg) -> bool:
-    """A leg price counts as real only with a named odds source.
+# An open slip older than this has stopped being "waiting for results" and
+# started being a bug. Alarm only — closing someone's bet automatically is a
+# policy call, so --close-stale-days makes it a deliberate human action.
+STALE_SLIP_ALARM_DAYS = 3
 
-    Legs whose odds were estimated from confidence carry odds_source nan
-    (or an odds_reject_reason); accas containing them are paper, never
-    allowed to move the real bank.
+
+def _leg_odds_trusted(leg) -> bool:
+    """A leg price counts as real only when racketfactory.execution says so.
+
+    THE BUG THIS REPLACES: this function used to implement its own rule —
+    "named odds_source, no reject reason, odds > 1.0" — which is NOT the
+    builder's rule. The builder also treats ``_late_start`` and ``_is_paper``
+    legs as paper. So a late-but-priced leg was paper at build time and REAL
+    at settlement time, and the asymmetry only ever ran one way:
+
+        both legs win  -> acca_odds is None -> "never pays on fiction"
+                          -> the slip hangs open forever
+        one leg loses  -> booked as a real LOSS
+
+    Live instance: the 2026-09-20 slip, open for six days at the time of
+    writing, paper:true, stake_pct 25.0, both legs late + BetExplorer-priced.
+
+    Delegating to the shared predicate means the two sides cannot drift
+    apart again without a test failing.
     """
-    src = clean_str(leg.get("odds_source"))
-    if not src or leg.get("odds_reject_reason"):
-        return False
-    try:
-        return float(leg.get("odds") or 0) > 1.0
-    except (TypeError, ValueError):
-        return False
+    return leg_settlement_safe(leg)
 
 
 def load_state():
@@ -169,7 +188,26 @@ def settle_open_slips(state, df, additional_df=None):
         paper_wins = 0
         paper_unpriced = 0
         for acca in slip.get("accas", []):
-            legs = acca.get("legs", [])
+            legs = acca.get("legs", []) or []
+            if not legs:
+                # A legless acca used to be a FREE WIN: leg_outcomes is empty,
+                # so `any(o == "LOST")` is False, no VOID branch matches, and
+                # the `elif priceable:` arm paid out stake * odds on nothing
+                # at all. It can only arise from a corrupt ledger, so it is
+                # voided (stake refunded, zero P&L) and logged loudly rather
+                # than silently credited or left to hang open forever.
+                stake_pct = float(acca.get("stake_pct") or 0)
+                acca["_settlement_fault"] = "acca has no legs"
+                settled_accas.append({
+                    "odds": acca.get("odds"), "won": False, "stake_pct": stake_pct,
+                    "return_pct": stake_pct, "type": acca.get("type"), "legs": [],
+                    "paper": True, "refunded": True, "unpriced": False,
+                })
+                logs.append(f"  {date_str} {acca.get('type')}: FAULT acca has no legs "
+                            f"-- voided, stake {stake_pct} refunded (never a win)")
+                paper_staked += stake_pct
+                paper_return += stake_pct
+                continue
             leg_outcomes = [settle_leg(leg, df, additional_df, target_date=date_str)
                             for leg in legs]
             if any(o in ("PENDING", "CONFLICT") for o in leg_outcomes):
@@ -179,8 +217,20 @@ def settle_open_slips(state, df, additional_df=None):
                         logs.append(f"  {date_str} {acca.get('type')}: leg {o}: "
                                     f"{leg.get('match')} -- {leg.get('_settle_reason')}")
                 continue
-            paper = any(not _leg_odds_trusted(leg) for leg in legs)
+            # acca["paper"] is the BUILDER's verdict and is honoured as a
+            # hard floor. The grader used to ignore it completely and
+            # re-derive paper-ness from the legs, which is how an acca the
+            # builder had explicitly written as paper:true reached the
+            # real-money branch.
+            paper = not acca_execution_safe(acca)
             stake_pct = float(acca.get("stake_pct") or slip.get("stake_per_acca_pct") or 0)
+            if paper and acca.get("paper") is not True:
+                # The ledger called this real; the shared predicate does not.
+                # It settles on the paper track and its stake is fiction.
+                logs.append(f"  {date_str} {acca.get('type')}: ledger said REAL but "
+                            f"{'; '.join(acca_block_reasons(acca))} -> demoted to paper, "
+                            f"stake {stake_pct} voided")
+                stake_pct = 0.0
             try:
                 acca_odds = float(acca.get("odds") or 0)
             except (TypeError, ValueError):
@@ -217,8 +267,16 @@ def settle_open_slips(state, df, additional_df=None):
                 # Settle W/L for hit-rate only; never touches any bank.
                 won_acca, acca_return = True, None
             else:
+                # Reachable only for an acca the execution predicate calls
+                # REAL that nonetheless has no usable price — a data fault,
+                # not a normal state. Refusing to pay is still correct (we
+                # will not invent a price), but it must not disappear: the
+                # slip now trips the stale-slip alarm below instead of
+                # sitting in open_slips unnoticed, as 2026-09-20 did for six
+                # days before the paper/real rules were unified.
+                acca["_settlement_fault"] = "real acca without a usable price"
                 pending_accas.append(acca)
-                logs.append(f"  {date_str} {acca.get('type')}: won legs but acca has "
+                logs.append(f"  {date_str} {acca.get('type')}: FAULT won legs but acca has "
                             f"no valid odds -- held open, never pays on fiction")
                 continue
             unpriced = acca_return is None
@@ -331,11 +389,112 @@ def settle_open_slips(state, df, additional_df=None):
             state["cycle_base"] = new_bank
             logs.append(f"  TAKE-PROFIT bank {new_bank:.1f}% >= target {target:.1f}%")
     state["open_slips"] = remaining_open
+    logs.extend(audit_stale_slips(state))
     # Write grading log for CI debugging
     try:
         (LOCALDATA / "auto_tickets_grade.log").write_text("\n".join(logs) + "\n")
     except Exception:
         pass
+    return logs
+
+
+def _slip_age_days(slip, today: date) -> int | None:
+    try:
+        return (today - datetime.strptime(str(slip.get("date"))[:10], "%Y-%m-%d").date()).days
+    except (TypeError, ValueError):
+        return None
+
+
+def stale_slips(state, *, today: date | None = None,
+                alarm_days: int = STALE_SLIP_ALARM_DAYS) -> list[dict]:
+    """Open slips that have been waiting too long to be "results pending".
+
+    A slip nobody can settle is invisible: it holds capital out of the free
+    bank forever and its accas never reach the history the tripwires read.
+    Nothing here closes anything — it makes silence loud.
+    """
+    today = today or datetime.now(TZ).date()
+    out = []
+    for slip in state.get("open_slips", []) or []:
+        age = _slip_age_days(slip, today)
+        if age is None or age < alarm_days:
+            continue
+        faults = [a.get("_settlement_fault") for a in slip.get("accas", []) or []
+                  if a.get("_settlement_fault")]
+        out.append({
+            "date": slip.get("date"),
+            "age_days": age,
+            "accas": len(slip.get("accas", []) or []),
+            "committed_pct": round(sum(float(a.get("stake_pct") or 0)
+                                       for a in slip.get("accas", []) or []
+                                       if acca_execution_safe(a)), 4),
+            "faults": faults,
+            "reasons": sorted({r for a in slip.get("accas", []) or []
+                               for r in acca_block_reasons(a)}),
+        })
+    return out
+
+
+def audit_stale_slips(state, *, today: date | None = None) -> list[str]:
+    """Log + persist the stale-slip alarm. Never raises."""
+    try:
+        stale = stale_slips(state, today=today)
+    except Exception as exc:  # pragma: no cover - alarm must never break grading
+        return [f"stale-slip audit failed: {exc}"]
+    payload = {
+        "generated_at": datetime.now(TZ).isoformat(timespec="seconds"),
+        "alarm_after_days": STALE_SLIP_ALARM_DAYS,
+        "open_slips": len(state.get("open_slips", []) or []),
+        "stale": stale,
+    }
+    try:
+        (LOCALDATA / "auto_tickets_stale_slips.json").write_text(
+            json.dumps(payload, indent=2, sort_keys=True, default=str))
+    except Exception:
+        pass
+    if not stale:
+        return []
+    lines = [f"ALARM {len(stale)} open slip(s) older than {STALE_SLIP_ALARM_DAYS}d "
+             f"— they are not 'pending', they are stuck:"]
+    for item in stale:
+        lines.append(f"  {item['date']} age {item['age_days']}d · {item['accas']} acca(s) · "
+                     f"{item['committed_pct']}% committed · "
+                     f"{'; '.join(item['faults'] or item['reasons']) or 'results not yet available'}")
+    lines.append("  run auto_tickets_grade.py --close-stale-days N to void and close them.")
+    return lines
+
+
+def close_stale_slips(state, *, days: int, today: date | None = None) -> list[str]:
+    """Deliberately void + close slips older than ``days``. Human-invoked.
+
+    Voided slips are banked as a zero-P&L history entry so the bet-day is
+    visible in the record rather than erased. Real money is never moved: a
+    slip we cannot settle has no verified result to pay out on.
+    """
+    today = today or datetime.now(TZ).date()
+    keep, logs = [], []
+    for slip in state.get("open_slips", []) or []:
+        age = _slip_age_days(slip, today)
+        if age is None or age < days:
+            keep.append(slip)
+            continue
+        accas = []
+        for acca in slip.get("accas", []) or []:
+            accas.append({"odds": acca.get("odds"), "won": False, "stake_pct": 0.0,
+                          "return_pct": 0.0, "type": acca.get("type"),
+                          "legs": acca.get("legs", []), "paper": True,
+                          "refunded": True, "unpriced": True,
+                          "voided_reason": f"closed stale after {age}d"})
+        state.setdefault("history", []).append({
+            "date": slip.get("date"), "staked_pct": 0.0, "return_pct": 0.0,
+            "pnl_pct": 0.0, "bank_pct": state.get("bank", 100.0),
+            "paper_staked_pct": 0.0, "paper_return_pct": 0.0, "paper_pnl_pct": 0.0,
+            "paper_bank_pct": state.get("paper_bank"), "accas": accas,
+            "closed_stale": True,
+        })
+        logs.append(f"{slip.get('date')}: CLOSED STALE after {age}d "
+                    f"({len(accas)} acca(s) voided, bank untouched)")
+    state["open_slips"] = keep
     return logs
 
 # Odds bands for the staked-leg price ledger (lower bound inclusive): does the
@@ -476,6 +635,27 @@ def write_performance(state):
         wl = f"{r['wins']}-{r['losses']}"
         lines.append(f"  {r['band']:<10}{r['n']:>4}{wl:>8}{stats}")
 
+    # Report-only tripwires. Nothing below changes a stake or a gate; see
+    # racketfactory.tripwire for why the bar is n>=30 and why the 9-bet-day
+    # variant battery was NOT acted on.
+    try:
+        tw = tripwire.build_report(history)
+        lines.extend(tripwire.render_report(tw))
+    except Exception as exc:  # pragma: no cover - reporting must never break grading
+        tw = {"error": str(exc)}
+        lines.append(f"  (tripwire report unavailable: {exc})")
+
+    try:
+        stale = stale_slips(state)
+    except Exception:
+        stale = []
+    if stale:
+        lines.append("")
+        lines.append(f"--- ALARM: {len(stale)} STUCK open slip(s) (>{STALE_SLIP_ALARM_DAYS}d) ---")
+        for item in stale:
+            lines.append(f"  {item['date']} age {item['age_days']}d · {item['accas']} acca(s) · "
+                         f"{item['committed_pct']}% committed")
+
     txt = "\n".join(lines)
     (LOCALDATA / "auto_tickets_performance.txt").write_text(txt + "\n")
     (LOCALDATA / "auto_tickets_performance.json").write_text(json.dumps({
@@ -491,13 +671,20 @@ def write_performance(state):
         "paper_accas": {"wins": paper_wins, "losses": len(paper) - paper_wins,
                         "pnl_pct": paper_pnl_total, "bank_pct": paper_bank},
         "price_bands": price_bands,
+        "tripwires": tw,
+        "stale_slips": stale,
         "open_slips": state.get("open_slips", []),
         "events": state.get("events", []),
         "history": history,
     }, indent=2, default=str))
     print(txt)
 
-def main():
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--close-stale-days", type=int, default=None,
+                    help="void and close open slips older than N days "
+                         "(deliberate, human-invoked; never moves the bank)")
+    args = ap.parse_args(argv)
     state = load_state()
     if not state:
         print("no state yet — run auto_tickets.py first")
@@ -508,6 +695,9 @@ def main():
         print(f"Loaded {len(additional_df)} additional result rows from foretennis/forebet")
     for line in settle_open_slips(state, df, additional_df):
         print(line)
+    if args.close_stale_days is not None:
+        for line in close_stale_slips(state, days=args.close_stale_days):
+            print(line)
     write_performance(state)
     save_state(state)
     return 0

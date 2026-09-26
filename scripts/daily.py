@@ -817,8 +817,16 @@ def run_once(args: argparse.Namespace) -> None:
     # 8b. Auto Tickets (Edge-Factory parity) — tennis accas from playable picks
     # ML self-monitor: BetExplorer consensus is REAL price (fixed bad=10), ML chooses winners
     run_soft(f"{env_prefix} PYTHONPATH=src python3 -c \"from racketfactory.ml import monitor_performance; import json; print(json.dumps(monitor_performance(), indent=2))\"", "ml_monitor (self-check)", env=child_env)
+    # Kickoff timezone drift check BEFORE tickets are built: the BetClan
+    # UTC+1 reading is an assumption with a known expiry (2026-10-25, when
+    # Britain leaves BST). If it has moved, every kickoff is read an hour
+    # early and kickoff_guard would stake matches already in progress.
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/kickoff_tz_audit.py --date {target} --days 7", "kickoff_tz_audit (BetClan offset)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets.py --date {target}", "auto_tickets (generate/freeze)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets_grade.py", "auto_tickets_grade (settle past slips)", env=child_env)
+    # Read-only forensics over the settled ledger: pool/ranking/calibration/
+    # staking plus the search-winner null test. Reports, never tunes.
+    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/autobets_forensics.py --json localdata/autobets_forensics.json", "autobets_forensics (ledger audit)", env=child_env)
 
     # 9. Supabase Live Dashboard Sync (Optional)
     sync_script = ROOT / "scripts" / "sync_supabase.py"

@@ -842,7 +842,15 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
         # User said 0% too low, so 1% is sweet spot: blocks -20% losers, allows +1% winners, still prefers NO BET over loss
         # Doubles 0/5 losing -40% need EV>=5% + prob>=65% (see doubles filter below)
         min_ev_real = get_min_ev_real()  # 2% default; 1% restorable via RACKET_FACTORY_MIN_EV
-        # DOUBLES FILTER: audit shows doubles 0W/5L -40% ROI losing, singles 18W/49L -19% also losing but better
+        # DOUBLES FILTER: fitted when the audit showed doubles 0W/5L -40% ROI.
+        # STALE JUSTIFICATION (verified 2026-09-26): over the settled ticket
+        # ledger doubles are now 8W-3L at +6.82% flat ROI while singles-match
+        # legs are -6.90% — doubles are the only positive cohort in the book,
+        # and this 5x surcharge is the gate suppressing them. NOT relaxed:
+        # n=11 is far below the n>=30 bar (racketfactory.tripwire.MIN_N) and
+        # acting on an 11-sample reversal is the exact error the deep dive's
+        # null test was written to prevent. Registered as a pre-registered
+        # hypothesis: scripts/autobets_forensics.py --preregistration.
         # Require higher EV for doubles: >=5% always, no exception even for BOOST (doubles are high variance)
         # This blocks RED DAY doubles: Rogers 1.31 EV -14%, Falkowska 1.36 EV -11%, Ciric 1.19 EV -20% etc
         # Singles: allow EV>=1% (was 2% too strict), but block EV<-2% even with BOOST
@@ -852,7 +860,9 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
             if is_doubles and ev is not None:
                 if ev < 0.05:  # doubles need 5% edge, no exception
                     scoring["should_veto"] = True
-                    scoring["veto_reasons"].append(f"Doubles EV {ev:.3f} < 0.05 min (doubles 0W/5L -40% ROI)")
+                    scoring["veto_reasons"].append(
+                        f"Doubles EV {ev:.3f} < 0.05 min (surcharge fitted to 0W/5L; "
+                        f"ledger now 8W-3L +6.8% at n=11, under the n>=30 review bar)")
                     pick["ml_verdict"] = "VETO"
                     ev = None  # mark as handled to skip further checks
         except Exception:
