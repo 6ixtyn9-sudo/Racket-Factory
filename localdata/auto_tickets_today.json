@@ -1,11 +1,82 @@
 {
   "date": "2026-09-26",
-  "generated_at": "2026-09-26T00:01:17+02:00",
-  "bank_pct": 173.557918,
+  "generated_at": "2026-09-26T08:02:02+02:00",
+  "bank_pct": 130.168518,
   "stake_per_acca_pct": 0,
   "staked_pct": 0,
   "paper_staked_pct": 0,
   "accas": [],
-  "skipped": [],
-  "frozen": true
+  "skipped": [
+    [
+      {
+        "match": "Juan Manuel Cerundolo vs Alejandro Davidovich Fokina",
+        "date": "2026-09-26",
+        "match_time": "08:00",
+        "kickoff": "08:00",
+        "selected_side": "player_b",
+        "selected_player": "Alejandro Davidovich Fokina",
+        "_regime": "genesis-2026-09-20",
+        "_selection_basis": "prediction",
+        "tournament": "ATP Chengdu Prediction",
+        "source": "BetClan, PredixSport",
+        "source_count": 5,
+        "tour": "ATP",
+        "series": "ATP250",
+        "surface": "Hard",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both",
+        "context_used": "ATP Chengdu Prediction",
+        "player_home": "Juan Manuel Cerundolo",
+        "player_away": "Alejandro Davidovich Fokina",
+        "bucket": "SKIPPED_DEAD_EDGE",
+        "pick": "WATCHLIST",
+        "odds": 1.56,
+        "odds_source": "BetExplorer",
+        "odds_bookmaker": "BetExplorer consensus",
+        "odds_cross_checked": "",
+        "oddsportal_matched_market": "",
+        "odds_reject_reason": null,
+        "_market_basis": "api",
+        "_is_paper": false,
+        "confidence": 65.0,
+        "expected_value": 0.014000000000000068,
+        "slice_matched": "tour:ATP | _surface:Hard | cross_source_agree:Both",
+        "edge_dims": 3,
+        "edge_n": 35,
+        "edge_grade": "SILVER",
+        "edge_tier": "BANKER",
+        "edge_verdict": "WATCHLIST",
+        "roi_estimate": "21.85%",
+        "slice_winrate": "82.86%",
+        "slice_shrunk": "79.49%",
+        "skip_reason": "negative EV (0.014 < 0.020)",
+        "ml_strength_score": 0.4,
+        "ml_veto_reasons": [
+          "tour ATP CAUTION",
+          "surface Hard VETO roi -0.1354 n=118",
+          "series ATP250 CAUTION"
+        ],
+        "ml_boost_reasons": [
+          "Both sources agree",
+          "5 sources",
+          "Unanimous 2 sources w_score 1.0"
+        ],
+        "ml_w_score": 1.0,
+        "ml_verdict": "BOOST",
+        "ml_calibrated_prob": 0.6615,
+        "ml_ev": 0.032,
+        "ml_fair_odds": 1.51,
+        "ml_odds_answer": {
+          "verdict": "VALUE",
+          "fair_odds": 1.51,
+          "ev": 0.032,
+          "edge_pct": 3.2,
+          "explanation": "Odds 1.56 value vs fair 1.51, EV +3.2%"
+        },
+        "_late_start": true
+      },
+      "paper_late_included"
+    ]
+  ],
+  "frozen": false
 }

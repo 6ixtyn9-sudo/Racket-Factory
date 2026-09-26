@@ -1,14 +1,31 @@
 [
   {
-    "match": "Coleman Wong vs Adolfo Daniel Vallejo",
-    "kickoff": "08:30",
-    "tour": "ATP",
-    "_series": "ATP250",
+    "match": "Anna Bondar vs Elena-Gabriela Ruse",
+    "kickoff": "05:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 63.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Isabella Shinikova vs Elena Micic",
+    "kickoff": "13:30",
+    "tour": "WTA",
+    "_series": "International",
     "_surface": "Grass",
     "pred_confidence": "Medium",
     "cross_source_agree": "Both",
     "fav_odds_band": "1.3-1.6",
-    "confidence": 69.0,
+    "confidence": 66.0,
     "odds": null,
     "odds_source": "nan",
     "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
@@ -17,33 +34,102 @@
     ]
   },
   {
-    "match": "Martin Damm vs Hubert Hurkacz",
-    "kickoff": "08:00",
-    "tour": "ATP",
-    "_series": "ATP250",
-    "_surface": "Grass",
-    "pred_confidence": "High",
+    "match": "Nika Radisic vs Chengyiyi Yuan",
+    "kickoff": "06:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
     "cross_source_agree": "Both",
     "fav_odds_band": "1.3-1.6",
-    "confidence": 71.0,
-    "odds": 1.4,
-    "odds_source": "BetExplorer",
-    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "confidence": 66.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
-      "pred_confidence=High!=Low"
+      "pred_confidence=Medium!=Low"
     ]
   },
   {
-    "match": "Chan / Wu vs Liang / Yuan",
-    "kickoff": "06:00",
+    "match": "Melo / Seggerman vs Schnaitter / Wallner",
+    "kickoff": "09:00",
+    "tour": "ATP",
+    "_series": "ATP250",
+    "_surface": "Grass",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 63.0,
+    "odds": 1.59,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Yunchaokete Bu vs Kamil Majchrzak",
+    "kickoff": "10:00",
+    "tour": "ATP",
+    "_series": "ATP250",
+    "_surface": "Grass",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 57.0,
+    "odds": 1.74,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Titouan Droguet vs Dino Prizmic",
+    "kickoff": "16:30",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 61.0,
+    "odds": 1.62,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6",
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Harold Mayot vs Murphy Cassone",
+    "kickoff": "15:00",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 60.0,
+    "odds": 1.55,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Moratelli / Ruggeri vs Gorgodze / Papamichail",
+    "kickoff": "15:30",
     "tour": "WTA",
     "_series": "International",
     "_surface": "Hard",
     "pred_confidence": "Low",
     "cross_source_agree": "Both",
     "fav_odds_band": "1.6-2.0",
-    "confidence": 57.0,
-    "odds": 1.69,
+    "confidence": 54.0,
+    "odds": 1.86,
     "odds_source": "BetExplorer",
     "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
@@ -51,8 +137,93 @@
     ]
   },
   {
-    "match": "Teodora Kostovic vs Polina Iatcenko",
+    "match": "Falkowska / Smith vs Jakupovic / Karamoko",
     "kickoff": "11:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 55.0,
+    "odds": 2.06,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Chan / Wu vs Liang / Yuan",
+    "kickoff": "07:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 57.0,
+    "odds": 1.62,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Tang / Xu vs Kato / Perez",
+    "kickoff": "09:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 60.0,
+    "odds": 1.69,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
+    ]
+  },
+  {
+    "match": "Julia Grabher vs Oksana Selekhmeteva",
+    "kickoff": "18:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 55.0,
+    "odds": 1.81,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Leylah Fernandez vs Maja Chwalinska",
+    "kickoff": "13:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 61.0,
+    "odds": 1.69,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
+    ]
+  },
+  {
+    "match": "Teodora Kostovic vs Polina Iatcenko",
+    "kickoff": "13:00",
     "tour": "WTA",
     "_series": "International",
     "_surface": "Hard",
@@ -68,26 +239,42 @@
     ]
   },
   {
-    "match": "Leylah Fernandez vs Maja Chwalinska",
-    "kickoff": "08:00",
+    "match": "Maria Timofeeva vs Mia Pohankova",
+    "kickoff": "14:30",
     "tour": "WTA",
     "_series": "International",
-    "_surface": "Grass",
+    "_surface": "Hard",
     "pred_confidence": "Medium",
     "cross_source_agree": "Both",
     "fav_odds_band": "1.6-2.0",
-    "confidence": 61.0,
-    "odds": 1.69,
-    "odds_source": "TheOddsAPI",
-    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "confidence": 60.0,
+    "odds": 1.65,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
     "missing_dims": [
-      "fav_odds_band=1.6-2.0!=1.3-1.6",
-      "pred_confidence=Medium!=Low"
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
     ]
   },
   {
-    "match": "Nika Radisic vs Chengyiyi Yuan",
-    "kickoff": "06:00",
+    "match": "Reese Brantmeier vs Sinja Kraus",
+    "kickoff": "13:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 55.0,
+    "odds": 1.76,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Deniz Dilek vs Berfu Cengiz",
+    "kickoff": "14:30",
     "tour": "WTA",
     "_series": "International",
     "_surface": "Hard",
@@ -112,7 +299,7 @@
     "cross_source_agree": "Both",
     "fav_odds_band": "1.3-1.6",
     "confidence": 69.0,
-    "odds": 1.42,
+    "odds": 1.43,
     "odds_source": "BetExplorer",
     "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
     "missing_dims": [
