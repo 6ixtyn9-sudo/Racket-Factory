@@ -5099,6 +5099,9 @@
     {
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-26",
+      "duplicate_picks": [
+        "2026-09-27 SKIPPED_DEAD_EDGE (pending_no_result)"
+      ],
       "edge_grade": "SILVER",
       "edge_tier": "BANKER",
       "edge_verdict": "WATCHLIST",
@@ -5218,6 +5221,9 @@
     {
       "bucket": "WATCHLIST_NO_ODDS",
       "date": "2026-09-26",
+      "duplicate_picks": [
+        "2026-09-27 WATCHLIST_NO_ODDS (pending_no_result)"
+      ],
       "edge_grade": "SILVER",
       "edge_tier": "WATCHLIST_ONLY",
       "edge_verdict": "WATCHLIST",
@@ -5423,6 +5429,9 @@
     {
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-26",
+      "duplicate_picks": [
+        "2026-09-27 SKIPPED_VETO (pending_no_result)"
+      ],
       "edge_grade": "SILVER",
       "edge_tier": "BANKER",
       "edge_verdict": "WATCHLIST",
@@ -5444,7 +5453,7 @@
       "bucket": "SKIPPED_VETO",
       "date": "2026-09-26",
       "duplicate_picks": [
-        "2026-09-27 SKIPPED_VETO (pending_no_result)"
+        "2026-09-27 SKIPPED_DEAD_EDGE (pending_no_result)"
       ],
       "edge_grade": "SILVER",
       "edge_tier": "BANKER",
@@ -5643,6 +5652,26 @@
       "won": null
     },
     {
+      "bucket": "WATCHLIST_NO_ODDS",
+      "date": "2026-09-27",
+      "edge_grade": "GOLD",
+      "edge_tier": "WATCHLIST_ONLY",
+      "edge_verdict": "EDGE CONFIRMED",
+      "ledger_kind": "official",
+      "match": "Daniil Medvedev vs Coleman Wong",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Daniil Medvedev",
+      "series": "ATP250",
+      "settle_date": "2026-09-27",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "ATP",
+      "won": null
+    },
+    {
       "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-09-27",
       "edge_grade": "SILVER",
@@ -5798,7 +5827,7 @@
       "settle_source": "",
       "source": "BetClan",
       "status": "pending_no_result",
-      "surface": "Grass",
+      "surface": "Hard",
       "tour": "WTA",
       "won": null
     }
@@ -5813,7 +5842,7 @@
     "2026-09-26",
     "2026-09-27"
   ],
-  "archived_pick_rows": 187,
+  "archived_pick_rows": 188,
   "by_bucket": {
     "CERTIFIED_CLEAN": {
       "conflict_picks": 0,
@@ -5914,7 +5943,7 @@
     "WATCHLIST_NO_ODDS": {
       "conflict_picks": 0,
       "hit_rate": 0.786517,
-      "pending_picks": 12,
+      "pending_picks": 13,
       "priced_paper": 0,
       "priced_picks": 0,
       "priced_real": 0,
@@ -5931,7 +5960,7 @@
       "selected_won_set3_rate": 0.703704,
       "set_diagnostic_picks": 89,
       "settled_picks": 89,
-      "total_picks": 102,
+      "total_picks": 103,
       "void_picks": 1,
       "wins": 70
     }
@@ -5961,7 +5990,7 @@
   "by_regime": {
     "genesis-2026-09-20": {
       "hit_rate": 0.726115,
-      "pending_picks": 29,
+      "pending_picks": 30,
       "priced_paper": 0,
       "priced_picks": 68,
       "priced_real": 68,
@@ -5978,7 +6007,7 @@
       "selected_won_set3_rate": 0.625,
       "set_diagnostic_picks": 157,
       "settled_picks": 157,
-      "total_picks": 187,
+      "total_picks": 188,
       "wins": 114
     }
   },
@@ -5986,7 +6015,7 @@
     "ATP250": {
       "conflict_picks": 0,
       "hit_rate": 0.621622,
-      "pending_picks": 15,
+      "pending_picks": 16,
       "priced_paper": 0,
       "priced_picks": 22,
       "priced_real": 22,
@@ -6003,7 +6032,7 @@
       "selected_won_set3_rate": 0.727273,
       "set_diagnostic_picks": 37,
       "settled_picks": 37,
-      "total_picks": 52,
+      "total_picks": 53,
       "void_picks": 0,
       "wins": 23
     },
@@ -6060,7 +6089,7 @@
     "BetClan": {
       "conflict_picks": 0,
       "hit_rate": 0.761194,
-      "pending_picks": 26,
+      "pending_picks": 27,
       "priced_paper": 0,
       "priced_picks": 47,
       "priced_real": 47,
@@ -6077,7 +6106,7 @@
       "selected_won_set3_rate": 0.619048,
       "set_diagnostic_picks": 134,
       "settled_picks": 134,
-      "total_picks": 161,
+      "total_picks": 162,
       "void_picks": 1,
       "wins": 102
     },
@@ -6134,7 +6163,7 @@
     "Grass": {
       "conflict_picks": 0,
       "hit_rate": 0.7,
-      "pending_picks": 1,
+      "pending_picks": 0,
       "priced_paper": 0,
       "priced_picks": 10,
       "priced_real": 10,
@@ -6151,14 +6180,14 @@
       "selected_won_set3_rate": 0.571429,
       "set_diagnostic_picks": 20,
       "settled_picks": 20,
-      "total_picks": 21,
+      "total_picks": 20,
       "void_picks": 0,
       "wins": 14
     },
     "Hard": {
       "conflict_picks": 0,
       "hit_rate": 0.729927,
-      "pending_picks": 28,
+      "pending_picks": 30,
       "priced_paper": 0,
       "priced_picks": 58,
       "priced_real": 58,
@@ -6175,7 +6204,7 @@
       "selected_won_set3_rate": 0.634146,
       "set_diagnostic_picks": 137,
       "settled_picks": 137,
-      "total_picks": 166,
+      "total_picks": 168,
       "void_picks": 1,
       "wins": 100
     }
@@ -6184,7 +6213,7 @@
     "ATP": {
       "conflict_picks": 0,
       "hit_rate": 0.621622,
-      "pending_picks": 15,
+      "pending_picks": 16,
       "priced_paper": 0,
       "priced_picks": 22,
       "priced_real": 22,
@@ -6201,7 +6230,7 @@
       "selected_won_set3_rate": 0.727273,
       "set_diagnostic_picks": 37,
       "settled_picks": 37,
-      "total_picks": 52,
+      "total_picks": 53,
       "void_picks": 0,
       "wins": 23
     },
@@ -6254,15 +6283,15 @@
       "wins": 78
     }
   },
-  "duplicates_merged": 7,
+  "duplicates_merged": 10,
   "end": "2026-09-27",
   "include_same_day": true,
   "ledger_kind": "official",
-  "ledger_pick_rows": 194,
+  "ledger_pick_rows": 198,
   "overall": {
     "conflict_picks": 0,
     "hit_rate": 0.726115,
-    "pending_picks": 29,
+    "pending_picks": 30,
     "priced_paper": 0,
     "priced_picks": 68,
     "priced_real": 68,
@@ -6279,12 +6308,12 @@
     "selected_won_set3_rate": 0.625,
     "set_diagnostic_picks": 157,
     "settled_picks": 157,
-    "total_picks": 187,
+    "total_picks": 188,
     "void_picks": 1,
     "wins": 114
   },
   "pending_reasons": {
-    "pending_no_result: result not final: live/in-progress markers present": 25,
+    "pending_no_result: result not final: live/in-progress markers present": 26,
     "pending_no_result: result not final: score not final: incomplete final set 1-1": 1,
     "pending_no_result: result not final: score not final: incomplete final set 4-1": 1,
     "pending_no_result: result not final: score not final: incomplete final set 5-2": 2,
