@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-29
 ============================================================
-Generated at: 2026-09-28 00:05:57
-Snapshot as of: 2026-09-28T00:01:43+02:00
+Generated at: 2026-09-28 08:08:24
+Snapshot as of: 2026-09-28T08:01:54+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,12 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Hugo Grenier vs Grigor Dimitrov            KO 12:00 -> GRIGOR DIMITROV  conf 88% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Dino Prizmic vs Daniel Rincon              KO 12:00 -> DINO PRIZMIC  conf 85% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Polina Iatcenko vs Erika Andreeva          KO 16:30 -> POLINA IATCENKO  conf 63% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================

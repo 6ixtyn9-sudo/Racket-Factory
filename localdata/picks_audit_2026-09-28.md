@@ -3,27 +3,27 @@
 ## Overall
 
 - current regime: genesis-2026-09-20 (top-level stats are scoped to this regime; per-regime split in By Regime)
-- archived pick rows: 193
+- archived pick rows: 198
 - archived pick dates: 9
-- ledger pick rows (in window): 202
+- ledger pick rows (in window): 207
 - duplicate rows merged (same match + selection re-picked): 9
 - stale history rows pruned (pick no longer in ledger): 0
-- settled picks: 169
-- wins: 119
-- hit rate: 0.704142
+- settled picks: 171
+- wins: 120
+- hit rate: 0.701754
 - priced picks: 74
 - ROI: -0.186351
 - ROI (real-priced): -0.186351 (n=74)
 - ROI (paper-priced): None (n=0)
-- pending picks: 22
+- pending picks: 25
 - void picks: 2
 - conflict picks: 0
-- total picks: 193
-- set diagnostic picks: 169
-- selected won any set: 140 (0.828402)
-- selected won set 1: 113 (0.668639)
-- selected won set 2: 114 (0.674556)
-- selected won set 3: 32 (0.603774)
+- total picks: 198
+- set diagnostic picks: 171
+- selected won any set: 141 (0.824561)
+- selected won set 1: 114 (0.666667)
+- selected won set 2: 114 (0.666667)
+- selected won set 3: 33 (0.611111)
 
 ## Settlement policy
 
@@ -39,13 +39,13 @@
 
 ## Ledger reconciliation
 
-- ledger rows in window (official): 202
+- ledger rows in window (official): 207
 - duplicate rows merged (same match + selection in multiple daily ledgers): 9
 - stale history rows pruned (pick no longer in any archived ledger): 0
-- audited rows: 193
+- audited rows: 198
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
-  - pending_no_result: result not final: live/in-progress markers present: 18
+  - pending_no_result: result not final: live/in-progress markers present: 21
   - pending_no_result: result not final: score not final: incomplete final set 5-2: 2
   - void: walkover: stake returned: 2
   - pending_no_result: result not final: score not final: incomplete final set 1-1: 1
@@ -238,46 +238,51 @@
 - 2026-09-27 Nikoloz Basilashvili vs Alejandro Davidovich Fokina selected=Alejandro Davidovich Fokina winner=? status=pending_no_result reason=result not final: live/in-progress markers present dup_merged=[2026-09-28 SKIPPED_VETO (pending_no_result)]
 - 2026-09-27 Schnaitter / Wallner vs Johnson / Zielinski selected=Schnaitter / Wallner winner=Johnson L. / Zielinski J. status=lost basis=Challenger_results@2026-09-27:6-3 6-2
 - 2026-09-28 Arribage / Olivetti vs Galloway / Goransson selected=Arribage / Olivetti winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-28 Bertea Ruxandra vs Lucrezia Stefanini selected=Lucrezia Stefanini winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-28 Daniil Medvedev vs Roman Safiullin selected=Daniil Medvedev winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-28 Emiliana Arango vs Anna Blinkova selected=Anna Blinkova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-28 Haruka Kaji vs Emerson Jones selected=Emerson Jones winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-28 Hubert Hurkacz vs Denis Shapovalov selected=Hubert Hurkacz winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-28 Jerome Kym vs Tiago Torres selected=Jerome Kym winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-28 King / Stevens vs Arends / Pel selected=King / Stevens winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-28 Kyrian Jacquet vs Andrey Rublev selected=Andrey Rublev winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-28 Li / Zhang vs Cho / Cho selected=Cho / Cho winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 - 2026-09-28 Rojer / Winegar vs Cabral / Tracy selected=Cabral / Tracy winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-28 Sara Saito vs Chenting Zhu selected=Sara Saito winner=? status=pending_no_result reason=result not final: live/in-progress markers present
-- 2026-09-28 Yidi Yang vs Fiona Ferro selected=Fiona Ferro winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-28 Sara Saito vs Chenting Zhu selected=Sara Saito winner=Zhu C. status=lost basis=Challenger_results@2026-09-28:6-2 6-3
+- 2026-09-28 Viktoria Hruncakova vs Anastasia Gasanova selected=Anastasia Gasanova winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-09-28 Yidi Yang vs Fiona Ferro selected=Fiona Ferro winner=Ferro F. status=won basis=Challenger_results@2026-09-28:6-4 2-6 6-1
 
 ## By Tour
 
-- `ATP`: total=54, settled=45, wins=26, hit_rate=0.577778, ROI=-0.318077, pending=9
-- `CHALLENGER`: total=18, settled=18, wins=13, hit_rate=0.722222, ROI=-0.2025, pending=0
-- `WTA`: total=121, settled=106, wins=80, hit_rate=0.754717, ROI=-0.0975, pending=13, void=2
+- `ATP`: total=55, settled=45, wins=26, hit_rate=0.577778, ROI=-0.318077, pending=10
+- `CHALLENGER`: total=19, settled=18, wins=13, hit_rate=0.722222, ROI=-0.2025, pending=1
+- `WTA`: total=124, settled=108, wins=81, hit_rate=0.75, ROI=-0.0975, pending=14, void=2
 
 ## By Series
 
-- `ATP250`: total=54, settled=45, wins=26, hit_rate=0.577778, ROI=-0.318077, pending=9
-- `Challenger`: total=18, settled=18, wins=13, hit_rate=0.722222, ROI=-0.2025, pending=0
-- `International`: total=121, settled=106, wins=80, hit_rate=0.754717, ROI=-0.0975, pending=13, void=2
+- `ATP250`: total=55, settled=45, wins=26, hit_rate=0.577778, ROI=-0.318077, pending=10
+- `Challenger`: total=19, settled=18, wins=13, hit_rate=0.722222, ROI=-0.2025, pending=1
+- `International`: total=124, settled=108, wins=81, hit_rate=0.75, ROI=-0.0975, pending=14, void=2
 
 ## By Surface
 
-- `Grass`: total=20, settled=20, wins=14, hit_rate=0.7, ROI=-0.237, pending=0
-- `Hard`: total=173, settled=149, wins=105, hit_rate=0.704698, ROI=-0.178437, pending=22, void=2
+- `Grass`: total=21, settled=20, wins=14, hit_rate=0.7, ROI=-0.237, pending=1
+- `Hard`: total=177, settled=151, wins=106, hit_rate=0.701987, ROI=-0.178437, pending=24, void=2
 
 ## By Bucket
 
 - `CERTIFIED_CLEAN`: total=9, settled=9, wins=6, hit_rate=0.666667, ROI=-0.132222, pending=0
-- `SKIPPED_DEAD_EDGE`: total=36, settled=29, wins=17, hit_rate=0.586207, ROI=-0.230345, pending=7
-- `SKIPPED_VETO`: total=29, settled=25, wins=17, hit_rate=0.68, ROI=-0.14, pending=4
+- `SKIPPED_DEAD_EDGE`: total=37, settled=29, wins=17, hit_rate=0.586207, ROI=-0.230345, pending=8
+- `SKIPPED_VETO`: total=31, settled=25, wins=17, hit_rate=0.68, ROI=-0.14, pending=6
 - `WATCHLIST`: total=13, settled=11, wins=5, hit_rate=0.454545, ROI=-0.22, pending=2
-- `WATCHLIST_NO_ODDS`: total=106, settled=95, wins=74, hit_rate=0.778947, ROI=None, pending=9, void=2
+- `WATCHLIST_NO_ODDS`: total=108, settled=97, wins=75, hit_rate=0.773196, ROI=None, pending=9, void=2
 
 ## By Source
 
-- `BetClan`: total=165, settled=143, wins=105, hit_rate=0.734266, ROI=-0.129608, pending=20, void=2
+- `BetClan`: total=170, settled=145, wins=106, hit_rate=0.731034, ROI=-0.129608, pending=23, void=2
 - `BetClan, PredixSport`: total=3, settled=3, wins=3, hit_rate=1.0, ROI=None, pending=0
 - `PredixSport`: total=25, settled=23, wins=11, hit_rate=0.478261, ROI=-0.312174, pending=2
 
 ## By Regime
 
-- `genesis-2026-09-20`: total=193, settled=169, wins=119, hit_rate=0.704142, ROI=-0.186351, pending=22
+- `genesis-2026-09-20`: total=198, settled=171, wins=120, hit_rate=0.701754, ROI=-0.186351, pending=25
