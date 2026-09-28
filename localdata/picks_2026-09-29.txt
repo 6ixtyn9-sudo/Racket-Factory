@@ -1,0 +1,115 @@
+Racket Factory Picks — 2026-09-29
+============================================================
+Generated at: 2026-09-29 00:07:07
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  (none)
+
+FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
+============================================================
+  (none)
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Dino Prizmic vs Daniel Rincon              KO 12:00 -> DINO PRIZMIC  conf 88% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=65  roi=21.57%
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Hugo Grenier vs Grigor Dimitrov            KO 12:00 -> GRIGOR DIMITROV  conf 88% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=65  roi=21.57%
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Otto Virtanen vs Tiago Pereira             KO 12:00 -> OTTO VIRTANEN  conf 88% @1.29  EV +0.14u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Lee / Ye vs Guo / Yang                     KO 12:00 -> LEE / YE  conf 88% @1.29  EV +0.14u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Cezar Cretu vs Henrique Rocha              KO 12:00 -> HENRIQUE ROCHA  conf 88% @1.24  EV +0.10u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Carole Monnet vs Cagla Buyukakcay          KO 11:30 -> CAROLE MONNET  conf 88% @1.22  EV +0.08u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] David Jorda Sanchis vs Jesper De Jong      KO 12:00 -> JESPER DE JONG  conf 88% @1.19  EV +0.05u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Viktoria Morvayova vs Sara Sorribes Tormo  KO 07:30 -> SARA SORRIBES TORMO  conf 88% @1.18  EV +0.04u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Lola Radivojevic vs Melisa Ercan           KO 11:30 -> LOLA RADIVOJEVIC  conf 88% @1.18  EV +0.04u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Jessica Bouzas Maneiro vs Fangran Tian     KO 12:00 -> JESSICA BOUZAS MANEIRO  conf 88% @1.16  EV +0.03u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Kyoka Okamura vs Ru Xi Wu                  KO 07:30 -> KYOKA OKAMURA  conf 88% @1.16  EV +0.03u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Kristina Mladenovic vs Sofia Costoulas     KO 06:00 -> SOFIA COSTOULAS  conf 88% @1.16  EV +0.03u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Galloway / Goransson vs Johnson / Zielinsk KO 11:00 -> GALLOWAY / GORANSSON  conf 56% @1.90  EV +0.06u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Michael Zheng vs Yaojie Zeng               KO 09:00 -> MICHAEL ZHENG  conf 99% @1.01  EV -0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Alexandra Shubladze vs Rina Saigo          KO 06:00 -> ALEXANDRA SHUBLADZE  conf 96% @1.04  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=65  roi=21.57%
+  [_surface:Hard | pred_confidence:High | cross_source_agree:Both] Alevtina Ibragimova vs Daria Khomutsianska KO 09:00 -> ALEVTINA IBRAGIMOVA  conf 76% @1.32  EV -0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=132  roi=0.86%
+  [_surface:Hard | pred_confidence:High | cross_source_agree:Both] Elena Pridankina vs Ayla Aksu              KO 11:30 -> ELENA PRIDANKINA  conf 72% @1.38  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=132  roi=0.86%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Daniil Medvedev vs Andrey Rublev           KO 14:30 -> DANIIL MEDVEDEV  conf 67% @1.49  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+  [tour:ATP | _surface:Hard | cross_source_agree:Both] Cabral / Tracy vs Arends / Pel             KO 11:30 -> CABRAL / TRACY  conf 60% @1.66  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=ATP250  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  n=35  roi=21.85%
+
+NO-SLICE CANDIDATES (diagnostic — matched no exportable slice; NOT bets)  [19 rows]
+============================================================
+  Dalma Galfi vs Julia Grabher               KO 11:30  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @n/a 63%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+  Stefanos Sakellaridis vs Yuta Shimizu      KO 09:00  CHALLENGER/Grass  conf=High  agree=Both  band=1.3-1.6  @1.42 73%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Matthew Dellavedova vs Andre Ilagan        KO 10:30  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.44 69%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Hugo Grenier vs Carl Emil Overbeck         KO 13:00  CHALLENGER/Grass  conf=Low  agree=Both  band=1.6-2.0  @1.74 54%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Toby Samuel vs Mackenzie McDonald          KO 12:00  CHALLENGER/Grass  conf=High  agree=Both  band=1.3-1.6  @1.33 77%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Akira Santillan vs Luka Pavlovic           KO 09:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.6-2.0  @1.60 61%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: fav_odds_band=1.6-2.0!=1.3-1.6, pred_confidence=Medium!=Low
+  Moez Echargui vs Damir Dzumhur             KO 12:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.6-2.0  @1.62 65%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: fav_odds_band=1.6-2.0!=1.3-1.6, pred_confidence=Medium!=Low
+  Arthur Weber vs Yanki Erel                 KO 09:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.47 69%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Alex Bolt vs Semen Pankin                  KO 10:30  CHALLENGER/Grass  conf=High  agree=Both  band=1.3-1.6  @1.30 77%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Detiuc / Khromacheva vs Costoulas / Martin KO 09:00  WTA/Grass  conf=High  agree=Both  band=1.3-1.6  @1.38 71%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Kuwata / Zheng vs Nugroho / Yashina        KO 12:00  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.50 60%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+  Anastasia Tikhonova vs Simona Waltert      KO 16:30  WTA/Grass  conf=High  agree=Both  band=1.3-1.6  @1.32 71%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Tyra Caterina Grant vs Aliona Falei        KO 06:00  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.47 66%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+  Kristiana Sidorova vs Daria Egorova        KO 07:30  WTA/Hard  conf=Low  agree=Disagree  band=1.6-2.0  @1.93 54%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6, cross_source_agree=Disagree!=Both
+  Katarina Zavatska vs Sofya Lansere         KO 10:30  WTA/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.84 57%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Polina Iatcenko vs Erika Andreeva          KO 16:30  WTA/Hard  conf=Medium  agree=Both  band=1.6-2.0  @1.63 63%
+     nearest: _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:B  missing: fav_odds_band=1.6-2.0!=1.1-1.3
+  Teodora Kostovic vs Berfu Cengiz           KO 11:30  WTA/Grass  conf=High  agree=Both  band=1.3-1.6  @1.45 71%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Lucia Bronzetti vs Lois Boisson            KO 16:30  WTA/Hard  conf=Medium  agree=Both  band=1.6-2.0  @1.62 66%
+     nearest: _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:B  missing: fav_odds_band=1.6-2.0!=1.1-1.3
+  Amelia Rajecki vs Yuhan Wang               KO 10:30  WTA/Hard  conf=Medium  agree=Both  band=1.6-2.0  @1.76 63%
+     nearest: _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:B  missing: fav_odds_band=1.6-2.0!=1.1-1.3
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.

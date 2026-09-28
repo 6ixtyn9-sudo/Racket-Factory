@@ -1,0 +1,328 @@
+[
+  {
+    "match": "Dalma Galfi vs Julia Grabher",
+    "kickoff": "11:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 63.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Stefanos Sakellaridis vs Yuta Shimizu",
+    "kickoff": "09:00",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 73.0,
+    "odds": 1.42,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Matthew Dellavedova vs Andre Ilagan",
+    "kickoff": "10:30",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 69.0,
+    "odds": 1.44,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Hugo Grenier vs Carl Emil Overbeck",
+    "kickoff": "13:00",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 54.0,
+    "odds": 1.74,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Toby Samuel vs Mackenzie McDonald",
+    "kickoff": "12:00",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 77.0,
+    "odds": 1.33,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Akira Santillan vs Luka Pavlovic",
+    "kickoff": "09:00",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 61.0,
+    "odds": 1.6,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6",
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Moez Echargui vs Damir Dzumhur",
+    "kickoff": "12:00",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 65.0,
+    "odds": 1.62,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6",
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Arthur Weber vs Yanki Erel",
+    "kickoff": "09:00",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 69.0,
+    "odds": 1.47,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Alex Bolt vs Semen Pankin",
+    "kickoff": "10:30",
+    "tour": "CHALLENGER",
+    "_series": "Challenger",
+    "_surface": "Grass",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 77.0,
+    "odds": 1.3,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Detiuc / Khromacheva vs Costoulas / Martins",
+    "kickoff": "09:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Grass",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 71.0,
+    "odds": 1.38,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Kuwata / Zheng vs Nugroho / Yashina",
+    "kickoff": "12:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 60.0,
+    "odds": 1.5,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Anastasia Tikhonova vs Simona Waltert",
+    "kickoff": "16:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Grass",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 71.0,
+    "odds": 1.32,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Tyra Caterina Grant vs Aliona Falei",
+    "kickoff": "06:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 66.0,
+    "odds": 1.47,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Kristiana Sidorova vs Daria Egorova",
+    "kickoff": "07:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Disagree",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 54.0,
+    "odds": 1.93,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6",
+      "cross_source_agree=Disagree!=Both"
+    ]
+  },
+  {
+    "match": "Katarina Zavatska vs Sofya Lansere",
+    "kickoff": "10:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 57.0,
+    "odds": 1.84,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Polina Iatcenko vs Erika Andreeva",
+    "kickoff": "16:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 63.0,
+    "odds": 1.63,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
+    ]
+  },
+  {
+    "match": "Teodora Kostovic vs Berfu Cengiz",
+    "kickoff": "11:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Grass",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 71.0,
+    "odds": 1.45,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Lucia Bronzetti vs Lois Boisson",
+    "kickoff": "16:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 66.0,
+    "odds": 1.62,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
+    ]
+  },
+  {
+    "match": "Amelia Rajecki vs Yuhan Wang",
+    "kickoff": "10:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 63.0,
+    "odds": 1.76,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
+    ]
+  }
+]
