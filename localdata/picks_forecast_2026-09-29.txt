@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-29
 ============================================================
-Generated at: 2026-09-28 08:08:24
-Snapshot as of: 2026-09-28T08:01:54+02:00
+Generated at: 2026-09-28 16:07:15
+Snapshot as of: 2026-09-28T16:02:01+02:00
 Ledger kind: forecast
 
 
@@ -27,8 +27,6 @@ WATCHLIST — NO MATCHED ODDS
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
   [no_slice_export] Dino Prizmic vs Daniel Rincon              KO 12:00 -> DINO PRIZMIC  conf 85% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
-  [no_slice_export] Polina Iatcenko vs Erika Andreeva          KO 16:30 -> POLINA IATCENKO  conf 63% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -36,7 +34,8 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [no_slice_export] Lucia Bronzetti vs Lois Boisson            KO 16:30 -> LOIS BOISSON  conf 66% @1.65  EV +0.09u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
