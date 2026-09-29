@@ -1,12 +1,12 @@
 {
   "date": "2026-09-30",
   "warehouse": "localdata/warehouse.csv.gz",
-  "warehouse_sha256": "f412be48dcb7770ee2137e77da385a93e280dbea540cfb663a2329196e69c190",
-  "warehouse_rows": 7217,
+  "warehouse_sha256": "a965d4f4a383c986af77bbeb16e392967618fe5a1468c4e391c9811fe9570e56",
+  "warehouse_rows": 7293,
   "cross_source_agree": {
-    "Unknown": 4449,
-    "MarketOnly": 1597,
-    "Both": 761,
+    "Unknown": 4509,
+    "MarketOnly": 1611,
+    "Both": 763,
     "Disagree": 378,
     "ForeTennisOnly": 32
   },
@@ -1845,15 +1845,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 519,
-      "WinRate": "34.68%",
-      "Shrunk": "34.80%",
-      "ROI": "-59.79%",
+      "N": 521,
+      "WinRate": "34.55%",
+      "Shrunk": "34.67%",
+      "ROI": "-59.98%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -59.79
+      "ROI_num": -59.98
     },
     {
       "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:Disagree",
@@ -2729,15 +2729,15 @@
         "cross_source_agree": "MarketOnly"
       },
       "Dims": 3,
-      "N": 1230,
-      "WinRate": "36.02%",
-      "Shrunk": "36.06%",
-      "ROI": "-87.79%",
+      "N": 1244,
+      "WinRate": "35.69%",
+      "Shrunk": "35.74%",
+      "ROI": "-87.98%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -87.79
+      "ROI_num": -87.98
     },
     {
       "Slice": "FADE _surface:Hard | pred_confidence:High | cross_source_agree:MarketOnly",

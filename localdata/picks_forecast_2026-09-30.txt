@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-30
 ============================================================
-Generated at: 2026-09-29 00:07:18
-Snapshot as of: 2026-09-29T00:01:47+02:00
+Generated at: 2026-09-29 08:10:21
+Snapshot as of: 2026-09-29T08:02:39+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,8 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Hozumi / Sorribes Tormo vs Huang / Kawaguc KO 08:00 -> HOZUMI / SORRIBES TORMO  conf 81% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -31,7 +32,14 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [no_slice_export] Tallon Griekspoor vs Andrey Rublev         KO 06:00 -> ANDREY RUBLEV  conf 69% @1.53  EV +0.06u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Alexander Bublik vs Jakub Mensik           KO 06:00 -> JAKUB MENSIK  conf 66% @1.61  EV +0.06u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Learner Tien vs Hubert Hurkacz             KO 06:00 -> LEARNER TIEN  conf 63% @1.74  EV +0.10u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Juncheng Shang vs Sebastian Baez           KO 06:00 -> JUNCHENG SHANG  conf 60% @1.76  EV +0.06u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
