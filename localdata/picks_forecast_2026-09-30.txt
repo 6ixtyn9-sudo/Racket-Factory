@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-09-30
 ============================================================
-Generated at: 2026-09-29 08:10:21
-Snapshot as of: 2026-09-29T08:02:39+02:00
+Generated at: 2026-09-29 16:07:28
+Snapshot as of: 2026-09-29T16:01:46+02:00
 Ledger kind: forecast
 
 
@@ -32,13 +32,13 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
+  [no_slice_export] Alejandro Tabilo vs Tommy Paul             KO 05:00 -> TOMMY PAUL  conf 76% @1.39  EV +0.06u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Luciano Darderi vs Casper Ruud             KO 05:00 -> CASPER RUUD  conf 75% @1.41  EV +0.06u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
   [no_slice_export] Tallon Griekspoor vs Andrey Rublev         KO 06:00 -> ANDREY RUBLEV  conf 69% @1.53  EV +0.06u
      bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Alexander Bublik vs Jakub Mensik           KO 06:00 -> JAKUB MENSIK  conf 66% @1.61  EV +0.06u
-     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Learner Tien vs Hubert Hurkacz             KO 06:00 -> LEARNER TIEN  conf 63% @1.74  EV +0.10u
-     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
-  [no_slice_export] Juncheng Shang vs Sebastian Baez           KO 06:00 -> JUNCHENG SHANG  conf 60% @1.76  EV +0.06u
+  [no_slice_export] Ignacio Buse vs Quentin Halys              KO 06:00 -> QUENTIN HALYS  conf 60% @1.80  EV +0.08u
      bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
