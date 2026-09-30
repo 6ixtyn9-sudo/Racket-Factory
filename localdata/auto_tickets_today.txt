@@ -1,5 +1,5 @@
 Racket Factory Auto Tickets — 2026-09-30
-Generated at: 2026-09-30T00:01:44+02:00
+Generated at: 2026-09-30T08:02:15+02:00
 Bank: 100.00% (cycle base 100.00%)
 Take profit target: 200.00%
 
@@ -7,5 +7,9 @@ Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 1.5)
 Stake: 20% of bank per day (priced track only; paper is hit-rate only)
 
 NO BET — no priced legs available (zero qualifying bets is a valid outcome)
-Playable buckets: {'WATCHLIST', 'CERTIFIED_CLEAN', 'CAUTION', 'FADE'} + ML NO_ODDS BOOST (paper track)
-Skipped: none — the pool was empty before any guard ran.
+Playable buckets: {'CAUTION', 'WATCHLIST', 'CERTIFIED_CLEAN', 'FADE'} + ML NO_ODDS BOOST (paper track)
+Skipped 2 pick(s):
+  1x already started
+      - Elias Ymer vs Terence Atmane [Terence Atmane] ko 06:00
+  1x paper_late_included
+      - Elias Ymer vs Terence Atmane [Terence Atmane] ko 06:00

@@ -1,6 +1,6 @@
 {
   "date": "2026-09-30",
-  "generated_at": "2026-09-30T00:01:44+02:00",
+  "generated_at": "2026-09-30T08:02:15+02:00",
   "bank_pct": 100.0,
   "free_bank_pct": 80.0,
   "committed_pct": 20.0,
@@ -10,6 +10,29 @@
   "staked_pct": 0,
   "paper_staked_pct": 0,
   "accas": [],
-  "skipped": [],
-  "frozen": true
+  "skipped": [
+    [
+      {
+        "match": "Elias Ymer vs Terence Atmane",
+        "selected_player": "Terence Atmane",
+        "kickoff": "06:00",
+        "bucket": "WATCHLIST_NO_ODDS",
+        "ml_verdict": "BOOST",
+        "odds": null
+      },
+      "already started"
+    ],
+    [
+      {
+        "match": "Elias Ymer vs Terence Atmane",
+        "selected_player": "Terence Atmane",
+        "kickoff": "06:00",
+        "bucket": "WATCHLIST_NO_ODDS",
+        "ml_verdict": "BOOST",
+        "odds": null
+      },
+      "paper_late_included"
+    ]
+  ],
+  "frozen": false
 }
