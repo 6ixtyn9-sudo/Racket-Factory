@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-01
 ============================================================
-Generated at: 2026-09-30 08:11:07
-Snapshot as of: 2026-09-30T08:02:15+02:00
+Generated at: 2026-09-30 16:16:23
+Snapshot as of: 2026-09-30T16:04:16+02:00
 Ledger kind: forecast
 
 
@@ -15,7 +15,8 @@ CAUTION PICKS
 
 WATCHLIST PICKS
 ============================================================
-  (none)
+  [no_slice_export] Daniel Rincon vs Laslo Djere               KO 11:00 -> LASLO DJERE  conf 65% @1.68  EV +0.09u
+     bucket=WATCHLIST  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
 ============================================================
@@ -23,11 +24,13 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  [no_slice_export] Pridankina / Tikhonova vs Aksu / Mert      KO 12:00 -> PRIDANKINA / TIKHONOVA  conf 80% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Lorenzo Musetti vs Arthur Fery             KO 05:00 -> LORENZO MUSETTI  conf 71% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
   [no_slice_export] Petra Marcinko vs Magdalena Frech          KO 06:00 -> MAGDALENA FRECH  conf 71% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
   [no_slice_export] Viktorija Golubic vs Alina Korneeva        KO 06:00 -> ALINA KORNEEVA  conf 66% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Viktorija Golubic vs Elvina Kalieva        KO 06:00 -> VIKTORIJA GOLUBIC  conf 66% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
@@ -36,7 +39,8 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [no_slice_export] Tallon Griekspoor vs Andrey Rublev         KO 06:00 -> ANDREY RUBLEV  conf 65% @1.62  EV +0.05u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
