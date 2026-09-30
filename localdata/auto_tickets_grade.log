@@ -2,11 +2,13 @@
 2026-09-13: still open (1 accas pending)
   2026-09-20 value_2leg_mutual_paper: leg PENDING: Angelina Voloshchuk vs Jana Otzipka -- result not final: live/in-progress markers present
 2026-09-20: still open (1 accas pending)
-  2026-09-29 value_2leg_mutual: leg PENDING: Otto Virtanen vs Tiago Pereira -- result not final: live/in-progress markers present
-2026-09-29: still open (1 accas pending)
+2026-09-29: settled 0W/1L (0 paper wins, 0 unpriced)  PnL -20.0% (paper +0.0%)  bank 100.0% -> 80.0%
   2026-09-30 value_2leg_mutual_paper: leg PENDING: Elias Ymer vs Terence Atmane -- result not final: score not final: incomplete final set 5-5
 2026-09-30: still open (1 accas pending)
+  2026-10-01 value_2leg_mutual: leg PENDING: Elias Ymer vs Federico Cina -- result not final: live/in-progress markers present
+  2026-10-01 value_2leg_mutual: leg PENDING: Tallon Griekspoor vs Andrey Rublev -- result not final: live/in-progress markers present
+2026-10-01: still open (1 accas pending)
 ALARM 2 open slip(s) older than 3d — they are not 'pending', they are stuck:
-  2026-09-13 age 17d · 1 acca(s) · 0% committed · acca flagged paper by builder; no trusted market price
-  2026-09-20 age 10d · 1 acca(s) · 0% committed · acca flagged paper by builder; already started at generation time (stale price)
+  2026-09-13 age 18d · 1 acca(s) · 0% committed · acca flagged paper by builder; no trusted market price
+  2026-09-20 age 11d · 1 acca(s) · 0% committed · acca flagged paper by builder; already started at generation time (stale price)
   run auto_tickets_grade.py --close-stale-days N to void and close them.

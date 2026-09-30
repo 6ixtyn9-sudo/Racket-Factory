@@ -1,11 +1,11 @@
 {
   "alarm_after_days": 3,
-  "generated_at": "2026-09-30T16:18:20+02:00",
+  "generated_at": "2026-10-01T00:12:24+02:00",
   "open_slips": 4,
   "stale": [
     {
       "accas": 1,
-      "age_days": 17,
+      "age_days": 18,
       "committed_pct": 0,
       "date": "2026-09-13",
       "faults": [],
@@ -16,7 +16,7 @@
     },
     {
       "accas": 1,
-      "age_days": 10,
+      "age_days": 11,
       "committed_pct": 0,
       "date": "2026-09-20",
       "faults": [],

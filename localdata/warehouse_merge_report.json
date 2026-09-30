@@ -1,13 +1,13 @@
 {
   "status": "merged",
-  "baseline_rows": 8396,
-  "fresh_rows": 8214,
-  "shared_keys": 7946,
-  "new_from_fresh": 268,
-  "baseline_only": 450,
-  "settlement_updates": 2,
-  "live_rows_from_fresh": 59,
-  "dim_drift_rows": 2372,
+  "baseline_rows": 8664,
+  "fresh_rows": 8837,
+  "shared_keys": 8142,
+  "new_from_fresh": 695,
+  "baseline_only": 522,
+  "settlement_updates": 3,
+  "live_rows_from_fresh": 0,
+  "dim_drift_rows": 2388,
   "dim_drift_examples": [
     {
       "key": "2026-09-09|ATP|US Open|alexanderblockx||karenkhachanov",
@@ -40,6 +40,12 @@
       "fresh": "player_b"
     },
     {
+      "key": "2026-09-30|ATP|ATP Japan Open|matteoarnaldi||reisakamoto",
+      "col": "predicted_winner_predixsport",
+      "baseline": "player_b",
+      "fresh": ""
+    },
+    {
       "key": "2026-09-11|UNKNOWN||gauffc||rybakinae",
       "col": "predicted_winner_market",
       "baseline": "",
@@ -62,17 +68,11 @@
       "col": "predicted_winner_market",
       "baseline": "",
       "fresh": "player_b"
-    },
-    {
-      "key": "2026-09-11|WTA|WTA US Open - Semi-finals|gauffc||rybakinae",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
     }
   ],
-  "merged_rows": 8664,
-  "generated_at": "2026-09-30T14:15:31.123080+00:00",
-  "baseline_sha256": "b25ad2360b19d4cc5ac4c208319e530162ff3e556c8059d9e5e44abbe1e94fdb",
-  "fresh_sha256": "07f83362e8a87df0fa0eb5128fff8161300edefc1fe937c314031ed1db9f3d81",
-  "merged_sha256": "3a03c462a65845bab1633cb6b2aa07118cd639334f251acbd70b0e3c74160fad"
+  "merged_rows": 9359,
+  "generated_at": "2026-09-30T22:09:43.882195+00:00",
+  "baseline_sha256": "3a03c462a65845bab1633cb6b2aa07118cd639334f251acbd70b0e3c74160fad",
+  "fresh_sha256": "99e7ec95227bb86bb6c0197393240168d05471df842a6d27728fbc96d5a8ad17",
+  "merged_sha256": "43888d44249c4942126d90fe19e161e0ab1f339e8770845b8c05973100b396f9"
 }
