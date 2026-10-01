@@ -1,13 +1,13 @@
 {
   "status": "merged",
-  "baseline_rows": 8664,
-  "fresh_rows": 8837,
-  "shared_keys": 8142,
-  "new_from_fresh": 695,
+  "baseline_rows": 9359,
+  "fresh_rows": 9022,
+  "shared_keys": 8837,
+  "new_from_fresh": 185,
   "baseline_only": 522,
-  "settlement_updates": 3,
-  "live_rows_from_fresh": 0,
-  "dim_drift_rows": 2388,
+  "settlement_updates": 5,
+  "live_rows_from_fresh": 71,
+  "dim_drift_rows": 2558,
   "dim_drift_examples": [
     {
       "key": "2026-09-09|ATP|US Open|alexanderblockx||karenkhachanov",
@@ -40,39 +40,39 @@
       "fresh": "player_b"
     },
     {
+      "key": "2026-09-30|ATP|ATP Japan Open|alexanderblockx||valentinvacherot",
+      "col": "prediction_prob_bzzoiro",
+      "baseline": "",
+      "fresh": "53.0"
+    },
+    {
+      "key": "2026-09-30|ATP|ATP Japan Open|alejandrotabilo||tommypaul",
+      "col": "prediction_prob_bzzoiro",
+      "baseline": "",
+      "fresh": "68.0"
+    },
+    {
+      "key": "2026-09-30|ATP|ATP Japan Open|arthurfils||lucavanassche",
+      "col": "prediction_prob_bzzoiro",
+      "baseline": "",
+      "fresh": "77.5"
+    },
+    {
       "key": "2026-09-30|ATP|ATP Japan Open|matteoarnaldi||reisakamoto",
-      "col": "predicted_winner_predixsport",
-      "baseline": "player_b",
-      "fresh": ""
+      "col": "prediction_prob_bzzoiro",
+      "baseline": "",
+      "fresh": "56.0"
     },
     {
-      "key": "2026-09-11|UNKNOWN||gauffc||rybakinae",
-      "col": "predicted_winner_market",
+      "key": "2026-09-30|WTA|WTA China Open|anhelinakalinina||janicetjen",
+      "col": "prediction_prob_bzzoiro",
       "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-14||WTA Guadalajara - 1/16-finals|cdolehide||rzarazua",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_b"
-    },
-    {
-      "key": "2026-09-14||WTA Guadalajara - 1/16-finals|tmaria||ttownsend",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_b"
-    },
-    {
-      "key": "2026-09-14||WTA Guadalajara - 1/16-finals|cmonnet||sstephens",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_b"
+      "fresh": "60.4"
     }
   ],
-  "merged_rows": 9359,
-  "generated_at": "2026-09-30T22:09:43.882195+00:00",
-  "baseline_sha256": "3a03c462a65845bab1633cb6b2aa07118cd639334f251acbd70b0e3c74160fad",
-  "fresh_sha256": "99e7ec95227bb86bb6c0197393240168d05471df842a6d27728fbc96d5a8ad17",
-  "merged_sha256": "43888d44249c4942126d90fe19e161e0ab1f339e8770845b8c05973100b396f9"
+  "merged_rows": 9544,
+  "generated_at": "2026-10-01T06:09:20.677535+00:00",
+  "baseline_sha256": "43888d44249c4942126d90fe19e161e0ab1f339e8770845b8c05973100b396f9",
+  "fresh_sha256": "0a04f61f0dc29316a268944fc06761731d3eefa25c8b5e2cc7c2bfe8bce0503b",
+  "merged_sha256": "39685cf1282b757eb704736cf9d4bc2c33a166477cc0b05c1c31db27c55d77f7"
 }

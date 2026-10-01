@@ -1,13 +1,22 @@
 Racket Factory Auto Tickets — 2026-10-01
-Generated at: 2026-10-01T00:02:16+02:00
+Generated at: 2026-10-01T08:02:31+02:00
 Bank: 100.00% (cycle base 100.00%)
 Take profit target: 200.00%
 
 Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 1.5), 4 accas max per track, NO SINGLES
 Stake: 20% of bank per day (priced track only; paper is hit-rate only)
 
-ACCA 1 [value_2leg_mutual] — Odds 2.09 — Stake 20.00%
-  - Elias Ymer vs Federico Cina -> Federico Cina @ 1.29 (conf 88.41 ml 0.55 BOOST src BetClan odds_src BetExplorer)
-  - Tallon Griekspoor vs Andrey Rublev -> Andrey Rublev @ 1.62 (conf 65.0 ml  ALLOW src BetClan odds_src TheOddsAPI)
+NO BET — no priced legs available (zero qualifying bets is a valid outcome)
+Playable buckets: {'CAUTION', 'CERTIFIED_CLEAN', 'WATCHLIST', 'FADE'} + ML NO_ODDS BOOST (paper track)
+Skipped 4 pick(s):
+  2x already started
+      - Taylor Fritz vs Jaume Munar [Taylor Fritz] ko 05:00
+      - Tomas Martin Etcheverry vs Stefanos Tsitsipas [Stefanos Tsitsipas] ko 06:30
+  2x paper_late_included
+      - Taylor Fritz vs Jaume Munar [Taylor Fritz] ko 05:00
+      - Tomas Martin Etcheverry vs Stefanos Tsitsipas [Stefanos Tsitsipas] ko 06:30
 
-Total staked: 20.00% of bank
+PAPER TRACK — 1 acca(s), hit-rate only, never staked:
+PAPER 1 [value_2leg_mutual_paper] — unpriced — 2 legs
+  - Tomas Martin Etcheverry vs Stefanos Tsitsipas -> Stefanos Tsitsipas @ unpriced (already started at generation time (stale price))
+  - Taylor Fritz vs Jaume Munar -> Taylor Fritz @ unpriced (already started at generation time (stale price))
