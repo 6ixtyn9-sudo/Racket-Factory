@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-02
 ============================================================
-Generated at: 2026-10-01 08:10:12
-Snapshot as of: 2026-10-01T08:02:31+02:00
+Generated at: 2026-10-01 16:10:28
+Snapshot as of: 2026-10-01T16:02:14+02:00
 Ledger kind: forecast
 
 
@@ -31,7 +31,16 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [no_slice_export] Khachanov / Rublev vs Cash / Glasspool     KO 06:00 -> CASH / GLASSPOOL  conf 76% @1.42  EV +0.08u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Andreozzi / Guinard vs Arends / Pel        KO 06:00 -> ANDREOZZI / GUINARD  conf 73% @1.44  EV +0.05u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Jasmine Paolini vs Daria Snigur            KO 06:00 -> JASMINE PAOLINI  conf 65% @1.66  EV +0.08u
+     bucket=SKIPPED_VETO  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Taylah Preston vs Diane Parry              KO 06:00 -> DIANE PARRY  conf 63% @1.78  EV +0.12u
+     bucket=SKIPPED_VETO  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Melo / Zverev vs Frantzen / Haase          KO 06:00 -> FRANTZEN / HAASE  conf 60% @1.78  EV +0.07u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
