@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-10-01",
+  "as_of": "2026-10-02",
   "checks": {
     "localdata_exists": {
       "status": "OK",
@@ -11,43 +11,43 @@
     },
     "results:foretennis_results": {
       "status": "OK",
-      "detail": "4 files, 1395 rows, max_date 2026-09-29 (lag 2d, budget 3d)"
+      "detail": "4 files, 1395 rows, max_date 2026-09-29 (lag 3d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "WARN",
-      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 12d, budget 3d)"
+      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 13d, budget 3d)"
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "2 files, 8582 rows, max_date 2026-10-01 (lag 0d, budget 3d)"
+      "detail": "2 files, 8183 rows, max_date 2026-10-01 (lag 1d, budget 3d)"
     },
     "results:theoddsapi_scores": {
       "status": "OK",
-      "detail": "2 files, 89 rows, max_date 2026-10-01 (lag 0d, budget 3d)"
+      "detail": "2 files, 90 rows, max_date 2026-10-01 (lag 1d, budget 3d)"
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "10554 result rows across all sources"
+      "detail": "10156 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "22 files, 23467 rows, max_date 2026-10-02"
+      "detail": "22 files, 23495 rows, max_date 2026-10-02"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "9791 rows, max_date 2026-10-01"
+      "detail": "9957 rows, max_date 2026-10-02"
     },
     "warehouse:live_rows": {
       "status": "OK",
-      "detail": "665 live-injected rows"
+      "detail": "715 live-injected rows"
     },
     "picks:priced_share": {
-      "status": "OK",
-      "detail": "picks_2026-10-01.json: 1/29 priced"
+      "status": "WARN",
+      "detail": "picks_2026-10-02.json: 0/0 priced"
     },
     "audit:rolling": {
       "status": "OK",
-      "detail": "settled 253 conflicts 0 pending 26"
+      "detail": "settled 255 conflicts 0 pending 37"
     },
     "tickets:bank": {
       "status": "OK",

@@ -7,6 +7,6 @@
 2026-09-30: still open (1 accas pending)
 2026-10-01: settled 0W/0L (0 paper wins, 1 unpriced)  PnL +0.0% (paper +0.0%)  bank 80.0% -> 80.0%
 ALARM 2 open slip(s) older than 3d — they are not 'pending', they are stuck:
-  2026-09-13 age 18d · 1 acca(s) · 0% committed · acca flagged paper by builder; no trusted market price
-  2026-09-20 age 11d · 1 acca(s) · 0% committed · acca flagged paper by builder; already started at generation time (stale price)
+  2026-09-13 age 19d · 1 acca(s) · 0% committed · acca flagged paper by builder; no trusted market price
+  2026-09-20 age 12d · 1 acca(s) · 0% committed · acca flagged paper by builder; already started at generation time (stale price)
   run auto_tickets_grade.py --close-stale-days N to void and close them.
