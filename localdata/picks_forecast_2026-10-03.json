@@ -15,7 +15,7 @@
     "edge_tier": "BANKER",
     "edge_verdict": "WATCHLIST",
     "expected_value": 0.05839999999999995,
-    "forecast_as_of": "2026-10-02T08:01:59+02:00",
+    "forecast_as_of": "2026-10-02T16:02:25+02:00",
     "forecast_for": "2026-10-03",
     "forecast_hygiene": {
       "include_no_odds": true,
@@ -29,13 +29,13 @@
     "match": "Denis Shapovalov vs Alejandro Tabilo",
     "match_time": "05:00",
     "ml_boost_reasons": [],
-    "ml_calibrated_prob": 0.5765,
-    "ml_ev": -0.0315,
+    "ml_calibrated_prob": 0.5787,
+    "ml_ev": -0.0278,
     "ml_fair_odds": 1.73,
     "ml_odds_answer": {
-      "edge_pct": -3.15,
-      "ev": -0.0315,
-      "explanation": "Odds 1.68 short vs fair 1.73, EV -3.1% \u2013 negative, avoid unless boosting acca",
+      "edge_pct": -2.78,
+      "ev": -0.0278,
+      "explanation": "Odds 1.68 short vs fair 1.73, EV -2.8% \u2013 negative, avoid unless boosting acca",
       "fair_odds": 1.73,
       "verdict": "SHORT"
     },
@@ -43,9 +43,9 @@
     "ml_verdict": "VETO",
     "ml_veto_reasons": [
       "tour ATP VETO roi -0.256667 n=76",
-      "surface Hard VETO roi -0.162651 n=220",
-      "source BetClan VETO roi -0.135 n=214",
-      "ML EV -0.031 < 0.02 min (capital protection)"
+      "surface Hard VETO roi -0.162651 n=223",
+      "source BetClan VETO roi -0.135 n=218",
+      "ML EV -0.028 < 0.02 min (capital protection)"
     ],
     "ml_w_score": 1.0,
     "odds": 1.68,
@@ -62,7 +62,7 @@
     "selected_player": "Denis Shapovalov",
     "selected_side": "player_a",
     "series": "ATP500",
-    "skip_reason": "tour ATP VETO roi -0.256667 n=76; surface Hard VETO roi -0.162651 n=220",
+    "skip_reason": "tour ATP VETO roi -0.256667 n=76; surface Hard VETO roi -0.162651 n=223",
     "slice_matched": "no_slice_export",
     "source": "BetClan",
     "source_count": 1,
