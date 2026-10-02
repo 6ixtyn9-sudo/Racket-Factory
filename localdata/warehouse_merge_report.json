@@ -1,13 +1,13 @@
 {
   "status": "merged",
-  "baseline_rows": 9791,
-  "fresh_rows": 9351,
-  "shared_keys": 9185,
-  "new_from_fresh": 166,
+  "baseline_rows": 9957,
+  "fresh_rows": 9389,
+  "shared_keys": 9351,
+  "new_from_fresh": 38,
   "baseline_only": 606,
-  "settlement_updates": 4,
-  "live_rows_from_fresh": 0,
-  "dim_drift_rows": 2608,
+  "settlement_updates": 0,
+  "live_rows_from_fresh": 50,
+  "dim_drift_rows": 2759,
   "dim_drift_examples": [
     {
       "key": "2026-09-09|ATP|US Open|alexanderblockx||karenkhachanov",
@@ -40,39 +40,39 @@
       "fresh": "player_b"
     },
     {
-      "key": "2026-09-30|ATP|ATP Japan Open|alexanderblockx||valentinvacherot",
-      "col": "prediction_prob_bzzoiro",
-      "baseline": "",
-      "fresh": "53.0"
+      "key": "2026-09-30|ATP|ATP China Open|felixaugeraliassime||karenkhachanov",
+      "col": "predicted_winner_betclan",
+      "baseline": "player_b",
+      "fresh": ""
     },
     {
-      "key": "2026-09-30|ATP|ATP Japan Open|alejandrotabilo||tommypaul",
-      "col": "prediction_prob_bzzoiro",
-      "baseline": "",
-      "fresh": "68.0"
+      "key": "2026-09-30|ATP|ATP China Open|janlennardstruff||thiagoagustintirante",
+      "col": "predicted_winner_betclan",
+      "baseline": "player_b",
+      "fresh": ""
     },
     {
-      "key": "2026-09-30|ATP|ATP Japan Open|arthurfils||lucavanassche",
-      "col": "prediction_prob_bzzoiro",
-      "baseline": "",
-      "fresh": "77.5"
+      "key": "2026-09-30|ATP|ATP China Open|buyunchaokete||juanmanuelcerundolo",
+      "col": "predicted_winner_betclan",
+      "baseline": "player_b",
+      "fresh": ""
     },
     {
-      "key": "2026-09-30|ATP|ATP Japan Open|matteoarnaldi||reisakamoto",
-      "col": "prediction_prob_bzzoiro",
-      "baseline": "",
-      "fresh": "56.0"
+      "key": "2026-09-30|ATP|ATP China Open|arthurgea||zhizhenzhang",
+      "col": "predicted_winner_betclan",
+      "baseline": "player_b",
+      "fresh": ""
     },
     {
-      "key": "2026-09-30|WTA|WTA China Open|anhelinakalinina||janicetjen",
-      "col": "prediction_prob_bzzoiro",
-      "baseline": "",
-      "fresh": "60.4"
+      "key": "2026-09-30|ATP|ATP China Open|novakdjokovic||nunoborges",
+      "col": "predicted_winner_betclan",
+      "baseline": "player_b",
+      "fresh": ""
     }
   ],
-  "merged_rows": 9957,
-  "generated_at": "2026-10-01T22:09:21.629531+00:00",
-  "baseline_sha256": "380483aa782cf74443807f4feb465f5621f942592cdca74ab2026d37a2396ba0",
-  "fresh_sha256": "f64b75da3bf22ccacacc4bc09ed9437b0cb565e055607a3a4598985113c31501",
-  "merged_sha256": "f6590d52331224a381ca25894ef76cbbda1b8b783e8ed859855efced36a2a9f2"
+  "merged_rows": 9995,
+  "generated_at": "2026-10-02T03:57:18.097952+00:00",
+  "baseline_sha256": "f6590d52331224a381ca25894ef76cbbda1b8b783e8ed859855efced36a2a9f2",
+  "fresh_sha256": "79f4bb1b45241c505175c59bb21e9d9b26ddaf6eac146b304aeafb2466c1e750",
+  "merged_sha256": "46a8205338d5b323e303887f74005b98ded2610782f0d68b919ce93be4ae3460"
 }
