@@ -1,13 +1,13 @@
 {
   "status": "merged",
-  "baseline_rows": 10193,
-  "fresh_rows": 9652,
-  "shared_keys": 9530,
-  "new_from_fresh": 122,
-  "baseline_only": 663,
+  "baseline_rows": 10315,
+  "fresh_rows": 9732,
+  "shared_keys": 9651,
+  "new_from_fresh": 81,
+  "baseline_only": 664,
   "settlement_updates": 0,
-  "live_rows_from_fresh": 0,
-  "dim_drift_rows": 2782,
+  "live_rows_from_fresh": 44,
+  "dim_drift_rows": 2868,
   "dim_drift_examples": [
     {
       "key": "2026-09-09|ATP|US Open|alexanderblockx||karenkhachanov",
@@ -52,27 +52,27 @@
       "fresh": ""
     },
     {
-      "key": "2026-09-30|ATP|ATP China Open|buyunchaokete||juanmanuelcerundolo",
+      "key": "2026-09-30|ATP|ATP Japan Open|alexanderblockx||valentinvacherot",
       "col": "predicted_winner_betclan",
       "baseline": "player_b",
       "fresh": ""
     },
     {
-      "key": "2026-09-30|ATP|ATP China Open|arthurgea||zhizhenzhang",
+      "key": "2026-09-30|ATP|ATP Japan Open|jirilehecka||zizoubergs",
       "col": "predicted_winner_betclan",
-      "baseline": "player_b",
+      "baseline": "player_a",
       "fresh": ""
     },
     {
-      "key": "2026-09-30|ATP|ATP China Open|novakdjokovic||nunoborges",
+      "key": "2026-09-30|ATP|ATP Japan Open|alejandrotabilo||tommypaul",
       "col": "predicted_winner_betclan",
       "baseline": "player_b",
       "fresh": ""
     }
   ],
-  "merged_rows": 10315,
-  "generated_at": "2026-10-02T22:07:21.547297+00:00",
-  "baseline_sha256": "3cae4c34063fba7c4d9560c4a68802c41a5ce44303351f4478de2a429098dbf1",
-  "fresh_sha256": "6e69eec66557989e884c85516bea81abe4be65a879173a4466c303a6241d335f",
-  "merged_sha256": "7f3cfe0d06a682a4cdf5ae747a7cfe615464d766e0a032dc3074ec4065fb617f"
+  "merged_rows": 10396,
+  "generated_at": "2026-10-03T06:08:49.248139+00:00",
+  "baseline_sha256": "7f3cfe0d06a682a4cdf5ae747a7cfe615464d766e0a032dc3074ec4065fb617f",
+  "fresh_sha256": "8ab15674071f1be4342fddb805513c572c1a00ebcb8ffacfa0c81ba61b76c913",
+  "merged_sha256": "fb06da65cd36b128313f87373d10e5212b88115f9ba528f6685050c1521569af"
 }
