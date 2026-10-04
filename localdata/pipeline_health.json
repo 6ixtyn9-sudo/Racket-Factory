@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-10-03",
+  "as_of": "2026-10-04",
   "checks": {
     "localdata_exists": {
       "status": "OK",
@@ -11,43 +11,43 @@
     },
     "results:foretennis_results": {
       "status": "WARN",
-      "detail": "4 files, 1395 rows, max_date 2026-09-29 (lag 4d, budget 3d)"
+      "detail": "4 files, 1395 rows, max_date 2026-09-29 (lag 5d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "WARN",
-      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 14d, budget 3d)"
+      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 15d, budget 3d)"
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "2 files, 8615 rows, max_date 2026-10-03 (lag 0d, budget 3d)"
+      "detail": "2 files, 8702 rows, max_date 2026-10-04 (lag 0d, budget 3d)"
     },
     "results:theoddsapi_scores": {
       "status": "OK",
-      "detail": "2 files, 136 rows, max_date 2026-10-03 (lag 0d, budget 3d)"
+      "detail": "2 files, 141 rows, max_date 2026-10-04 (lag 0d, budget 3d)"
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "10634 result rows across all sources"
+      "detail": "10726 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "25 files, 28445 rows, max_date 2026-10-04"
+      "detail": "26 files, 31404 rows, max_date 2026-10-05"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "10500 rows, max_date 2026-10-03"
+      "detail": "10636 rows, max_date 2026-10-04"
     },
     "warehouse:live_rows": {
       "status": "OK",
-      "detail": "779 live-injected rows"
+      "detail": "823 live-injected rows"
     },
     "picks:priced_share": {
-      "status": "OK",
-      "detail": "picks_2026-10-03.json: 1/17 priced"
+      "status": "WARN",
+      "detail": "picks_2026-10-04.json: 0/3 priced"
     },
     "audit:rolling": {
       "status": "OK",
-      "detail": "settled 320 conflicts 0 pending 28"
+      "detail": "settled 325 conflicts 0 pending 32"
     },
     "tickets:bank": {
       "status": "OK",
