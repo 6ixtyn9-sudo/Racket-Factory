@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-06
 ============================================================
-Generated at: 2026-10-05 00:06:39
-Snapshot as of: 2026-10-05T00:02:30+02:00
+Generated at: 2026-10-05 08:08:26
+Snapshot as of: 2026-10-05T08:02:19+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,14 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Siniakova / Zhang vs Feng / Yuan           KO 06:00 -> SINIAKOVA / ZHANG  conf 89% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Hsieh / Ostapenko vs Jiang / Wang          KO 06:00 -> HSIEH / OSTAPENKO  conf 73% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Badosa / Sakkari vs Perez / Schuurs        KO 06:00 -> PEREZ / SCHUURS  conf 69% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Alexandra Shubladze vs Tyra Caterina Grant KO 05:00 -> ALEXANDRA SHUBLADZE  conf 61% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -31,7 +38,8 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [no_slice_export] Moyuka Uchijima vs Zhuoxuan Bai            KO 05:00 -> MOYUKA UCHIJIMA  conf 60% @1.77  EV +0.06u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
