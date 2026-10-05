@@ -19,35 +19,35 @@
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "2 files, 8911 rows, max_date 2026-10-05 (lag 0d, budget 3d)"
+      "detail": "2 files, 9045 rows, max_date 2026-10-05 (lag 0d, budget 3d)"
     },
     "results:theoddsapi_scores": {
       "status": "OK",
-      "detail": "2 files, 154 rows, max_date 2026-10-05 (lag 0d, budget 3d)"
+      "detail": "2 files, 163 rows, max_date 2026-10-05 (lag 0d, budget 3d)"
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "10948 result rows across all sources"
+      "detail": "11091 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "27 files, 34314 rows, max_date 2026-10-06"
+      "detail": "26 files, 33989 rows, max_date 2026-10-06"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "10900 rows, max_date 2026-10-05"
+      "detail": "11043 rows, max_date 2026-10-05"
     },
     "warehouse:live_rows": {
       "status": "OK",
       "detail": "865 live-injected rows"
     },
     "picks:priced_share": {
-      "status": "OK",
-      "detail": "picks_2026-10-05.json: 1/2 priced"
+      "status": "WARN",
+      "detail": "picks_2026-10-05.json: 0/7 priced"
     },
     "audit:rolling": {
       "status": "OK",
-      "detail": "settled 338 conflicts 0 pending 32"
+      "detail": "settled 343 conflicts 0 pending 27"
     },
     "tickets:bank": {
       "status": "OK",
