@@ -75,3 +75,6 @@
 {"betclan": "12:00", "date": "2026-10-06", "delta_minutes": 60, "fixture": "alcaraz carlos|jiri lehecka", "reference": "11:00"}
 {"betclan": "06:00", "date": "2026-10-06", "delta_minutes": -250, "fixture": "bartunkova nikola|kraus sinja", "reference": "10:10"}
 {"betclan": "06:00", "date": "2026-10-06", "delta_minutes": 60, "fixture": "andreeva mirra|daria snigur", "reference": "05:00"}
+{"betclan": "14:30", "date": "2026-10-07", "delta_minutes": 80, "fixture": "arthur fery|cilic marin", "reference": "13:10"}
+{"betclan": "10:00", "date": "2026-10-07", "delta_minutes": 100, "fixture": "bellucci mattia|yi zhou", "reference": "08:20"}
+{"betclan": "06:00", "date": "2026-10-07", "delta_minutes": -135, "fixture": "coco gauff|elise mertens", "reference": "08:15"}
