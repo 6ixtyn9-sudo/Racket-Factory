@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-07
 ============================================================
-Generated at: 2026-10-06 08:09:58
-Snapshot as of: 2026-10-06T08:02:28+02:00
+Generated at: 2026-10-06 16:07:49
+Snapshot as of: 2026-10-06T16:01:46+02:00
 Ledger kind: forecast
 
 
@@ -25,10 +25,10 @@ WATCHLIST — NO MATCHED ODDS
 ============================================================
   [no_slice_export] Yilmaz / Yoruk vs Raina / Turkmen          KO 13:00 -> RAINA / TURKMEN  conf 89% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
-  [no_slice_export] Li / Zhang vs Qu / Shao                    KO 05:00 -> LI / ZHANG  conf 76% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
   [no_slice_export] Christie / Silva vs Karamoko / Akugue      KO 13:00 -> KARAMOKO / AKUGUE  conf 63% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Kuwata / Ye vs Ma / Sawangkaew             KO 05:00 -> KUWATA / YE  conf 54% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -36,8 +36,7 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  [no_slice_export] Iva Jovic vs Iga Swiatek                   KO 06:00 -> IGA SWIATEK  conf 69% @1.53  EV +0.06u
-     bucket=SKIPPED_VETO  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  (none)
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
