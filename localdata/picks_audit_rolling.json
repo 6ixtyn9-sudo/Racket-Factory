@@ -12252,6 +12252,9 @@
     {
       "bucket": "SKIPPED_VETO",
       "date": "2026-10-06",
+      "duplicate_picks": [
+        "2026-10-07 SKIPPED_DEAD_EDGE (pending_no_result)"
+      ],
       "edge_grade": "GOLD",
       "edge_tier": "BANKER",
       "edge_verdict": "EDGE CONFIRMED",
@@ -12422,15 +12425,35 @@
       "won": null
     },
     {
-      "bucket": "CERTIFIED_CLEAN",
+      "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-10-07",
       "edge_grade": "GOLD",
       "edge_tier": "BANKER",
       "edge_verdict": "EDGE CONFIRMED",
       "ledger_kind": "official",
-      "match": "Arthur Fery vs Marin Cilic",
+      "match": "Aleksandar Kovacevic vs Matteo Berrettini",
       "reason": "result not final: live/in-progress markers present",
-      "selected_player": "Arthur Fery",
+      "selected_player": "Matteo Berrettini",
+      "series": "Masters 1000",
+      "settle_date": "2026-10-07",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "ATP",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_DEAD_EDGE",
+      "date": "2026-10-07",
+      "edge_grade": "GOLD",
+      "edge_tier": "BANKER",
+      "edge_verdict": "EDGE CONFIRMED",
+      "ledger_kind": "official",
+      "match": "Arthur Gea vs Jaime Faria",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Arthur Gea",
       "series": "Masters 1000",
       "settle_date": "2026-10-07",
       "settle_score": "",
@@ -12457,7 +12480,7 @@
       "settle_source": "",
       "source": "BetClan",
       "status": "pending_no_result",
-      "surface": "Hard",
+      "surface": "Grass",
       "tour": "WTA",
       "won": null
     },
@@ -12502,7 +12525,27 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "SKIPPED_DEAD_EDGE",
+      "date": "2026-10-07",
+      "edge_grade": "GOLD",
+      "edge_tier": "BANKER",
+      "edge_verdict": "EDGE CONFIRMED",
+      "ledger_kind": "official",
+      "match": "Iva Jovic vs Iga Swiatek",
+      "reason": "result not final: live/in-progress markers present",
+      "selected_player": "Iga Swiatek",
+      "series": "WTA1000",
+      "settle_date": "2026-10-07",
+      "settle_score": "",
+      "settle_source": "",
+      "source": "BetClan",
+      "status": "pending_no_result",
+      "surface": "Hard",
+      "tour": "WTA",
+      "won": null
+    },
+    {
+      "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-10-07",
       "edge_grade": "GOLD",
       "edge_tier": "BANKER",
@@ -12562,7 +12605,7 @@
       "won": null
     },
     {
-      "bucket": "SKIPPED_VETO",
+      "bucket": "SKIPPED_DEAD_EDGE",
       "date": "2026-10-07",
       "edge_grade": "GOLD",
       "edge_tier": "BANKER",
@@ -12642,12 +12685,12 @@
     "2026-10-06",
     "2026-10-07"
   ],
-  "archived_pick_rows": 397,
+  "archived_pick_rows": 399,
   "by_bucket": {
     "CERTIFIED_CLEAN": {
       "conflict_picks": 0,
       "hit_rate": 0.583333,
-      "pending_picks": 2,
+      "pending_picks": 1,
       "priced_paper": 0,
       "priced_picks": 12,
       "priced_real": 12,
@@ -12664,14 +12707,14 @@
       "selected_won_set3_rate": 0.4,
       "set_diagnostic_picks": 12,
       "settled_picks": 12,
-      "total_picks": 14,
+      "total_picks": 13,
       "void_picks": 0,
       "wins": 7
     },
     "SKIPPED_DEAD_EDGE": {
       "conflict_picks": 0,
       "hit_rate": 0.64,
-      "pending_picks": 2,
+      "pending_picks": 7,
       "priced_paper": 0,
       "priced_picks": 50,
       "priced_real": 50,
@@ -12688,14 +12731,14 @@
       "selected_won_set3_rate": 0.590909,
       "set_diagnostic_picks": 50,
       "settled_picks": 50,
-      "total_picks": 52,
+      "total_picks": 57,
       "void_picks": 0,
       "wins": 32
     },
     "SKIPPED_VETO": {
       "conflict_picks": 0,
       "hit_rate": 0.7,
-      "pending_picks": 12,
+      "pending_picks": 10,
       "priced_paper": 0,
       "priced_picks": 40,
       "priced_real": 40,
@@ -12712,7 +12755,7 @@
       "selected_won_set3_rate": 0.5625,
       "set_diagnostic_picks": 40,
       "settled_picks": 40,
-      "total_picks": 52,
+      "total_picks": 50,
       "void_picks": 0,
       "wins": 28
     },
@@ -12790,7 +12833,7 @@
   "by_regime": {
     "genesis-2026-09-20": {
       "hit_rate": 0.704225,
-      "pending_picks": 40,
+      "pending_picks": 42,
       "priced_paper": 0,
       "priced_picks": 115,
       "priced_real": 115,
@@ -12807,7 +12850,7 @@
       "selected_won_set3_rate": 0.633333,
       "set_diagnostic_picks": 355,
       "settled_picks": 355,
-      "total_picks": 397,
+      "total_picks": 399,
       "wins": 250
     }
   },
@@ -12911,7 +12954,7 @@
     "Masters 1000": {
       "conflict_picks": 0,
       "hit_rate": null,
-      "pending_picks": 2,
+      "pending_picks": 3,
       "priced_paper": 0,
       "priced_picks": 0,
       "priced_real": 0,
@@ -12928,14 +12971,14 @@
       "selected_won_set3_rate": null,
       "set_diagnostic_picks": 0,
       "settled_picks": 0,
-      "total_picks": 2,
+      "total_picks": 3,
       "void_picks": 0,
       "wins": 0
     },
     "WTA1000": {
       "conflict_picks": 0,
       "hit_rate": 0.804348,
-      "pending_picks": 5,
+      "pending_picks": 6,
       "priced_paper": 0,
       "priced_picks": 4,
       "priced_real": 4,
@@ -12952,7 +12995,7 @@
       "selected_won_set3_rate": 0.684211,
       "set_diagnostic_picks": 46,
       "settled_picks": 46,
-      "total_picks": 51,
+      "total_picks": 52,
       "void_picks": 0,
       "wins": 37
     }
@@ -12961,7 +13004,7 @@
     "BetClan": {
       "conflict_picks": 0,
       "hit_rate": 0.720395,
-      "pending_picks": 39,
+      "pending_picks": 41,
       "priced_paper": 0,
       "priced_picks": 76,
       "priced_real": 76,
@@ -12978,7 +13021,7 @@
       "selected_won_set3_rate": 0.633663,
       "set_diagnostic_picks": 304,
       "settled_picks": 304,
-      "total_picks": 345,
+      "total_picks": 347,
       "void_picks": 2,
       "wins": 219
     },
@@ -13035,7 +13078,7 @@
     "Grass": {
       "conflict_picks": 0,
       "hit_rate": 0.745455,
-      "pending_picks": 10,
+      "pending_picks": 11,
       "priced_paper": 0,
       "priced_picks": 16,
       "priced_real": 16,
@@ -13052,14 +13095,14 @@
       "selected_won_set3_rate": 0.666667,
       "set_diagnostic_picks": 55,
       "settled_picks": 55,
-      "total_picks": 65,
+      "total_picks": 66,
       "void_picks": 0,
       "wins": 41
     },
     "Hard": {
       "conflict_picks": 0,
       "hit_rate": 0.696667,
-      "pending_picks": 30,
+      "pending_picks": 31,
       "priced_paper": 0,
       "priced_picks": 99,
       "priced_real": 99,
@@ -13076,7 +13119,7 @@
       "selected_won_set3_rate": 0.628571,
       "set_diagnostic_picks": 300,
       "settled_picks": 300,
-      "total_picks": 332,
+      "total_picks": 333,
       "void_picks": 2,
       "wins": 209
     }
@@ -13085,7 +13128,7 @@
     "ATP": {
       "conflict_picks": 0,
       "hit_rate": 0.576923,
-      "pending_picks": 6,
+      "pending_picks": 7,
       "priced_paper": 0,
       "priced_picks": 43,
       "priced_real": 43,
@@ -13102,7 +13145,7 @@
       "selected_won_set3_rate": 0.617647,
       "set_diagnostic_picks": 104,
       "settled_picks": 104,
-      "total_picks": 110,
+      "total_picks": 111,
       "void_picks": 0,
       "wins": 60
     },
@@ -13133,7 +13176,7 @@
     "WTA": {
       "conflict_picks": 0,
       "hit_rate": 0.761905,
-      "pending_picks": 25,
+      "pending_picks": 26,
       "priced_paper": 0,
       "priced_picks": 58,
       "priced_real": 58,
@@ -13150,20 +13193,20 @@
       "selected_won_set3_rate": 0.631579,
       "set_diagnostic_picks": 210,
       "settled_picks": 210,
-      "total_picks": 237,
+      "total_picks": 238,
       "void_picks": 2,
       "wins": 160
     }
   },
-  "duplicates_merged": 22,
+  "duplicates_merged": 23,
   "end": "2026-10-07",
   "include_same_day": true,
   "ledger_kind": "official",
-  "ledger_pick_rows": 419,
+  "ledger_pick_rows": 422,
   "overall": {
     "conflict_picks": 0,
     "hit_rate": 0.704225,
-    "pending_picks": 40,
+    "pending_picks": 42,
     "priced_paper": 0,
     "priced_picks": 115,
     "priced_real": 115,
@@ -13180,12 +13223,12 @@
     "selected_won_set3_rate": 0.633333,
     "set_diagnostic_picks": 355,
     "settled_picks": 355,
-    "total_picks": 397,
+    "total_picks": 399,
     "void_picks": 2,
     "wins": 250
   },
   "pending_reasons": {
-    "pending_no_result: result not final: live/in-progress markers present": 28,
+    "pending_no_result: result not final: live/in-progress markers present": 30,
     "pending_no_result: result not final: score not final: incomplete final set 0-0": 1,
     "pending_no_result: result not final: score not final: incomplete final set 1-1": 1,
     "pending_no_result: result not final: score not final: incomplete final set 2-0": 1,
@@ -13200,6 +13243,6 @@
   "regime": "genesis-2026-09-20",
   "same_day_cutoff": "2026-10-07",
   "same_day_excluded": 0,
-  "stale_rows_pruned": 0,
+  "stale_rows_pruned": 1,
   "start": "2026-09-20"
 }
