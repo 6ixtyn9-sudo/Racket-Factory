@@ -1,13 +1,13 @@
 {
   "status": "merged",
-  "baseline_rows": 12369,
-  "fresh_rows": 11560,
-  "shared_keys": 11479,
-  "new_from_fresh": 81,
+  "baseline_rows": 12450,
+  "fresh_rows": 11795,
+  "shared_keys": 11560,
+  "new_from_fresh": 235,
   "baseline_only": 890,
-  "settlement_updates": 4,
-  "live_rows_from_fresh": 26,
-  "dim_drift_rows": 3346,
+  "settlement_updates": 10,
+  "live_rows_from_fresh": 16,
+  "dim_drift_rows": 3385,
   "dim_drift_examples": [
     {
       "key": "2026-09-09|ATP|US Open|alexanderblockx||karenkhachanov",
@@ -70,9 +70,9 @@
       "fresh": ""
     }
   ],
-  "merged_rows": 12450,
-  "generated_at": "2026-10-08T06:06:56.027211+00:00",
-  "baseline_sha256": "bc6ecf38efe491b25c2e68bee3cf051cb4c0d173cc131353e44b10dc14f37829",
-  "fresh_sha256": "c7057977508d4fc049e6faf125dd749f4595f89f5d3af7697fae7200792b542a",
-  "merged_sha256": "ee4cf432b45613460331823d68c6bc8265c10999ee4b3327c5bd8bc0a27a61f4"
+  "merged_rows": 12685,
+  "generated_at": "2026-10-08T14:06:36.897119+00:00",
+  "baseline_sha256": "ee4cf432b45613460331823d68c6bc8265c10999ee4b3327c5bd8bc0a27a61f4",
+  "fresh_sha256": "2d90a8084fb3ce3fc2957d2f63561619db98e4f61c21d2615bf2374f5106eb2c",
+  "merged_sha256": "0ccaf0380fde681a0803393c876c6f2eae7ba03e8908556de92f7a7f514cd533"
 }

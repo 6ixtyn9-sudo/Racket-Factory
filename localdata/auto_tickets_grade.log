@@ -8,8 +8,7 @@
 2026-10-01: settled 0W/0L (0 paper wins, 1 unpriced)  PnL +0.0% (paper +0.0%)  bank 80.0% -> 80.0%
 2026-10-02: settled 0W/0L (1 paper wins, 1 unpriced)  PnL +0.0% (paper +0.0%)  bank 80.0% -> 80.0%
 2026-10-03: settled 0W/0L (0 paper wins, 1 unpriced)  PnL +0.0% (paper +0.0%)  bank 80.0% -> 80.0%
-  2026-10-08 value_2leg_mutual: leg PENDING: Vit Kopriva vs Zizou Bergs -- result not final: live/in-progress markers present
-2026-10-08: still open (1 accas pending)
+2026-10-08: settled 0W/1L (0 paper wins, 0 unpriced)  PnL -16.0% (paper +0.0%)  bank 80.0% -> 64.0%
 ALARM 3 open slip(s) older than 3d — they are not 'pending', they are stuck:
   2026-09-13 age 25d · 1 acca(s) · 0% committed · acca flagged paper by builder; no trusted market price
   2026-09-20 age 18d · 1 acca(s) · 0% committed · acca flagged paper by builder; already started at generation time (stale price)
