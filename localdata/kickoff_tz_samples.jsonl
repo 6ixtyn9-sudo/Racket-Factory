@@ -102,3 +102,8 @@
 {"betclan": "07:00", "date": "2026-10-08", "delta_minutes": -80, "fixture": "fabian marozsan|svajda zachary", "reference": "08:20"}
 {"betclan": "07:00", "date": "2026-10-08", "delta_minutes": -80, "fixture": "cerundolo juan manuel|mejia nicolas", "reference": "08:20"}
 {"betclan": "07:00", "date": "2026-10-08", "delta_minutes": 60, "fixture": "coppejans kimmer|stefanos tsitsipas", "reference": "06:00"}
+{"betclan": "07:00", "date": "2026-10-10", "delta_minutes": -10, "fixture": "arnaldi matteo|fritz taylor", "reference": "07:10"}
+{"betclan": "07:00", "date": "2026-10-10", "delta_minutes": 60, "fixture": "daniil medvedev|jan lennard struff", "reference": "06:00"}
+{"betclan": "07:00", "date": "2026-10-10", "delta_minutes": -80, "fixture": "arthur fils|kotov pavel", "reference": "08:20"}
+{"betclan": "07:00", "date": "2026-10-10", "delta_minutes": 60, "fixture": "aliassime auger felix|camilo carabelli ugo", "reference": "06:00"}
+{"betclan": "07:00", "date": "2026-10-10", "delta_minutes": -300, "fixture": "alcaraz carlos|cerundolo juan manuel", "reference": "12:00"}

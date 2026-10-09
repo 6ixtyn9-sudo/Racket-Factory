@@ -1,0 +1,410 @@
+[
+  {
+    "match": "Lambert Ruland vs Jan Kobierski",
+    "kickoff": "00:30",
+    "tour": "UTR",
+    "_series": "UTR",
+    "_surface": "Hard",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 71.0,
+    "odds": null,
+    "odds_source": "nan",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Khachanov / Rublev vs Miedler / Oberleitner",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 59.0,
+    "odds": 1.67,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Cerundolo / Tirante vs Schnaitter / Wallner",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 73.0,
+    "odds": 1.47,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Bolelli / Vavassori vs Krajicek / Mektic",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 59.0,
+    "odds": 1.66,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Nouza / Venus vs Nys / Roger-Vasselin",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 63.0,
+    "odds": 1.61,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
+    ]
+  },
+  {
+    "match": "Pavlasek / Rikl vs Arevalo / Pavic",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 76.0,
+    "odds": 1.39,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Arends / Johnson vs Melo / Zverev",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 59.0,
+    "odds": 1.81,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Zhang / Zhou vs Frantzen / Haase",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Grass",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 65.0,
+    "odds": 1.5,
+    "odds_source": "BetExplorer",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Luz / Matos vs Cabral / Tracy",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 55.0,
+    "odds": 1.78,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Dalibor Svrcina vs Tomas Martin Etcheverry",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 57.0,
+    "odds": 1.7,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Botic Van De Zandschulp vs Alex Michelsen",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 66.0,
+    "odds": 1.52,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Alejandro Tabilo vs Pablo Carreno Busta",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 63.0,
+    "odds": 1.62,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.1-1.3"
+    ]
+  },
+  {
+    "match": "Thiago Agustin Tirante vs Rafael Jodar",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 71.0,
+    "odds": 1.43,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Luciano Darderi vs Stefanos Tsitsipas",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Grass",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 71.0,
+    "odds": 1.44,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Sebastian Baez vs Valentin Vacherot",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Grass",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 76.0,
+    "odds": 1.33,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Tommy Paul vs Adolfo Daniel Vallejo",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 69.0,
+    "odds": 1.51,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Learner Tien vs Zachary Svajda",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 77.0,
+    "odds": 1.32,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Yunchaokete Bu vs Casper Ruud",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 59.0,
+    "odds": 1.76,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Ignacio Buse vs Zizou Bergs",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 63.0,
+    "odds": 1.59,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Jiri Lehecka vs Nuno Borges",
+    "kickoff": "07:00",
+    "tour": "ATP",
+    "_series": "Masters 1000",
+    "_surface": "Hard",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 76.0,
+    "odds": 1.39,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  },
+  {
+    "match": "Mertens / Shnaider vs Dabrowski / Stefani",
+    "kickoff": "08:00",
+    "tour": "WTA",
+    "_series": "WTA1000",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 55.0,
+    "odds": 1.7,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Bhosale / Micic vs Jakupovic / Salden",
+    "kickoff": "13:00",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Medium",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 65.0,
+    "odds": 1.53,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=Medium!=Low"
+    ]
+  },
+  {
+    "match": "Li / Zhang vs Brooks / Ovcharenko",
+    "kickoff": "09:30",
+    "tour": "WTA",
+    "_series": "International",
+    "_surface": "Hard",
+    "pred_confidence": "Low",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.6-2.0",
+    "confidence": 59.0,
+    "odds": 1.65,
+    "odds_source": "BetExplorer",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "fav_odds_band=1.6-2.0!=1.3-1.6"
+    ]
+  },
+  {
+    "match": "Mirra Andreeva vs Nikola Bartunkova",
+    "kickoff": "10:00",
+    "tour": "WTA",
+    "_series": "WTA1000",
+    "_surface": "Hard",
+    "pred_confidence": "High",
+    "cross_source_agree": "Both",
+    "fav_odds_band": "1.3-1.6",
+    "confidence": 71.0,
+    "odds": 1.41,
+    "odds_source": "TheOddsAPI",
+    "closest_slice": "_surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
+    "missing_dims": [
+      "pred_confidence=High!=Low"
+    ]
+  }
+]
