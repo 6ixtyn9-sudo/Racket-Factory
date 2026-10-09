@@ -1,14 +1,14 @@
 {
   "date": "2026-10-09",
   "warehouse": "localdata/warehouse.csv.gz",
-  "warehouse_sha256": "75a8c842c8bcc1e7401c354dcc398cbc11fea2adac368c1f7a99b4ad0df7ea8c",
-  "warehouse_rows": 11843,
+  "warehouse_sha256": "8af2fe14a207601e78a8d8624972e0ddfe1273b145cec6d990fc22ed5a18f193",
+  "warehouse_rows": 11899,
   "cross_source_agree": {
-    "Unknown": 8033,
+    "Unknown": 8083,
     "MarketOnly": 2131,
     "Both": 1190,
     "Disagree": 447,
-    "ForeTennisOnly": 42
+    "ForeTennisOnly": 48
   },
   "n_slices": 246,
   "n_model_slices": 38,
@@ -3452,9 +3452,9 @@
         "fav_odds_band": "1.6-2.0"
       },
       "Dims": 3,
-      "N": 119,
-      "WinRate": "33.61%",
-      "Shrunk": "34.15%",
+      "N": 121,
+      "WinRate": "34.71%",
+      "Shrunk": "35.20%",
       "ROI": "-97.50%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -3490,9 +3490,9 @@
         "pred_confidence": "Low"
       },
       "Dims": 3,
-      "N": 105,
-      "WinRate": "34.29%",
-      "Shrunk": "34.86%",
+      "N": 107,
+      "WinRate": "35.51%",
+      "Shrunk": "36.04%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -3509,9 +3509,9 @@
         "pred_confidence": "Low"
       },
       "Dims": 3,
-      "N": 100,
-      "WinRate": "36.00%",
-      "Shrunk": "36.54%",
+      "N": 102,
+      "WinRate": "37.25%",
+      "Shrunk": "37.74%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -3529,9 +3529,9 @@
         "pred_confidence": "Low"
       },
       "Dims": 4,
-      "N": 100,
-      "WinRate": "36.00%",
-      "Shrunk": "36.54%",
+      "N": 102,
+      "WinRate": "37.25%",
+      "Shrunk": "37.74%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4113,6 +4113,25 @@
       "ROI_num": -100.0
     },
     {
+      "Slice": "_surface:Hard | fav_odds_band:1.6-2.0 | cross_source_agree:ForeTennisOnly",
+      "Side": "prediction",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.6-2.0",
+        "cross_source_agree": "ForeTennisOnly"
+      },
+      "Dims": 3,
+      "N": 31,
+      "WinRate": "29.03%",
+      "Shrunk": "31.43%",
+      "ROI": "-100.00%",
+      "Grade": "IRON",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
       "Slice": "FADE tour:ATP | fav_odds_band:1.3-1.6 | pred_confidence:High",
       "Side": "fade",
       "Combo_Dict": {
@@ -4165,25 +4184,6 @@
       "Shrunk": "34.48%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -100.0
-    },
-    {
-      "Slice": "_surface:Hard | fav_odds_band:1.6-2.0 | cross_source_agree:ForeTennisOnly",
-      "Side": "prediction",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.6-2.0",
-        "cross_source_agree": "ForeTennisOnly"
-      },
-      "Dims": 3,
-      "N": 25,
-      "WinRate": "36.00%",
-      "Shrunk": "37.93%",
-      "ROI": "-100.00%",
-      "Grade": "IRON",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
@@ -4251,6 +4251,44 @@
       "ROI_num": -100.0
     },
     {
+      "Slice": "_surface:Hard | pred_confidence:Low | cross_source_agree:ForeTennisOnly",
+      "Side": "prediction",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "pred_confidence": "Low",
+        "cross_source_agree": "ForeTennisOnly"
+      },
+      "Dims": 3,
+      "N": 24,
+      "WinRate": "20.83%",
+      "Shrunk": "25.00%",
+      "ROI": "-100.00%",
+      "Grade": "IRON",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
+      "Slice": "fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:ForeTennisOnly",
+      "Side": "prediction",
+      "Combo_Dict": {
+        "fav_odds_band": "1.6-2.0",
+        "pred_confidence": "Low",
+        "cross_source_agree": "ForeTennisOnly"
+      },
+      "Dims": 3,
+      "N": 24,
+      "WinRate": "20.83%",
+      "Shrunk": "25.00%",
+      "ROI": "-100.00%",
+      "Grade": "IRON",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
       "Slice": "FADE tour:ATP | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
@@ -4265,6 +4303,26 @@
       "Shrunk": "35.71%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
+      "Slice": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:ForeTennisOnly",
+      "Side": "prediction",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.6-2.0",
+        "pred_confidence": "Low",
+        "cross_source_agree": "ForeTennisOnly"
+      },
+      "Dims": 4,
+      "N": 24,
+      "WinRate": "20.83%",
+      "Shrunk": "25.00%",
+      "ROI": "-100.00%",
+      "Grade": "IRON",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
@@ -4371,44 +4429,6 @@
       "ROI_num": -100.0
     },
     {
-      "Slice": "_surface:Hard | pred_confidence:Low | cross_source_agree:ForeTennisOnly",
-      "Side": "prediction",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "pred_confidence": "Low",
-        "cross_source_agree": "ForeTennisOnly"
-      },
-      "Dims": 3,
-      "N": 18,
-      "WinRate": "27.78%",
-      "Shrunk": "31.82%",
-      "ROI": "-100.00%",
-      "Grade": "IRON",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -100.0
-    },
-    {
-      "Slice": "fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:ForeTennisOnly",
-      "Side": "prediction",
-      "Combo_Dict": {
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Low",
-        "cross_source_agree": "ForeTennisOnly"
-      },
-      "Dims": 3,
-      "N": 18,
-      "WinRate": "27.78%",
-      "Shrunk": "31.82%",
-      "ROI": "-100.00%",
-      "Grade": "IRON",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -100.0
-    },
-    {
       "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
       "Side": "fade",
       "Combo_Dict": {
@@ -4461,26 +4481,6 @@
       "N": 18,
       "WinRate": "33.33%",
       "Shrunk": "36.36%",
-      "ROI": "-100.00%",
-      "Grade": "IRON",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -100.0
-    },
-    {
-      "Slice": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:ForeTennisOnly",
-      "Side": "prediction",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Low",
-        "cross_source_agree": "ForeTennisOnly"
-      },
-      "Dims": 4,
-      "N": 18,
-      "WinRate": "27.78%",
-      "Shrunk": "31.82%",
       "ROI": "-100.00%",
       "Grade": "IRON",
       "Tier": "ROBBER",

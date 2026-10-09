@@ -1,5 +1,5 @@
 Racket Factory Auto Tickets — 2026-10-09
-Generated at: 2026-10-09T00:01:52+02:00
+Generated at: 2026-10-09T08:01:20+02:00
 Bank: 100.00% (cycle base 100.00%)
 Take profit target: 200.00%
 
@@ -7,5 +7,5 @@ Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 1.5)
 Stake: 20% of bank per day (priced track only; paper is hit-rate only)
 
 NO BET — no priced legs available (zero qualifying bets is a valid outcome)
-Playable buckets: {'CAUTION', 'FADE', 'WATCHLIST', 'CERTIFIED_CLEAN'} + ML NO_ODDS BOOST (paper track)
+Playable buckets: {'CERTIFIED_CLEAN', 'CAUTION', 'WATCHLIST', 'FADE'} + ML NO_ODDS BOOST (paper track)
 Skipped: none — the pool was empty before any guard ran.
