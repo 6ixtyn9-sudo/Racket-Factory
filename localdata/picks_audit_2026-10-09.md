@@ -3,9 +3,9 @@
 ## Overall
 
 - current regime: genesis-2026-09-20 (top-level stats are scoped to this regime; per-regime split in By Regime)
-- archived pick rows: 411
-- archived pick dates: 19
-- ledger pick rows (in window): 434
+- archived pick rows: 417
+- archived pick dates: 20
+- ledger pick rows (in window): 440
 - duplicate rows merged (same match + selection re-picked): 23
 - stale history rows pruned (pick no longer in ledger): 0
 - settled picks: 380
@@ -15,10 +15,10 @@
 - ROI: -0.183033
 - ROI (real-priced): -0.183033 (n=122)
 - ROI (paper-priced): None (n=0)
-- pending picks: 29
+- pending picks: 35
 - void picks: 2
 - conflict picks: 0
-- total picks: 411
+- total picks: 417
 - set diagnostic picks: 380
 - selected won any set: 319 (0.839474)
 - selected won set 1: 248 (0.656085)
@@ -39,13 +39,13 @@
 
 ## Ledger reconciliation
 
-- ledger rows in window (official): 434
+- ledger rows in window (official): 440
 - duplicate rows merged (same match + selection in multiple daily ledgers): 23
 - stale history rows pruned (pick no longer in any archived ledger): 0
-- audited rows: 411
+- audited rows: 417
 - identity check: ledger rows - duplicate rows merged = audited rows; By-* tables cover every pick (total = settled + pending + void + conflict)
 - unresolved rows by reason:
-  - pending_no_result: result not final: live/in-progress markers present: 16
+  - pending_no_result: result not final: live/in-progress markers present: 22
   - pending_no_result: result not final: score not final: incomplete final set 4-1: 3
   - pending_no_result: result not final: score not final: incomplete final set 5-2: 2
   - void: walkover: stake returned: 2
@@ -471,41 +471,50 @@
 - 2026-10-08 Prozorova / Sasnovich vs Kobori / Shimizu selected=Kobori / Shimizu winner=Prozorova T. / Sasnovich A. status=lost basis=Challenger_results@2026-10-08:6-7 6-4 12-10
 - 2026-10-08 Thiago Agustin Tirante vs Hamad Medjedovic selected=Thiago Agustin Tirante winner=Tirante T. status=won basis=Challenger_results@2026-10-08:6-4 6-2
 - 2026-10-08 Zhuoxuan Bai vs Emerson Jones selected=Emerson Jones winner=Bai Z. status=lost basis=Challenger_results@2026-10-08:1-6 6-3 7-6
+- 2026-10-09 Luc Wieland vs Neo Niedner selected=Neo Niedner winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-10-09 Madhav Binu vs John Hallquist Lithen selected=John Hallquist Lithen winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-10-09 Martos Gornes / Walkow vs Alcala Gurri / Sanchez Izquierdo selected=Martos Gornes / Walkow winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-10-09 Triay / Brea vs Jensen / Canovas selected=Triay / Brea winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-10-09 Walid Ahouda vs Mark Havlicek selected=Walid Ahouda winner=? status=pending_no_result reason=result not final: live/in-progress markers present
+- 2026-10-09 William Kleege vs Manvydas Balciunas selected=Manvydas Balciunas winner=? status=pending_no_result reason=result not final: live/in-progress markers present
 
 ## By Tour
 
 - `ATP`: total=116, settled=111, wins=64, hit_rate=0.576577, ROI=-0.263111, pending=5
-- `CHALLENGER`: total=53, settled=47, wins=34, hit_rate=0.723404, ROI=-0.203333, pending=6
-- `WTA`: total=242, settled=222, wins=166, hit_rate=0.747748, ROI=-0.115763, pending=18, void=2
+- `CHALLENGER`: total=54, settled=47, wins=34, hit_rate=0.723404, ROI=-0.203333, pending=7
+- `WTA`: total=243, settled=222, wins=166, hit_rate=0.747748, ROI=-0.115763, pending=19, void=2
+- `UTR`: total=4, settled=0, wins=0, hit_rate=None, ROI=None, pending=4
 
 ## By Series
 
 - `ATP250`: total=54, settled=51, wins=29, hit_rate=0.568627, ROI=-0.295185, pending=3
 - `ATP500`: total=54, settled=53, wins=31, hit_rate=0.584906, ROI=-0.116875, pending=1
-- `Challenger`: total=53, settled=47, wins=34, hit_rate=0.723404, ROI=-0.203333, pending=6
+- `Challenger`: total=54, settled=47, wins=34, hit_rate=0.723404, ROI=-0.203333, pending=7
 - `International`: total=192, settled=173, wins=126, hit_rate=0.728324, ROI=-0.119074, pending=17, void=2
 - `Masters 1000`: total=8, settled=7, wins=4, hit_rate=0.571429, ROI=-1.0, pending=1
 - `WTA1000`: total=50, settled=49, wins=40, hit_rate=0.816327, ROI=-0.08, pending=1
+- `UTR`: total=4, settled=0, wins=0, hit_rate=None, ROI=None, pending=4
+- `Premier`: total=1, settled=0, wins=0, hit_rate=None, ROI=None, pending=1
 
 ## By Surface
 
-- `Grass`: total=69, settled=62, wins=46, hit_rate=0.741935, ROI=-0.2205, pending=7
-- `Hard`: total=342, settled=318, wins=218, hit_rate=0.685535, ROI=-0.175686, pending=22, void=2
+- `Grass`: total=70, settled=62, wins=46, hit_rate=0.741935, ROI=-0.2205, pending=8
+- `Hard`: total=347, settled=318, wins=218, hit_rate=0.685535, ROI=-0.175686, pending=27, void=2
 
 ## By Bucket
 
 - `CERTIFIED_CLEAN`: total=13, settled=13, wins=7, hit_rate=0.538462, ROI=-0.28, pending=0
 - `SKIPPED_DEAD_EDGE`: total=54, settled=53, wins=34, hit_rate=0.641509, ROI=-0.176981, pending=1
-- `SKIPPED_VETO`: total=45, settled=43, wins=29, hit_rate=0.674419, ROI=-0.159767, pending=2
+- `SKIPPED_VETO`: total=46, settled=43, wins=29, hit_rate=0.674419, ROI=-0.159767, pending=3
 - `WATCHLIST`: total=14, settled=13, wins=6, hit_rate=0.461538, ROI=-0.187692, pending=1
-- `WATCHLIST_NO_ODDS`: total=285, settled=258, wins=188, hit_rate=0.728682, ROI=None, pending=25, void=2
+- `WATCHLIST_NO_ODDS`: total=290, settled=258, wins=188, hit_rate=0.728682, ROI=None, pending=30, void=2
 
 ## By Source
 
-- `BetClan`: total=359, settled=329, wins=233, hit_rate=0.708207, ROI=-0.16241, pending=28, void=2
+- `BetClan`: total=365, settled=329, wins=233, hit_rate=0.708207, ROI=-0.16241, pending=34, void=2
 - `BetClan, PredixSport`: total=16, settled=16, wins=13, hit_rate=0.8125, ROI=0.405, pending=0
 - `PredixSport`: total=36, settled=35, wins=18, hit_rate=0.514286, ROI=-0.299143, pending=1
 
 ## By Regime
 
-- `genesis-2026-09-20`: total=411, settled=380, wins=264, hit_rate=0.694737, ROI=-0.183033, pending=29
+- `genesis-2026-09-20`: total=417, settled=380, wins=264, hit_rate=0.694737, ROI=-0.183033, pending=35

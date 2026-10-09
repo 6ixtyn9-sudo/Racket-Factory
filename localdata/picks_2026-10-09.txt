@@ -1,6 +1,6 @@
 Racket Factory Picks — 2026-10-09
 ============================================================
-Generated at: 2026-10-09 08:03:00
+Generated at: 2026-10-09 16:08:37
 
 
 CERTIFIED CLEAN PICKS
@@ -21,7 +21,16 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Triay / Brea vs Jensen / Canovas           KO 17:00 -> TRIAY / BREA  conf 89% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=Premier  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=72  roi=16.40%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] William Kleege vs Manvydas Balciunas       KO 23:00 -> MANVYDAS BALCIUNAS  conf 89% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=UTR  series=UTR  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=72  roi=16.40%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Madhav Binu vs John Hallquist Lithen       KO 15:00 -> JOHN HALLQUIST LITHEN  conf 87% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=UTR  series=UTR  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=72  roi=16.40%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Luc Wieland vs Neo Niedner                 KO 21:30 -> NEO NIEDNER  conf 87% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=UTR  series=UTR  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=72  roi=16.40%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Walid Ahouda vs Mark Havlicek              KO 16:30 -> WALID AHOUDA  conf 87% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=UTR  series=UTR  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=WATCHLIST_ONLY  grade=GOLD  n=72  roi=16.40%
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -29,11 +38,76 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both] Martos Gornes / Walkow vs Alcala Gurri / S KO 18:00 -> MARTOS GORNES / WALKOW  conf 87% @1.22  EV +0.06u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=72  roi=16.40%
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
   (none)
+
+NO-SLICE CANDIDATES (diagnostic — matched no exportable slice; NOT bets)  [31 rows]
+============================================================
+  Reynolds / Watt vs Kittay / Yuzuki         KO 15:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @n/a 63%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Marvin Moeller vs Matej Dodig              KO 15:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @n/a 66%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Simon Myslivec vs Jose David Segovia Perez KO 15:00  UTR/Hard  conf=Low  agree=Both  band=1.6-2.0  @n/a 55%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Nicolas Calixto vs Piotr Siekanowicz       KO 23:00  UTR/Hard  conf=High  agree=Both  band=1.3-1.6  @n/a 71%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=High!=Low
+  Guglielmo Verdese vs Junior Tavarez        KO 15:00  UTR/Hard  conf=Low  agree=Both  band=1.6-2.0  @n/a 59%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Nicolas Baena vs Timothe Barthes           KO 21:30  UTR/Hard  conf=Low  agree=Both  band=1.6-2.0  @n/a 55%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Ashton Mcleod vs Antonin Chapuis           KO 18:00  UTR/Hard  conf=Medium  agree=Both  band=1.3-1.6  @n/a 66%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+  James Newton vs Timeo Gaillard             KO 16:30  UTR/Hard  conf=Medium  agree=Both  band=1.3-1.6  @n/a 65%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+  Robert Watzka vs Corey Craig               KO 16:30  UTR/Hard  conf=Medium  agree=Both  band=1.3-1.6  @n/a 69%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+  Darren Wei vs Rahul Sachdev                KO 20:00  UTR/Hard  conf=Low  agree=Both  band=1.6-2.0  @n/a 59%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Salazar / Osoro vs Ustero / Sanchez        KO 14:00  WTA/Hard  conf=Low  agree=Both  band=1.6-2.0  @n/a 55%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Yi Zhou vs Lorenzo Musetti                 KO 14:30  ATP/Grass  conf=High  agree=Both  band=1.3-1.6  @1.50 83%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Forcano Aparicio / Izquierdo Luque vs Lala KO 16:30  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.57 61%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Ovcharenko / Wehnelt vs Gadamauri / Sakell KO 16:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.34 63%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Bilardo / Ricca vs Forejtek / Wiskandt     KO 18:00  CHALLENGER/Grass  conf=Low  agree=Both  band=1.6-2.0  @1.81 54%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Matheus Pucinelli De Almeida vs Joao Lucas KO 20:30  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.50 65%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Thiago Seyboth Wild vs Felipe Meligeni Alv KO 17:00  CHALLENGER/Grass  conf=High  agree=Both  band=1.3-1.6  @1.31 75%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Juan Carlos Prado Angelo vs Miguel Tobon   KO 23:00  CHALLENGER/Grass  conf=High  agree=Both  band=1.3-1.6  @1.34 73%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Enrico Dalla Valle vs Francesco Passaro    KO 20:30  CHALLENGER/Grass  conf=Low  agree=Both  band=1.6-2.0  @1.62 59%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Massimo Giunta vs Alejandro Moro Canas     KO 18:00  CHALLENGER/Grass  conf=High  agree=Both  band=1.3-1.6  @1.39 73%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Pablo Llamas Ruiz vs Pedro Martinez        KO 18:30  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.57 65%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Abdullah Shelbayh vs Daniil Glinka         KO 14:30  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.57 65%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Lukas Neumayer vs Max Alcala Gurri         KO 15:00  CHALLENGER/Grass  conf=Low  agree=Both  band=1.6-2.0  @1.72 57%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Michele Ribecai vs Jonas Forejtek          KO 16:00  CHALLENGER/Grass  conf=Low  agree=Both  band=1.6-2.0  @1.70 59%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Eduardo Ribeiro vs Lautaro Midon           KO 19:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.42 69%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Elmer Moller vs Tiago Pereira              KO 16:30  CHALLENGER/Grass  conf=High  agree=Both  band=1.3-1.6  @1.42 71%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Vilius Gaubas vs Luka Mikrut               KO 16:30  CHALLENGER/Grass  conf=High  agree=Both  band=1.3-1.6  @1.40 71%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Laslo Djere vs Hynek Barton                KO 17:00  CHALLENGER/Grass  conf=Medium  agree=Both  band=1.3-1.6  @1.48 69%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=Medium!=Low
+  Hsieh / Ostapenko vs Routliffe / Sutjiadi  KO 15:30  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.48 65%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+  Simona Waltert vs Himeno Sakatsume         KO 15:00  WTA/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.88 54%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  ... and 1 more (full list in picks_unmatched_2026-10-09.json)
 
 ⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
 ⚠️  Bet only what you can afford to lose.

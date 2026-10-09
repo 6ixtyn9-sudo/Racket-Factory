@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-10
 ============================================================
-Generated at: 2026-10-09 08:03:05
-Snapshot as of: 2026-10-09T08:01:20+02:00
+Generated at: 2026-10-09 16:09:03
+Snapshot as of: 2026-10-09T16:01:54+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,8 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Lambert Ruland vs Jan Kobierski            KO 00:30 -> LAMBERT RULAND  conf 71% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=UTR  series=UTR  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
