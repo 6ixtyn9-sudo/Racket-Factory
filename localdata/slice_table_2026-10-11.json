@@ -1,18 +1,18 @@
 {
   "date": "2026-10-11",
   "warehouse": "localdata/warehouse.csv.gz",
-  "warehouse_sha256": "6f910d501b5d431571c9043791245bdc0536bf7ba269a2a559fd6c8ab035120f",
-  "warehouse_rows": 12188,
+  "warehouse_sha256": "3695526c17200dbbca90e184c7d15af5e8715b82ac1a4a823a7331f65e1343a6",
+  "warehouse_rows": 12323,
   "cross_source_agree": {
-    "Unknown": 8277,
-    "MarketOnly": 2182,
-    "Both": 1207,
+    "Unknown": 8314,
+    "MarketOnly": 2233,
+    "Both": 1253,
     "Disagree": 449,
-    "ForeTennisOnly": 73
+    "ForeTennisOnly": 74
   },
-  "n_slices": 242,
+  "n_slices": 241,
   "n_model_slices": 36,
-  "n_fade_slices": 206,
+  "n_fade_slices": 205,
   "n_exportable_model": 12,
   "n_exportable_fade": 3,
   "slices": [
@@ -56,45 +56,6 @@
       "ROI_num": 28.41
     },
     {
-      "Slice": "fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both",
-      "Side": "prediction",
-      "Combo_Dict": {
-        "fav_odds_band": "1.1-1.3",
-        "pred_confidence": "High",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 72,
-      "WinRate": "88.89%",
-      "Shrunk": "86.84%",
-      "ROI": "16.40%",
-      "Grade": "GOLD",
-      "Tier": "BANKER",
-      "Verdict": "EDGE CONFIRMED",
-      "Exportable": true,
-      "ROI_num": 16.4
-    },
-    {
-      "Slice": "_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both",
-      "Side": "prediction",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.1-1.3",
-        "pred_confidence": "High",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 72,
-      "WinRate": "88.89%",
-      "Shrunk": "86.84%",
-      "ROI": "16.40%",
-      "Grade": "GOLD",
-      "Tier": "BANKER",
-      "Verdict": "EDGE CONFIRMED",
-      "Exportable": true,
-      "ROI_num": 16.4
-    },
-    {
       "Slice": "_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
       "Side": "prediction",
       "Combo_Dict": {
@@ -103,15 +64,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 124,
-      "WinRate": "85.48%",
-      "Shrunk": "84.38%",
-      "ROI": "13.61%",
+      "N": 127,
+      "WinRate": "85.04%",
+      "Shrunk": "83.97%",
+      "ROI": "12.48%",
       "Grade": "GOLD",
       "Tier": "BANKER",
       "Verdict": "EDGE CONFIRMED",
       "Exportable": true,
-      "ROI_num": 13.61
+      "ROI_num": 12.48
     },
     {
       "Slice": "FADE fav_odds_band:1.1-1.3 | pred_confidence:Medium | cross_source_agree:MarketOnly",
@@ -200,9 +161,9 @@
         "pred_confidence": "High"
       },
       "Dims": 4,
-      "N": 135,
-      "WinRate": "30.37%",
-      "Shrunk": "30.94%",
+      "N": 136,
+      "WinRate": "30.88%",
+      "Shrunk": "31.43%",
       "ROI": "-0.80%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -239,9 +200,9 @@
         "pred_confidence": "High"
       },
       "Dims": 3,
-      "N": 137,
-      "WinRate": "29.93%",
-      "Shrunk": "30.50%",
+      "N": 138,
+      "WinRate": "30.43%",
+      "Shrunk": "30.99%",
       "ROI": "-2.39%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -297,9 +258,9 @@
         "fav_odds_band": "1.1-1.3"
       },
       "Dims": 3,
-      "N": 231,
-      "WinRate": "32.90%",
-      "Shrunk": "33.19%",
+      "N": 232,
+      "WinRate": "33.19%",
+      "Shrunk": "33.47%",
       "ROI": "-9.45%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -466,25 +427,6 @@
       "ROI_num": -26.6
     },
     {
-      "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:High",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "_surface": "Hard",
-        "pred_confidence": "High"
-      },
-      "Dims": 3,
-      "N": 255,
-      "WinRate": "29.41%",
-      "Shrunk": "29.73%",
-      "ROI": "-27.21%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -27.21
-    },
-    {
       "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.1-1.3 | pred_confidence:Medium",
       "Side": "fade",
       "Combo_Dict": {
@@ -502,6 +444,25 @@
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
       "ROI_num": -27.43
+    },
+    {
+      "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:High",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "_surface": "Hard",
+        "pred_confidence": "High"
+      },
+      "Dims": 3,
+      "N": 258,
+      "WinRate": "29.84%",
+      "Shrunk": "30.15%",
+      "ROI": "-27.53%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -27.53
     },
     {
       "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low",
@@ -822,25 +783,6 @@
       "ROI_num": -41.86
     },
     {
-      "Slice": "FADE _surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High",
-      "Side": "fade",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.1-1.3",
-        "pred_confidence": "High"
-      },
-      "Dims": 3,
-      "N": 253,
-      "WinRate": "24.11%",
-      "Shrunk": "24.51%",
-      "ROI": "-43.24%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -43.24
-    },
-    {
       "Slice": "FADE fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:MarketOnly",
       "Side": "fade",
       "Combo_Dict": {
@@ -877,6 +819,25 @@
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
       "ROI_num": -43.49
+    },
+    {
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High",
+      "Side": "fade",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.1-1.3",
+        "pred_confidence": "High"
+      },
+      "Dims": 3,
+      "N": 256,
+      "WinRate": "24.22%",
+      "Shrunk": "24.62%",
+      "ROI": "-43.75%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -43.75
     },
     {
       "Slice": "tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Disagree",
@@ -997,45 +958,6 @@
       "ROI_num": -48.73
     },
     {
-      "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6"
-      },
-      "Dims": 3,
-      "N": 501,
-      "WinRate": "36.93%",
-      "Shrunk": "37.03%",
-      "ROI": "-48.77%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -48.77
-    },
-    {
-      "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 104,
-      "WinRate": "38.46%",
-      "Shrunk": "38.89%",
-      "ROI": "-48.94%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -48.94
-    },
-    {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.6-2.0 | cross_source_agree:Disagree",
       "Side": "fade",
       "Combo_Dict": {
@@ -1056,64 +978,23 @@
       "ROI_num": -48.95
     },
     {
-      "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
+      "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6",
       "Side": "fade",
       "Combo_Dict": {
         "tour": "CHALLENGER",
         "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 5,
-      "N": 101,
-      "WinRate": "38.61%",
-      "Shrunk": "39.05%",
-      "ROI": "-48.99%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -48.99
-    },
-    {
-      "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "fav_odds_band": "1.3-1.6",
-        "cross_source_agree": "Both"
+        "fav_odds_band": "1.3-1.6"
       },
       "Dims": 3,
-      "N": 195,
-      "WinRate": "34.36%",
-      "Shrunk": "34.67%",
-      "ROI": "-49.36%",
+      "N": 507,
+      "WinRate": "36.69%",
+      "Shrunk": "36.79%",
+      "ROI": "-49.37%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -49.36
-    },
-    {
-      "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 187,
-      "WinRate": "34.76%",
-      "Shrunk": "35.08%",
-      "ROI": "-49.52%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -49.52
+      "ROI_num": -49.37
     },
     {
       "Slice": "FADE fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:Disagree",
@@ -1135,6 +1016,45 @@
       "ROI_num": -50.29
     },
     {
+      "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "fav_odds_band": "1.3-1.6",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 201,
+      "WinRate": "33.83%",
+      "Shrunk": "34.15%",
+      "ROI": "-50.82%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -50.82
+    },
+    {
+      "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "_surface": "Hard",
+        "fav_odds_band": "1.3-1.6",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 193,
+      "WinRate": "34.20%",
+      "Shrunk": "34.52%",
+      "ROI": "-51.05%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -51.05
+    },
+    {
       "Slice": "FADE fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
@@ -1152,6 +1072,47 @@
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
       "ROI_num": -51.26
+    },
+    {
+      "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 108,
+      "WinRate": "37.04%",
+      "Shrunk": "37.50%",
+      "ROI": "-51.29%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -51.29
+    },
+    {
+      "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "_surface": "Hard",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 5,
+      "N": 105,
+      "WinRate": "37.14%",
+      "Shrunk": "37.61%",
+      "ROI": "-51.42%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -51.42
     },
     {
       "Slice": "FADE _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:Disagree",
@@ -1174,64 +1135,6 @@
       "ROI_num": -51.57
     },
     {
-      "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "_surface": "Hard",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 164,
-      "WinRate": "38.41%",
-      "Shrunk": "38.69%",
-      "ROI": "-51.75%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -51.75
-    },
-    {
-      "Slice": "FADE tour:CHALLENGER | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 168,
-      "WinRate": "38.10%",
-      "Shrunk": "38.37%",
-      "ROI": "-52.02%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -52.02
-    },
-    {
-      "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:Medium",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "_surface": "Hard",
-        "pred_confidence": "Medium"
-      },
-      "Dims": 3,
-      "N": 456,
-      "WinRate": "39.47%",
-      "Shrunk": "39.57%",
-      "ROI": "-52.73%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -52.73
-    },
-    {
       "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
@@ -1250,6 +1153,45 @@
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
       "ROI_num": -52.78
+    },
+    {
+      "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "_surface": "Hard",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 169,
+      "WinRate": "37.87%",
+      "Shrunk": "38.15%",
+      "ROI": "-53.18%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -53.18
+    },
+    {
+      "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:Medium",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "_surface": "Hard",
+        "pred_confidence": "Medium"
+      },
+      "Dims": 3,
+      "N": 461,
+      "WinRate": "39.26%",
+      "Shrunk": "39.35%",
+      "ROI": "-53.26%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -53.26
     },
     {
       "Slice": "FADE tour:WTA | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
@@ -1291,6 +1233,25 @@
       "ROI_num": -53.38
     },
     {
+      "Slice": "FADE tour:CHALLENGER | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 173,
+      "WinRate": "37.57%",
+      "Shrunk": "37.85%",
+      "ROI": "-53.40%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -53.4
+    },
+    {
       "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.3-1.6 | pred_confidence:Medium",
       "Side": "fade",
       "Combo_Dict": {
@@ -1299,15 +1260,15 @@
         "pred_confidence": "Medium"
       },
       "Dims": 3,
-      "N": 281,
-      "WinRate": "39.50%",
-      "Shrunk": "39.65%",
-      "ROI": "-54.84%",
+      "N": 285,
+      "WinRate": "38.95%",
+      "Shrunk": "39.10%",
+      "ROI": "-55.66%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -54.84
+      "ROI_num": -55.66
     },
     {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium",
@@ -1319,34 +1280,15 @@
         "pred_confidence": "Medium"
       },
       "Dims": 4,
-      "N": 276,
-      "WinRate": "39.49%",
-      "Shrunk": "39.64%",
-      "ROI": "-55.17%",
+      "N": 280,
+      "WinRate": "38.93%",
+      "Shrunk": "39.08%",
+      "ROI": "-56.01%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -55.17
-    },
-    {
-      "Slice": "FADE tour:CHALLENGER | pred_confidence:High | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "pred_confidence": "High",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 100,
-      "WinRate": "27.00%",
-      "Shrunk": "27.88%",
-      "ROI": "-56.11%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -56.11
+      "ROI_num": -56.01
     },
     {
       "Slice": "FADE tour:WTA | pred_confidence:Low | cross_source_agree:Both",
@@ -1388,6 +1330,25 @@
       "ROI_num": -56.36
     },
     {
+      "Slice": "FADE tour:CHALLENGER | pred_confidence:High | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "pred_confidence": "High",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 103,
+      "WinRate": "28.16%",
+      "Shrunk": "28.97%",
+      "ROI": "-56.58%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -56.58
+    },
+    {
       "Slice": "FADE tour:WTA | fav_odds_band:1.3-1.6 | pred_confidence:Low",
       "Side": "fade",
       "Combo_Dict": {
@@ -1425,25 +1386,6 @@
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
       "ROI_num": -57.24
-    },
-    {
-      "Slice": "FADE tour:CHALLENGER | pred_confidence:Low | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "pred_confidence": "Low",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 215,
-      "WinRate": "36.74%",
-      "Shrunk": "36.99%",
-      "ROI": "-57.34%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -57.34
     },
     {
       "Slice": "tour:WTA | pred_confidence:Low | cross_source_agree:Disagree",
@@ -1485,6 +1427,25 @@
       "ROI_num": -57.71
     },
     {
+      "Slice": "FADE tour:CHALLENGER | pred_confidence:Low | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "pred_confidence": "Low",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 222,
+      "WinRate": "37.84%",
+      "Shrunk": "38.05%",
+      "ROI": "-57.83%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -57.83
+    },
+    {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:High | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
@@ -1494,15 +1455,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 97,
-      "WinRate": "25.77%",
-      "Shrunk": "26.73%",
-      "ROI": "-58.51%",
+      "N": 100,
+      "WinRate": "27.00%",
+      "Shrunk": "27.88%",
+      "ROI": "-58.97%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -58.51
+      "ROI_num": -58.97
     },
     {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:Low | cross_source_agree:Both",
@@ -1514,54 +1475,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 210,
-      "WinRate": "36.67%",
-      "Shrunk": "36.92%",
-      "ROI": "-58.85%",
+      "N": 217,
+      "WinRate": "37.79%",
+      "Shrunk": "38.01%",
+      "ROI": "-59.33%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -58.85
-    },
-    {
-      "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 303,
-      "WinRate": "32.01%",
-      "Shrunk": "32.25%",
-      "ROI": "-59.43%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -59.43
-    },
-    {
-      "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:High | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "High",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 71,
-      "WinRate": "33.80%",
-      "Shrunk": "34.67%",
-      "ROI": "-59.72%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -59.72
+      "ROI_num": -59.33
     },
     {
       "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:Disagree",
@@ -1584,141 +1506,43 @@
       "ROI_num": -60.15
     },
     {
-      "Slice": "FADE fav_odds_band:1.3-1.6 | pred_confidence:High | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "High",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 72,
-      "WinRate": "33.33%",
-      "Shrunk": "34.21%",
-      "ROI": "-60.39%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -60.39
-    },
-    {
-      "Slice": "FADE fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 182,
-      "WinRate": "33.52%",
-      "Shrunk": "33.87%",
-      "ROI": "-61.49%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -61.49
-    },
-    {
-      "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:High | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "High",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 5,
-      "N": 45,
-      "WinRate": "28.89%",
-      "Shrunk": "30.61%",
-      "ROI": "-61.74%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -61.74
-    },
-    {
-      "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
         "_surface": "Hard",
         "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 320,
+      "WinRate": "31.25%",
+      "Shrunk": "31.48%",
+      "ROI": "-61.54%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -61.54
+    },
+    {
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:High | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "High",
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 179,
-      "WinRate": "33.52%",
-      "Shrunk": "33.88%",
-      "ROI": "-61.78%",
+      "N": 76,
+      "WinRate": "32.89%",
+      "Shrunk": "33.75%",
+      "ROI": "-62.28%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -61.78
-    },
-    {
-      "Slice": "FADE _surface:Hard | pred_confidence:High | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "pred_confidence": "High",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 153,
-      "WinRate": "26.14%",
-      "Shrunk": "26.75%",
-      "ROI": "-62.05%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -62.05
-    },
-    {
-      "Slice": "FADE fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 61,
-      "WinRate": "36.07%",
-      "Shrunk": "36.92%",
-      "ROI": "-62.07%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -62.07
-    },
-    {
-      "Slice": "FADE _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 61,
-      "WinRate": "36.07%",
-      "Shrunk": "36.92%",
-      "ROI": "-62.07%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -62.07
+      "ROI_num": -62.28
     },
     {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:Disagree",
@@ -1742,6 +1566,85 @@
       "ROI_num": -62.51
     },
     {
+      "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:High | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "CHALLENGER",
+        "_surface": "Hard",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "High",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 5,
+      "N": 47,
+      "WinRate": "29.79%",
+      "Shrunk": "31.37%",
+      "ROI": "-62.69%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -62.69
+    },
+    {
+      "Slice": "FADE fav_odds_band:1.3-1.6 | pred_confidence:High | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "High",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 77,
+      "WinRate": "32.47%",
+      "Shrunk": "33.33%",
+      "ROI": "-62.87%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -62.87
+    },
+    {
+      "Slice": "FADE fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "fav_odds_band": "1.6-2.0",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 64,
+      "WinRate": "35.94%",
+      "Shrunk": "36.76%",
+      "ROI": "-63.56%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -63.56
+    },
+    {
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.6-2.0",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 64,
+      "WinRate": "35.94%",
+      "Shrunk": "36.76%",
+      "ROI": "-63.56%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -63.56
+    },
+    {
       "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.3-1.6 | pred_confidence:High | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
@@ -1751,56 +1654,34 @@
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 46,
-      "WinRate": "28.26%",
-      "Shrunk": "30.00%",
-      "ROI": "-62.69%",
+      "N": 48,
+      "WinRate": "29.17%",
+      "Shrunk": "30.77%",
+      "ROI": "-63.60%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -62.69
+      "ROI_num": -63.6
     },
     {
-      "Slice": "FADE tour:WTA | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
+      "Slice": "FADE _surface:Hard | pred_confidence:High | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
-        "tour": "WTA",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 17,
-      "WinRate": "29.41%",
-      "Shrunk": "33.33%",
-      "ROI": "-62.86%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -62.86
-    },
-    {
-      "Slice": "FADE tour:WTA | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "WTA",
         "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "Medium",
+        "pred_confidence": "High",
         "cross_source_agree": "Both"
       },
-      "Dims": 5,
-      "N": 17,
-      "WinRate": "29.41%",
-      "Shrunk": "33.33%",
-      "ROI": "-62.86%",
+      "Dims": 3,
+      "N": 161,
+      "WinRate": "26.09%",
+      "Shrunk": "26.67%",
+      "ROI": "-63.63%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -62.86
+      "ROI_num": -63.63
     },
     {
       "Slice": "FADE _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:MarketOnly",
@@ -1822,6 +1703,45 @@
       "ROI_num": -63.93
     },
     {
+      "Slice": "FADE fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 194,
+      "WinRate": "32.47%",
+      "Shrunk": "32.83%",
+      "ROI": "-63.96%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -63.96
+    },
+    {
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 191,
+      "WinRate": "32.46%",
+      "Shrunk": "32.82%",
+      "ROI": "-64.28%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -64.28
+    },
+    {
       "Slice": "FADE _surface:Hard | pred_confidence:Medium | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
@@ -1830,131 +1750,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 274,
-      "WinRate": "32.12%",
-      "Shrunk": "32.37%",
-      "ROI": "-64.20%",
+      "N": 289,
+      "WinRate": "31.49%",
+      "Shrunk": "31.74%",
+      "ROI": "-66.02%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -64.2
-    },
-    {
-      "Slice": "FADE tour:WTA | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "WTA",
-        "fav_odds_band": "1.3-1.6",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 32,
-      "WinRate": "28.12%",
-      "Shrunk": "30.56%",
-      "ROI": "-64.74%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -64.74
-    },
-    {
-      "Slice": "FADE tour:WTA | _surface:Hard | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "WTA",
-        "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 32,
-      "WinRate": "28.12%",
-      "Shrunk": "30.56%",
-      "ROI": "-64.74%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -64.74
-    },
-    {
-      "Slice": "FADE _surface:Hard | fav_odds_band:1.6-2.0 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.6-2.0",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 365,
-      "WinRate": "39.73%",
-      "Shrunk": "39.84%",
-      "ROI": "-65.14%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -65.14
-    },
-    {
-      "Slice": "FADE _surface:Hard | pred_confidence:Low | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "pred_confidence": "Low",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 366,
-      "WinRate": "36.07%",
-      "Shrunk": "36.22%",
-      "ROI": "-65.37%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -65.37
-    },
-    {
-      "Slice": "FADE tour:WTA | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "WTA",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 25,
-      "WinRate": "28.00%",
-      "Shrunk": "31.03%",
-      "ROI": "-65.71%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -65.71
-    },
-    {
-      "Slice": "FADE tour:WTA | _surface:Hard | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "WTA",
-        "_surface": "Hard",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 25,
-      "WinRate": "28.00%",
-      "Shrunk": "31.03%",
-      "ROI": "-65.71%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -65.71
+      "ROI_num": -66.02
     },
     {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
@@ -1966,9 +1770,9 @@
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 85,
-      "WinRate": "17.65%",
-      "Shrunk": "19.10%",
+      "N": 86,
+      "WinRate": "18.60%",
+      "Shrunk": "20.00%",
       "ROI": "-66.23%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -1985,9 +1789,9 @@
         "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 86,
-      "WinRate": "17.44%",
-      "Shrunk": "18.89%",
+      "N": 87,
+      "WinRate": "18.39%",
+      "Shrunk": "19.78%",
       "ROI": "-66.65%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -2037,6 +1841,44 @@
       "ROI_num": -66.67
     },
     {
+      "Slice": "FADE _surface:Hard | pred_confidence:Low | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "pred_confidence": "Low",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 387,
+      "WinRate": "36.43%",
+      "Shrunk": "36.57%",
+      "ROI": "-66.78%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -66.78
+    },
+    {
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.6-2.0 | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.6-2.0",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 389,
+      "WinRate": "39.85%",
+      "Shrunk": "39.95%",
+      "ROI": "-66.86%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -66.86
+    },
+    {
       "Slice": "_surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:High",
       "Side": "prediction",
       "Combo_Dict": {
@@ -2056,6 +1898,86 @@
       "ROI_num": -66.91
     },
     {
+      "Slice": "FADE tour:WTA | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "WTA",
+        "fav_odds_band": "1.3-1.6",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 34,
+      "WinRate": "26.47%",
+      "Shrunk": "28.95%",
+      "ROI": "-67.09%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -67.09
+    },
+    {
+      "Slice": "FADE tour:WTA | _surface:Hard | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "WTA",
+        "_surface": "Hard",
+        "fav_odds_band": "1.3-1.6",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 34,
+      "WinRate": "26.47%",
+      "Shrunk": "28.95%",
+      "ROI": "-67.09%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -67.09
+    },
+    {
+      "Slice": "FADE tour:WTA | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "WTA",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 19,
+      "WinRate": "26.32%",
+      "Shrunk": "30.43%",
+      "ROI": "-67.50%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -67.5
+    },
+    {
+      "Slice": "FADE tour:WTA | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "WTA",
+        "_surface": "Hard",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 5,
+      "N": 19,
+      "WinRate": "26.32%",
+      "Shrunk": "30.43%",
+      "ROI": "-67.50%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -67.5
+    },
+    {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:High",
       "Side": "fade",
       "Combo_Dict": {
@@ -2065,54 +1987,54 @@
         "pred_confidence": "High"
       },
       "Dims": 4,
-      "N": 110,
-      "WinRate": "24.55%",
-      "Shrunk": "25.44%",
-      "ROI": "-68.00%",
+      "N": 112,
+      "WinRate": "25.00%",
+      "Shrunk": "25.86%",
+      "ROI": "-68.33%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -68.0
+      "ROI_num": -68.33
     },
     {
-      "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium",
+      "Slice": "FADE tour:WTA | pred_confidence:Medium | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "Medium"
+        "tour": "WTA",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 456,
-      "WinRate": "35.75%",
-      "Shrunk": "35.87%",
-      "ROI": "-68.39%",
+      "N": 27,
+      "WinRate": "25.93%",
+      "Shrunk": "29.03%",
+      "ROI": "-68.70%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -68.39
+      "ROI_num": -68.7
     },
     {
-      "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
+      "Slice": "FADE tour:WTA | _surface:Hard | pred_confidence:Medium | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Low",
+        "tour": "WTA",
+        "_surface": "Hard",
+        "pred_confidence": "Medium",
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 159,
-      "WinRate": "38.99%",
-      "Shrunk": "39.26%",
-      "ROI": "-68.69%",
+      "N": 27,
+      "WinRate": "25.93%",
+      "Shrunk": "29.03%",
+      "ROI": "-68.70%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -68.69
+      "ROI_num": -68.7
     },
     {
       "Slice": "FADE _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
@@ -2123,15 +2045,34 @@
         "pred_confidence": "Medium"
       },
       "Dims": 3,
-      "N": 181,
-      "WinRate": "34.81%",
-      "Shrunk": "35.14%",
-      "ROI": "-68.91%",
+      "N": 184,
+      "WinRate": "34.78%",
+      "Shrunk": "35.11%",
+      "ROI": "-69.34%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -68.91
+      "ROI_num": -69.34
+    },
+    {
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium",
+      "Side": "fade",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "Medium"
+      },
+      "Dims": 3,
+      "N": 469,
+      "WinRate": "35.18%",
+      "Shrunk": "35.31%",
+      "ROI": "-69.37%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -69.37
     },
     {
       "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.3-1.6 | pred_confidence:High",
@@ -2142,15 +2083,15 @@
         "pred_confidence": "High"
       },
       "Dims": 3,
-      "N": 114,
-      "WinRate": "23.68%",
-      "Shrunk": "24.58%",
-      "ROI": "-69.28%",
+      "N": 116,
+      "WinRate": "24.14%",
+      "Shrunk": "25.00%",
+      "ROI": "-69.58%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -69.28
+      "ROI_num": -69.58
     },
     {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | cross_source_agree:Both",
@@ -2161,55 +2102,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 782,
-      "WinRate": "38.24%",
-      "Shrunk": "38.30%",
-      "ROI": "-70.04%",
+      "N": 798,
+      "WinRate": "38.47%",
+      "Shrunk": "38.53%",
+      "ROI": "-70.46%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -70.04
-    },
-    {
-      "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "CHALLENGER",
-        "_surface": "Hard",
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Low",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 5,
-      "N": 158,
-      "WinRate": "38.61%",
-      "Shrunk": "38.89%",
-      "ROI": "-70.07%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -70.07
-    },
-    {
-      "Slice": "FADE fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Low",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 295,
-      "WinRate": "39.32%",
-      "Shrunk": "39.46%",
-      "ROI": "-71.23%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -71.23
+      "ROI_num": -70.46
     },
     {
       "Slice": "FADE tour:CHALLENGER | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both",
@@ -2221,9 +2122,9 @@
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 45,
-      "WinRate": "15.56%",
-      "Shrunk": "18.37%",
+      "N": 46,
+      "WinRate": "17.39%",
+      "Shrunk": "20.00%",
       "ROI": "-71.74%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -2242,73 +2143,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 5,
-      "N": 45,
-      "WinRate": "15.56%",
-      "Shrunk": "18.37%",
+      "N": 46,
+      "WinRate": "17.39%",
+      "Shrunk": "20.00%",
       "ROI": "-71.74%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
       "ROI_num": -71.74
-    },
-    {
-      "Slice": "FADE _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Low",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 294,
-      "WinRate": "39.12%",
-      "Shrunk": "39.26%",
-      "ROI": "-72.00%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -72.0
-    },
-    {
-      "Slice": "FADE tour:WTA | _surface:Hard | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "WTA",
-        "_surface": "Hard",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 120,
-      "WinRate": "30.00%",
-      "Shrunk": "30.65%",
-      "ROI": "-72.18%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -72.18
-    },
-    {
-      "Slice": "FADE _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "_surface": "Hard",
-        "fav_odds_band": "1.1-1.3",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 124,
-      "WinRate": "14.52%",
-      "Shrunk": "15.62%",
-      "ROI": "-72.28%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -72.28
     },
     {
       "Slice": "FADE tour:CHALLENGER | pred_confidence:Medium | cross_source_agree:MarketOnly",
@@ -2330,6 +2173,63 @@
       "ROI_num": -72.31
     },
     {
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.1-1.3",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 127,
+      "WinRate": "14.96%",
+      "Shrunk": "16.03%",
+      "ROI": "-72.74%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -72.74
+    },
+    {
+      "Slice": "FADE tour:WTA | _surface:Hard | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "WTA",
+        "_surface": "Hard",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 122,
+      "WinRate": "29.51%",
+      "Shrunk": "30.16%",
+      "ROI": "-72.74%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -72.74
+    },
+    {
+      "Slice": "FADE fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "fav_odds_band": "1.6-2.0",
+        "pred_confidence": "Low",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 316,
+      "WinRate": "39.56%",
+      "Shrunk": "39.69%",
+      "ROI": "-72.77%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -72.77
+    },
+    {
       "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:High",
       "Side": "fade",
       "Combo_Dict": {
@@ -2338,15 +2238,35 @@
         "pred_confidence": "High"
       },
       "Dims": 3,
-      "N": 181,
-      "WinRate": "27.62%",
-      "Shrunk": "28.11%",
-      "ROI": "-72.65%",
+      "N": 186,
+      "WinRate": "27.42%",
+      "Shrunk": "27.89%",
+      "ROI": "-73.36%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -72.65
+      "ROI_num": -73.36
+    },
+    {
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.6-2.0",
+        "pred_confidence": "Low",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 315,
+      "WinRate": "39.37%",
+      "Shrunk": "39.50%",
+      "ROI": "-73.50%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -73.5
     },
     {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:Medium | cross_source_agree:MarketOnly",
@@ -2535,34 +2455,15 @@
         "fav_odds_band": "1.3-1.6"
       },
       "Dims": 3,
-      "N": 105,
-      "WinRate": "26.67%",
-      "Shrunk": "27.52%",
-      "ROI": "-80.79%",
+      "N": 107,
+      "WinRate": "26.17%",
+      "Shrunk": "27.03%",
+      "ROI": "-81.22%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -80.79
-    },
-    {
-      "Slice": "FADE tour:WTA | _surface:Hard | pred_confidence:Medium",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "WTA",
-        "_surface": "Hard",
-        "pred_confidence": "Medium"
-      },
-      "Dims": 3,
-      "N": 81,
-      "WinRate": "22.22%",
-      "Shrunk": "23.53%",
-      "ROI": "-81.65%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -81.65
+      "ROI_num": -81.22
     },
     {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | pred_confidence:High | cross_source_agree:MarketOnly",
@@ -2604,6 +2505,25 @@
       "ROI_num": -81.87
     },
     {
+      "Slice": "FADE tour:WTA | _surface:Hard | pred_confidence:Medium",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "WTA",
+        "_surface": "Hard",
+        "pred_confidence": "Medium"
+      },
+      "Dims": 3,
+      "N": 83,
+      "WinRate": "21.69%",
+      "Shrunk": "22.99%",
+      "ROI": "-82.17%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -82.17
+    },
+    {
       "Slice": "FADE fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
@@ -2612,15 +2532,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 72,
-      "WinRate": "11.11%",
-      "Shrunk": "13.16%",
-      "ROI": "-82.39%",
+      "N": 75,
+      "WinRate": "12.00%",
+      "Shrunk": "13.92%",
+      "ROI": "-82.89%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -82.39
+      "ROI_num": -82.89
     },
     {
       "Slice": "FADE _surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both",
@@ -2632,15 +2552,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 72,
-      "WinRate": "11.11%",
-      "Shrunk": "13.16%",
-      "ROI": "-82.39%",
+      "N": 75,
+      "WinRate": "12.00%",
+      "Shrunk": "13.92%",
+      "ROI": "-82.89%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -82.39
+      "ROI_num": -82.89
     },
     {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:MarketOnly",
@@ -2761,45 +2681,6 @@
       "ROI_num": -86.24
     },
     {
-      "Slice": "FADE tour:ATP | pred_confidence:High | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "pred_confidence": "High",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 17,
-      "WinRate": "17.65%",
-      "Shrunk": "23.81%",
-      "ROI": "-86.67%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -86.67
-    },
-    {
-      "Slice": "FADE tour:ATP | _surface:Hard | pred_confidence:High | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "_surface": "Hard",
-        "pred_confidence": "High",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 17,
-      "WinRate": "17.65%",
-      "Shrunk": "23.81%",
-      "ROI": "-86.67%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -86.67
-    },
-    {
       "Slice": "FADE _surface:Hard | pred_confidence:High | cross_source_agree:MarketOnly",
       "Side": "fade",
       "Combo_Dict": {
@@ -2819,6 +2700,45 @@
       "ROI_num": -88.35
     },
     {
+      "Slice": "FADE tour:ATP | pred_confidence:High | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "pred_confidence": "High",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 20,
+      "WinRate": "15.00%",
+      "Shrunk": "20.83%",
+      "ROI": "-88.89%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -88.89
+    },
+    {
+      "Slice": "FADE tour:ATP | _surface:Hard | pred_confidence:High | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "_surface": "Hard",
+        "pred_confidence": "High",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 20,
+      "WinRate": "15.00%",
+      "Shrunk": "20.83%",
+      "ROI": "-88.89%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -88.89
+    },
+    {
       "Slice": "FADE tour:WTA | _surface:Hard | pred_confidence:High",
       "Side": "fade",
       "Combo_Dict": {
@@ -2836,45 +2756,6 @@
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
       "ROI_num": -89.9
-    },
-    {
-      "Slice": "FADE tour:WTA | fav_odds_band:1.3-1.6 | pred_confidence:Medium",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "WTA",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "Medium"
-      },
-      "Dims": 3,
-      "N": 63,
-      "WinRate": "20.63%",
-      "Shrunk": "22.39%",
-      "ROI": "-90.00%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -90.0
-    },
-    {
-      "Slice": "FADE tour:WTA | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "WTA",
-        "_surface": "Hard",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "Medium"
-      },
-      "Dims": 4,
-      "N": 63,
-      "WinRate": "20.63%",
-      "Shrunk": "22.39%",
-      "ROI": "-90.00%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -90.0
     },
     {
       "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:MarketOnly",
@@ -2916,6 +2797,45 @@
       "ROI_num": -90.08
     },
     {
+      "Slice": "FADE tour:WTA | fav_odds_band:1.3-1.6 | pred_confidence:Medium",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "WTA",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "Medium"
+      },
+      "Dims": 3,
+      "N": 65,
+      "WinRate": "20.00%",
+      "Shrunk": "21.74%",
+      "ROI": "-90.37%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -90.37
+    },
+    {
+      "Slice": "FADE tour:WTA | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Medium",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "WTA",
+        "_surface": "Hard",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "Medium"
+      },
+      "Dims": 4,
+      "N": 65,
+      "WinRate": "20.00%",
+      "Shrunk": "21.74%",
+      "ROI": "-90.37%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -90.37
+    },
+    {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | cross_source_agree:MarketOnly",
       "Side": "fade",
       "Combo_Dict": {
@@ -2924,54 +2844,15 @@
         "cross_source_agree": "MarketOnly"
       },
       "Dims": 3,
-      "N": 1795,
-      "WinRate": "35.49%",
-      "Shrunk": "35.52%",
-      "ROI": "-91.57%",
+      "N": 1846,
+      "WinRate": "35.92%",
+      "Shrunk": "35.95%",
+      "ROI": "-91.74%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -91.57
-    },
-    {
-      "Slice": "FADE tour:ATP | fav_odds_band:1.6-2.0 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "fav_odds_band": "1.6-2.0",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 32,
-      "WinRate": "28.12%",
-      "Shrunk": "30.56%",
-      "ROI": "-91.67%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -91.67
-    },
-    {
-      "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.6-2.0 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "_surface": "Hard",
-        "fav_odds_band": "1.6-2.0",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 32,
-      "WinRate": "28.12%",
-      "Shrunk": "30.56%",
-      "ROI": "-91.67%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -91.67
+      "ROI_num": -91.74
     },
     {
       "Slice": "FADE tour:ATP | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
@@ -2982,15 +2863,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 3,
-      "N": 15,
-      "WinRate": "6.67%",
-      "Shrunk": "15.79%",
-      "ROI": "-92.40%",
+      "N": 16,
+      "WinRate": "6.25%",
+      "Shrunk": "15.00%",
+      "ROI": "-92.87%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -92.4
+      "ROI_num": -92.87
     },
     {
       "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both",
@@ -3002,15 +2883,15 @@
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 15,
-      "WinRate": "6.67%",
-      "Shrunk": "15.79%",
-      "ROI": "-92.40%",
+      "N": 16,
+      "WinRate": "6.25%",
+      "Shrunk": "15.00%",
+      "ROI": "-92.87%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -92.4
+      "ROI_num": -92.87
     },
     {
       "Slice": "FADE tour:WTA | _surface:Hard | fav_odds_band:1.1-1.3",
@@ -3030,6 +2911,45 @@
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
       "ROI_num": -92.98
+    },
+    {
+      "Slice": "FADE tour:ATP | fav_odds_band:1.6-2.0 | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "fav_odds_band": "1.6-2.0",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 40,
+      "WinRate": "27.50%",
+      "Shrunk": "29.55%",
+      "ROI": "-93.33%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -93.33
+    },
+    {
+      "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.6-2.0 | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "_surface": "Hard",
+        "fav_odds_band": "1.6-2.0",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 40,
+      "WinRate": "27.50%",
+      "Shrunk": "29.55%",
+      "ROI": "-93.33%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -93.33
     },
     {
       "Slice": "FADE tour:WTA | _surface:Hard | cross_source_agree:MarketOnly",
@@ -3100,54 +3020,15 @@
         "fav_odds_band": "1.1-1.3"
       },
       "Dims": 3,
-      "N": 49,
-      "WinRate": "22.45%",
-      "Shrunk": "24.53%",
-      "ROI": "-94.02%",
+      "N": 50,
+      "WinRate": "22.00%",
+      "Shrunk": "24.07%",
+      "ROI": "-94.17%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -94.02
-    },
-    {
-      "Slice": "FADE tour:ATP | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 26,
-      "WinRate": "26.92%",
-      "Shrunk": "30.00%",
-      "ROI": "-94.30%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -94.3
-    },
-    {
-      "Slice": "FADE tour:ATP | _surface:Hard | pred_confidence:Medium | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "_surface": "Hard",
-        "pred_confidence": "Medium",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 26,
-      "WinRate": "26.92%",
-      "Shrunk": "30.00%",
-      "ROI": "-94.30%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -94.3
+      "ROI_num": -94.17
     },
     {
       "Slice": "FADE tour:ATP | fav_odds_band:1.1-1.3 | cross_source_agree:MarketOnly",
@@ -3187,6 +3068,45 @@
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
       "ROI_num": -94.57
+    },
+    {
+      "Slice": "FADE tour:ATP | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 29,
+      "WinRate": "27.59%",
+      "Shrunk": "30.30%",
+      "ROI": "-94.82%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -94.82
+    },
+    {
+      "Slice": "FADE tour:ATP | _surface:Hard | pred_confidence:Medium | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "_surface": "Hard",
+        "pred_confidence": "Medium",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 29,
+      "WinRate": "27.59%",
+      "Shrunk": "30.30%",
+      "ROI": "-94.82%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -94.82
     },
     {
       "Slice": "FADE fav_odds_band:1.6-2.0 | pred_confidence:Medium | cross_source_agree:MarketOnly",
@@ -3236,34 +3156,15 @@
         "pred_confidence": "Medium"
       },
       "Dims": 3,
-      "N": 80,
-      "WinRate": "36.25%",
-      "Shrunk": "36.90%",
-      "ROI": "-95.49%",
+      "N": 83,
+      "WinRate": "36.14%",
+      "Shrunk": "36.78%",
+      "ROI": "-95.65%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -95.49
-    },
-    {
-      "Slice": "FADE tour:ATP | _surface:Hard | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "_surface": "Hard",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 110,
-      "WinRate": "30.00%",
-      "Shrunk": "30.70%",
-      "ROI": "-96.03%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -96.03
+      "ROI_num": -95.65
     },
     {
       "Slice": "FADE tour:ATP | pred_confidence:Medium | cross_source_agree:MarketOnly",
@@ -3352,15 +3253,34 @@
         "pred_confidence": "High"
       },
       "Dims": 3,
-      "N": 69,
-      "WinRate": "24.64%",
-      "Shrunk": "26.03%",
-      "ROI": "-96.23%",
+      "N": 72,
+      "WinRate": "23.61%",
+      "Shrunk": "25.00%",
+      "ROI": "-96.43%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -96.23
+      "ROI_num": -96.43
+    },
+    {
+      "Slice": "FADE tour:ATP | _surface:Hard | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "_surface": "Hard",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 124,
+      "WinRate": "29.03%",
+      "Shrunk": "29.69%",
+      "ROI": "-96.51%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -96.51
     },
     {
       "Slice": "FADE tour:CHALLENGER | _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:High | cross_source_agree:MarketOnly",
@@ -3451,15 +3371,15 @@
         "fav_odds_band": "1.6-2.0"
       },
       "Dims": 3,
-      "N": 128,
-      "WinRate": "34.38%",
-      "Shrunk": "34.85%",
-      "ROI": "-97.65%",
+      "N": 136,
+      "WinRate": "33.82%",
+      "Shrunk": "34.29%",
+      "ROI": "-97.80%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
-      "ROI_num": -97.65
+      "ROI_num": -97.8
     },
     {
       "Slice": "FADE tour:ATP | _surface:Hard | cross_source_agree:MarketOnly",
@@ -3489,9 +3409,9 @@
         "pred_confidence": "Low"
       },
       "Dims": 3,
-      "N": 113,
-      "WinRate": "34.51%",
-      "Shrunk": "35.04%",
+      "N": 120,
+      "WinRate": "34.17%",
+      "Shrunk": "34.68%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -3508,9 +3428,9 @@
         "pred_confidence": "Low"
       },
       "Dims": 3,
-      "N": 108,
-      "WinRate": "36.11%",
-      "Shrunk": "36.61%",
+      "N": 115,
+      "WinRate": "35.65%",
+      "Shrunk": "36.13%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -3528,9 +3448,9 @@
         "pred_confidence": "Low"
       },
       "Dims": 4,
-      "N": 108,
-      "WinRate": "36.11%",
-      "Shrunk": "36.61%",
+      "N": 115,
+      "WinRate": "35.65%",
+      "Shrunk": "36.13%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -3547,9 +3467,9 @@
         "fav_odds_band": "1.3-1.6"
       },
       "Dims": 3,
-      "N": 85,
-      "WinRate": "35.29%",
-      "Shrunk": "35.96%",
+      "N": 89,
+      "WinRate": "34.83%",
+      "Shrunk": "35.48%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4020,9 +3940,9 @@
         "pred_confidence": "High"
       },
       "Dims": 3,
-      "N": 42,
-      "WinRate": "21.43%",
-      "Shrunk": "23.91%",
+      "N": 43,
+      "WinRate": "20.93%",
+      "Shrunk": "23.40%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4040,9 +3960,9 @@
         "pred_confidence": "High"
       },
       "Dims": 4,
-      "N": 42,
-      "WinRate": "21.43%",
-      "Shrunk": "23.91%",
+      "N": 43,
+      "WinRate": "20.93%",
+      "Shrunk": "23.40%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4109,6 +4029,45 @@
       "ROI_num": -100.0
     },
     {
+      "Slice": "FADE tour:ATP | pred_confidence:Low | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "pred_confidence": "Low",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 33,
+      "WinRate": "30.30%",
+      "Shrunk": "32.43%",
+      "ROI": "-100.00%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
+      "Slice": "FADE tour:ATP | _surface:Hard | pred_confidence:Low | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "_surface": "Hard",
+        "pred_confidence": "Low",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 33,
+      "WinRate": "30.30%",
+      "Shrunk": "32.43%",
+      "ROI": "-100.00%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
       "Slice": "FADE tour:ATP | fav_odds_band:1.3-1.6 | pred_confidence:Medium | cross_source_agree:MarketOnly",
       "Side": "fade",
       "Combo_Dict": {
@@ -4150,17 +4109,18 @@
       "ROI_num": -100.0
     },
     {
-      "Slice": "FADE tour:ATP | fav_odds_band:1.3-1.6 | pred_confidence:High",
+      "Slice": "FADE tour:ATP | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
         "tour": "ATP",
-        "fav_odds_band": "1.3-1.6",
-        "pred_confidence": "High"
+        "fav_odds_band": "1.6-2.0",
+        "pred_confidence": "Low",
+        "cross_source_agree": "Both"
       },
-      "Dims": 3,
-      "N": 26,
-      "WinRate": "26.92%",
-      "Shrunk": "30.00%",
+      "Dims": 4,
+      "N": 32,
+      "WinRate": "31.25%",
+      "Shrunk": "33.33%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4169,17 +4129,38 @@
       "ROI_num": -100.0
     },
     {
-      "Slice": "FADE tour:ATP | pred_confidence:Low | cross_source_agree:Both",
+      "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
         "tour": "ATP",
+        "_surface": "Hard",
+        "fav_odds_band": "1.6-2.0",
         "pred_confidence": "Low",
         "cross_source_agree": "Both"
       },
-      "Dims": 3,
-      "N": 26,
-      "WinRate": "30.77%",
+      "Dims": 5,
+      "N": 32,
+      "WinRate": "31.25%",
       "Shrunk": "33.33%",
+      "ROI": "-100.00%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
+      "Slice": "FADE tour:ATP | fav_odds_band:1.3-1.6 | pred_confidence:High",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "fav_odds_band": "1.3-1.6",
+        "pred_confidence": "High"
+      },
+      "Dims": 3,
+      "N": 28,
+      "WinRate": "25.00%",
+      "Shrunk": "28.12%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4197,9 +4178,9 @@
         "pred_confidence": "High"
       },
       "Dims": 4,
-      "N": 26,
-      "WinRate": "26.92%",
-      "Shrunk": "30.00%",
+      "N": 28,
+      "WinRate": "25.00%",
+      "Shrunk": "28.12%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4208,18 +4189,37 @@
       "ROI_num": -100.0
     },
     {
-      "Slice": "FADE tour:ATP | _surface:Hard | pred_confidence:Low | cross_source_agree:Both",
+      "Slice": "FADE tour:ATP | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "fav_odds_band": "1.3-1.6",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 26,
+      "WinRate": "34.62%",
+      "Shrunk": "36.67%",
+      "ROI": "-100.00%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
+      "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
       "Side": "fade",
       "Combo_Dict": {
         "tour": "ATP",
         "_surface": "Hard",
-        "pred_confidence": "Low",
+        "fav_odds_band": "1.3-1.6",
         "cross_source_agree": "Both"
       },
       "Dims": 4,
       "N": 26,
-      "WinRate": "30.77%",
-      "Shrunk": "33.33%",
+      "WinRate": "34.62%",
+      "Shrunk": "36.67%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4248,26 +4248,6 @@
       "ROI_num": -100.0
     },
     {
-      "Slice": "FADE tour:ATP | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Low",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 25,
-      "WinRate": "32.00%",
-      "Shrunk": "34.48%",
-      "ROI": "-100.00%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -100.0
-    },
-    {
       "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:MarketOnly",
       "Side": "fade",
       "Combo_Dict": {
@@ -4283,27 +4263,6 @@
       "Shrunk": "31.03%",
       "ROI": "-100.00%",
       "Grade": "IRON",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -100.0
-    },
-    {
-      "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Low | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "_surface": "Hard",
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Low",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 5,
-      "N": 25,
-      "WinRate": "32.00%",
-      "Shrunk": "34.48%",
-      "ROI": "-100.00%",
-      "Grade": "BRONZE",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
@@ -4351,78 +4310,19 @@
       "ROI_num": -100.0
     },
     {
-      "Slice": "FADE tour:ATP | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
+      "Slice": "FADE _surface:Hard | fav_odds_band:1.3-1.6 | cross_source_agree:ForeTennisOnly",
       "Side": "fade",
       "Combo_Dict": {
-        "tour": "ATP",
-        "fav_odds_band": "1.3-1.6",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 3,
-      "N": 22,
-      "WinRate": "36.36%",
-      "Shrunk": "38.46%",
-      "ROI": "-100.00%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -100.0
-    },
-    {
-      "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.3-1.6 | cross_source_agree:Both",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
         "_surface": "Hard",
         "fav_odds_band": "1.3-1.6",
-        "cross_source_agree": "Both"
-      },
-      "Dims": 4,
-      "N": 22,
-      "WinRate": "36.36%",
-      "Shrunk": "38.46%",
-      "ROI": "-100.00%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -100.0
-    },
-    {
-      "Slice": "FADE tour:ATP | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Medium"
+        "cross_source_agree": "ForeTennisOnly"
       },
       "Dims": 3,
-      "N": 19,
-      "WinRate": "21.05%",
-      "Shrunk": "26.09%",
+      "N": 21,
+      "WinRate": "38.10%",
+      "Shrunk": "40.00%",
       "ROI": "-100.00%",
-      "Grade": "BRONZE",
-      "Tier": "ROBBER",
-      "Verdict": "FADE THIS SIGNAL",
-      "Exportable": false,
-      "ROI_num": -100.0
-    },
-    {
-      "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
-      "Side": "fade",
-      "Combo_Dict": {
-        "tour": "ATP",
-        "_surface": "Hard",
-        "fav_odds_band": "1.6-2.0",
-        "pred_confidence": "Medium"
-      },
-      "Dims": 4,
-      "N": 19,
-      "WinRate": "21.05%",
-      "Shrunk": "26.09%",
-      "ROI": "-100.00%",
-      "Grade": "BRONZE",
+      "Grade": "IRON",
       "Tier": "ROBBER",
       "Verdict": "FADE THIS SIGNAL",
       "Exportable": false,
@@ -4438,9 +4338,9 @@
         "cross_source_agree": "Both"
       },
       "Dims": 4,
-      "N": 19,
-      "WinRate": "31.58%",
-      "Shrunk": "34.78%",
+      "N": 21,
+      "WinRate": "33.33%",
+      "Shrunk": "36.00%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4459,9 +4359,48 @@
         "cross_source_agree": "Both"
       },
       "Dims": 5,
-      "N": 19,
-      "WinRate": "31.58%",
-      "Shrunk": "34.78%",
+      "N": 21,
+      "WinRate": "33.33%",
+      "Shrunk": "36.00%",
+      "ROI": "-100.00%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
+      "Slice": "FADE tour:ATP | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "fav_odds_band": "1.6-2.0",
+        "pred_confidence": "Medium"
+      },
+      "Dims": 3,
+      "N": 20,
+      "WinRate": "20.00%",
+      "Shrunk": "25.00%",
+      "ROI": "-100.00%",
+      "Grade": "BRONZE",
+      "Tier": "ROBBER",
+      "Verdict": "FADE THIS SIGNAL",
+      "Exportable": false,
+      "ROI_num": -100.0
+    },
+    {
+      "Slice": "FADE tour:ATP | _surface:Hard | fav_odds_band:1.6-2.0 | pred_confidence:Medium",
+      "Side": "fade",
+      "Combo_Dict": {
+        "tour": "ATP",
+        "_surface": "Hard",
+        "fav_odds_band": "1.6-2.0",
+        "pred_confidence": "Medium"
+      },
+      "Dims": 4,
+      "N": 20,
+      "WinRate": "20.00%",
+      "Shrunk": "25.00%",
       "ROI": "-100.00%",
       "Grade": "BRONZE",
       "Tier": "ROBBER",
@@ -4766,6 +4705,45 @@
       "Verdict": "NO STAT SIG",
       "Exportable": true,
       "ROI_num": 5.42
+    },
+    {
+      "Slice": "fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both",
+      "Side": "prediction",
+      "Combo_Dict": {
+        "fav_odds_band": "1.1-1.3",
+        "pred_confidence": "High",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 3,
+      "N": 75,
+      "WinRate": "88.00%",
+      "Shrunk": "86.08%",
+      "ROI": "13.98%",
+      "Grade": "SILVER",
+      "Tier": "BANKER",
+      "Verdict": "WATCHLIST",
+      "Exportable": true,
+      "ROI_num": 13.98
+    },
+    {
+      "Slice": "_surface:Hard | fav_odds_band:1.1-1.3 | pred_confidence:High | cross_source_agree:Both",
+      "Side": "prediction",
+      "Combo_Dict": {
+        "_surface": "Hard",
+        "fav_odds_band": "1.1-1.3",
+        "pred_confidence": "High",
+        "cross_source_agree": "Both"
+      },
+      "Dims": 4,
+      "N": 75,
+      "WinRate": "88.00%",
+      "Shrunk": "86.08%",
+      "ROI": "13.98%",
+      "Grade": "SILVER",
+      "Tier": "BANKER",
+      "Verdict": "WATCHLIST",
+      "Exportable": true,
+      "ROI_num": 13.98
     }
   ]
 }
