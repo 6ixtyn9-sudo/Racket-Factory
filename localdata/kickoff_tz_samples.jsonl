@@ -110,3 +110,5 @@
 {"betclan": "08:30", "date": "2026-10-10", "delta_minutes": 53, "fixture": "dalibor svrcina|etcheverry martin tomas", "reference": "07:37"}
 {"betclan": "14:30", "date": "2026-10-10", "delta_minutes": 80, "fixture": "baez sebastian|vacherot valentin", "reference": "13:10"}
 {"betclan": "07:00", "date": "2026-10-10", "delta_minutes": 51, "fixture": "borges nuno|jiri lehecka", "reference": "06:09"}
+{"betclan": "07:00", "date": "2026-10-11", "delta_minutes": -10, "fixture": "hubert hurkacz|yi zhou", "reference": "07:10"}
+{"betclan": "06:00", "date": "2026-10-11", "delta_minutes": -360, "fixture": "alexander zverev|halys quentin", "reference": "12:00"}

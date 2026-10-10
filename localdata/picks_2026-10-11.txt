@@ -1,0 +1,72 @@
+Racket Factory Picks — 2026-10-11
+============================================================
+Generated at: 2026-10-11 00:10:30
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  (none)
+
+FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
+============================================================
+  (none)
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  (none)
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both] Magdalena Frech vs Aoi Ito                 KO 06:00 -> MAGDALENA FRECH  conf 84% @1.29  EV +0.08u
+     bucket=SKIPPED_VETO  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=127  roi=12.48%
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both] Polmans / Zielinski vs Jiang / Zhang       KO 07:00 -> POLMANS / ZIELINSKI  conf 98% @1.02  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=127  roi=12.48%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both] Hubert Hurkacz vs Yi Zhou                  KO 07:00 -> HUBERT HURKACZ  conf 89% @1.14  EV +0.01u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=127  roi=12.48%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both] Alexander Zverev vs Quentin Halys          KO 06:00 -> ALEXANDER ZVEREV  conf 87% @1.15  EV +0.00u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=127  roi=12.48%
+  [_surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:Both] Darderi / Etcheverry vs Cash / Glasspool   KO 07:00 -> CASH / GLASSPOOL  conf 85% @1.20  EV +0.02u
+     bucket=SKIPPED_DEAD_EDGE  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=EDGE CONFIRMED  tier=BANKER  grade=GOLD  n=127  roi=12.48%
+
+NO-SLICE CANDIDATES (diagnostic — matched no exportable slice; NOT bets)  [11 rows]
+============================================================
+  Bolelli / Vavassori vs Krajicek / Mektic   KO 07:00  ATP/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.65 59%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Arribage / Olivetti vs Borges / Doumbia    KO 07:00  ATP/Hard  conf=High  agree=Both  band=1.3-1.6  @1.35 80%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=High!=Low
+  Cash / Erler vs Miedler / Oberleitner      KO 07:00  ATP/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.72 59%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Alejandro Davidovich Fokina vs Frances Tia KO 06:00  ATP/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.98 55%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Alexander Bublik vs Brandon Nakashima      KO 07:00  ATP/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.86 57%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Francisco Cerundolo vs Jakub Mensik        KO 06:00  ATP/Hard  conf=Medium  agree=Both  band=1.6-2.0  @1.68 61%
+     nearest: _surface:Hard | fav_odds_band:1.1-1.3 | cross_source_agree:B  missing: fav_odds_band=1.6-2.0!=1.1-1.3
+  Karen Khachanov vs Adrian Mannarino        KO 07:00  ATP/Hard  conf=High  agree=Both  band=1.3-1.6  @1.30 76%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=High!=Low
+  Alex De Minaur vs Rei Sakamoto             KO 07:00  ATP/Grass  conf=High  agree=Both  band=1.3-1.6  @1.40 73%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Ben Shelton vs Arthur Gea                  KO 07:00  ATP/Grass  conf=High  agree=Both  band=1.3-1.6  @1.38 73%
+     nearest: fav_odds_band:1.3-1.6 | pred_confidence:Low | cross_source_a  missing: pred_confidence=High!=Low
+  Li / Zhang vs Prozorova / Sasnovich        KO 06:00  WTA/Hard  conf=Low  agree=Both  band=1.6-2.0  @1.86 57%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: fav_odds_band=1.6-2.0!=1.3-1.6
+  Sara Sorribes Tormo vs Daria Kasatkina     KO 06:00  WTA/Hard  conf=Medium  agree=Both  band=1.3-1.6  @1.53 66%
+     nearest: _surface:Hard | fav_odds_band:1.3-1.6 | pred_confidence:Low   missing: pred_confidence=Medium!=Low
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.

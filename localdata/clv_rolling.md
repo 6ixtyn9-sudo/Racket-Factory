@@ -1,6 +1,6 @@
 # Racket Factory — CLV & Calibration Rolling
 
-Generated 2026-10-10
+Generated 2026-10-11
 
 ## Confidence Calibration (prob vs actual win rate)
 | Band | N | Wins | Hit Rate | Expected | Error | Wilson LB |
@@ -12,7 +12,7 @@ Generated 2026-10-10
 ## ROI by Tour (from audit)
 | Tour | N | ROI | Hit Rate |
 |---|---|---|---|
-| ATP | 113 | -0.263111 | 0.575221 |
+| ATP | 114 | -0.256304 | 0.578947 |
 | CHALLENGER | 49 | -0.245263 | 0.714286 |
 | UTR | 3 | None | 1.0 |
 | WTA | 225 | -0.115763 | 0.746667 |

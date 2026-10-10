@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-11",
+  "date": "2026-10-12",
   "warehouse": "localdata/warehouse.csv.gz",
   "warehouse_sha256": "c714526f04ce32ff1e6e64cd2db8738e7184636db5678eabbf943af02483acad",
   "warehouse_rows": 12351,
