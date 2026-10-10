@@ -11,7 +11,7 @@
     },
     "results:foretennis_results": {
       "status": "OK",
-      "detail": "5 files, 1507 rows, max_date 2026-10-09 (lag 1d, budget 3d)"
+      "detail": "5 files, 1509 rows, max_date 2026-10-10 (lag 0d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "WARN",
@@ -19,7 +19,7 @@
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "2 files, 10879 rows, max_date 2026-10-09 (lag 1d, budget 3d)"
+      "detail": "2 files, 10921 rows, max_date 2026-10-10 (lag 0d, budget 3d)"
     },
     "results:theoddsapi_scores": {
       "status": "OK",
@@ -27,27 +27,27 @@
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "13097 result rows across all sources"
+      "detail": "13141 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "27 files, 36915 rows, max_date 2026-10-10"
+      "detail": "27 files, 37005 rows, max_date 2026-10-11"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "13216 rows, max_date 2026-10-10"
+      "detail": "13294 rows, max_date 2026-10-10"
     },
     "warehouse:live_rows": {
       "status": "OK",
-      "detail": "1071 live-injected rows"
+      "detail": "1106 live-injected rows"
     },
     "picks:priced_share": {
-      "status": "WARN",
-      "detail": "picks_2026-10-10.json: 0/0 priced"
+      "status": "OK",
+      "detail": "picks_2026-10-10.json: 1/3 priced"
     },
     "audit:rolling": {
       "status": "OK",
-      "detail": "settled 382 conflicts 0 pending 40"
+      "detail": "settled 385 conflicts 0 pending 42"
     },
     "tickets:bank": {
       "status": "OK",
