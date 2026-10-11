@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-12
 ============================================================
-Generated at: 2026-10-11 08:22:44
-Snapshot as of: 2026-10-11T08:02:01+02:00
+Generated at: 2026-10-11 16:09:17
+Snapshot as of: 2026-10-11T16:02:03+02:00
 Ledger kind: forecast
 
 
@@ -23,19 +23,11 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  [no_slice_export] Iva Jovic vs Mia Pohankova                 KO 06:00 -> IVA JOVIC  conf 87% @n/a
+  [no_slice_export] Belinda Bencic vs Shuai Zhang              KO 06:00 -> BELINDA BENCIC  conf 83% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
-  [no_slice_export] Zhang / Zhou vs Krawietz / Puetz           KO 07:00 -> KRAWIETZ / PUETZ  conf 84% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
-  [no_slice_export] Schnaitter / Wallner vs Buse / Vallejo     KO 07:00 -> SCHNAITTER / WALLNER  conf 76% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
-  [no_slice_export] Galloway / Goransson vs Pavlasek / Rikl    KO 07:00 -> PAVLASEK / RIKL  conf 65% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
-  [no_slice_export] Harrison / Skupski vs Nys / Roger-Vasselin KO 07:00 -> HARRISON / SKUPSKI  conf 65% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
-  [no_slice_export] Cabral / Tracy vs Arends / Johnson         KO 07:00 -> CABRAL / TRACY  conf 59% @n/a
-     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
-  [no_slice_export] Xiyu Wang vs Xinyu Wang                    KO 06:00 -> XIYU WANG  conf 52% @n/a
+  [no_slice_export] Janice Tjen vs Oleksandra Oliynykova       KO 06:00 -> JANICE TJEN  conf 76% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Diane Parry vs Anna Kalinskaya             KO 06:00 -> ANNA KALINSKAYA  conf 69% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
@@ -44,7 +36,10 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [no_slice_export] Clara Tauson vs Marie Bouzkova             KO 06:00 -> MARIE BOUZKOVA  conf 73% @1.44  EV +0.05u
+     bucket=SKIPPED_VETO  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Maria Sakkari vs Donna Vekic               KO 06:00 -> MARIA SAKKARI  conf 65% @1.65  EV +0.07u
+     bucket=SKIPPED_VETO  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
