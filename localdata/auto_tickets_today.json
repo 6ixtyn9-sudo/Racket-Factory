@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-11",
-  "generated_at": "2026-10-11T08:02:01+02:00",
+  "date": "2026-10-12",
+  "generated_at": "2026-10-12T00:01:46+02:00",
   "bank_pct": 100.0,
   "free_bank_pct": 64.0,
   "committed_pct": 36.0,
@@ -11,5 +11,5 @@
   "paper_staked_pct": 0,
   "accas": [],
   "skipped": [],
-  "frozen": false
+  "frozen": true
 }
