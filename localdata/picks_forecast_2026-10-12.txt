@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-12
 ============================================================
-Generated at: 2026-10-11 00:10:40
-Snapshot as of: 2026-10-11T00:02:16+02:00
+Generated at: 2026-10-11 08:22:44
+Snapshot as of: 2026-10-11T08:02:01+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,20 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Iva Jovic vs Mia Pohankova                 KO 06:00 -> IVA JOVIC  conf 87% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Zhang / Zhou vs Krawietz / Puetz           KO 07:00 -> KRAWIETZ / PUETZ  conf 84% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Schnaitter / Wallner vs Buse / Vallejo     KO 07:00 -> SCHNAITTER / WALLNER  conf 76% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Galloway / Goransson vs Pavlasek / Rikl    KO 07:00 -> PAVLASEK / RIKL  conf 65% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Harrison / Skupski vs Nys / Roger-Vasselin KO 07:00 -> HARRISON / SKUPSKI  conf 65% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Cabral / Tracy vs Arends / Johnson         KO 07:00 -> CABRAL / TRACY  conf 59% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Xiyu Wang vs Xinyu Wang                    KO 06:00 -> XIYU WANG  conf 52% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
