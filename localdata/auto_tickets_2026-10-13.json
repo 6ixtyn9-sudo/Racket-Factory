@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-13",
+  "generated_at": "2026-10-13T00:01:55+02:00",
+  "bank_pct": 100.0,
+  "free_bank_pct": 51.2,
+  "committed_pct": 48.8,
+  "day_cap_pct": 10.24,
+  "stake_frac": 0.2,
+  "stake_per_acca_pct": 0,
+  "staked_pct": 0,
+  "paper_staked_pct": 0,
+  "accas": [],
+  "skipped": [],
+  "frozen": true
+}

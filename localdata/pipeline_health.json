@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-10-12",
+  "as_of": "2026-10-13",
   "checks": {
     "localdata_exists": {
       "status": "OK",
@@ -11,43 +11,43 @@
     },
     "results:foretennis_results": {
       "status": "OK",
-      "detail": "5 files, 1573 rows, max_date 2026-10-12 (lag 0d, budget 3d)"
+      "detail": "5 files, 1573 rows, max_date 2026-10-12 (lag 1d, budget 3d)"
     },
     "results:forebet_results": {
       "status": "WARN",
-      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 23d, budget 3d)"
+      "detail": "1 files, 488 rows, max_date 2026-09-19 (lag 24d, budget 3d)"
     },
     "results:challenger_results": {
       "status": "OK",
-      "detail": "2 files, 11468 rows, max_date 2026-10-12 (lag 0d, budget 3d)"
+      "detail": "2 files, 11566 rows, max_date 2026-10-13 (lag 0d, budget 3d)"
     },
     "results:theoddsapi_scores": {
       "status": "OK",
-      "detail": "2 files, 257 rows, max_date 2026-10-12 (lag 0d, budget 3d)"
+      "detail": "2 files, 257 rows, max_date 2026-10-12 (lag 1d, budget 3d)"
     },
     "results:any_rows": {
       "status": "OK",
-      "detail": "13786 result rows across all sources"
+      "detail": "13884 result rows across all sources"
     },
     "predictions:coverage": {
       "status": "OK",
-      "detail": "27 files, 37140 rows, max_date 2026-10-13"
+      "detail": "27 files, 37203 rows, max_date 2026-10-13"
     },
     "warehouse": {
       "status": "OK",
-      "detail": "14109 rows, max_date 2026-10-12"
+      "detail": "14323 rows, max_date 2026-10-13"
     },
     "warehouse:live_rows": {
       "status": "OK",
-      "detail": "1306 live-injected rows"
+      "detail": "1422 live-injected rows"
     },
     "picks:priced_share": {
       "status": "OK",
-      "detail": "picks_2026-10-12.json: 5/63 priced"
+      "detail": "picks_2026-10-13.json: 1/10 priced"
     },
     "audit:rolling": {
       "status": "OK",
-      "detail": "settled 521 conflicts 0 pending 80"
+      "detail": "settled 545 conflicts 0 pending 88"
     },
     "tickets:bank": {
       "status": "OK",
