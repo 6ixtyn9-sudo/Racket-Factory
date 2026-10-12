@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-13
 ============================================================
-Generated at: 2026-10-12 00:12:20
-Snapshot as of: 2026-10-12T00:01:46+02:00
+Generated at: 2026-10-12 08:10:23
+Snapshot as of: 2026-10-12T08:01:44+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,10 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Stefanos Sakellaridis vs Juncheng Shang    KO 07:00 -> JUNCHENG SHANG  conf 77% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Jiang / Wang vs Bucsa / Melichar-Martinez  KO 06:00 -> BUCSA / MELICHAR-MARTINEZ  conf 76% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -31,7 +34,8 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  (none)
+  [no_slice_export] Massimo Giunta vs Henry Searle             KO 11:00 -> MASSIMO GIUNTA  conf 76% @1.40  EV +0.06u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
