@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-13
 ============================================================
-Generated at: 2026-10-12 08:10:23
-Snapshot as of: 2026-10-12T08:01:44+02:00
+Generated at: 2026-10-12 16:15:31
+Snapshot as of: 2026-10-12T16:02:27+02:00
 Ledger kind: forecast
 
 
@@ -27,6 +27,14 @@ WATCHLIST — NO MATCHED ODDS
      bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
   [no_slice_export] Jiang / Wang vs Bucsa / Melichar-Martinez  KO 06:00 -> BUCSA / MELICHAR-MARTINEZ  conf 76% @n/a
      bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Ann Li vs Qinwen Zheng                     KO 06:00 -> QINWEN ZHENG  conf 71% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Anna Kalinskaya vs Shuai Zhang             KO 06:00 -> ANNA KALINSKAYA  conf 69% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=WTA1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Caijsa W Hennemann vs Eva Bennemann        KO 12:00 -> CAIJSA W HENNEMANN  conf 69% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
+  [no_slice_export] Jacob Fearnley vs Daniil Glinka            KO 11:00 -> JACOB FEARNLEY  conf 66% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -34,8 +42,18 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  [no_slice_export] Massimo Giunta vs Henry Searle             KO 11:00 -> MASSIMO GIUNTA  conf 76% @1.40  EV +0.06u
+  [no_slice_export] Kumstat / Mrva vs Gille / Verbeek          KO 14:00 -> GILLE / VERBEEK  conf 89% @1.19  EV +0.06u
      bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Elias Ymer vs Mattia Bellucci              KO 07:00 -> MATTIA BELLUCCI  conf 87% @1.22  EV +0.06u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Mina Hodzic vs Joelle Lilly Sophie Steur   KO 12:00 -> JOELLE LILLY SOPHIE STEUR  conf 87% @1.21  EV +0.05u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Massimo Giunta vs Henry Searle             KO 11:00 -> MASSIMO GIUNTA  conf 76% @1.50  EV +0.14u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Arthur Gea vs Jakub Mensik                 KO 07:00 -> JAKUB MENSIK  conf 65% @1.65  EV +0.07u
+     bucket=SKIPPED_VETO  tour=ATP  series=Masters 1000  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Martha Matoula vs Georgia Pedone           KO 13:00 -> MARTHA MATOULA  conf 61% @1.73  EV +0.06u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
 SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
 ============================================================
