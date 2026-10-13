@@ -1,11 +1,11 @@
 {
   "alarm_after_days": 3,
-  "generated_at": "2026-10-13T16:15:53+02:00",
+  "generated_at": "2026-10-14T00:14:32+02:00",
   "open_slips": 4,
   "stale": [
     {
       "accas": 1,
-      "age_days": 30,
+      "age_days": 31,
       "committed_pct": 0,
       "date": "2026-09-13",
       "faults": [],
@@ -16,7 +16,7 @@
     },
     {
       "accas": 1,
-      "age_days": 23,
+      "age_days": 24,
       "committed_pct": 0,
       "date": "2026-09-20",
       "faults": [],
@@ -27,9 +27,20 @@
     },
     {
       "accas": 1,
-      "age_days": 13,
+      "age_days": 14,
       "committed_pct": 0,
       "date": "2026-09-30",
+      "faults": [],
+      "reasons": [
+        "acca flagged paper by builder",
+        "already started at generation time (stale price)"
+      ]
+    },
+    {
+      "accas": 1,
+      "age_days": 3,
+      "committed_pct": 0,
+      "date": "2026-10-11",
       "faults": [],
       "reasons": [
         "acca flagged paper by builder",
