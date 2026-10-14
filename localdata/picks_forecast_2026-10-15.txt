@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-15
 ============================================================
-Generated at: 2026-10-14 00:09:04
-Snapshot as of: 2026-10-14T00:01:55+02:00
+Generated at: 2026-10-14 08:14:52
+Snapshot as of: 2026-10-14T08:02:02+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,8 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Cakarevic / Lukas vs Burillo / Zantedeschi KO 15:00 -> BURILLO / ZANTEDESCHI  conf 73% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
