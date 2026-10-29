@@ -15,6 +15,7 @@ on:
           - auto
           - official_morning
           - intraday_only
+          - evidence_only
       force:
         description: 'Guarded same-day empty-card rebuild (auto mode only)'
         required: false
@@ -75,6 +76,10 @@ jobs:
           MODE: ${{ github.event.inputs.mode }}
           FORCE: ${{ github.event.inputs.force }}
         run: |
+          case "$MODE" in
+            ''|auto|official_morning|intraday_only|evidence_only) ;;
+            *) echo 'Invalid execution mode' >&2; exit 1 ;;
+          esac
           case "$FORCE" in
             ''|false) ;;
             true)
@@ -107,6 +112,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Initialize run diagnostics
+        id: diagnostics_init
+        run: |
+          set -e
+          d="$RUNNER_TEMP/racket-rebuild-diagnostics"
+          mkdir -p "$d"
+          printf 'checkout_sha=%s\nrun_id=%s\nrun_attempt=%s\npython=%s\n' \
+            "$(git rev-parse HEAD)" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$(python --version 2>&1)" > "$d/run_identity.txt"
+
       - name: Run test suite (blocking)
         id: tests
         env:
@@ -121,18 +135,37 @@ jobs:
           JINA_API_KEY: ''
           JINA_READER_API_KEY: ''
         run: |
-          PYTHONPATH=src python -m pytest tests/ -q
+          set +e
+          d="$RUNNER_TEMP/racket-rebuild-diagnostics"
+          PYTHONPATH=src python -m pytest tests/ -q --junitxml="$d/pytest-junit.xml" 2>&1 | tee "$d/pytest-output.txt"
+          statuses=("${PIPESTATUS[@]}")
+          printf 'pytest_exit_code=%s\ntee_exit_code=%s\n' "${statuses[0]}" "${statuses[1]}" > "$d/pytest-status.txt"
+          if [ "${statuses[0]}" -ne 0 ]; then exit "${statuses[0]}"; fi
+          exit "${statuses[1]}"
 
       - name: Install Playwright Chromium
         run: |
           python -m playwright install --with-deps chromium
 
       - name: Discard test-created localdata in runner checkout
+        id: test_cleanup
         run: |
           git restore --source=HEAD --worktree --staged -- localdata
           git clean -fdx -- localdata
 
+      # Evidence mode performs up to two listing pages and two match/comparison
+      # requests. It never runs the pipeline or publishes a card.
+      - name: Capture bounded BetExplorer evidence only
+        id: evidence
+        if: ${{ github.event.inputs.mode == 'evidence_only' }}
+        env:
+          RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR: ${{ runner.temp }}/racket-rebuild-diagnostics
+        run: |
+          PYTHONPATH=src python scripts/capture_betexplorer_evidence.py
+
       - name: Restore localdata state (cache)
+        id: cache_restore
+        if: ${{ github.event.inputs.mode != 'evidence_only' }}
         uses: actions/cache/restore@v4
         with:
           # Disposable data only; never the authority for request budgets.
@@ -145,20 +178,30 @@ jobs:
             localdata/oddsportal_cache
             localdata/fetch_cache
             localdata/*.csv.gz
-          key: localdata-v7-cache-${{ github.run_id }}
+          # The prior successful run is an exact, non-suspect migration
+          # fallback. Never use the broad v7 prefix (40926551091 is suspect).
+          key: localdata-v8-production-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            localdata-v7-cache-
+            localdata-v8-production-
+            localdata-v7-cache-40916173195
 
       - name: Restore committed data (override stale cache)
+        id: committed_restore
+        if: ${{ github.event.inputs.mode != 'evidence_only' }}
         run: |
           set -e
+          matched='${{ steps.cache_restore.outputs.cache-matched-key }}'
+          case "$matched" in
+            ''|localdata-v8-production-*) ;;
+            localdata-v7-cache-40916173195) ;;
+            *) echo "Unexpected cache key; refusing restored data" >&2; exit 1 ;;
+          esac
           mkdir -p localdata
-          for f in $(git ls-files localdata/); do
-            git checkout HEAD -- "$f" && echo "restored committed: $f"
-          done
+          git restore --source=HEAD --worktree --staged -- localdata
 
       - name: Execute autonomous smart schedule
         id: execute
+        if: ${{ github.event.inputs.mode != 'evidence_only' }}
         env:
           RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR: ${{ runner.temp }}/racket-rebuild-diagnostics
           # No external publication until Git has accepted the card.
@@ -172,6 +215,7 @@ jobs:
             echo 'already_published=true' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          echo 'production_started=true' >> "$GITHUB_OUTPUT"
           MODE='${{ github.event.inputs.mode }}'
           FORCE='${{ github.event.inputs.force }}'
           if [ -n "$MODE" ] && [ "$MODE" != "auto" ]; then
@@ -211,7 +255,7 @@ jobs:
 
       - name: Persist localdata state (cache)
         uses: actions/cache/save@v4
-        if: always()
+        if: ${{ !cancelled() && steps.tests.outcome == 'success' && steps.test_cleanup.outcome == 'success' && steps.cache_restore.outcome == 'success' && steps.committed_restore.outcome == 'success' && steps.execute.outcome == 'success' && steps.execute.outputs.production_started == 'true' && steps.health.outcome == 'success' }}
         with:
           # Disposable data only; never the authority for request budgets.
           path: |
@@ -223,7 +267,7 @@ jobs:
             localdata/oddsportal_cache
             localdata/fetch_cache
             localdata/*.csv.gz
-          key: localdata-v7-cache-${{ github.run_id }}
+          key: localdata-v8-production-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Persist pipeline state to git
         id: publication
@@ -300,6 +344,51 @@ jobs:
           else
             echo 'No current fresh priced ticket to notify.'
           fi
+
+      - name: Finalize diagnostic run status
+        if: ${{ always() && steps.diagnostics_init.outcome == 'success' }}
+        env:
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          EXECUTE_OUTCOME: ${{ steps.execute.outcome }}
+          PRODUCTION_STARTED: ${{ steps.execute.outputs.production_started }}
+          EVIDENCE_OUTCOME: ${{ steps.evidence.outcome }}
+          PUBLICATION_OUTCOME: ${{ steps.publication.outcome }}
+          PUBLISHED_NEW: ${{ steps.publication.outputs.published_new }}
+          FORCE: ${{ github.event.inputs.force }}
+          MODE: ${{ github.event.inputs.mode }}
+        run: |
+          python - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          d = Path(os.environ['RUNNER_TEMP']) / 'racket-rebuild-diagnostics'
+          env = os.environ
+          started = env.get('PRODUCTION_STARTED') == 'true'
+          rebuild = 'not_attempted' if not started or env.get('FORCE') != 'true' else 'attempted'
+          collection = 'not_attempted' if not started else 'unknown'
+          status_file = d / 'rebuild_status.json'
+          if started and env.get('FORCE') == 'true' and status_file.exists():
+              try:
+                  record = json.loads(status_file.read_text())
+                  stage = record.get('stage', '')
+                  collection = 'attempted' if stage.startswith('collecting') or stage in ('collection_complete', 'validating_and_staging_quotes', 'ticket_generation', 'local_publication', 'awaiting_git_publication') else 'not_attempted'
+              except (OSError, ValueError):
+                  collection = 'unknown'
+          evidence_file = d / 'evidence_collection.json'
+          if evidence_file.exists():
+              try:
+                  collection = 'attempted' if json.loads(evidence_file.read_text()).get('listing_attempted') else 'not_attempted'
+              except (OSError, ValueError):
+                  collection = 'unknown'
+          elif env.get('EVIDENCE_OUTCOME') not in ('', 'skipped'):
+              collection = 'unknown'
+          result = {'test_outcome': env.get('TEST_OUTCOME'), 'execute_outcome': env.get('EXECUTE_OUTCOME'),
+                    'collection': collection, 'guarded_rebuild': rebuild,
+                    'publication_step': 'not_attempted' if env.get('PUBLICATION_OUTCOME') in ('', 'skipped') else 'attempted',
+                    'publication_outcome': env.get('PUBLICATION_OUTCOME'),
+                    'new_git_publication_confirmed': env.get('PUBLISHED_NEW') == 'true',
+                    'evidence_outcome': env.get('EVIDENCE_OUTCOME'), 'mode': env.get('MODE')}
+          (d / 'run_status.json').write_text(json.dumps(result, indent=2, sort_keys=True))
+          PYCODE
 
       - name: Upload quote and rebuild diagnostics
         uses: actions/upload-artifact@v4
