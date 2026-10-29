@@ -16,7 +16,7 @@ on:
           - official_morning
           - intraday_only
       force:
-        description: 'Force full auto run (never overrides frozen tickets)'
+        description: 'Guarded same-day empty-card rebuild (auto mode only)'
         required: false
         default: 'false'
         type: choice
@@ -33,6 +33,10 @@ permissions:
 
 jobs:
   run-autonomous-agent:
+    # One group covers every mode of this workflow. It never cancels a running job.
+    concurrency:
+      group: racket-factory-financial-publication
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 360
     if: github.event_name == 'workflow_dispatch'
@@ -65,8 +69,32 @@ jobs:
       TZ: 'Africa/Johannesburg'
 
     steps:
+      - name: Validate manual inputs
+        id: input_gate
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          FORCE: ${{ github.event.inputs.force }}
+        run: |
+          case "$FORCE" in
+            ''|false) ;;
+            true)
+              if [ "$MODE" != 'auto' ] && [ -n "$MODE" ]; then
+                echo 'force=true requires mode=auto; intraday_only conflicts' >&2
+                exit 1
+              fi
+              if [ "$GITHUB_REF" != 'refs/heads/main' ]; then
+                echo 'guarded rebuild is permitted only from main' >&2
+                exit 1
+              fi ;;
+            *) echo 'Invalid force input; expected true or false' >&2; exit 1 ;;
+          esac
+
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Checkout the latest branch tip after the workflow concurrency lock.
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -143,13 +171,14 @@ jobs:
             fi
           else
             if [ "$FORCE" = "true" ]; then
-              PYTHONPATH=src python3 scripts/daily.py --auto-once --force-repick --future-days 2
+              RACKET_FACTORY_REBUILD_SERIALIZED=1 PYTHONPATH=src python3 scripts/daily.py --guarded-rebuild
             else
               PYTHONPATH=src python3 scripts/daily.py --auto-once --future-days 2
             fi
           fi
 
       - name: Pipeline health gate
+        id: health
         if: ${{ !cancelled() && steps.execute.outcome != 'skipped' }}
         run: |
           PYTHONPATH=src python3 -m racketfactory.doctor --expect-warehouse --write-report
@@ -171,33 +200,56 @@ jobs:
           key: localdata-v7-cache-${{ github.run_id }}
 
       - name: Persist pipeline state to git
-        if: always()
+        id: publication
+        if: ${{ always() && steps.input_gate.outcome == 'success' && (github.event.inputs.force != 'true' || (steps.execute.outcome == 'success' && steps.health.outcome == 'success')) }}
         run: |
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          echo "Cleaning legacy files (keep dated pick archives — audit needs full history)..."
-          rm -f localdata/picks_morning_*.json || true
-          rm -f localdata/picks_audit_2026-0[6-8]-*.md localdata/picks_audit_2026-09-0[1-9].md localdata/picks_audit_2026-09-10.md || true
-          rm -f localdata/picks_audit_forecast_*.md localdata/picks_forecast_2026-0[6-8]-*.json localdata/picks_forecast_2026-0[6-8]-*.txt localdata/picks_forecast_2026-09-0[1-9].* localdata/picks_forecast_2026-09-10.* || true
-          rm -f localdata/tennisdata_tennis_*.csv.gz || true
-          echo "Pruning slice_table artifacts older than 30 days (retention)..."
-          find localdata -name "slice_table_*.json" -type f -mtime +30 -print -delete || true
-          echo "Cleaning transient warehouse baseline (not committed)..."
-          rm -f localdata/warehouse_baseline.csv.gz || true
-          echo "Current localdata inventory after prune:"
-          ls -lh localdata/ | tail -n 100 || true
-          echo "Warehouse + slice_table status:"
-          ls -lh localdata/warehouse.csv.gz localdata/warehouse_merge_report.json localdata/slice_table_*.json 2>&1 | head -n 20 || true
-          git add -A localdata/ 2>/dev/null || true
-          git diff --cached --quiet && echo "no changes" && exit 0
-          git commit -m "feat: autonomous picks + auto_tickets $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
-          git pull --rebase --autostash || { git rebase --abort; git pull --no-rebase || true; }
-          git push || { git pull --rebase --autostash; git push; }
+          if [ '${{ github.event.inputs.force }}' != 'true' ]; then
+            echo "Cleaning legacy files (keep dated pick archives — audit needs full history)..."
+            rm -f localdata/picks_morning_*.json || true
+            rm -f localdata/picks_audit_2026-0[6-8]-*.md localdata/picks_audit_2026-09-0[1-9].md localdata/picks_audit_2026-09-10.md || true
+            rm -f localdata/picks_audit_forecast_*.md localdata/picks_forecast_2026-0[6-8]-*.json localdata/picks_forecast_2026-0[6-8]-*.txt localdata/picks_forecast_2026-09-0[1-9].* localdata/picks_forecast_2026-09-10.* || true
+            rm -f localdata/tennisdata_tennis_*.csv.gz || true
+            echo "Pruning slice_table artifacts older than 30 days (retention)..."
+            find localdata -name "slice_table_*.json" -type f -mtime +30 -print -delete || true
+            echo "Cleaning transient warehouse baseline (not committed)..."
+            rm -f localdata/warehouse_baseline.csv.gz || true
+            echo "Current localdata inventory after prune:"
+            ls -lh localdata/ | tail -n 100 || true
+            echo "Warehouse + slice_table status:"
+            ls -lh localdata/warehouse.csv.gz localdata/warehouse_merge_report.json localdata/slice_table_*.json 2>&1 | head -n 20 || true
+            git add -A localdata/ 2>/dev/null || true
+          fi
+          if [ '${{ github.event.inputs.force }}' = 'true' ]; then
+            day="$(TZ=Africa/Johannesburg date +%F)"
+            git add -A -- "localdata/auto_tickets_${day}.json" "localdata/auto_tickets_${day}.txt" \
+              localdata/auto_tickets_today.json localdata/auto_tickets_today.txt localdata/auto_tickets_state.json
+            # The archive is non-actionable but must survive the runner.
+            archive="localdata/.auto_tickets_rebuild/archive_$(TZ=Africa/Johannesburg date +%F)_${GITHUB_RUN_ID}.json"
+            test -f "$archive" || { echo 'missing rebuild archive' >&2; exit 1; }
+            git add -f -- "$archive"
+            baseline="$(git rev-parse HEAD)"
+            git fetch origin "refs/heads/${GITHUB_REF_NAME}"
+            if [ "$(git rev-parse FETCH_HEAD)" != "$baseline" ]; then
+              echo 'authoritative branch changed after checkout; refusing publication' >&2
+              exit 1
+            fi
+            git diff --cached --quiet && { echo 'no rebuild changes'; exit 0; }
+            git commit -m "feat: guarded empty-card rebuild $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
+            # A non-fast-forward is a conflict, never rebase financial state.
+            git push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
+          else
+            git diff --cached --quiet && echo "no changes" && exit 0
+            git commit -m "feat: autonomous picks + auto_tickets $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
+            git pull --rebase --autostash || { git rebase --abort; git pull --no-rebase || true; }
+            git push || { git pull --rebase --autostash; git push; }
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && steps.input_gate.outcome == 'success' && (github.event.inputs.force != 'true' || steps.publication.outcome == 'success') }}
         with:
           name: RacketFactory-Reports
           path: |
