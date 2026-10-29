@@ -156,7 +156,7 @@ def run_health_checks(*, expect_warehouse: bool = False,
         credit_ok = odds_api_budget_ok(odds_keys)
         add("providers:credit_authority", "OK" if credit_ok else "WARN",
             "durable credit record available; operator must verify storage and cost bound" if credit_ok
-            else "paid The Odds API calls blocked: missing/invalid credit authority or cost bound")
+            else "quota-metered The Odds API calls blocked: missing/invalid credit authority or cost bound")
     else:
         add("providers:credit_authority", "WARN", "The Odds API key not configured")
     quota_services = []
@@ -168,7 +168,7 @@ def run_health_checks(*, expect_warehouse: bool = False,
     if not quota_services:
         add("providers:quota_authority", "WARN", "no quota-limited providers configured")
     elif not os.getenv("RACKET_FACTORY_QUOTA_DIR", "").strip():
-        add("providers:quota_authority", "WARN", "no durable quota directory configured; optional paid provider requests are blocked")
+        add("providers:quota_authority", "WARN", "no durable quota directory configured; optional quota-metered provider requests are blocked")
     else:
         from racketfactory.quota_guard import _load
         missing = [service for service in quota_services if _load(service, today_s).get("authority_missing")]

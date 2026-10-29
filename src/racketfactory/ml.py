@@ -31,6 +31,7 @@ import re
 from pathlib import Path
 from typing import Any
 from collections import defaultdict
+from racketfactory.leg_policy import MIN_LEG_ODDS, valid_leg_price, restore_ev_only_bucket
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 LOCALDATA = ROOT / "localdata"
@@ -43,13 +44,7 @@ Z95 = 1.959963984540054
 
 
 def get_min_ev_real() -> float:
-    """Minimum EV for a REAL (stakeable) leg.
-
-    Prompt 2026-09-18: +2%+ (0% too low; blocks negative-EV shorts). The
-    post-RED-DAY 1% tuning is restorable via RACKET_FACTORY_MIN_EV=0.01.
-    The BOOST+Both+High-conf exception in the gates below still narrows the
-    floor to +1% for proven contexts.
-    """
+    """Legacy configuration reader; EV is no longer an admission threshold."""
     try:
         return float(os.environ.get("RACKET_FACTORY_MIN_EV", "0.02"))
     except (TypeError, ValueError):
@@ -57,16 +52,8 @@ def get_min_ev_real() -> float:
 
 
 def get_min_odds_base() -> float:
-    """Base minimum per-leg odds (non-BOOST legs).
-
-    Prompt 2026-09-18: 1.30 (1.19/1.24 shorts at EV -20% cost -12.68% bank).
-    BOOST legs may still go to 1.15 with EV >= 1% (see auto_tickets). The
-    post-RED-DAY 1.20 floor is restorable via RACKET_FACTORY_MIN_ODDS=1.20.
-    """
-    try:
-        return float(os.environ.get("RACKET_FACTORY_MIN_ODDS", "1.30"))
-    except (TypeError, ValueError):
-        return 1.30
+    """The same fixed floor is used by mining, selection and replay."""
+    return MIN_LEG_ODDS
 
 
 def wilson_bounds(wins: int, n: int, z: float = Z95) -> tuple[float, float]:
@@ -703,13 +690,21 @@ def ml_predict_proba(pick: dict, registry: dict, source_weights: dict, clv: dict
     return calibrated_prob_from_history(pick, registry, clv)
 
 def ml_ev(pick: dict, registry: dict, source_weights: dict, clv: dict | None = None) -> float | None:
+    # The calibrator has a historical default; do not turn missing or invalid
+    # input confidence into a fabricated EV diagnostic.
+    raw = pick.get("confidence") or pick.get("prediction_prob")
+    try:
+        if isinstance(raw, bool) or not math.isfinite(float(raw)) or not 0 < float(raw) <= 100:
+            return None
+    except (TypeError, ValueError, OverflowError):
+        return None
     prob = ml_predict_proba(pick, registry, source_weights, clv)
     odds = pick.get("odds")
     try:
         o = float(odds) if odds is not None else None
     except Exception:
         o = None
-    if o is None or o <= 1.0:
+    if o is None or not math.isfinite(o) or o <= 1.0 or not math.isfinite(prob):
         return None
     return prob * (o - 1.0) - (1.0 - prob)
 
@@ -737,7 +732,7 @@ def ml_answer_odds_question(odds: float, prob: float, context: dict | None = Non
         expl = f"Odds {o:.2f} fair vs {fair_odds:.2f}, EV {ev:+.1%}"
     else:
         verdict = "SHORT"
-        expl = f"Odds {o:.2f} short vs fair {fair_odds:.2f}, EV {ev:+.1%} – negative, avoid unless boosting acca"
+        expl = f"Odds {o:.2f} short vs fair {fair_odds:.2f}, EV {ev:+.1%} – negative model estimate (diagnostic only)"
 
     if o < 1.35:
         expl += " | Note: leg <1.35 super-short, needs 85%+ prob to be value (ML avoids unless acca)."
@@ -800,8 +795,8 @@ def monitor_performance() -> dict:
         adjustments["min_odds_per_leg"] = base_min_odds
         adjustments["reason"] = f"High conf hit {high_hit:.1%} ({high_src}) >=80%, min leg {base_min_odds}"
     else:
-        adjustments["min_odds_per_leg"] = 1.35
-        adjustments["reason"] = f"High conf hit {high_hit:.1%} ({high_src}) <80%, min leg 1.35"
+        adjustments["min_odds_per_leg"] = base_min_odds
+        adjustments["reason"] = f"High conf hit {high_hit:.1%} ({high_src}) <80%, shared min leg {base_min_odds}"
 
     health["adjustments"] = adjustments
     return health
@@ -818,8 +813,14 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
     boosted = []
 
     for pick in picks:
+        pick = restore_ev_only_bucket(pick)
         scoring = score_pick_strengths(pick, registry, source_weights)
-        calib_prob = ml_predict_proba(pick, registry, source_weights, clv)
+        raw_prob = pick.get("confidence") or pick.get("prediction_prob")
+        try:
+            raw_valid = not isinstance(raw_prob, bool) and math.isfinite(float(raw_prob)) and 0 < float(raw_prob) <= 100
+        except (TypeError, ValueError, OverflowError):
+            raw_valid = False
+        calib_prob = ml_predict_proba(pick, registry, source_weights, clv) if raw_valid else None
         ev = ml_ev(pick, registry, source_weights, clv)
 
         # FADE lane: the pick bets AGAINST the model's pick, so the
@@ -846,103 +847,28 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
         pick["ml_boost_reasons"] = scoring["boost_reasons"]
         pick["ml_w_score"] = scoring["w_score"]
         pick["ml_verdict"] = "VETO" if scoring["should_veto"] else ("BOOST" if scoring["should_boost"] else "ALLOW")
-        pick["ml_calibrated_prob"] = round(calib_prob, 4)
+        pick["ml_calibrated_prob"] = round(calib_prob, 4) if calib_prob is not None else None
         pick["ml_ev"] = round(ev, 4) if ev is not None else None
+        pick["ml_ev_provenance"] = "calibrated model probability and quoted odds" if ev is not None else None
         pick["ml_fair_odds"] = round(1.0 / calib_prob, 2) if calib_prob else None
 
-        if pick.get("odds") is not None:
+        pick["ml_odds_answer"] = None
+        if pick.get("odds") is not None and calib_prob is not None:
             try:
                 odds_f = float(pick["odds"])
+                if not math.isfinite(odds_f) or odds_f <= 1.0:
+                    raise ValueError("invalid odds")
                 qa = ml_answer_odds_question(odds_f, calib_prob, pick)
                 pick["ml_odds_answer"] = qa
             except Exception:
                 pick["ml_odds_answer"] = None
 
-        # CAPITAL PROTECTION MODE (user: rather NO BET than losing money) after RED DAY 2026-09-16
-        # 3 accas lost: legs EV -0.01 to -0.20 SHORT, odds 1.19-1.40 fair 1.50-1.63, bank 133%->114% -12.68%
-        # Old gate -0.10 allowed negative EV if Both agree -> lost
-        # Revised: require EV >= +1% for REAL track (was 2%, too strict blocked Bejlek 0.7% winner and 1.08% leg)
-        # User said 0% too low, so 1% is sweet spot: blocks -20% losers, allows +1% winners, still prefers NO BET over loss
-        # Doubles 0/5 losing -40% need EV>=5% + prob>=65% (see doubles filter below)
-        min_ev_real = get_min_ev_real()  # 2% default; 1% restorable via RACKET_FACTORY_MIN_EV
-        # DOUBLES FILTER: fitted when the audit showed doubles 0W/5L -40% ROI.
-        # STALE JUSTIFICATION (verified 2026-09-26): over the settled ticket
-        # ledger doubles are now 8W-3L at +6.82% flat ROI while singles-match
-        # legs are -6.90% — doubles are the only positive cohort in the book,
-        # and this 5x surcharge is the gate suppressing them. NOT relaxed:
-        # n=11 is far below the n>=30 bar (racketfactory.tripwire.MIN_N) and
-        # acting on an 11-sample reversal is the exact error the deep dive's
-        # null test was written to prevent. Registered as a pre-registered
-        # hypothesis: scripts/autobets_forensics.py --preregistration.
-        # Require higher EV for doubles: >=5% always, no exception even for BOOST (doubles are high variance)
-        # This blocks RED DAY doubles: Rogers 1.31 EV -14%, Falkowska 1.36 EV -11%, Ciric 1.19 EV -20% etc
-        # Singles: allow EV>=1% (was 2% too strict), but block EV<-2% even with BOOST
-        try:
-            match_str = str(pick.get("match") or "")
-            is_doubles = "/" in match_str
-            if is_doubles and ev is not None:
-                if ev < 0.05:  # doubles need 5% edge, no exception
-                    scoring["should_veto"] = True
-                    scoring["veto_reasons"].append(
-                        f"Doubles EV {ev:.3f} < 0.05 min (surcharge fitted to 0W/5L; "
-                        f"ledger now 8W-3L +6.8% at n=11, under the n>=30 review bar)")
-                    pick["ml_verdict"] = "VETO"
-                    ev = None  # mark as handled to skip further checks
-        except Exception:
-            pass
-        # Capital-protection gate: model-EV based. Fades are exempt — their
-        # model-EV is structurally negative (the model favours its own side),
-        # which is precisely the signal the fade slice validates against.
-        # The fade's own EV floor is enforced at export time on the slice-EV
-        # basis (expected_value < min_ev -> SKIPPED_DEAD_EDGE).
-        # Policy (user 2026-09-16): min EV +2% and min odds 1.30, prefers NO BET
-        # over losing. BOOST exception: Both+High+strength>=0.5 may go to
-        # 1.15 with EV>=1% (was allowing negative EV shorts like 1.04 -6% EV).
-        effective_min_ev_ml = min_ev_real
-        min_odds_base = get_min_odds_base()
-        min_odds_boost = 1.15
-        min_ev_boost = 0.01
-        # Enforce hard odds floor 1.15 for all REAL legs (capital protection)
-        try:
-            odds_f = float(pick.get("odds") or 0)
-        except Exception:
-            odds_f = 0
-        if not is_fade and odds_f and odds_f < min_odds_boost:
+        # EV is diagnostic. Independent context vetoes above still apply.
+        # Unpriced watchlist rows stay visible, but cannot become legs.
+        if pick.get("odds") is not None and not valid_leg_price(pick.get("odds")):
             scoring["should_veto"] = True
-            scoring["veto_reasons"].append(f"ML odds {odds_f:.2f} < {min_odds_boost} hard floor (capital protection)")
+            scoring["veto_reasons"].append(f"invalid odds or odds below {MIN_LEG_ODDS:.2f} floor")
             pick["ml_verdict"] = "VETO"
-            ev = None  # skip further EV checks
-        elif not is_fade and odds_f and odds_f < min_odds_base:
-            # Below 1.30 but above 1.15: require BOOST + Both + High + EV>=1%
-            is_boost_candidate = scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.5
-            cross = str(pick.get("cross_source_agree") or "")
-            try:
-                conf_f = float(pick.get("confidence") or 0)
-                if conf_f <= 1.0:
-                    conf_f *= 100
-            except Exception:
-                conf_f = 0
-            if not (is_boost_candidate and cross == "Both" and conf_f >= 70 and ev is not None and ev >= min_ev_boost):
-                scoring["should_veto"] = True
-                scoring["veto_reasons"].append(f"ML odds {odds_f:.2f} < {min_odds_base} base (needs BOOST Both High EV>=0.01)")
-                pick["ml_verdict"] = "VETO"
-                ev = None
-
-        if not is_fade and ev is not None and ev < effective_min_ev_ml:
-            # Allow BOOST exception only if EV>=1% and Both+High+strength>=0.5 and odds>=1.15
-            is_boost_high = scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.5
-            cross = str(pick.get("cross_source_agree") or "")
-            try:
-                conf_f = float(pick.get("confidence") or 0)
-                if conf_f <= 1.0:
-                    conf_f *= 100
-            except Exception:
-                conf_f = 0
-            odds_ok = odds_f >= min_odds_boost if odds_f else True
-            if not (is_boost_high and cross == "Both" and conf_f >= 70 and ev >= min_ev_boost and odds_ok):
-                scoring["should_veto"] = True
-                scoring["veto_reasons"].append(f"ML EV {ev:.3f} < {effective_min_ev_ml} min (capital protection)")
-                pick["ml_verdict"] = "VETO"
 
         if scoring["should_veto"]:
             if "NO_ODDS" in str(pick.get("bucket")) and scoring["strength_score"] >= 0.2:
@@ -980,7 +906,11 @@ def ml_filter_picks(picks: list[dict]) -> tuple[list[dict], dict]:
         "registry_dims": {k: len(v) for k, v in registry.items()},
         "source_weights": source_weights,
         "perf_health": perf_health,
-        "avg_calib_prob": round(sum(p.get("ml_calibrated_prob", 0) for p in kept) / max(len(kept), 1), 4),
-        "avg_ev": round(sum(p.get("ml_ev", 0) or 0 for p in kept) / max(len(kept), 1), 4) if kept else 0,
+        "avg_calib_prob": (round(sum(p["ml_calibrated_prob"] for p in kept if p.get("ml_calibrated_prob") is not None) /
+                                 sum(1 for p in kept if p.get("ml_calibrated_prob") is not None), 4)
+                           if any(p.get("ml_calibrated_prob") is not None for p in kept) else None),
+        "avg_ev": (round(sum(p["ml_ev"] for p in kept if p.get("ml_ev") is not None) /
+                         sum(1 for p in kept if p.get("ml_ev") is not None), 4)
+                   if any(p.get("ml_ev") is not None for p in kept) else None),
     }
     return kept, summary

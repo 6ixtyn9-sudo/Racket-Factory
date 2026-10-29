@@ -190,14 +190,26 @@ Forecast files are preliminary watchlists only. They must be re-confirmed by the
 Missing odds policy
 
 No matched odds means no actionable bet. The row stays in WATCHLIST_NO_ODDS or is hidden by forecast hygiene. For doubles or another competition, use automated compatible sources only: The Odds API when it exposes the sport key, or OddsPortal via the existing scripts/capture_oddsportal.py path when a tournament URL exposes prices. Do not add manual odds CSVs or force fuzzy matches when the opponents differ.
+### Racket leg admission
+
+New ticket legs require a finite decimal price of at least **1.30**, including
+BOOST and replay; unpriced rows remain diagnostics, not ticket legs. EV is a
+diagnostic, not an export or admission veto. Historical EV-only skip labels
+are re-evaluated in memory against independent context safeguards; ambiguous
+or non-EV skips are not automatically restored. Existing source, market,
+freshness, probability, ticket and settlement rules still apply. The legacy
+`RACKET_FACTORY_MIN_ODDS`, `RACKET_FACTORY_MIN_EV`, `--min-ev` and
+`RACKET_FACTORY_FORECAST_MIN_EV` settings do not override this policy. The
+legacy replay knobs for leg-floor and EV thresholds likewise cannot override it.
+
 ### Provider budget authority
 
-Paid requests fail closed unless `RACKET_FACTORY_QUOTA_DIR` points to an
+Quota-metered requests fail closed unless `RACKET_FACTORY_QUOTA_DIR` points to an
 operator-managed, persistent directory shared by every process using the same
 provider accounts. Neither `localdata/` nor an Actions cache is an authority.
 The current GitHub-hosted workflow does not supply such a directory; restoring
 an evictable cache does not make one available. Provisioning and verifying a
-shared durable store requires review before a paid run.
+shared durable store requires review before a quota-metered run.
 
 Daily request counters for Bzzoiro and the relay must already exist in that
 directory with their date, service, nonnegative count and blocked flag,

@@ -138,7 +138,7 @@ def fetch_scores(sport: str, days_from: int, api_key: str) -> list[dict[str, Any
     cached = _load_scores_cache(sport, days_from, _date.today().isoformat())
     if cached is not None:
         return cached
-    # Check on each cache miss, not before reading an already-paid cache hit.
+    # Check on each cache miss, not before reading a fresh cache hit.
     sys.path.insert(0, str(ROOT / "src"))
     from racketfactory.warehouse import odds_api_budget_ok, odds_api_min_remaining_reserve
     from racketfactory.quota_guard import reserve_odds_credits
@@ -147,7 +147,7 @@ def fetch_scores(sport: str, days_from: int, api_key: str) -> list[dict[str, Any
     if (not odds_api_budget_ok((api_key,)) or
             not reserve_odds_credits(api_key, min_cost=2 if days_from > 0 else 1,
                                     reserve=odds_api_min_remaining_reserve())):
-        raise ScoresFetchError("quota", f"{sport}: paid request not authorised")
+        raise ScoresFetchError("quota", f"{sport}: quota-metered request not authorised")
     params = {
         "apiKey": api_key,
         "daysFrom": str(days_from),

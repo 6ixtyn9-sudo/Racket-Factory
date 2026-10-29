@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import os
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -29,7 +29,7 @@ from bs4 import BeautifulSoup
 
 from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources import _page_odds as po
-from racketfactory.sources._page_odds import fetch_page_html, parse_listing_page
+from racketfactory.sources._page_odds import fetch_page_html, parse_listing_page, PageFetchError
 
 logger = logging.getLogger(__name__)
 
@@ -339,17 +339,23 @@ def parse_match_page_odds(html: str) -> tuple[float | None, float | None]:
     return avg_home, avg_away
 
 
-def _fetch_live(target: str) -> list[dict[str, Any]]:
+def _fetch_live(target: str, *, with_status: bool = False):
+    def done(rows, status):
+        return (rows, status) if with_status else rows
+
     # 1) Try dated results page with odds (historical shape)
     try:
         html = fetch_page_html(_results_url(target), SOURCE_NAME, prefer_plain=True)
+        observed_at = datetime.now(timezone.utc).isoformat()
     except Exception as exc:
         logger.warning("%s dated fetch failed for %s: %s", SOURCE_NAME, target, exc)
         html = ""
     rows = parse_results_page(html, target) if html else []
     if rows:
+        for row in rows:
+            row["observed_at"] = observed_at
         logger.info("%s: dated results shape hit for %s (%d rows)", SOURCE_NAME, target, len(rows))
-        return _finalize(rows)
+        return done(_finalize(rows), "complete")
 
     # 2) For any date, if results page missed, try to collect links without odds
     #    and price via match pages (new fallback for JS-rendered listings)
@@ -373,9 +379,16 @@ def _fetch_live(target: str) -> list[dict[str, Any]]:
                     day_html, source_label=SOURCE_NAME, is_match_link=_is_match_link,
                     page_date=target, require_odds=False,
                 )
+                if not link_rows:
+                    html = day_html  # preserve verified empty-board evidence
+
 
     if not link_rows:
-        return []
+        if not html:
+            raise PageFetchError("transport", "BetExplorer listings unavailable")
+        if not any(marker in html.lower() for marker in ("no matches", "no events")):
+            raise PageFetchError("parser", "BetExplorer listing has no recognised fixtures or empty-board marker")
+        return done([], "complete")
 
     # 3) Price each link via its match page (bounded)
     priced: list[dict[str, Any]] = []
@@ -386,6 +399,7 @@ def _fetch_live(target: str) -> list[dict[str, Any]]:
             continue
         full_url = href if href.startswith("http") else (BASE_URL + href if href.startswith("/") else href)
         mhtml = fetch_page_html(full_url, SOURCE_NAME, prefer_plain=True)
+        observed_at = datetime.now(timezone.utc).isoformat()
         if not mhtml:
             n_failed += 1
             continue
@@ -399,15 +413,20 @@ def _fetch_live(target: str) -> list[dict[str, Any]]:
             continue
         link["odds_home"] = best[0]
         link["odds_away"] = best[1]
+        link["observed_at"] = observed_at
         priced.append(link)
 
     logger.info("%s match pages %s: candidates=%d priced=%d live_skipped=%d failed=%d",
                 SOURCE_NAME, target, min(len(link_rows), MAX_MATCH_PAGES), len(priced), n_live, n_failed)
     if priced:
-        return _finalize(priced)
+        partial = bool(n_failed or len(link_rows) > MAX_MATCH_PAGES)
+        for row in priced:
+            row["_collection_partial"] = partial
+        return done(_finalize(priced), "partial" if partial else "complete")
 
-    # Fallback: if match-page pricing also failed, return empty (previous behavior)
-    return []
+    if n_failed:
+        raise PageFetchError("parser", "BetExplorer fixture pages contained no usable paired prices")
+    return done([], "unknown")
 
 
 def fetch_betexplorer_rows(target_date: str) -> list[dict[str, Any]]:
@@ -421,9 +440,5 @@ def fetch_betexplorer_rows(target_date: str) -> list[dict[str, Any]]:
             return []
     except Exception:
         return []
-    try:
-        rows = cached_fetch(f"betexplorer_v6_{target}", lambda: _fetch_live(target))
-    except Exception as exc:
-        logger.warning("BetExplorer fetch failed: %s", exc)
-        return []
+    rows = cached_fetch(f"betexplorer_v6_{target}", lambda: _fetch_live(target))
     return [dict(r) for r in rows] if rows else []

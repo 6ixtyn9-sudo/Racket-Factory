@@ -41,13 +41,16 @@ def test_priced_and_paper_tracks_split():
     pool = [
         _pick("A1 vs B1", "A1", odds=1.55, src="TheOddsAPI"),
         _pick("A2 vs B2", "A2", odds=1.60, src="Bzzoiro"),
-        _pick("C1 vs D1", "C1", bucket="WATCHLIST_NO_ODDS"),
-        _pick("C2 vs D2", "C2", bucket="WATCHLIST_NO_ODDS"),
+        _pick("C1 vs D1", "C1", odds=1.55, src="ScrapedFallback"),
+        _pick("C2 vs D2", "C2", odds=1.60, src="ScrapedFallback"),
+        _pick("E1 vs F1", "E1", bucket="WATCHLIST_NO_ODDS"),
+        _pick("E2 vs F2", "E2", bucket="WATCHLIST_NO_ODDS"),
     ]
     priced, paper, _ = at.build_accas(pool)
     assert priced and all(not a["paper"] for a in priced)
     assert paper and all(a["paper"] for a in paper)
     assert all(a["odds"] is None for a in paper)
+    assert all(leg["odds"] is not None for a in paper for leg in a["legs"])
     for a in priced:
         for leg in a["legs"]:
             assert at._leg_real_odds(leg) is not None

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -90,7 +91,7 @@ def merge_comparison_rows(
             a = float(row.get("odds_away")) if row.get("odds_away") is not None else None
         except (TypeError, ValueError):
             return None, None
-        if h is None or a is None or h <= 1.0 or a <= 1.0:
+        if h is None or a is None or not math.isfinite(h) or not math.isfinite(a) or h <= 1.0 or a <= 1.0:
             return None, None
         return h, a
 
@@ -150,17 +151,50 @@ def merge_comparison_rows(
         assert be_a is not None
         match_idx: int | None = None
         reversed_match = False
+        candidates = []
         for i, op in enumerate(oddsportal_rows):
             if i in used_op:
+                continue
+            # Only compare the same normalized betting date and full-match
+            # winner market. These adapters use full-match winner by default.
+            be_date = str(be.get("match_date") or "")[:10]
+            if not be_date or be_date != str(op.get("match_date") or "")[:10]:
+                continue
+            def market_key(row):
+                return (str(row.get("market") or row.get("market_key") or "h2h").lower(),
+                        str(row.get("period") or "match").lower(),
+                        "" if row.get("line") is None else str(row.get("line")))
+            be_market = market_key(be)
+            if (be_market != market_key(op) or be_market[0] not in {"h2h", "1x2", "match_winner", "match winner"}
+                    or be_market[1] not in {"match", "full match", "full_match", "full", "0"} or be_market[2]):
                 continue
             op_home, op_away = names(op)
             if not op_home or not op_away:
                 continue
             res = _pair_matches(be_home, be_away, op_home, op_away)
-            if res is not None:
-                _, rev = res
-                match_idx, reversed_match = i, rev
-                break
+            flipped = _pair_matches(be_home, be_away, op_away, op_home)
+            if res is not None and flipped is not None and res[1] != flipped[1]:
+                candidates.append((i, res[1]))
+        if len(candidates) == 1:
+            idx, reverse = candidates[0]
+            # Uniqueness must hold in both directions: multiple BetExplorer
+            # fixtures must not compete for the same OddsPortal row.
+            op = oddsportal_rows[idx]
+            op_home, op_away = names(op)
+            competing = 0
+            for other in betexplorer_rows:
+                other_home, other_away = names(other)
+                if (str(other.get("match_date") or "")[:10] != be_date
+                        or market_key(other) != market_key(op)):
+                    continue
+                pair = _pair_matches(other_home, other_away, op_home, op_away)
+                flip = _pair_matches(other_home, other_away, op_away, op_home)
+                if pair is not None and flip is not None and pair[1] != flip[1]:
+                    competing += 1
+            if competing == 1:
+                match_idx, reversed_match = idx, reverse
+        elif len(candidates) > 1:
+            logger.warning("Ambiguous OddsPortal comparison for %s vs %s", be_home, be_away)
         row = dict(be)
         row["source"] = "BetExplorer"
         if match_idx is None:
@@ -245,6 +279,14 @@ def fetch_comparison_rows(target_date: str) -> list[dict[str, Any]]:
             "oddsportal_upcoming_rows": len(op_rows),
             "merged_rows": len(merged),
             "cross_checked": flags,
+            # Empty lists without a verified empty-board signal are not proof
+            # of a complete empty market. Partial observations remain visible.
+            "source_status": {
+                name: ("failed" if name in errors else
+                       "partial" if any(row.get("_collection_partial") for row in rows) else
+                       "rows_observed" if rows else "empty_or_unknown")
+                for name, rows in (("betexplorer", be_rows), ("oddsportal_upcoming", op_rows))
+            },
             "errors": errors,
         },
     })
