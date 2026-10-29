@@ -758,11 +758,16 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
         capture_betexplorer_fragment(page, "detail", event_id=event_id, observed_at=page_at, status=200)
         if capture_replay:
             from racketfactory.betexplorer_evidence import capture_replay as save_replay
-            if save_replay(page, "detail", fixture, observed_at=page_at, request_url=match_url):
-                count("replay_detail_saved")
+            capture_result = save_replay(page, "detail", fixture, observed_at=page_at, request_url=match_url)
+            if capture_result["file_written"]:
+                count("replay_detail_file_written")
+            if capture_result["discovery_material_retained"]:
+                count("replay_detail_material_retained")
+            if capture_result["material_sufficiency"] == "insufficient":
+                count("replay_detail_insufficient")
         discovery_metrics = {}
         endpoints = _comparison_endpoint_candidates(page, event_id, metrics=discovery_metrics)
-        if capture_replay and stage_counts is not None and stage_counts.get("replay_detail_saved"):
+        if capture_replay and stage_counts is not None and stage_counts.get("replay_detail_file_written"):
             # Compare against the captured DOM, without implying that an empty
             # result proves the omitted JavaScript is sufficient for a new parser.
             import json
@@ -772,13 +777,27 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
                 evidence = json.loads(replay_file.read_text())
                 replay = _comparison_endpoint_candidates(evidence["detail"]["replay_html"], event_id)
                 agrees = replay == endpoints
+                replay_status = ("match_nonempty" if agrees and endpoints else
+                                 "match_empty_inconclusive" if agrees else "mismatch")
+                evidence["detail"]["current_parser_replay_agreement"] = replay_status
                 evidence["detail"]["same_current_discovery_result"] = agrees
                 evidence["detail"]["empty_discovery_does_not_prove_future_parser_fidelity"] = not bool(endpoints)
+                if not agrees:
+                    evidence["detail"]["material_sufficiency"] = "insufficient"
+                    categories = evidence["detail"].setdefault("omission_categories", [])
+                    if "current_parser_replay_mismatch" not in categories:
+                        categories.append("current_parser_replay_mismatch")
+                    count("replay_detail_insufficient")
                 replay_file.write_text(json.dumps(evidence, indent=2, ensure_ascii=True), encoding="utf-8")
-                if agrees:
-                    count("replay_discovery_agrees")
+                if agrees and endpoints:
+                    count("replay_discovery_agrees_nonempty")
+                elif agrees:
+                    count("replay_discovery_empty_inconclusive")
+                else:
+                    count("replay_discovery_mismatch")
             except (OSError, ValueError, KeyError, TypeError):
                 count("replay_comparison_failed")
+                count("replay_detail_insufficient")
         for key, amount in discovery_metrics.items():
             count(key, amount)
         if not endpoints:
@@ -792,22 +811,32 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
         try:
             payload, observed_at = _fetch_comparison_document(endpoints[0]["url"], referer=match_url)
         except PageFetchError as exc:
+            if getattr(exc, "http_status", None) is not None:
+                count("comparison_http_response_observed")
             from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
             capture_betexplorer_failure(event_id, "comparison", exc.kind, status=getattr(exc, "http_status", None), observed_at=getattr(exc, "observed_at", ""), response_sha256=getattr(exc, "response_sha256", ""))
             exc.stage = "comparison_request"
             raise
         count("comparison_response_success")
+        count("comparison_http_response_observed")
         try:
             import json
             html = json.loads(payload).get("odds", "")
         except (ValueError, AttributeError):
             html = ""
+        if not isinstance(html, str):
+            html = ""
         capture_betexplorer_fragment(html or "<div></div>", "comparison", event_id=event_id, observed_at=observed_at, status=200, response_body=payload)
         if capture_replay:
             from racketfactory.betexplorer_evidence import capture_replay as save_replay
-            if save_replay(html or "<div></div>", "comparison", fixture, observed_at=observed_at,
-                           response_body=payload, request_url=endpoints[0]["url"]):
-                count("replay_comparison_saved")
+            result = save_replay(html, "comparison", fixture, observed_at=observed_at,
+                                 response_body=payload, request_url=endpoints[0]["url"])
+            if result["file_written"]:
+                count("replay_comparison_file_written")
+            if result["discovery_material_retained"]:
+                count("replay_comparison_material_retained")
+            if result["material_sufficiency"] == "insufficient":
+                count("replay_comparison_insufficient")
         try:
             rows, metrics = _comparison_response_rows(payload, fixture, endpoints[0], observed_at)
         except PageFetchError as exc:
@@ -818,8 +847,9 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
         count("comparison_parsed")
         count("concrete_bookmaker_rows", metrics.get("bookmaker_rows", 0))
         count("identified_offers", len(rows))
-        from racketfactory.execution import rebuild_quote_execution_problem
-        count("settlement_compatible_offers", sum(not rebuild_quote_execution_problem(r) for r in rows))
+        if not capture_replay:
+            from racketfactory.execution import rebuild_quote_execution_problem
+            count("settlement_compatible_offers", sum(not rebuild_quote_execution_problem(r) for r in rows))
         from racketfactory.rebuild_diagnostics import capture_comparison_offers
         capture_comparison_offers(event_id, rows, metrics)
         logger.info("BetExplorer comparison parse counts: %s", metrics)
