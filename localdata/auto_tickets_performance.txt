@@ -1,12 +1,20 @@
 AUTO-TICKETS (TENNIS) PERFORMANCE — percentages of capital only
 ==============================================================
-generated 2026-09-26T08:09:57
-bank 130.2% of capital (x1.30) · cycle baseline 100.0% · next take-profit at 200.0% (+100% per cycle)
-bet-days 10 (unique) · REAL accas 12W/13L (hit 48.0%)
-PAPER accas (phantom odds, excluded from bank): 3W/0L  paper-PnL +0.0%  paper-bank 100.0%
-open slips 2 · 0 take-profit notification(s)
+Booked ledger accounting; REAL denotes priced ledger entries, not proof of placement or executed cash.
+generated 2026-10-29T19:21:14
+bank 82.4% of capital (x0.82) · cycle baseline 100.0% · next take-profit at 200.0% (+100% per cycle)
+bet-days 17 (unique) · REAL accas 13W/15L (hit 46.4%)
+PAPER accas (phantom odds, excluded from bank): 5W/2L  paper-PnL +0.0%  paper-bank 100.0%
+open slips 4 · 1 ledger event(s)
 
 --- bet-days (most recent first) ---
+  2026-10-12  @2.44W                                       bank    82.4%
+  2026-10-11  PAPER-W●                                     bank    64.0%
+  2026-10-08  @2.06L                                       bank    64.0%
+  2026-10-03  PAPER-L●                                     bank    80.0%
+  2026-10-02  PAPER-W●                                     bank    80.0%
+  2026-10-01  PAPER-L●                                     bank    80.0%
+  2026-09-29  @1.65L                                       bank    80.0%
   2026-09-25  @2.31L @2.88L                                bank   130.2%
   2026-09-24  @2.29W @2.07W                                bank   173.6%
   2026-09-23  @2.62W @1.88L                                bank   134.0%
@@ -15,13 +23,46 @@ open slips 2 · 0 take-profit notification(s)
   2026-09-17  @4.08W                                       bank   194.5%
   2026-09-16  @1.48W @1.78L @1.82L @2.17L                  bank   106.3%
   2026-09-15  @1.64W @1.81W @1.74W @1.67L                  bank   127.3%
-  2026-09-14  @2.43W @1.83W @2.92W @2.79L                  bank   119.9%
-  2026-09-13  PAPER-W● PAPER-W● PAPER-W●                   bank   100.0%
+  execution_cycle_reset: {"adjusted_pnl_pct": -58.09, "at": "2026-09-26T11:01:09.200128+02:00", "bank_after": 100.0, "bank_before": 130.168518, "booked_pnl_pct": 30.17, "event": "execution_cycle_reset", "execution_regime": "exec-2026-09-26", "history_entries_preserved": 18, "note": "execution regime boundary 2026-09-26", "pick_regime": "genesis-2026-09-20"}
 
 --- STAKED legs by price band: hit% vs breakeven% (paper excluded) ---
   band         n     W-L    hit%  avg odds  breakeven    spread
-  <1.30       12    11-1   91.7%     1.242      80.5%   +11.2pp
-  1.30-1.59   32   17-15   53.1%     1.431      69.9%   -16.8pp
-  1.60+        6     5-1   83.3%     2.053      48.7%   +34.6pp
-  >=1.30      38   22-16   57.9%     1.529      65.4%    -7.5pp
-  all         50   33-17   66.0%     1.460      68.5%    -2.5pp
+  <1.30       14    12-2   85.7%     1.249      80.1%    +5.6pp
+  1.30-1.59   35   19-16   54.3%     1.429      70.0%   -15.7pp
+  1.60+        7     6-1   85.7%     2.019      49.5%   +36.2pp
+  >=1.30      42   25-17   59.5%     1.527      65.5%    -6.0pp
+  all         56   37-19   66.1%     1.458      68.6%    -2.5pp
+
+--- TRIPWIRES (report-only, no gate is enforced) — 56 decided staked legs ---
+  bar: a slice needs n>=30 before any verdict counts; below that it is tagged NOISE and ignored.
+  calibration of ml_calibrated_prob (promised vs realised):
+    band          n  promised  realised      gap       z  status
+    <0.60         2     58.3%    100.0%   +41.7p    1.20  NOISE
+    0.60-0.65     7     62.3%     42.9%   -19.4p   -1.06  NOISE
+    0.65-0.70     6     67.3%     83.3%   +16.0p    0.84  NOISE
+    0.70-0.75    13     73.6%     30.8%   -42.8p   -3.50  NOISE
+    0.75-0.80    12     78.2%     83.3%    +5.1p    0.43  NOISE
+    0.80+        16     84.2%     81.2%    -3.0p   -0.33  NOISE
+    all          56     75.0%     66.1%    -8.9p   -1.54  WATCH
+  flat-stake ROI by ML verdict (trailing 21d, worst first):
+    slice                    n    hit%      ROI       z  status
+    BOOST                   23   52.2%  -26.09%   -1.70  NOISE
+    ALLOW                    7   71.4%  +14.71%    0.48  NOISE
+  flat-stake ROI by bucket (trailing 21d, worst first):
+    slice                    n    hit%      ROI       z  status
+    SKIPPED_DEAD_EDGE        2   50.0%  -25.50%   -0.34  NOISE
+    CERTIFIED_CLEAN         12   58.3%  -22.25%   -1.11  NOISE
+    WATCHLIST               16   56.2%  -11.19%   -0.54  NOISE
+  worst calibration cell: 0.70-0.75 n=13 promised 73.6% delivered 30.8% z=-3.5 (PROVISIONAL — under the n bar, do not act on it yet)
+
+  --- RECORD ADJUSTED FOR RULE BREACHES ---
+  bets the engine's own rules should have rejected are not evidence about the strategy:
+    2026-09-17 fallback_2leg_mutual @ 4.08 WON +88.26 pts — acca odds 4.08 exceeded the 4.00 ceiling (ungated fallback, fixed 2026-09-26)
+  booked   P&L +12.60 pts (ROI +3.56%)
+  ADJUSTED P&L -75.66 pts (ROI -23.26%) <-- the engine's record on bets it was entitled to place
+
+--- ALARM: 4 STUCK open slip(s) (>3d) ---
+  2026-09-13 age 46d · 1 acca(s) · 0% committed
+  2026-09-20 age 39d · 1 acca(s) · 0% committed
+  2026-09-30 age 29d · 1 acca(s) · 0% committed
+  2026-10-11 age 18d · 1 acca(s) · 0% committed

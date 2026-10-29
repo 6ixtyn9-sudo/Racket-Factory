@@ -1,7 +1,7 @@
 Racket Factory Picks — 2026-10-30
 ============================================================
-Generated at: 2026-10-29 14:49:53
-Snapshot as of: 2026-10-29T14:38:09+02:00
+Generated at: 2026-10-29 19:15:11
+Snapshot as of: 2026-10-29T18:56:03+02:00
 Ledger kind: forecast
 
 
@@ -23,7 +23,8 @@ FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is 
 
 WATCHLIST — NO MATCHED ODDS
 ============================================================
-  (none)
+  [no_slice_export] Sho Shimabukuro vs Coleman Wong            KO 04:00 -> COLEMAN WONG  conf 71% @n/a
+     bucket=WATCHLIST_NO_ODDS  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=WATCHLIST_ONLY  grade=SILVER  roi=no_slice
 
 WATCHLIST — UNKNOWN CONTEXT
 ============================================================
@@ -31,10 +32,32 @@ WATCHLIST — UNKNOWN CONTEXT
 
 SKIPPED — VETO CONTEXT
 ============================================================
-  [no_slice_export] Alexandra Eala vs Diana Shnaider           KO 04:00 -> DIANA SHNAIDER  conf 63% @1.69  EV +0.06u
+  [no_slice_export] Chiesa / Dencheva vs Brooks / Zaar         KO 11:00 -> BROOKS / ZAAR  conf 71% @1.44  EV +0.02u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Frantzen / Haase vs Cash / Glasspool       KO 13:00 -> CASH / GLASSPOOL  conf 71% @1.30  EV -0.08u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Michelsen / Van De Zandschulp vs Arribage  KO 14:00 -> ARRIBAGE / OLIVETTI  conf 71% @1.43  EV +0.02u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Federico Cina vs Dino Prizmic              KO 12:00 -> DINO PRIZMIC  conf 66% @1.43  EV -0.06u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Mia Pohankova vs Alycia Parks              KO 05:00 -> MIA POHANKOVA  conf 66% @1.48  EV -0.02u
      bucket=SKIPPED_VETO  tour=WTA  series=Premier  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Muhammad / Zhang vs Errani / Paolini       KO 07:00 -> ERRANI / PAOLINI  conf 65% @1.42  EV -0.08u
+     bucket=SKIPPED_VETO  tour=WTA  series=Premier  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Alexandra Eala vs Diana Shnaider           KO 04:00 -> DIANA SHNAIDER  conf 63% @1.62  EV +0.02u
+     bucket=SKIPPED_VETO  tour=WTA  series=Premier  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Omar Jasika vs Yun Seong Chung             KO 04:00 -> OMAR JASIKA  conf 63% @1.49  EV -0.06u
+     bucket=SKIPPED_VETO  tour=CHALLENGER  series=Challenger  surface=Grass  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Bolelli / Vavassori vs Andreozzi / Guinard KO 15:00 -> BOLELLI / VAVASSORI  conf 61% @1.61  EV -0.02u
+     bucket=SKIPPED_VETO  tour=ATP  series=ATP500  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+  [no_slice_export] Jakupovic / Radisic vs Carle / Riera       KO 15:00 -> JAKUPOVIC / RADISIC  conf 61% @1.62  EV -0.01u
+     bucket=SKIPPED_VETO  tour=WTA  series=International  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
 
-SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+SKIPPED — DEAD EDGE (ROBBER or legacy skip — DO NOT BET)
+============================================================
+  (none)
+
+SKIPPED — INVALID OR BELOW-FLOOR ODDS (1.30 MINIMUM)
 ============================================================
   (none)
 

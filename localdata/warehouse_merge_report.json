@@ -1,13 +1,13 @@
 {
   "status": "merged",
-  "baseline_rows": 15159,
-  "fresh_rows": 15347,
-  "shared_keys": 13724,
-  "new_from_fresh": 1623,
+  "baseline_rows": 16782,
+  "fresh_rows": 15476,
+  "shared_keys": 15347,
+  "new_from_fresh": 129,
   "baseline_only": 1435,
-  "settlement_updates": 0,
-  "live_rows_from_fresh": 0,
-  "dim_drift_rows": 4093,
+  "settlement_updates": 5,
+  "live_rows_from_fresh": 67,
+  "dim_drift_rows": 4174,
   "dim_drift_examples": [
     {
       "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|mejian||zhengm",
@@ -70,9 +70,9 @@
       "fresh": ""
     }
   ],
-  "merged_rows": 16782,
-  "generated_at": "2026-10-29T12:49:13.521841+00:00",
-  "baseline_sha256": "b285c8975b702585cf3a17934b73fec756a5a83f6e315a82adab2b40c535f57a",
-  "fresh_sha256": "b90ed4690dccdfe71ac0cb5f5c036022600ffb7f600fcbed702354a51b45d7a4",
-  "merged_sha256": "c4d9d173c47f5ddcbe21b0cd075c52e41958e7430eb7b8d59ca28adfb92374e5"
+  "merged_rows": 16911,
+  "generated_at": "2026-10-29T17:14:30.959142+00:00",
+  "baseline_sha256": "c4d9d173c47f5ddcbe21b0cd075c52e41958e7430eb7b8d59ca28adfb92374e5",
+  "fresh_sha256": "ed3fc47cb3cc29c6aa0f055955a44ce82c687d32782c7892f3c8808d32305243",
+  "merged_sha256": "f2e797595c1455f4e37b12e46bf1db803dfe931c17f9fa59dafa7167995294fd"
 }
