@@ -362,7 +362,15 @@ def surname_tokens(name: str) -> tuple[str, ...]:
     anywhere are treated as initials and ignored for the surname tail,
     except as a last resort.
     """
-    parts = [p for p in normalize_person_name(name).split() if p != "/"]
+    normalized = normalize_person_name(name)
+    if "/" in normalized:
+        # Do not flatten a doubles team into one surname. Keep both members
+        # separate; this is diagnostic keying, not proof of quote identity.
+        members = [member.strip() for member in normalized.split("/")]
+        if len(members) != 2 or not all(members):
+            return tuple()
+        return tuple(" ".join(surname_tokens(member)) for member in members)
+    parts = normalized.split()
     if not parts:
         return tuple()
 
@@ -532,21 +540,16 @@ def names_match(name_a: str, name_b: str) -> bool:
             return True
         return _loose_players_match(members_a[0], members_b[0])
     if len(members_a) == 2 and len(members_b) == 2:
-        # Strict
-        if players_match(members_a[0], members_b[0])[0] and players_match(
-            members_a[1], members_b[1])[0]:
-            return True
-        if players_match(members_a[0], members_b[1])[0] and players_match(
-            members_a[1], members_b[0])[0]:
-            return True
-        # Loose
-        if _loose_players_match(members_a[0], members_b[0]) and _loose_players_match(
-            members_a[1], members_b[1]):
-            return True
-        if _loose_players_match(members_a[0], members_b[1]) and _loose_players_match(
-            members_a[1], members_b[0]):
-            return True
-        return False
+        # Each team must represent two distinguishable members; both member
+        # pairings cannot simultaneously prove the identity of one team.
+        if (players_match(members_a[0], members_a[1])[0] or
+                players_match(members_b[0], members_b[1])[0]):
+            return False
+        def matches(x, y):
+            return players_match(x, y)[0] or _loose_players_match(x, y)
+        direct = matches(members_a[0], members_b[0]) and matches(members_a[1], members_b[1])
+        reverse = matches(members_a[0], members_b[1]) and matches(members_a[1], members_b[0])
+        return direct != reverse
     return False
 
 
@@ -1729,7 +1732,8 @@ def build_live_rows(include_tomorrow: bool = True, *,
     if card.empty:
         return card
 
-    today_str = target_date or date.today().isoformat()
+    from racketfactory.kickoff import SAST
+    today_str = target_date or datetime.now(SAST).date().isoformat()
     if "match_date" in card.columns:
         card["match_date"] = card["match_date"].astype(str).str.strip()
         card = card[card["match_date"] == today_str].copy()
@@ -1789,6 +1793,11 @@ def build_live_rows(include_tomorrow: bool = True, *,
             unknown += 1
     logger.info("Normalized live card %s: %d rows, future=%d started=%d unknown_time=%d; sources=%s",
                 today_str, len(card), future, past, unknown, card["source"].value_counts().to_dict())
+    if supplied_comparisons is None and os.getenv("RACKET_FACTORY_RUN_AS_OF"):
+        # Daily runs use the same targeted detail discovery as guarded rebuilds.
+        # Ad-hoc enrichment calls retain their injectable comparison input.
+        from racketfactory.quote_enrichment import targeted_comparison_rows
+        supplied_comparisons = targeted_comparison_rows(today_str, card.to_dict("records"))
     card = enrich_live_card_with_api_odds(card, today_str, supplied_odds=supplied_odds,
                                           supplied_comparisons=supplied_comparisons)
 

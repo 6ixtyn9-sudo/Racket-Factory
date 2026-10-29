@@ -5,17 +5,51 @@ Forward-capture of daily AI predictions.
 from __future__ import annotations
 import logging
 import re
+import time
+import json
+import os
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from typing import Any, Optional
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from curl_cffi import requests
 
 from racketfactory.entities import normalize_player
-from racketfactory.kickoff import BETCLAN_TZ, parse_source_timestamp, to_sast_parts
+from racketfactory.kickoff import BETCLAN_TZ, SAST, parse_source_timestamp, to_sast_parts
 from racketfactory.sources._page_odds import PageFetchError
 
 logger = logging.getLogger(__name__)
+
+
+def _run_status_path() -> Path:
+    return Path(__file__).resolve().parents[3] / "localdata" / "fetch_cache" / "betclan_run_status.json"
+
+
+def current_run_status(run_as_of: str) -> str:
+    """A cache hit alone does not establish successful current-run collection."""
+    if not run_as_of:
+        return "unknown"
+    try:
+        data = json.loads(_run_status_path().read_text())
+        if data.get("run_as_of") != run_as_of:
+            return "unknown"
+        return data.get("status") if data.get("status") in {"complete", "partial", "unknown", "failed"} else "unknown"
+    except (OSError, ValueError, AttributeError):
+        return "unknown"
+
+
+def _record_run_status(status: str, count: int, profile: dict) -> None:
+    run_as_of = os.getenv("RACKET_FACTORY_RUN_AS_OF", "").strip()
+    if not run_as_of:
+        return
+    try:
+        path = _run_status_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"run_as_of": run_as_of, "status": status, "rows": count,
+                                    "completed_at": datetime.now(SAST).isoformat(), "profile": profile}))
+    except OSError:
+        logger.warning("Could not persist BetClan run status; completeness remains unknown")
 
 
 def extract_kickoff_sast(page_text: str, target_date: str) -> tuple[str, str]:
@@ -41,6 +75,29 @@ def extract_kickoff_sast(page_text: str, target_date: str) -> tuple[str, str]:
 class BetClanPredictor:
     def __init__(self):
         self.base_url = "https://www.betclan.com"
+        self._request_stats = None
+        self._request_urls = set()
+
+    def _get(self, url: str, category: str, *, timeout: int):
+        started = time.monotonic()
+        stats = self._request_stats
+        if stats is not None:
+            stats[category + "_requests"] += 1
+            if url in self._request_urls:
+                stats["repeated_url_requests"] += 1
+            self._request_urls.add(url)
+        try:
+            response = requests.get(url, impersonate="chrome133a", timeout=timeout)
+            if stats is not None and response.status_code != 200:
+                stats["http_failures"] += 1
+            return response
+        except Exception:
+            if stats is not None:
+                stats["transport_failures"] += 1
+            raise
+        finally:
+            if stats is not None:
+                stats["request_seconds"] += time.monotonic() - started
 
     def _clean_text(self, value: str) -> str:
         return " ".join(str(value or "").split()).strip()
@@ -164,7 +221,7 @@ class BetClanPredictor:
     def _fetch_odds_subpage(self, url: str) -> Optional[BeautifulSoup]:
         """Fetch one candidate odds subpage. Returns None on any error or 404."""
         try:
-            resp = requests.get(url, impersonate="chrome133a", timeout=15)
+            resp = self._get(url, "odds_subpage", timeout=15)
         except Exception as e:
             logger.debug(f"BetClan odds subpage fetch error for {url}: {e}")
             return None
@@ -217,16 +274,21 @@ class BetClanPredictor:
 
     def fetch_daily(self) -> list[dict[str, Any]]:
         results = []
+        started = time.monotonic()
+        self._request_urls = set()
+        self._request_stats = {"listing_requests": 0, "detail_requests": 0, "odds_subpage_requests": 0,
+                               "repeated_url_requests": 0, "http_failures": 0, "transport_failures": 0,
+                               "request_seconds": 0.0}
         today_ok = False
         today_links = 0
         today_failed = 0
         today_empty_verified = False
         # Fetch today and tomorrow
         for day_offset, endpoint in [(-1, "yesterdays-tennis-predictions"), (0, "todays-tennis-predictions"), (1, "tomorrows-tennis-predictions")]:
-            target_date = (date.today() + timedelta(days=day_offset)).strftime("%Y-%m-%d")
+            target_date = (datetime.now(SAST).date() + timedelta(days=day_offset)).strftime("%Y-%m-%d")
             url = f"{self.base_url}/{endpoint}/"
             try:
-                resp = requests.get(url, impersonate="chrome133a", timeout=20)
+                resp = self._get(url, "listing", timeout=20)
                 if resp.status_code != 200:
                     logger.warning("BetClan %s HTTP %s", endpoint, resp.status_code)
                     continue
@@ -243,7 +305,7 @@ class BetClanPredictor:
 
             for match_url in set(links):
                 try:
-                    r = requests.get(match_url, impersonate="chrome133a", timeout=20)
+                    r = self._get(match_url, "detail", timeout=20)
                     if r.status_code != 200:
                         if day_offset == 0:
                             today_failed += 1
@@ -355,9 +417,17 @@ class BetClanPredictor:
                         today_failed += 1
                     logger.warning(f"Error parsing BetClan match {match_url}: {e}")
 
+        self._request_stats["request_seconds"] = round(self._request_stats["request_seconds"], 2)
+        self._request_stats["elapsed_seconds"] = round(time.monotonic() - started, 2)
+        self._request_stats["unique_urls"] = len(self._request_urls)
+        self.last_request_stats = dict(self._request_stats)
+        logger.info("BetClan collection profile: %s", self.last_request_stats)
+        self._request_stats = None
         if not today_ok:
             self.last_collection_status = "failed"
+            _record_run_status(self.last_collection_status, len(results), self.last_request_stats)
             raise PageFetchError("transport", "BetClan today listing unavailable")
         self.last_collection_status = ("partial" if today_failed else
             "complete" if today_links or today_empty_verified else "unknown")
+        _record_run_status(self.last_collection_status, len(results), self.last_request_stats)
         return results

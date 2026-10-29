@@ -109,12 +109,12 @@ def test_prediction_pool_targets_unpriced_deduplicates_and_optional_failure(monk
     monkeypatch.setattr(predixsport, "PredixSportPredictor", Predix)
     monkeypatch.setattr(be, "_fetch_live", lambda *a, **kw: ([discovery, other], "complete"))
     calls = []
-    monkeypatch.setattr(be, "fetch_fixture_comparison", lambda f: calls.append(f['event_id']) or be._comparison_response_rows(json.dumps({"odds": HTML}), f, CONTEXT, OBS)[0])
+    monkeypatch.setattr(be, "fetch_fixture_comparison", lambda f, **kwargs: calls.append(f['event_id']) or be._comparison_response_rows(json.dumps({"odds": HTML}), f, CONTEXT, OBS)[0])
     monkeypatch.setattr(oddsportal_upcoming, "_page_for_target", lambda d: (_ for _ in ()).throw(RuntimeError("optional failure")))
     monkeypatch.delenv(oddsportal_upcoming.DISABLE_ENV, raising=False)
     result = daily.collect_rebuild_sources(DAY)
     assert calls == ["a1B2"]
-    assert result['status'] == 'complete' and result['outcomes']['oddsportal']['status'] == 'failed'
+    assert result['status'] == 'insufficient' and result['outcomes']['oddsportal']['status'] == 'failed'
     assert result['outcomes']['betexplorer']['detail_counts']['offers'] == 2
     assert result['raw_quotes']['betexplorer'][0]['settlement_rules'] is None
 

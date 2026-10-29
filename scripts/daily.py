@@ -567,6 +567,7 @@ REBUILD_REQUIRED_SOURCES = ("betclan", "betexplorer")
 REBUILD_OPTIONAL_SOURCES = ("predixsport", "oddsportal", "theoddsapi", "bzzoiro")
 
 
+
 def collect_rebuild_sources(target_date: str, *, progress=None) -> dict[str, Any]:
     """Collect once, directly into memory, without caches or publication.
 
@@ -614,54 +615,11 @@ def collect_rebuild_sources(target_date: str, *, progress=None) -> dict[str, Any
     # Discover prices only for uniquely matched prediction fixtures; discovery
     # rows are not bookmaker quotes. A missing detail is not a verified empty.
     notify("betexplorer_details", "starting")
-    detail_offers = []
-    detail_counts = {"predictions": 0, "matched_fixtures": 0, "unmatched_or_ambiguous": 0,
-                     "attempted": 0, "offers": 0, "failures": {}, "limit_exceeded": 0}
-    if outcomes.get("betexplorer", {}).get("status") == "complete" and be_rows:
-        import pandas as pd
-        from racketfactory.warehouse import _match_api_odds_row, names_match, strict_quote_team_match
-        from racketfactory.sources._page_odds import PageFetchError
-        matched = {}
-        for pred in result["predictions"]:
-            if str(pred.get("match_date") or "")[:10] != target_date:
-                continue
-            detail_counts["predictions"] += 1
-            fixture, reversed_order = _match_api_odds_row(pd.Series(pred), be_rows)
-            if not fixture:
-                detail_counts["unmatched_or_ambiguous"] += 1
-                continue
-            ph, pa = str(pred.get("player_home") or ""), str(pred.get("player_away") or "")
-            fh, fa = str(fixture.get("player_home") or ""), str(fixture.get("player_away") or "")
-            direct = strict_quote_team_match(ph, fh) and strict_quote_team_match(pa, fa)
-            reverse = strict_quote_team_match(ph, fa) and strict_quote_team_match(pa, fh)
-            if names_match(ph, pa) or names_match(fh, fa) or direct == reverse:
-                detail_counts["unmatched_or_ambiguous"] += 1
-                continue
-            eid = str(fixture.get("event_id") or "")
-            if not eid:
-                detail_counts["unmatched_or_ambiguous"] += 1
-                continue
-            matched[eid] = fixture
-        detail_counts["matched_fixtures"] = len(matched)
-        detail_counts["limit_exceeded"] = max(0, len(matched) - betexplorer.MAX_COMPARISON_FIXTURES)
-        for fixture in list(matched.values())[:betexplorer.MAX_COMPARISON_FIXTURES]:
-            detail_counts["attempted"] += 1
-            try:
-                # Capture real response structure for up to two fixtures;
-                # all other fixtures can reuse their original cached observation.
-                if os.getenv("RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR") and detail_counts["attempted"] <= 2:
-                    offers = betexplorer.fetch_fixture_comparison(fixture, refresh_evidence=True)
-                else:
-                    offers = betexplorer.fetch_fixture_comparison(fixture)
-                detail_offers.extend(offers)
-            except Exception as exc:
-                kind = exc.kind if isinstance(exc, PageFetchError) else "unexpected"
-                detail_counts["failures"][kind] = detail_counts["failures"].get(kind, 0) + 1
-                if kind in {"challenge", "rate_limit", "auth"}:
-                    break
-        detail_counts["offers"] = len(detail_offers)
-        if detail_counts["failures"] or detail_counts["limit_exceeded"] or detail_counts["unmatched_or_ambiguous"]:
-            outcomes["betexplorer"]["status"] = "partial"
+    from racketfactory.quote_enrichment import collect_prediction_comparisons
+    detail_offers, detail_counts, partial = collect_prediction_comparisons(
+        target_date, result["predictions"], be_rows, outcomes.get("betexplorer", {}).get("status", "unknown"))
+    if partial:
+        outcomes["betexplorer"]["status"] = "partial"
     outcomes["betexplorer"]["detail_counts"] = detail_counts
     notify("betexplorer_details", "finished")
     notify("oddsportal", "starting")
@@ -676,7 +634,7 @@ def collect_rebuild_sources(target_date: str, *, progress=None) -> dict[str, Any
                 outcomes["oddsportal"] = {"status": "unknown"}
             else:
                 path, _ = page
-                extras = oddsportal_upcoming.TODAY_EXTRA_PATHS if target_date == date.today().isoformat() else oddsportal_upcoming.TOMORROW_EXTRA_PATHS
+                extras = oddsportal_upcoming.TODAY_EXTRA_PATHS if target_date == datetime.now(local_tz()).date().isoformat() else oddsportal_upcoming.TOMORROW_EXTRA_PATHS
                 op_rows = oddsportal_upcoming._fetch_live(path, target_date, extra_paths=extras)
                 status = ("partial" if any(row.get("_collection_partial") for row in op_rows)
                           else "rows_observed" if op_rows else "unknown")
@@ -976,7 +934,7 @@ def run_smart_auto(args: argparse.Namespace) -> None:
 # --------------------------------------------------------------- main --
 def run_once(args: argparse.Namespace) -> None:
     """Execute exactly one full pipeline pass for ``args`` (no scheduling)."""
-    target = args.date or date.today().isoformat()
+    target = args.date or datetime.now(local_tz()).date().isoformat()
     year = target[:4]
 
     run_as_of = make_run_as_of()

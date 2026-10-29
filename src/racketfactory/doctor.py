@@ -318,6 +318,28 @@ def run_health_checks(*, expect_warehouse: bool = False,
     except (OSError, ValueError, TypeError, AttributeError):
         add("tickets:stages", "WARN", "dated ticket snapshot missing/unreadable")
 
+    try:
+        current = json.loads((LOCALDATA / f"auto_tickets_evaluation_{today_s}.json").read_text())
+        if current.get("date") != today_s:
+            raise ValueError("evaluation date mismatch")
+        run_as_of = os.getenv("RACKET_FACTORY_RUN_AS_OF", "").strip()
+        run_id = os.getenv("GITHUB_RUN_ID", "").strip()
+        attempt = os.getenv("GITHUB_RUN_ATTEMPT", "").strip()
+        is_current = bool((run_as_of and current.get("run_as_of") == run_as_of) or
+                          (run_id and attempt and current.get("github_run_id") == run_id and
+                           current.get("github_run_attempt") == attempt))
+        diag = current.get("diagnostics") or {}
+        coverage = current.get("collection_status", "unknown")
+        evaluation_status = ("OK" if coverage == "complete" else "CRITICAL") if is_current else "WARN"
+        add("tickets:current_evaluation", evaluation_status,
+            f"{'current run' if is_current else 'saved evaluation, not verified as current'} "
+            f"evaluated {current.get('evaluated_at')}; run started {current.get('run_as_of')}; "
+            f"quote collection {coverage}; playable {diag.get('playable', '?')}, "
+            f"builder inputs {diag.get('builder_input', '?')}; {current.get('publication')}; "
+            "evaluation is not proof of Git publication or placement")
+    except (OSError, ValueError, TypeError, AttributeError):
+        add("tickets:current_evaluation", "WARN", "current-run evaluation unavailable; saved ticket health is not current quote coverage")
+
     audit_file = LOCALDATA / "picks_audit_rolling.json"
     if audit_file.exists():
         try:

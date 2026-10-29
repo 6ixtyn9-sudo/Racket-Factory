@@ -149,8 +149,12 @@ def test_guarded_collection_required_and_optional_outcomes(monkeypatch):
     monkeypatch.setattr(predixsport, "PredixSportPredictor", FailedPredix)
     monkeypatch.delenv(betexplorer.DISABLE_ENV, raising=False)
     monkeypatch.setenv(oddsportal_upcoming.DISABLE_ENV, "1")
-    quote = {"match_date": "2026-10-29", "player_home": "Alice Adams", "player_away": "Beth Brown", "odds_home": 1.5, "odds_away": 2.5, "event_id": "synthetic"}
-    monkeypatch.setattr(betexplorer, "fetch_fixture_comparison", lambda f: [quote])
+    from datetime import datetime, timezone
+    quote = {"match_date": "2026-10-29", "player_home": "Alice Adams", "player_away": "Beth Brown", "odds_home": 1.5, "odds_away": 2.5, "event_id": "synthetic",
+             "market": "h2h", "period": "match", "observed_at": datetime.now(timezone.utc).isoformat(),
+             "price_type": "bookmaker", "bookmaker": "Synthetic Book",
+             "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}}
+    monkeypatch.setattr(betexplorer, "fetch_fixture_comparison", lambda f, **kwargs: [quote])
     monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False, metrics=None: ([quote], "complete"))
     collection = daily.collect_rebuild_sources("2026-10-29")
     assert collection["status"] == "complete"
