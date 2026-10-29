@@ -13,7 +13,7 @@ import logging
 import sys
 import json
 import hashlib
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 from itertools import combinations
 import re
@@ -730,6 +730,9 @@ def selected_odds_is_usable(row: pd.Series, selected_side: object, probability: 
     if odds_val is None:
         return None, "missing selected-side odds"
 
+    if not row_has_live_flag(row):
+        return None, "historical price is not a live quote"
+
     if row_has_live_flag(row):
         odds_source = str(row.get("_odds_source", "") or "")
         usable_live_sources = {"TheOddsAPI", "OddsPortal", "BetExplorer", "ScrapedFallback"}
@@ -893,7 +896,7 @@ def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
         BZZOIRO_ODDS_CACHE[target_date] = results
         try:
             _bzzoiro_cache_path(target_date).write_text(json.dumps(
-                {"date": target_date, "results": results}))
+                {"date": target_date, "fetched_at": datetime.now(timezone.utc).isoformat(), "results": results}))
         except Exception as exc:
             logger.warning("Bzzoiro static cache write failed for %s: %s", target_date, exc)
         logger.info("Bzzoiro odds/best: %d matches for %s", len(results), target_date)
@@ -913,6 +916,21 @@ def lookup_bzzoiro_selected_odds(target_date: str, pick: dict) -> dict | None:
     try:
         results = _bzzoiro_date_payload(target_date)
         if not results:
+            return None
+        # The existing cache is permanent per date. Old/untimestamped best-price
+        # payloads are useful archives, not provably current execution quotes.
+        # Do not re-fetch a stale cache (and thereby spend quota) here.
+        try:
+            cached = json.loads(_bzzoiro_cache_path(target_date).read_text())
+            fetched = datetime.fromisoformat(str(cached.get("fetched_at", "")).replace("Z", "+00:00"))
+            if fetched.tzinfo is None:
+                return None
+            age = (datetime.now(timezone.utc) - fetched).total_seconds()
+            if not 0 <= age <= 30 * 60:
+                logger.warning("Bzzoiro odds cache for %s is stale; not executable", target_date)
+                return None
+        except (OSError, ValueError, TypeError):
+            logger.warning("Bzzoiro odds cache for %s has no trustworthy capture time", target_date)
             return None
         home = str(pick.get("player_home") or "").strip()
         away = str(pick.get("player_away") or "").strip()
@@ -972,53 +990,10 @@ def lookup_bzzoiro_selected_odds(target_date: str, pick: dict) -> dict | None:
 
 def lookup_local_oddsportal_selected_odds(target_date: str, pick: dict) -> dict | None:
     """Find selected-side odds from locally captured OddsPortal rows."""
-    rows = load_local_oddsportal_odds(target_date)
-    if not rows:
-        return None
-
-    home = str(pick.get("player_home") or pick.get("player_a") or "").strip()
-    away = str(pick.get("player_away") or pick.get("player_b") or "").strip()
-    if not home or not away:
-        home, away = _split_match_text_for_odds(pick.get("match"))
-
-    selected = str(pick.get("selected_player") or "").strip()
-
-    if not home or not away or not selected:
-        return None
-
-    for row in rows:
-        op_a = str(row.get("player_a") or "").strip()
-        op_b = str(row.get("player_b") or "").strip()
-
-        normal = names_match(home, op_a) and names_match(away, op_b)
-        reverse = names_match(home, op_b) and names_match(away, op_a)
-
-        if not (normal or reverse):
-            continue
-
-        if normal:
-            side_a_name, side_b_name = op_a, op_b
-            side_a_odds, side_b_odds = row.get("odds_a"), row.get("odds_b")
-        else:
-            side_a_name, side_b_name = op_b, op_a
-            side_a_odds, side_b_odds = row.get("odds_b"), row.get("odds_a")
-
-        if names_match(selected, side_a_name):
-            return {
-                "odds": side_a_odds,
-                "bookmaker": row.get("bookmaker") or "OddsPortal",
-                "source": row.get("source") or "OddsPortal",
-                "matched_market": f"{op_a} vs {op_b}",
-            }
-
-        if names_match(selected, side_b_name):
-            return {
-                "odds": side_b_odds,
-                "bookmaker": row.get("bookmaker") or "OddsPortal",
-                "source": row.get("source") or "OddsPortal",
-                "matched_market": f"{op_a} vs {op_b}",
-            }
-
+    # Monthly OddsPortal CSVs contain historical/closing prices and lack a
+    # reliable per-quote pre-match timestamp. They are not execution evidence.
+    # Live OddsPortal comparison prices still enter via the warehouse collector.
+    logger.info("Not promoting archived OddsPortal CSV odds to executable prices for %s", target_date)
     return None
 
 
@@ -1147,6 +1122,13 @@ def write_official_pick_outputs(target_date: str, picks: list[dict]) -> None:
             )
             continue
         path.write_text(payload)
+    # Keep historical no-clobber files, but tell the same daily run whether
+    # this miner actually produced fresh picks. Tickets must not reinterpret a
+    # preserved earlier ledger as today's fresh output after an empty mine.
+    run_as_of = os.getenv("RACKET_FACTORY_RUN_AS_OF", "").strip()
+    if run_as_of:
+        status_path = out_dir / f".pick_run_status_{target_date}.json"
+        status_path.write_text(json.dumps({"run_as_of": run_as_of, "fresh_picks": len(picks)}))
     bucket_counts = {}
     for pick in picks:
         bucket = str(pick.get("bucket") or "UNKNOWN")
@@ -1700,6 +1682,11 @@ def main() -> int:
             int(live_mask.sum()),
         )
     df_live_only = df[live_mask].copy()
+    if "_live_stale" in df_live_only.columns:
+        stale = df_live_only["_live_stale"].astype(str).str.lower().isin({"true", "1", "yes"})
+        if stale.any():
+            logger.warning("Excluded %d baseline-only live rows without a fresh quote", int(stale.sum()))
+            df_live_only = df_live_only[~stale].copy()
 
     # Now restrict the slice-mining cohort to settled, non-live rows.
     settled_mask = pd.Series(True, index=df.index)

@@ -229,23 +229,20 @@ def run_health_checks(*, expect_warehouse: bool = False,
     else:
         name, data = picks
         rows = [r for r in data if isinstance(r, dict)
+                and str(r.get("ledger_kind", "")).lower() != "forecast"
+                and (name != "picks_today.json" or
+                     str(r.get("date") or r.get("match_date") or "")[:10] == today_s)
                 and not str(r.get("bucket", "")).startswith("SKIPPED")]
 
-        def _priced(r: dict) -> bool:
-            if r.get("odds_reject_reason"):
-                return False
-            if str(r.get("odds_source") or "").strip().lower() in (
-                    "", "nan", "none", "ml_estimated", "<na>"):
-                return False
-            try:
-                return float(r.get("odds")) > 1.0
-            except (TypeError, ValueError):
-                return False
-
-        priced = sum(1 for r in rows if _priced(r))
-        status = "OK" if priced > 0 else "WARN"
+        # Match the ticket builder's source / price-quality boundary, but do
+        # not claim this is an eligibility or pre-match execution check.
+        from racketfactory.execution import leg_market_odds
+        priced = sum(1 for r in rows if leg_market_odds(r) is not None)
+        # A price count alone does not prove eligibility or an executable pair.
+        status = "OK" if priced >= 2 else "WARN"
         add("picks:priced_share", status,
-            f"{name}: {priced}/{len(rows)} priced")
+            f"{name}: {priced}/{len(rows)} priced (not ticket eligibility; "
+            "two legs are needed for an acca)")
 
     audit_file = LOCALDATA / "picks_audit_rolling.json"
     if audit_file.exists():

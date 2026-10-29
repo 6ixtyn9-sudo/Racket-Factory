@@ -44,6 +44,7 @@ LOCALDATA = ROOT / "localdata"
 
 from racketfactory.kickoff import (  # noqa: E402
     BETCLAN_TZ_REVIEW_DATE,
+    SAST,
     STATUS_DRIFT,
     STATUS_REVIEW_DUE,
     betclan_tz_status,
@@ -256,6 +257,7 @@ def audit(dates: list[str], *, persist: bool = True,
                           "betclan": when, "reference": reference[key],
                           "delta_minutes": delta})
 
+    today = today or datetime.now(SAST).date()
     remembered = load_evidence(today=today)
     added = record_evidence(fresh, existing=remembered) if persist else 0
 
@@ -264,8 +266,15 @@ def audit(dates: list[str], *, persist: bool = True,
                        if (row.get("date"), row.get("fixture")) not in live_keys]
 
     offset = _median([s["delta_minutes"] for s in samples]) if samples else None
-    status = betclan_tz_status(measured_offset_minutes=offset,
-                               sample_size=len(samples))
+    # Pre-clock-change samples cannot verify the assumption after the change.
+    # Keep them in the evidence report, but don't use them to produce an OK.
+    status_samples = [s for s in samples
+                      if str(s.get("date", ""))[:10] <= today.isoformat()
+                      and (today < BETCLAN_TZ_REVIEW_DATE
+                           or str(s.get("date", ""))[:10] >= BETCLAN_TZ_REVIEW_DATE.isoformat())]
+    status_offset = _median([s["delta_minutes"] for s in status_samples]) if status_samples else None
+    status = betclan_tz_status(today=today, measured_offset_minutes=status_offset,
+                               sample_size=len(status_samples))
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "dates_checked": dates,
@@ -275,6 +284,7 @@ def audit(dates: list[str], *, persist: bool = True,
         "new_samples_recorded": added,
         "evidence_file": _display_path(evidence_file()),
         "median_offset_minutes": offset,
+        "status_median_offset_minutes": status_offset,
         "samples": samples[:50],
         **status,
     }
@@ -309,7 +319,7 @@ def main(argv=None) -> int:
           + (f" (+{report['new_samples_recorded']} newly recorded)"
              if report["new_samples_recorded"] else ""))
     if report["matched_fixtures"] == 0:
-        print("  NOTE: still UNKNOWN because no run has yet seen an odds cache "
+        print("  NOTE: no matched evidence because no run has yet seen an odds cache "
               "alongside BetClan picks. Evidence accrues automatically — this "
               "resolves itself on the first live daily run, and cannot be "
               "green until it does.")

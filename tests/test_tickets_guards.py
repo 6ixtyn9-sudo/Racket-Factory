@@ -218,7 +218,7 @@ def test_reconstruction_cannot_reimport_a_paper_acca_as_real(tmp_path, monkeypat
     }
     (tmp_path / "auto_tickets_2026-09-20.json").write_text(json.dumps(ledger))
     (tmp_path / "picks_2026-09-26.json").write_text("[]")
-    monkeypatch.setenv("RACKET_FACTORY_RUN_AS_OF", "2026-09-26T08:05:00+02:00")
+    monkeypatch.setattr(at, "now_local", lambda: NOW)
 
     monkeypatch.setattr(sys, "argv", ["auto_tickets.py", "--date", "2026-09-26"])
     at.main()
@@ -252,7 +252,7 @@ def test_reconstruction_zeroes_a_real_stake_on_a_non_executable_acca(tmp_path, m
         "staked_pct": 25.0, "stake_per_acca_pct": 25.0,
     }))
     (tmp_path / "picks_2026-09-26.json").write_text("[]")
-    monkeypatch.setenv("RACKET_FACTORY_RUN_AS_OF", "2026-09-26T08:05:00+02:00")
+    monkeypatch.setattr(at, "now_local", lambda: NOW)
     monkeypatch.setattr(sys, "argv", ["auto_tickets.py", "--date", "2026-09-26"])
     at.main()
 

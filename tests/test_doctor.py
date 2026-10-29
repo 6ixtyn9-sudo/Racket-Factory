@@ -45,7 +45,7 @@ def test_picks_priced_share(tmp_path, monkeypatch):
         {"bucket": "SKIPPED_DEAD_EDGE", "odds": None, "odds_source": ""},
     ]))
     res = doc.run_health_checks(as_of="2026-09-12")
-    assert res["picks:priced_share"]["status"] == "OK"
+    assert res["picks:priced_share"]["status"] == "WARN"
     assert res["picks:priced_share"]["detail"].startswith("picks_2026-09-12.json: 1/2")
 
 
@@ -53,3 +53,14 @@ def test_expect_warehouse_is_critical(tmp_path, monkeypatch):
     monkeypatch.setattr(doc, "LOCALDATA", tmp_path)
     res = doc.run_health_checks(expect_warehouse=True, as_of="2026-09-12")
     assert res["warehouse"]["status"] == "CRITICAL"
+
+
+def test_priced_share_does_not_count_paper_or_forecast(tmp_path, monkeypatch):
+    monkeypatch.setattr(doc, "LOCALDATA", tmp_path)
+    (tmp_path / "picks_2026-09-12.json").write_text(json.dumps([
+        {"bucket": "WATCHLIST", "odds": 1.9, "odds_source": "TheOddsAPI"},
+        {"bucket": "WATCHLIST", "odds": 1.8, "odds_source": "ScrapedFallback"},
+        {"bucket": "WATCHLIST", "odds": 1.8, "odds_source": "TheOddsAPI", "ledger_kind": "forecast"},
+    ]))
+    check = doc.run_health_checks(as_of="2026-09-12")["picks:priced_share"]
+    assert check["status"] == "WARN" and "1/2 priced" in check["detail"]

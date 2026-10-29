@@ -120,6 +120,10 @@ def merge_comparison_rows(
             return True, False
         if names_match(h1, a2) and names_match(a1, h2):
             return True, True
+        # Never cross-check a doubles quote against a different partnership.
+        from racketfactory.settlement import split_team
+        if any(len(split_team(n)) > 1 for n in (h1, a1, h2, a2)):
+            return None
         try:
             if live_player_key(h1) and live_player_key(h2) and live_player_key(a1) and live_player_key(a2):
                 if live_player_key(h1) == live_player_key(h2) and live_player_key(a1) == live_player_key(a2):
