@@ -1062,6 +1062,11 @@ def _load_the_odds_api_cache(target_date: str, sports: tuple[str, ...], regions:
 
         payload = json.loads(path.read_text())
         meta = payload.get("meta", {}) if isinstance(payload, dict) else {}
+        # Cache extraction can update mtime; original observation time is
+        # authoritative for freshness. Missing/future timestamps fail closed.
+        captured = meta.get("cached_at")
+        if not isinstance(captured, (int, float)) or not 0 <= time.time() - captured <= ttl:
+            return None
 
         if tuple(meta.get("sports", [])) != tuple(sports):
             return None
@@ -1159,34 +1164,12 @@ def odds_api_min_remaining_reserve() -> int:
 
 
 def odds_api_budget_ok(api_keys: tuple[str, ...]) -> bool:
-    """True unless every known key is at/below the remaining reserve.
-
-    Unknown keys (never used this month) fail open: the first call records
-    them into the ledger.
-    """
-    reserve = odds_api_min_remaining_reserve()
-    path = _odds_api_usage_path()
-    if not path.exists():
-        return True
-    try:
-        ledger = json.loads(path.read_text())
-    except Exception:
-        return True
-    if not isinstance(ledger, dict) or ledger.get("month") != _odds_api_month_key():
-        return True
-    slots = ledger.get("keys", {}) if isinstance(ledger.get("keys"), dict) else {}
-    known = [_key_fingerprint(k) for k in api_keys]
-    seen = [slots.get(fp, {}) for fp in known if fp in slots]
-    if len(seen) < len(known):
-        return True  # at least one key has no readings yet
-    remaining = [s.get("remaining") for s in seen if isinstance(s.get("remaining"), int)]
-    if not remaining:
-        return True
-    if all(r <= reserve for r in remaining):
-        logger.warning("The Odds API: all %d keys at/below remaining reserve %d; "
-                       "skipping paid calls this run.", len(remaining), reserve)
-        return False
-    return True
+    """Check a provisioned durable credit authority; no unknown-key fail-open."""
+    from racketfactory.quota_guard import odds_credit_available
+    ok = bool(api_keys) and odds_credit_available(api_keys[0], reserve=odds_api_min_remaining_reserve())
+    if not ok:
+        logger.error("The Odds API: durable credit authority or verified per-call cost missing, blocked or below reserve; paid calls denied")
+    return ok
 
 
 def _odds_api_sports_cache_path() -> Path:
@@ -1206,21 +1189,31 @@ def discover_active_tennis_sports(api_keys: tuple[str, ...], *, ttl_days: int = 
             payload = json.loads(cache_path.read_text())
             fetched = datetime.fromisoformat(str(payload.get("fetched_at", "")).replace("Z", "+00:00"))
             age_days = (datetime.now(timezone.utc) - fetched).total_seconds() / 86400.0
-            if age_days < ttl_days and isinstance(payload.get("keys"), list):
+            if 0 <= age_days < ttl_days and isinstance(payload.get("keys"), list):
                 return [str(k) for k in payload["keys"]]
     except Exception:
         pass
     if not api_keys:
         return None
+    from racketfactory.quota_guard import cooldown_status, record_cooldown, retry_after_seconds
+    if cooldown_status("theoddsapi", api_keys[0]):
+        logger.warning("The Odds API /sports/ discovery skipped: provider cooldown active")
+        return None
     try:
         resp = requests.get(f"{THE_ODDS_API_BASE}/sports/",
                             params={"apiKey": api_keys[0]}, timeout=20)
         if resp.status_code != 200:
-            logger.warning("The Odds API /sports/ discovery failed: HTTP %s",
-                           resp.status_code)
+            if resp.status_code in (401, 402, 403, 429):
+                kind = "rate_limit" if resp.status_code == 429 else ("entitlement" if resp.status_code == 402 else "auth")
+                wait = retry_after_seconds(resp.headers) if resp.status_code == 429 else 24 * 3600
+                record_cooldown("theoddsapi", api_keys[0], kind, wait)
+            logger.warning("The Odds API /sports/ discovery failed: HTTP %s", resp.status_code)
             return None
         data = resp.json()
-        keys = [str(s.get("key")) for s in (data or []) if isinstance(s, dict)
+        if not isinstance(data, list):
+            logger.warning("The Odds API /sports/ discovery parser failure: non-list response")
+            return None
+        keys = [str(s.get("key")) for s in data if isinstance(s, dict)
                 and str(s.get("group", "")).lower() == "tennis"
                 and s.get("active", True) and s.get("key")]
         try:
@@ -1234,7 +1227,7 @@ def discover_active_tennis_sports(api_keys: tuple[str, ...], *, ttl_days: int = 
         logger.info("The Odds API discovery: %d active tennis keys", len(keys))
         return keys
     except Exception as exc:
-        logger.warning("The Odds API /sports/ discovery failed: %s", exc)
+        logger.warning("The Odds API /sports/ discovery failed: %s", type(exc).__name__)
         return None
 
 
@@ -1257,9 +1250,16 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     regions = os.getenv("THE_ODDS_API_REGIONS", "eu,uk,us")
     bookmakers = os.getenv("THE_ODDS_API_BOOKMAKERS", "").strip()
 
+    # A previously paid, configuration-matched quote may still be valid even
+    # when credentials or credit authority are unavailable. Never probe a
+    # provider before checking its original observation-time TTL.
+    cached_rows = _load_the_odds_api_cache(str(target_date)[:10], sports, regions, bookmakers)
+    if cached_rows is not None:
+        return cached_rows
+
     api_keys = the_odds_api_keys()
     if not api_keys:
-        logger.warning("THE_ODDS_API_KEY missing; live API odds unavailable.")
+        logger.warning("THE_ODDS_API_KEY missing; uncached API odds unavailable.")
         return []
 
     active = discover_active_tennis_sports(api_keys)
@@ -1291,6 +1291,8 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
 
     rows: list[dict] = []
 
+    # Never rotate credentials to evade an access or quota failure.
+    api_keys = api_keys[:1]
     key_index = 0
     exhausted_keys: set[int] = set()
 
@@ -1324,6 +1326,16 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
             key_label = _redacted_key_label(key_index, len(api_keys))
 
             try:
+                from racketfactory.quota_guard import reserve_odds_credits
+                # One h2h market over N regions costs at least N credits;
+                # bookmaker-specific billing must be explicitly assessed first.
+                if bookmakers:
+                    logger.error("The Odds API: bookmaker-specific credit cost not verified; request denied")
+                    break
+                minimum_cost = max(1, len([r for r in regions.split(",") if r.strip()]))
+                if not reserve_odds_credits(api_keys[key_index], min_cost=minimum_cost,
+                                            reserve=odds_api_min_remaining_reserve()):
+                    break
                 resp = requests.get(
                     f"{THE_ODDS_API_BASE}/sports/{sport}/odds/",
                     params=params,
@@ -1353,28 +1365,32 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
                     )
                     record_odds_api_usage(api_keys[key_index], resp.headers,
                                           endpoint=f"odds:{sport}")
+                    from racketfactory.quota_guard import reconcile_odds_credits
+                    reconcile_odds_credits(api_keys[key_index], resp.headers)
                     events = resp.json()
                     break
 
-                if resp.status_code in {401, 403, 429}:
+                if resp.status_code in {401, 402, 403, 429}:
+                    from racketfactory.quota_guard import record_cooldown, retry_after_seconds
+                    kind = "rate_limit" if resp.status_code == 429 else ("entitlement" if resp.status_code == 402 else "auth")
+                    wait = retry_after_seconds(resp.headers) if resp.status_code == 429 else 24 * 3600
+                    record_cooldown("theoddsapi", api_keys[key_index], kind, wait)
                     logger.warning(
-                        "The Odds API %s failed with %s on %s; rotating key.",
+                        "The Odds API %s failed with %s on %s; stopping without key rotation.",
                         sport,
                         resp.status_code,
                         key_label,
                     )
                     exhausted_keys.add(key_index)
-                    key_index = (key_index + 1) % len(api_keys)
-                    continue
+                    break
 
                 logger.warning("The Odds API failed for %s: HTTP %s", sport, resp.status_code)
                 break
 
             except Exception as e:
-                logger.warning("The Odds API request failed for %s on %s: %s", sport, key_label, e)
+                logger.warning("The Odds API request failed for %s on %s: %s", sport, key_label, type(e).__name__)
                 exhausted_keys.add(key_index)
-                key_index = (key_index + 1) % len(api_keys)
-                continue
+                break
 
         if not isinstance(events, list):
             continue
@@ -1473,10 +1489,6 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
                 "event_id": event.get("id"),
             })
 
-        # Move to next non-exhausted key for the next sport to spread usage
-        # when multiple keys are configured.
-        if api_keys:
-            key_index = (key_index + 1) % len(api_keys)
 
     # Diagnostic: log any doubles-likely team names so the operator can verify
     # separator handling if odds matching fails for doubles.
@@ -1640,11 +1652,13 @@ def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
                 preds = cached_fetch(forebet_cache_key("today"), lambda: predictor.fetch_daily_predictions("today"))
                 if include_tomorrow:
                     preds = list(preds) + list(cached_fetch(forebet_cache_key("tomorrow"), lambda: predictor.fetch_daily_predictions("tomorrow")))
+            elif source_name == "Bzzoiro":
+                preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p), cache_empty=True)
             else:
                 preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p))
         except Exception as e:
             logger.warning("Live source %s failed during warehouse build: %s", source_name, e)
-            preds = []
+            continue
         logger.info("Live predictions received: source=%s rows=%d", source_name, len(preds))
         for row in preds:
             row = dict(row)

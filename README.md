@@ -190,3 +190,30 @@ Forecast files are preliminary watchlists only. They must be re-confirmed by the
 Missing odds policy
 
 No matched odds means no actionable bet. The row stays in WATCHLIST_NO_ODDS or is hidden by forecast hygiene. For doubles or another competition, use automated compatible sources only: The Odds API when it exposes the sport key, or OddsPortal via the existing scripts/capture_oddsportal.py path when a tournament URL exposes prices. Do not add manual odds CSVs or force fuzzy matches when the opponents differ.
+### Provider budget authority
+
+Paid requests fail closed unless `RACKET_FACTORY_QUOTA_DIR` points to an
+operator-managed, persistent directory shared by every process using the same
+provider accounts. Neither `localdata/` nor an Actions cache is an authority.
+The current GitHub-hosted workflow does not supply such a directory; restoring
+an evictable cache does not make one available. Provisioning and verifying a
+shared durable store requires review before a paid run.
+
+Daily request counters for Bzzoiro and the relay must already exist in that
+directory with their date, service, nonnegative count and blocked flag,
+reconciled against independent provider/account evidence. A missing, corrupt,
+or unwritable record blocks the call; it does not reset usage. The Odds API
+uses a separate per-key, UTC-month credit record, also reconciled from provider
+account evidence. `THE_ODDS_API_MAX_CREDITS_PER_CALL` must be set to an
+operator-verified upper bound covering the configured request parameters.
+Each uncached request reserves that maximum before HTTP; reservations are not
+refunded on failure or crash, and a reported cost above the bound blocks
+subsequent calls. Its existing remaining-credit reserve is unchanged. Counters
+and credit records are locked, atomically replaced and fsynced, but those
+mechanisms cannot make an ephemeral filesystem durable or shared.
+
+Cache files are disposable snapshots: expiry uses the original observation
+time, and cached quotes must still pass existing freshness/execution checks.
+Forebet live fetching is disabled in the daily pipeline; retained archives are
+not deleted or reattributed. Automatic historical Bzzoiro backfill is deferred
+from daily autobets; scheduling and source-specific repair need separate review.

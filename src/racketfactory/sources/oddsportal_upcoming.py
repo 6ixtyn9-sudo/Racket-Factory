@@ -30,6 +30,7 @@ from racketfactory.sources._page_odds import (
     MAX_DECIMAL_ODDS,
     MIN_DECIMAL_ODDS,
     fetch_page_html,
+    PageFetchError,
     parse_listing_page,
 )
 
@@ -130,7 +131,7 @@ def _is_match_link(href: str) -> dict[str, Any] | None:
             tour_keywords = {"atp", "wta", "challenger", "itf", "men", "women", "open", "masters", "championships", "cup", "trophy"}
             has_tour_kw = any(p in tour_keywords for p in parts)
             # If contains tour keyword and 3+ parts, likely tournament category -> reject
-            if has_tour_kw and len(parts) >= 3:
+            if has_tour_kw:
                 return None
             # If 2 parts and both look like names (e.g. shelton-ben), allow
             if len(parts) >= 2 and all(len(p) >= 2 and p.isalpha() for p in parts[:4]):
@@ -455,41 +456,18 @@ def _strip_fragment(href: str) -> str:
     return href.split("#", 1)[0]
 
 
-def _fetch_via_jina(url: str) -> str:
-    """Fetch via Jina reader relay when JINA_API_KEY is available (Cloudflare bypass)."""
-    import os, urllib.request, urllib.error
-    key = (os.getenv("JINA_API_KEY") or os.getenv("JINA_READER_API_KEY") or "").strip()
-    if not key:
-        return ""
-    try:
-        from racketfactory.quota_guard import check_and_spend as _q_spend
-        if not _q_spend("jina"):
-            logger.warning("quota jina exhausted — skipping OddsPortal relay fetch for %s", url)
-            return ""
-    except Exception:
-        pass
-    try:
-        relay_url = f"https://r.jina.ai/{url}"
-        req = urllib.request.Request(relay_url, headers={
-            "Authorization": f"Bearer {key}",
-            "X-Return-Format": "html",
-        })
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return resp.read().decode("utf-8", "replace")
-    except Exception as exc:
-        logger.debug("OddsPortal Jina relay failed for %s: %s", url, exc)
-        return ""
-
 def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = None) -> list[dict[str, Any]]:
-    # Primary page - try Jina relay first when available (GitHub Actions is blocked by Cloudflare)
+    # Do not use a relay to evade provider access restrictions.
     url = BASE_URL + path
-    html = _fetch_via_jina(url)
-    if not html:
-        html = fetch_page_html(url, SOURCE_NAME)
+    html = fetch_page_html(url, SOURCE_NAME)
     all_links: list[dict[str, Any]] = []
     seen_keys: set[str] = set()
+    if _is_challenge_page(html):
+        raise PageFetchError("auth", "OddsPortal challenge page")
     if html:
         links = parse_tennis_page(html, page_date)
+        if not links and not any(marker in html.lower() for marker in ("no matches", "no events")):
+            raise PageFetchError("parser", "OddsPortal listing has no recognised fixtures or empty-board marker")
         for lk in links:
             key = f"{lk.get('player_home')}\x00{lk.get('player_away')}"
             if key not in seen_keys:
@@ -500,9 +478,7 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
     for extra in (extra_paths or []):
         try:
             eurl = BASE_URL + extra
-            ehtml = _fetch_via_jina(eurl)
-            if not ehtml:
-                ehtml = fetch_page_html(eurl, SOURCE_NAME)
+            ehtml = fetch_page_html(eurl, SOURCE_NAME)
             if not ehtml:
                 continue
             elinks = parse_tennis_page(ehtml, page_date)
@@ -511,8 +487,10 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
                 if key not in seen_keys:
                     seen_keys.add(key)
                     all_links.append(lk)
-        except Exception as exc:
-            logger.debug("OddsPortal extra path %s failed: %s", extra, exc)
+        except PageFetchError as exc:
+            if exc.kind in ("rate_limit", "auth", "transport"):
+                raise
+            logger.warning("OddsPortal extra path failed: %s", exc)
             continue
 
     rows: list[dict[str, Any]] = []
@@ -523,9 +501,14 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
             n_live += 1
             continue
         murl = urljoin(BASE_URL, _strip_fragment(href))
-        mhtml = _fetch_via_jina(murl)
-        if not mhtml:
+        try:
             mhtml = fetch_page_html(murl, SOURCE_NAME)
+        except PageFetchError as exc:
+            if exc.kind in ("rate_limit", "auth", "transport"):
+                raise
+            n_failed += 1
+            logger.warning("OddsPortal match page failed: %s", exc)
+            continue
         logger.info("OddsPortal match %s - %s: %d bytes payout=%s betslip=%d challenged=%s",
                     link.get("player_home"), link.get("player_away"), len(mhtml),
                     "Payout" in mhtml, mhtml.count(_BETSLIP_HREF),
@@ -541,6 +524,8 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
         match_url = str(link.pop("match_url", "") or "")
         link["event_id"] = match_url.rstrip("/").rsplit("/", 1)[-1] if match_url else ""
         rows.append(link)
+    if all_links and not rows and n_failed:
+        raise PageFetchError("parser", "OddsPortal match pages contained no usable paired prices")
     logger.info("OddsPortal match pages %s: candidates=%d priced=%d live_skipped=%d failed=%d (extra_paths=%d)",
                 page_date, min(len(all_links), MAX_MATCH_PAGES), len(rows), n_live, n_failed, len(extra_paths or []))
     return rows
@@ -567,9 +552,5 @@ def fetch_oddsportal_upcoming_rows(target_date: str) -> list[dict[str, Any]]:
     today = date.today().isoformat()
     extra = TODAY_EXTRA_PATHS if target == today else TOMORROW_EXTRA_PATHS if target == (date.today() + timedelta(days=1)).isoformat() else []
     ttl = _get_oddsportal_ttl_minutes()
-    try:
-        rows = cached_fetch(cache_key, lambda: _fetch_live(p_path, target, extra_paths=extra), ttl_minutes=ttl)
-    except Exception as exc:
-        logger.warning("OddsPortal upcoming fetch failed: %s", exc)
-        return []
+    rows = cached_fetch(cache_key, lambda: _fetch_live(p_path, target, extra_paths=extra), ttl_minutes=ttl)
     return [dict(r) for r in rows] if rows else []

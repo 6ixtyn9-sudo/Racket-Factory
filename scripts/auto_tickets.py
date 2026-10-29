@@ -1324,7 +1324,10 @@ def main():
         in_generation_window=in_generation_window,
     ):
         print(f"REFUSING to overwrite auto_tickets_{target_date}.* "
-              f"(frozen/non-empty ledger guard; keeping existing files).")
+              f"(frozen/non-empty ledger guard; keeping existing files and state).")
+        # A denied file publication must not book the newly generated accas
+        # into open_slips behind the frozen ticket snapshot's back.
+        return 0
     else:
         (LOCALDATA / f"auto_tickets_{target_date}.json").write_text(json.dumps(out, indent=2))
         (LOCALDATA / f"auto_tickets_{target_date}.txt").write_text(format_tickets_txt(target_date, accas, state, skipped, diagnostics))

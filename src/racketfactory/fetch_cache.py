@@ -13,9 +13,8 @@ The cache stores raw fetcher output (JSON-serializable list of dicts) under
 the same job reuse the first successful crawl instead of re-hitting the site.
 
 Safety rules:
-  * Only NON-EMPTY results are cached. A transient failure (empty list) is
-    returned as-is without poisoning the cache, so the next caller retries
-    the live site (previous behaviour preserved).
+  * Non-empty results are cached by default. Callers that raise on provider
+    failure may explicitly cache a successfully verified empty response.
   * Corrupt/unparseable cache files are ignored and refetched.
   * ``ttl_minutes <= 0`` (or env ``<= 0``) bypasses the cache entirely.
   * Cache files are deliberately NOT committed to git and NOT part of the
@@ -74,7 +73,7 @@ def _cache_is_fresh(path: Path, ttl_minutes: float) -> bool:
 
 def read_cached_rows(source: str, fetch_day: str | None = None,
                      ttl_minutes: float | None = None,
-                     cache_dir: Path | None = None) -> list[dict[str, Any]] | None:
+                     cache_dir: Path | None = None, *, allow_empty: bool = False) -> list[dict[str, Any]] | None:
     """Return cached rows, or None on any miss/expiry/corruption."""
     ttl = DEFAULT_TTL_MINUTES if ttl_minutes is None else ttl_minutes
     path = cache_path(source, fetch_day, cache_dir)
@@ -86,8 +85,11 @@ def read_cached_rows(source: str, fetch_day: str | None = None,
         logger.warning("Fetch cache unreadable for %s (%s); refetching: %s",
                        source, path, exc)
         return None
+    captured = payload.get("cached_at") if isinstance(payload, dict) else None
+    if not isinstance(captured, (int, float)) or not 0 <= time.time() - captured <= ttl * 60:
+        return None
     rows = payload.get("rows") if isinstance(payload, dict) else None
-    if not isinstance(rows, list) or not rows:
+    if not isinstance(rows, list) or (not rows and not allow_empty):
         return None
     try:
         age_min = (time.time() - path.stat().st_mtime) / 60.0
@@ -100,9 +102,9 @@ def read_cached_rows(source: str, fetch_day: str | None = None,
 
 def write_cached_rows(source: str, rows: list[dict[str, Any]],
                       fetch_day: str | None = None,
-                      cache_dir: Path | None = None) -> None:
-    """Persist NON-EMPTY fetcher output. Empty lists are never cached."""
-    if not rows:
+                      cache_dir: Path | None = None, *, allow_empty: bool = False) -> None:
+    """Persist results, including proven successful empty results only when opted in."""
+    if not rows and not allow_empty:
         return
     path = cache_path(source, fetch_day, cache_dir)
     try:
@@ -124,18 +126,19 @@ def write_cached_rows(source: str, rows: list[dict[str, Any]],
 def cached_fetch(source: str, fetch_fn: Callable[[], list[dict[str, Any]]],
                  *, fetch_day: str | None = None,
                  ttl_minutes: float | None = None,
-                 cache_dir: Path | None = None) -> list[dict[str, Any]]:
+                 cache_dir: Path | None = None, cache_empty: bool = False) -> list[dict[str, Any]]:
     """Return ``fetch_fn()`` rows, reusing a fresh cache entry when present.
 
     Fetch exceptions propagate (callers keep their existing try/except
-    behaviour); only successful non-empty results populate the cache.
+    behaviour); only successful results populate the cache. Empty results
+    are opt-in and require the caller to raise on any provider failure.
     """
     ttl = cache_ttl_minutes() if ttl_minutes is None else ttl_minutes
     if ttl > 0:
-        cached = read_cached_rows(source, fetch_day, ttl, cache_dir)
+        cached = read_cached_rows(source, fetch_day, ttl, cache_dir, allow_empty=cache_empty)
         if cached is not None:
             return cached
     rows = fetch_fn()
-    if ttl > 0 and rows:
-        write_cached_rows(source, rows, fetch_day, cache_dir)
+    if ttl > 0 and (rows or cache_empty):
+        write_cached_rows(source, rows, fetch_day, cache_dir, allow_empty=cache_empty)
     return rows

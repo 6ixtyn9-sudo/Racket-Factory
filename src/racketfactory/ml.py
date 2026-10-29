@@ -150,14 +150,36 @@ def load_clv_rolling() -> dict[str, Any]:
         return {}
 
 def load_performance() -> dict[str, Any]:
-    for name in ("auto_tickets_performance.json", "auto_tickets_state.json", "clv_rolling.json"):
-        path = LOCALDATA / name
-        if path.exists():
-            try:
-                return json.loads(path.read_text())
-            except Exception:
-                continue
-    return {}
+    # The state is the authoritative booked ledger. A report from an earlier
+    # run must not masquerade as current after a failed grade/publication.
+    state_path = LOCALDATA / "auto_tickets_state.json"
+    report_path = LOCALDATA / "auto_tickets_performance.json"
+    try:
+        state = json.loads(state_path.read_text()) if state_path.exists() else None
+        if not isinstance(state, dict):
+            state = None
+    except (OSError, ValueError):
+        state = None
+    try:
+        report = json.loads(report_path.read_text()) if report_path.exists() else None
+        if not isinstance(report, dict):
+            report = None
+    except (OSError, ValueError):
+        report = None
+    if state is not None:
+        paper_report = report.get("paper_accas") if report else None
+        if (report is not None and isinstance(paper_report, dict)
+                and "bank" in state and report.get("bank_pct") == state.get("bank")
+                and paper_report.get("bank_pct") == state.get("paper_bank")
+                and all(report.get(key) == state.get(key)
+                        for key in ("history", "open_slips", "events"))):
+            return report
+        return {**state, "bank_pct": state.get("bank"),
+                "paper_bank_pct": state.get("paper_bank"),
+                "report_status": "missing_or_stale; values from state"}
+    # Do not silently use a report as current when the authoritative state is
+    # missing or unreadable.
+    return {"report_status": "state_missing_or_unreadable"}
 
 def build_context_registry(audit: dict) -> dict[str, dict[str, dict]]:
     registry: dict[str, dict[str, dict]] = defaultdict(dict)
@@ -730,8 +752,9 @@ def monitor_performance() -> dict:
     health = {
         "audit_settled": audit.get("overall", {}).get("settled_picks", 0) if isinstance(audit.get("overall"), dict) else 0,
         "clv_total_settled": clv.get("total_settled", 0) if isinstance(clv, dict) else 0,
-        "bank_pct": perf.get("bank_pct", 100.0) if isinstance(perf, dict) else 100.0,
-        "paper_bank_pct": perf.get("paper_bank_pct", 100.0) if isinstance(perf, dict) else 100.0,
+        "bank_pct": perf.get("bank_pct") if isinstance(perf, dict) else None,
+        "paper_bank_pct": (perf.get("paper_bank_pct", perf.get("paper_accas", {}).get("bank_pct")) if isinstance(perf, dict) else None),
+        "performance_source_status": perf.get("report_status", "report_matches_state"),
     }
 
     registry = build_context_registry(audit)

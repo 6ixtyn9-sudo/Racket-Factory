@@ -24,7 +24,7 @@ def main():
     out_file = Path(args.output_dir) / "archive_bzzoiro.csv"
     bp = BzzoiroPredictor()
     logger.info("Fetching Bzzoiro daily predictions (today+tomorrow)...")
-    preds = cached_fetch("bzzoiro_2day", lambda: bp.fetch_daily(include_tomorrow=True))
+    preds = cached_fetch("bzzoiro_2day", lambda: bp.fetch_daily(include_tomorrow=True), cache_empty=True)
     if not preds:
         logger.warning("No Bzzoiro predictions fetched.")
         return

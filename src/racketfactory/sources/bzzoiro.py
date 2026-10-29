@@ -7,104 +7,83 @@ from dotenv import load_dotenv
 
 from racketfactory.sources.forebet import name_signature
 
-try:
-    from racketfactory.quota_guard import check_and_spend, record_402, get_count, get_limit
-except Exception:
-    def check_and_spend(service, n=1, day=None): return True
-    def record_402(service, day=None): return None
-    def get_count(service, day=None): return 0
-    def get_limit(service): return 100
+from racketfactory.quota_guard import (check_and_spend, record_402, cooldown_status,
+                                      record_cooldown, retry_after_seconds)
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 BZZOIRO_TOKEN = os.getenv("BZZOIRO_TOKEN")
 
+class SourceFetchError(RuntimeError):
+    """Provider failure is not a successful empty predictions board."""
+    def __init__(self, kind: str, detail: str):
+        self.kind = kind
+        super().__init__(f"Bzzoiro {kind}: {detail}")
+
+
 class BzzoiroPredictor:
     def __init__(self):
         if not BZZOIRO_TOKEN:
-            logger.warning("BZZOIRO_TOKEN not found in .env. Bzzoiro Predictor will fail.")
+            logger.warning("Bzzoiro token not configured")
 
     def fetch_historical_predictions(self, date_from: str, date_to: str) -> list[dict[str, Any]]:
-        all_results = []
+        from urllib.parse import urlsplit
+        token = BZZOIRO_TOKEN
+        if not token:
+            raise SourceFetchError("auth", "token not configured; check deployment secret")
+        failure = cooldown_status("bzzoiro", token)
+        if failure:
+            raise SourceFetchError(failure["kind"], "cooldown active; check provider account and permissions")
         url = "https://sports.bzzoiro.com/tennis/api/v2/predictions/"
-        # Fallback to new domain if v2 fails: https://tennis.bzzoiro.com/api/predictions/
-        fallback_urls = [
-            "https://tennis.bzzoiro.com/api/predictions/",
-            "https://sports.bzzoiro.com/api/v2/predictions/",
-        ]
         params = {"date_from": date_from, "date_to": date_to, "upcoming_only": "false"}
-        headers = {"Authorization": f"Token {BZZOIRO_TOKEN}"}
-        tried_fallback = False
+        headers = {"Authorization": f"Token {token}"}
+        all_results = []
+        visited = set()
         while url:
-            logger.info(f"Fetching Bzzoiro predictions from {url}")
+            parsed = urlsplit(url)
+            if parsed.scheme != "https" or parsed.hostname != "sports.bzzoiro.com" or url in visited:
+                raise SourceFetchError("parser", "invalid or repeated pagination URL")
+            visited.add(url)
             if not check_and_spend("bzzoiro"):
-                logger.warning("Bzzoiro quota exhausted — skipping remaining pages, using archived predictions")
-                break
+                raise SourceFetchError("quota", "request not authorised by durable accounting")
             try:
                 response = requests.get(url, headers=headers, params=params, timeout=20)
-                params = None
-                if response.status_code == 404 and not tried_fallback:
-                    # Try fallback endpoints
-                    logger.warning(f"Bzzoiro 404 on {url}, trying fallback endpoints")
-                    for fb_url in fallback_urls:
-                        if not check_and_spend("bzzoiro"):
-                            break
-                        try:
-                            logger.info(f"Trying Bzzoiro fallback {fb_url}")
-                            fb_resp = requests.get(fb_url, headers=headers, params={"date_from": params.get("date_from") if isinstance(params, dict) else None, "date_to": params.get("date_to") if isinstance(params, dict) else None, "upcoming_only": "false"} if params else {"upcoming_only": "false"}, timeout=20)
-                            if fb_resp.status_code == 200:
-                                logger.info(f"Bzzoiro fallback succeeded: {fb_url}")
-                                response = fb_resp
-                                url = fb_url
-                                break
-                            if fb_resp.status_code == 402:
-                                record_402("bzzoiro")
-                                logger.warning(f"Bzzoiro API quota exhausted (402) on fallback {fb_url} — our spend today: {get_count('bzzoiro')}/{get_limit('bzzoiro')} — if under budget, the token's free trial/plan state is the likely cause (check the Bzzoiro account)")
-                                break
-                        except Exception as fe:
-                            logger.warning(f"Bzzoiro fallback {fb_url} failed: {fe}")
-                            continue
-                    tried_fallback = True
-                if response.status_code == 402:
-                    record_402("bzzoiro")
-                    logger.warning(f"Bzzoiro API quota exhausted (402) on {url} — our spend today: {get_count('bzzoiro')}/{get_limit('bzzoiro')} — if under budget, the token's free trial/plan state is the likely cause (check the Bzzoiro account) — treating as empty, will use archived predictions")
-                    # 402 is quota/payment required, not retryable, break gracefully
-                    break
-                if response.status_code != 200:
-                    logger.error(f"Bzzoiro API failed: HTTP {response.status_code}")
-                    if response.status_code in (404, 429):
-                        # Try next fallback if not yet
-                        if not tried_fallback:
-                            for fb_url in fallback_urls:
-                                if fb_url != url:
-                                    url = fb_url
-                                    break
-                            continue
-                    break
+            except requests.RequestException:
+                raise SourceFetchError("transport", "request failed") from None
+            params = None
+            code = response.status_code
+            if code == 401:
+                record_cooldown("bzzoiro", token, "auth", 24 * 3600)
+                raise SourceFetchError("auth", "HTTP 401; check provider account/token configuration and endpoint permissions")
+            if code == 402:
+                record_402("bzzoiro")
+                raise SourceFetchError("entitlement", "HTTP 402; check account and plan")
+            if code == 429:
+                record_cooldown("bzzoiro", token, "rate_limit", retry_after_seconds(getattr(response, "headers", {})))
+                raise SourceFetchError("rate_limit", "HTTP 429; respecting Retry-After")
+            if code != 200:
+                raise SourceFetchError("http", f"HTTP {code}")
+            try:
                 data = response.json()
-                results = data.get("results", [])
-                for item in results:
+                if not isinstance(data, dict) or not isinstance(data.get("results"), list):
+                    raise ValueError("invalid result structure")
+                for item in data["results"]:
                     match = item.get("match", {})
-                    player1 = match.get("player1", {})
-                    player2 = match.get("player2", {})
+                    player1, player2 = match.get("player1", {}), match.get("player2", {})
                     match_date = match.get("match_date")
                     if match_date and "T" in match_date:
                         match_date = match_date.split("T")[0]
-                    all_results.append({
-                        "match_date": match_date,
-                        "player_home": player1.get("name"),
-                        "player_away": player2.get("name"),
-                        "prob_home": item.get("prob_player1_wins"),
-                        "prob_away": item.get("prob_player2_wins"),
-                        "predicted_winner": str(item.get("predicted_winner")),
-                        "source": "Bzzoiro"
-                    })
+                    all_results.append({"match_date": match_date, "player_home": player1.get("name"),
+                                        "player_away": player2.get("name"), "prob_home": item.get("prob_player1_wins"),
+                                        "prob_away": item.get("prob_player2_wins"),
+                                        "predicted_winner": str(item.get("predicted_winner")), "source": "Bzzoiro"})
                 url = data.get("next")
-            except Exception as e:
-                logger.error(f"Error fetching from Bzzoiro: {e}")
-                break
-        logger.info(f"Fetched {len(all_results)} predictions from Bzzoiro")
+                if url is not None and not isinstance(url, str):
+                    raise ValueError("invalid pagination")
+            except (ValueError, TypeError, AttributeError, KeyError):
+                raise SourceFetchError("parser", "invalid response structure") from None
+        logger.info("Bzzoiro successful response: %d predictions", len(all_results))
         return all_results
 
     def fetch_daily(self, include_tomorrow: bool = False) -> list[dict[str, Any]]:

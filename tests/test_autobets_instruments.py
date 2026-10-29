@@ -37,8 +37,14 @@ def test_forensics_never_reports_a_battery_without_a_null_test():
     assert "NOT ADOPTABLE" in source
 
 
-def test_kickoff_audit_runs_clean():
-    proc = _run("scripts/kickoff_tz_audit.py", "--days", "2")
+def test_kickoff_audit_runs_clean(tmp_path):
+    # Run the real CLI with its evidence and report paths redirected; the
+    # subprocess must not rewrite the checkout's operational audit evidence.
+    code = ("import sys; from pathlib import Path; "
+            "from scripts import kickoff_tz_audit as a; "
+            "a.LOCALDATA=Path(sys.argv[1]); a.OUT_FILE=a.LOCALDATA/'kickoff_tz_audit.json'; "
+            "raise SystemExit(a.main(['--days','2']))")
+    proc = _run("-c", code, str(tmp_path))
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "BetClan timezone assumption" in proc.stdout
 
