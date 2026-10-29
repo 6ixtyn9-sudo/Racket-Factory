@@ -97,6 +97,9 @@ def test_discovery_retains_unpriced_fixture():
 def test_prediction_pool_targets_unpriced_deduplicates_and_optional_failure(monkeypatch):
     from racketfactory.sources import betclan, predixsport, oddsportal_upcoming
     from scripts import daily
+    from racketfactory import quote_enrichment
+    from racketfactory.kickoff import SAST
+    monkeypatch.setattr(quote_enrichment, "_collection_now", lambda: datetime(2026, 10, 29, 10, 0, tzinfo=SAST))
     discovery = dict(FIXTURE, source="BetExplorer", odds_home=None, odds_away=None)
     other = dict(discovery, event_id="other", match_url="/tennis/atp/test/other/other/", player_home="Carl Clark", player_away="Dora Dale")
     class Clan:
@@ -178,4 +181,30 @@ def test_listing_challenge_is_not_retried_via_another_route(monkeypatch):
     monkeypatch.setattr(be, 'fetch_page_html', refused)
     with pytest.raises(PageFetchError, match='challenge'):
         be._fetch_live(DAY, with_status=True)
+    assert len(calls) == 1
+
+
+def test_synthetic_discovery_counts_rejections_and_fails_conflicting_context():
+    stats = {}
+    page = (PAGE.replace('data-period="match"', 'data-period="set1"') +
+            PAGE.replace('Match Winner', 'Set Winner') +
+            PAGE.replace('/match-odds/a1B2/', '/match-odds/other/'))
+    assert be._comparison_endpoint_candidates(page, 'a1B2', metrics=stats) == []
+    assert stats['endpoint_nodes_scanned'] == 3
+    assert stats['endpoint_period_rejected'] == 1
+    assert stats['endpoint_market_rejected'] == 1
+    assert stats['endpoint_url_rejected'] == 1
+    stats = {}
+    assert be._comparison_endpoint_candidates(PAGE + PAGE.replace('data-market-id="T"', 'data-market-id="X"'), 'a1B2', metrics=stats) == []
+    assert stats['endpoint_conflicting_context'] == 1
+
+
+def test_synthetic_success_http_unexpected_page_never_requests_comparison(monkeypatch):
+    calls = []
+    monkeypatch.setattr(be, '_fetch_comparison_document', lambda url, referer=None: (calls.append((url, referer)) or '<html>unrelated</html>', OBS))
+    counts = {}
+    with pytest.raises(PageFetchError, match='endpoint') as exc:
+        be.fetch_fixture_comparison(FIXTURE, refresh_evidence=True, stage_counts=counts)
+    assert exc.value.stage == 'endpoint_discovery'
+    assert counts['match_page_success'] == 1 and counts.get('comparison_attempts', 0) == 0
     assert len(calls) == 1

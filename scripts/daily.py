@@ -591,9 +591,15 @@ def collect_rebuild_sources(target_date: str, *, progress=None) -> dict[str, Any
         rows = betclan.fetch_daily()
         status = getattr(betclan, "last_collection_status", "unknown")
         outcomes["betclan"] = {"status": status, "rows": len(rows)}
+        profile = getattr(betclan, "last_request_stats", None)
+        if isinstance(profile, dict):
+            outcomes["betclan"]["profile"] = dict(profile)
         result["predictions"].extend(dict(row, source="BetClan") for row in rows)
     except Exception as exc:
         outcomes["betclan"] = {"status": "failed", "error_type": type(exc).__name__}
+        profile = getattr(betclan, "last_request_stats", None)
+        if isinstance(profile, dict):
+            outcomes["betclan"]["profile"] = dict(profile)
     notify("betexplorer", "starting")
     try:
         be_metrics = {}

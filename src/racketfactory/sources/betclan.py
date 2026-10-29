@@ -282,6 +282,10 @@ class BetClanPredictor:
         today_ok = False
         today_links = 0
         today_failed = 0
+        today_attempted = 0
+        today_succeeded = 0
+        today_failure_kinds = {"http": 0, "participant_markup": 0, "winner_markup": 0,
+                               "winner_ambiguous": 0, "exception": 0}
         today_empty_verified = False
         # Fetch today and tomorrow
         for day_offset, endpoint in [(-1, "yesterdays-tennis-predictions"), (0, "todays-tennis-predictions"), (1, "tomorrows-tennis-predictions")]:
@@ -304,11 +308,14 @@ class BetClanPredictor:
                 today_empty_verified = not links and any(marker in resp.text.lower() for marker in ("no matches", "no events", "no predictions"))
 
             for match_url in set(links):
+                if day_offset == 0:
+                    today_attempted += 1
                 try:
                     r = self._get(match_url, "detail", timeout=20)
                     if r.status_code != 200:
                         if day_offset == 0:
                             today_failed += 1
+                            today_failure_kinds["http"] += 1
                         continue
                     s = BeautifulSoup(r.text, 'html.parser')
 
@@ -317,6 +324,7 @@ class BetClanPredictor:
                     if not home_div or not away_div:
                         if day_offset == 0:
                             today_failed += 1
+                            today_failure_kinds["participant_markup"] += 1
                         continue
 
                     p1 = home_div.text.strip()
@@ -326,6 +334,7 @@ class BetClanPredictor:
                     if not winner_tag:
                         if day_offset == 0:
                             today_failed += 1
+                            today_failure_kinds["winner_markup"] += 1
                         continue
                     next_sib = winner_tag.find_next_sibling("h5")
                     winner_name = next_sib.text.strip() if next_sib else ""
@@ -356,6 +365,7 @@ class BetClanPredictor:
                         if home_match == away_match:
                             if day_offset == 0:
                                 today_failed += 1
+                                today_failure_kinds["winner_ambiguous"] += 1
                             continue
                         pred_win = "player_a" if home_match else "player_b"
 
@@ -412,11 +422,20 @@ class BetClanPredictor:
                             "source": "BetClan",
                             "source_url": match_url,
                         })
+                    if day_offset == 0:
+                        today_succeeded += 1
                 except Exception as e:
                     if day_offset == 0:
                         today_failed += 1
+                        today_failure_kinds["exception"] += 1
                     logger.warning(f"Error parsing BetClan match {match_url}: {e}")
 
+        self._request_stats.update({"today_listing_ok": today_ok,
+                                    "today_discovered_unique": today_links,
+                                    "today_detail_attempted": today_attempted,
+                                    "today_detail_parsed": today_succeeded,
+                                    "today_detail_failed": today_failed,
+                                    "today_detail_failure_kinds": today_failure_kinds})
         self._request_stats["request_seconds"] = round(self._request_stats["request_seconds"], 2)
         self._request_stats["elapsed_seconds"] = round(time.monotonic() - started, 2)
         self._request_stats["unique_urls"] = len(self._request_urls)
