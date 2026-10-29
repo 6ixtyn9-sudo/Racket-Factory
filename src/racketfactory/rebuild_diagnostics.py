@@ -84,6 +84,19 @@ def capture_betexplorer_fragment(html: str, kind: str, *, event_id: str = "", ob
             labels.append({"tag": tag.name, "text": label, "attributes": attrs})
         if len(labels) == 25:
             break
+    # Bookmaker labels are public provider identifiers, not policy proof.
+    # Capture only short, restricted labels from bookmaker-specific attributes;
+    # other page text, URLs and long token-like values remain redacted.
+    books = []
+    for row in soup.select('table tbody tr, tr[data-bookie], tr[data-bookmaker-name], div.oddsComparisonAll__rowBookie')[:200]:
+        logo = row.select_one('img[title], a[title]')
+        label = str(row.get("data-bookmaker-name") or (logo.get("title") if logo else "") or "").strip()
+        if (re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 .&+'-]{0,39}", label)
+                and not re.search(r"(?i)token|secret|password|api.?key|session|bearer", label)
+                and not re.search(r"[A-Za-z0-9]{24}", label) and label not in books):
+            books.append(label)
+        if len(books) == 20:
+            break
     tables = []
     for table in soup.find_all("table", limit=3):
         sample = []
@@ -108,6 +121,7 @@ def capture_betexplorer_fragment(html: str, kind: str, *, event_id: str = "", ob
                       "response_sha256": hashlib.sha256(body.encode()).hexdigest(),
                       "input_truncated": len(html) > 2_000_000,
                       "raw_data_dt_rows_in_sample": len(soup.find_all("tr", attrs={"data-dt": True})),
+                      "bookmaker_labels": books if kind == "comparison" else [],
                       "labels": labels, "tables": tables})
     file.write_text(json.dumps({"version": 1, "fragments": fragments}, indent=2), encoding="utf-8")
 

@@ -80,14 +80,38 @@ def test_the_adjusted_record_is_rendered_where_pnl_is_quoted():
     assert "entitled to place" in text
 
 
-def test_the_live_ledger_still_shows_the_known_contamination():
-    """Regression guard: if this stops reporting -58.09 the detector broke."""
-    state = ROOT / "localdata" / "auto_tickets_state.json"
-    if not state.exists():
-        pytest.skip("no live ledger in this checkout")
-    adj = tw.adjusted_pnl(json.loads(state.read_text()).get("history", []))
-    assert adj["booked_pnl_pct"] == pytest.approx(30.17, abs=0.05)
-    assert adj["adjusted_pnl_pct"] == pytest.approx(-58.09, abs=0.05)
+def test_pinned_historical_ledger_shows_the_known_contamination():
+    """The minimized fixture is from Git commit 7465d69, not today's ledger."""
+    fixture = ROOT / "tests/fixtures/tripwire_history_7465d69.json"
+    adj = tw.adjusted_pnl(json.loads(fixture.read_text())["history"])
+    assert adj["booked_pnl_pct"] == pytest.approx(30.17, abs=0.005)
+    assert adj["adjusted_pnl_pct"] == pytest.approx(-58.09, abs=0.005)
+    assert adj["breach_pnl_pct"] == pytest.approx(88.26, abs=0.005)
+    assert len(adj["breaches"]) == 1
+    assert adj["breaches"][0]["date"] == "2026-09-17"
+    assert adj["breaches"][0]["odds"] == 4.08
+
+
+def test_new_ordinary_settlement_changes_totals_not_the_historical_breach():
+    fixture = ROOT / "tests/fixtures/tripwire_history_7465d69.json"
+    history = json.loads(fixture.read_text())["history"]
+    baseline = tw.adjusted_pnl(history)
+    # Synthetic later winning double: 1.5 * 1.5 = 2.25, returning
+    # 10 * 2.25 = 22.5 for +12.5. No production ledger is mutated.
+    history.append({"date": "2026-10-30", "accas": [{
+        "odds": 2.25, "stake_pct": 10.0, "return_pct": 22.5, "paper": False, "won": True,
+        "legs": [
+            {"odds": 1.5, "ml_calibrated_prob": 0.70, "_settle_outcome": "WON"},
+            {"odds": 1.5, "ml_calibrated_prob": 0.80, "_settle_outcome": "WON"},
+        ]}]})
+    updated = tw.adjusted_pnl(history)
+    assert updated["booked_pnl_pct"] == pytest.approx(42.67, abs=0.005)
+    assert updated["adjusted_pnl_pct"] == pytest.approx(-45.59, abs=0.005)
+    assert updated["breaches"] == baseline["breaches"]
+    report = tw.build_report(history)
+    assert report["calibration"]["all"]["n"] == 52
+    assert report["calibration"]["all"]["wins"] == 35
+    assert report["calibration"]["all"]["realised_pct"] == 67.3
 
 
 # ------------------------------------------- kickoff evidence accrual --

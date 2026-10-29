@@ -1,0 +1,878 @@
+{
+  "provenance": {
+    "description": "Minimized historical reporting input; only fields used by tripwire, not current ledger",
+    "commit": "7465d69bf3c8e93434c8baedc7665598dce3ad8b",
+    "source_path": "localdata/auto_tickets_state.json",
+    "source_git_blob": "35b84b40a1a0a609f6f8b3c8773a86df23264764"
+  },
+  "history": [
+    {
+      "date": "2026-09-13",
+      "accas": [
+        {
+          "odds": 0.0,
+          "stake_pct": 6.25,
+          "return_pct": null,
+          "paper": true,
+          "won": true,
+          "type": "value_2leg_mutual_paper",
+          "legs": [
+            {
+              "odds": null,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST_NO_ODDS",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": null,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST_NO_ODDS",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-13",
+      "accas": [
+        {
+          "odds": 0.0,
+          "stake_pct": 6.25,
+          "return_pct": null,
+          "paper": true,
+          "won": true,
+          "type": "value_2leg_mutual_paper",
+          "legs": [
+            {
+              "odds": null,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST_NO_ODDS",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": null,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST_NO_ODDS",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-13",
+      "accas": [
+        {
+          "odds": 0.0,
+          "stake_pct": 6.25,
+          "return_pct": null,
+          "paper": true,
+          "won": true,
+          "type": "value_2leg_mutual_paper",
+          "legs": [
+            {
+              "odds": null,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST_NO_ODDS",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": null,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST_NO_ODDS",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-14",
+      "accas": [
+        {
+          "odds": 2.43,
+          "stake_pct": 6.25,
+          "return_pct": 15.187500000000002,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.59,
+              "ml_calibrated_prob": 0.8597,
+              "ml_verdict": "ALLOW",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.53,
+              "ml_calibrated_prob": 0.8537,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            }
+          ]
+        },
+        {
+          "odds": 1.83,
+          "stake_pct": 6.25,
+          "return_pct": 11.4375,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.43,
+              "ml_calibrated_prob": 0.8597,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.28,
+              "ml_calibrated_prob": 0.8677,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            }
+          ]
+        },
+        {
+          "odds": 2.92,
+          "stake_pct": 6.25,
+          "return_pct": 18.25,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 2.28,
+              "ml_calibrated_prob": 0.8517,
+              "ml_verdict": "ALLOW",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.28,
+              "ml_calibrated_prob": 0.8637,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            }
+          ]
+        },
+        {
+          "odds": 2.79,
+          "stake_pct": 6.25,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 2.15,
+              "ml_calibrated_prob": 0.8637,
+              "ml_verdict": "ALLOW",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "LOST",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.3,
+              "ml_calibrated_prob": 0.8013,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-15",
+      "accas": [
+        {
+          "odds": 1.64,
+          "stake_pct": 6.25,
+          "return_pct": 10.25,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.32,
+              "ml_calibrated_prob": 0.8597,
+              "ml_verdict": "BOOST",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.24,
+              "ml_calibrated_prob": 0.7893,
+              "ml_verdict": "BOOST",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Grass"
+            }
+          ]
+        },
+        {
+          "odds": 1.81,
+          "stake_pct": 6.25,
+          "return_pct": 11.3125,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.38,
+              "ml_calibrated_prob": 0.7973,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.31,
+              "ml_calibrated_prob": 0.8053,
+              "ml_verdict": "BOOST",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-15",
+      "accas": [
+        {
+          "odds": 1.74,
+          "stake_pct": 6.25,
+          "return_pct": 10.875,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.37,
+              "ml_calibrated_prob": 0.8053,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Grass"
+            },
+            {
+              "odds": 1.27,
+              "ml_calibrated_prob": 0.7933,
+              "ml_verdict": "BOOST",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-15",
+      "accas": [
+        {
+          "odds": 1.67,
+          "stake_pct": 6.25,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.59,
+              "ml_calibrated_prob": 0.8573,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.05,
+              "ml_calibrated_prob": 0.8613,
+              "ml_verdict": "BOOST",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-16",
+      "accas": [
+        {
+          "odds": 1.48,
+          "stake_pct": 8.3477,
+          "return_pct": 12.354595999999999,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.19,
+              "ml_calibrated_prob": 0.6686,
+              "ml_verdict": "BOOST",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Grass"
+            },
+            {
+              "odds": 1.24,
+              "ml_calibrated_prob": 0.6626,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        },
+        {
+          "odds": 1.78,
+          "stake_pct": 8.3477,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.31,
+              "ml_calibrated_prob": 0.6526,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.36,
+              "ml_calibrated_prob": 0.6486,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        },
+        {
+          "odds": 1.82,
+          "stake_pct": 8.3477,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.4,
+              "ml_calibrated_prob": 0.6446,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.3,
+              "ml_calibrated_prob": 0.6117,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-16",
+      "accas": [
+        {
+          "odds": 2.17,
+          "stake_pct": 8.3477,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.44,
+              "ml_calibrated_prob": 0.6197,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.51,
+              "ml_calibrated_prob": 0.6137,
+              "ml_verdict": "ALLOW",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-17",
+      "accas": [
+        {
+          "odds": 4.08,
+          "stake_pct": 28.656,
+          "return_pct": 116.91647999999999,
+          "paper": false,
+          "won": true,
+          "type": "fallback_2leg_mutual",
+          "legs": [
+            {
+              "odds": 2.18,
+              "ml_calibrated_prob": 0.5857,
+              "ml_verdict": "ALLOW",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.87,
+              "ml_calibrated_prob": 0.5806,
+              "ml_verdict": "ALLOW",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-21",
+      "accas": [
+        {
+          "odds": 1.6,
+          "stake_pct": 24.3171,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.28,
+              "ml_calibrated_prob": 0.8087,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.25,
+              "ml_calibrated_prob": 0.8087,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-21",
+      "accas": [
+        {
+          "odds": 2.12,
+          "stake_pct": 24.3171,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.47,
+              "ml_calibrated_prob": 0.7417,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.44,
+              "ml_calibrated_prob": 0.7517,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-22",
+      "accas": [
+        {
+          "odds": 1.64,
+          "stake_pct": 9.1189,
+          "return_pct": 14.954996,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.29,
+              "ml_calibrated_prob": 0.7957,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.27,
+              "ml_calibrated_prob": 0.7957,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        },
+        {
+          "odds": 1.99,
+          "stake_pct": 9.1189,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.51,
+              "ml_calibrated_prob": 0.7369,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.32,
+              "ml_calibrated_prob": 0.7669,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        },
+        {
+          "odds": 2.0,
+          "stake_pct": 9.1189,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.47,
+              "ml_calibrated_prob": 0.7319,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.36,
+              "ml_calibrated_prob": 0.7469,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "LOST",
+              "tour": "CHALLENGER",
+              "surface": "Grass"
+            }
+          ]
+        },
+        {
+          "odds": 1.93,
+          "stake_pct": 9.1189,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.39,
+              "ml_calibrated_prob": 0.7469,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "LOST",
+              "tour": "CHALLENGER",
+              "surface": "Grass"
+            },
+            {
+              "odds": 1.39,
+              "ml_calibrated_prob": 0.7469,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "LOST",
+              "tour": "CHALLENGER",
+              "surface": "Grass"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-23",
+      "accas": [
+        {
+          "odds": 2.62,
+          "stake_pct": 15.5477,
+          "return_pct": 40.734974,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.93,
+              "ml_calibrated_prob": 0.6655,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "ATP",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.36,
+              "ml_calibrated_prob": 0.7557,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-23",
+      "accas": [
+        {
+          "odds": 1.88,
+          "stake_pct": 15.5477,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.48,
+              "ml_calibrated_prob": 0.7432,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "LOST",
+              "tour": "WTA",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.27,
+              "ml_calibrated_prob": 0.7957,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "WON",
+              "tour": "WTA",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-24",
+      "accas": [
+        {
+          "odds": 2.29,
+          "stake_pct": 16.7527,
+          "return_pct": 38.363683,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.45,
+              "ml_calibrated_prob": 0.736,
+              "ml_verdict": "BOOST",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "ATP",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.58,
+              "ml_calibrated_prob": 0.6991,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "WON",
+              "tour": "ATP",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-24",
+      "accas": [
+        {
+          "odds": 2.07,
+          "stake_pct": 16.7527,
+          "return_pct": 34.678089,
+          "paper": false,
+          "won": true,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.49,
+              "ml_calibrated_prob": 0.7075,
+              "ml_verdict": "BOOST",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "WON",
+              "tour": "ATP",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.39,
+              "ml_calibrated_prob": 0.7493,
+              "ml_verdict": "BOOST",
+              "bucket": "CERTIFIED_CLEAN",
+              "_settle_outcome": "WON",
+              "tour": "CHALLENGER",
+              "surface": "Grass"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-09-25",
+      "accas": [
+        {
+          "odds": 2.31,
+          "stake_pct": 21.6947,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.57,
+              "ml_calibrated_prob": 0.7444,
+              "ml_verdict": "ALLOW",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "ATP",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.47,
+              "ml_calibrated_prob": 0.7176,
+              "ml_verdict": "BOOST",
+              "bucket": "SKIPPED_DEAD_EDGE",
+              "_settle_outcome": "LOST",
+              "tour": "ATP",
+              "surface": "Hard"
+            }
+          ]
+        },
+        {
+          "odds": 2.88,
+          "stake_pct": 21.6947,
+          "return_pct": 0.0,
+          "paper": false,
+          "won": false,
+          "type": "value_2leg_mutual",
+          "legs": [
+            {
+              "odds": 1.51,
+              "ml_calibrated_prob": 0.72,
+              "ml_verdict": "ALLOW",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "LOST",
+              "tour": "ATP",
+              "surface": "Hard"
+            },
+            {
+              "odds": 1.91,
+              "ml_calibrated_prob": 0.6119,
+              "ml_verdict": "ALLOW",
+              "bucket": "WATCHLIST",
+              "_settle_outcome": "WON",
+              "tour": "ATP",
+              "surface": "Hard"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

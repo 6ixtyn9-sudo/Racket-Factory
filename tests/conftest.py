@@ -34,6 +34,8 @@ def _bypass_fetch_cache(monkeypatch, tmp_path, tmp_path_factory):
     # Redirect their default cache too, rather than deleting a real cache.
     from racketfactory import fetch_cache
     monkeypatch.setattr(fetch_cache, "DEFAULT_CACHE_DIR", tmp_path / "fetch_cache")
+    from racketfactory.sources import betclan
+    monkeypatch.setattr(betclan, "_run_status_path", lambda: tmp_path / "betclan_run_status.json")
     def no_network(*args, **kwargs):
         raise RuntimeError("network access is disabled in tests")
     monkeypatch.setattr(socket.socket, "connect", no_network)
