@@ -638,14 +638,7 @@ def relay_get(url: str, timeout: int = 45, max_retries: int = 3,
 
     Quota: counts as jina usage via quota_guard (count-only, default 1000/day).
     """
-    try:
-        from racketfactory.quota_guard import check_and_spend as _q_spend
-        if not _q_spend("jina"):
-            raise RuntimeError("jina quota exhausted — skipping relay fetch")
-    except RuntimeError:
-        raise
-    except Exception:
-        pass
+    from racketfactory.quota_guard import check_and_spend as _q_spend, record_402 as _q_402
     base = dict(RELAY_HEADERS) if headers is None else dict(headers)
     # Dynamic auth injection — env may be set after import
     auth = _auth_headers()
@@ -654,12 +647,17 @@ def relay_get(url: str, timeout: int = 45, max_retries: int = 3,
     send = base
     last_error: Exception | None = None
     for attempt in range(max_retries):
+        # Each attempt is a request, including transient-failure retries.
+        if not _q_spend("jina"):
+            raise RuntimeError("jina quota exhausted or blocked — skipping relay fetch")
         request = urllib.request.Request(url, headers=send)
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 return response.read()
         except urllib.error.HTTPError as exc:
             last_error = exc
+            if exc.code == 402:
+                _q_402("jina")
             if exc.code not in _RETRY_STATUS:
                 raise  # 401/403/404 are deterministic; do not retry
         except _RETRYABLE_ERRORS as exc:
@@ -1223,6 +1221,9 @@ class ForebetPredictor:
         retryable instead of stalling the run. Off-runner, fall through to
         the direct transport chain.
         """
+        if os.getenv("RACKET_FACTORY_DISABLE_FOREBET", "").strip().lower() in {"1", "true", "yes", "on"}:
+            logger.info("Forebet live fetching disabled; retained archives remain available")
+            return None
         text = self._fetch_via_relay(url, expect_matches=expect_matches)
         if text is not None:
             return text

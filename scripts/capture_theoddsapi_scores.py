@@ -103,6 +103,9 @@ def _load_scores_cache(sport: str, days_from: int, day: str) -> list[dict[str, A
         if time.time() - path.stat().st_mtime > ttl * 60:
             return None
         payload = json.loads(path.read_text())
+        captured = payload.get("cached_at") if isinstance(payload, dict) else None
+        if not isinstance(captured, (int, float)) or not 0 <= time.time() - captured <= ttl * 60:
+            return None
         rows = payload.get("events", [])
         if isinstance(rows, list):
             logger.info("%s scores loaded from cache (%d events)", sport, len(rows))
@@ -118,9 +121,16 @@ def _write_scores_cache(sport: str, days_from: int, day: str, events: list[dict[
     try:
         path = _scores_cache_path(sport, days_from, day)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"sport": sport, "events": events}))
+        import time
+        path.write_text(json.dumps({"sport": sport, "cached_at": time.time(), "events": events}))
     except Exception as exc:
         logger.warning("Could not write scores cache for %s: %s", sport, exc)
+
+
+class ScoresFetchError(RuntimeError):
+    def __init__(self, kind: str, detail: str):
+        self.kind = kind
+        super().__init__(f"The Odds API scores {kind}: {detail}")
 
 
 def fetch_scores(sport: str, days_from: int, api_key: str) -> list[dict[str, Any]]:
@@ -128,6 +138,16 @@ def fetch_scores(sport: str, days_from: int, api_key: str) -> list[dict[str, Any
     cached = _load_scores_cache(sport, days_from, _date.today().isoformat())
     if cached is not None:
         return cached
+    # Check on each cache miss, not before reading an already-paid cache hit.
+    sys.path.insert(0, str(ROOT / "src"))
+    from racketfactory.warehouse import odds_api_budget_ok, odds_api_min_remaining_reserve
+    from racketfactory.quota_guard import reserve_odds_credits
+    # A historical scores query costs at least two credits; reserve the
+    # operator-verified maximum before every uncached request.
+    if (not odds_api_budget_ok((api_key,)) or
+            not reserve_odds_credits(api_key, min_cost=2 if days_from > 0 else 1,
+                                    reserve=odds_api_min_remaining_reserve())):
+        raise ScoresFetchError("quota", f"{sport}: paid request not authorised")
     params = {
         "apiKey": api_key,
         "daysFrom": str(days_from),
@@ -138,10 +158,20 @@ def fetch_scores(sport: str, days_from: int, api_key: str) -> list[dict[str, Any
     try:
         req = Request(url, headers={"User-Agent": "RacketFactoryScores/1.0"})
         with urlopen(req, timeout=25) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
+            # Reconcile even if the body later fails to parse.
+            try:
+                from racketfactory.warehouse import record_odds_api_usage
+                from racketfactory.quota_guard import reconcile_odds_credits
+                record_odds_api_usage(api_key, resp.headers, endpoint=f"scores:{sport}")
+                reconcile_odds_credits(api_key, resp.headers)
+            except Exception as exc:
+                logger.warning("Usage ledger write failed: %s", type(exc).__name__)
+            try:
+                payload = json.loads(resp.read().decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                raise ScoresFetchError("parser", f"{sport}: invalid JSON") from None
             if not isinstance(payload, list):
-                logger.warning("%s returned non-list payload", sport)
-                return []
+                raise ScoresFetchError("parser", f"{sport}: non-list response")
             logger.info(
                 "%s scores fetched: %d | remaining=%s used=%s last=%s",
                 sport,
@@ -150,21 +180,25 @@ def fetch_scores(sport: str, days_from: int, api_key: str) -> list[dict[str, Any
                 resp.headers.get("x-requests-used"),
                 resp.headers.get("x-requests-last"),
             )
-            try:
-                sys.path.insert(0, str(ROOT / "src"))
-                from racketfactory.warehouse import record_odds_api_usage
-                record_odds_api_usage(api_key, resp.headers, endpoint=f"scores:{sport}")
-            except Exception as exc:
-                logger.warning("Usage ledger write failed: %s", exc)
             _write_scores_cache(sport, days_from, _date.today().isoformat(), payload)
             return payload
     except HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")[:300]
-        logger.warning("%s scores HTTP %s: %s | %s", sport, exc.code, body, safe)
-        return []
-    except (URLError, TimeoutError, Exception) as exc:
-        logger.warning("%s scores fetch failed: %s | %s", sport, exc, safe)
-        return []
+        if exc.code in (401, 402, 403, 429):
+            from racketfactory.quota_guard import record_cooldown, retry_after_seconds
+            kind = "rate_limit" if exc.code == 429 else ("entitlement" if exc.code == 402 else "auth")
+            wait = retry_after_seconds(exc.headers) if exc.code == 429 else 24 * 3600
+            try:
+                record_cooldown("theoddsapi", api_key, kind, wait)
+            except (OSError, ValueError, RuntimeError):
+                logger.error("Could not persist The Odds API cooldown")
+        kind = "rate_limit" if exc.code == 429 else ("entitlement" if exc.code == 402 else "auth" if exc.code in (401, 403) else "http")
+        raise ScoresFetchError(kind, f"{sport}: HTTP {exc.code}") from None
+    except ScoresFetchError:
+        raise
+    except Exception as exc:
+        # Exceptions can embed the original URL, including apiKey.
+        raise ScoresFetchError("transport", f"{sport}: {type(exc).__name__}") from None
+
 
 
 def row_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
@@ -276,12 +310,9 @@ def main() -> int:
     )
     api_keys = the_odds_api_keys()
     if not api_keys:
-        logger.warning("THE_ODDS_API_KEY missing; cannot fetch scores.")
-        return 0
-    if not odds_api_budget_ok(api_keys):
-        return 0
+        logger.warning("THE_ODDS_API_KEY missing; only fresh cached scores can be used.")
     sports = sports_from_env()
-    active = discover_active_tennis_sports(api_keys)
+    active = discover_active_tennis_sports(api_keys) if api_keys else None
     if active is not None:
         active_set = set(active)
         logger.info("The Odds API active score keys discovered: %s", active)
@@ -298,8 +329,14 @@ def main() -> int:
                 return 0
 
     all_rows: list[dict[str, Any]] = []
-    for i, sport in enumerate(sports):
-        events = fetch_scores(sport, args.days_from, api_keys[i % len(api_keys)])
+    failed = False
+    for sport in sports:
+        try:
+            events = fetch_scores(sport, args.days_from, api_keys[0] if api_keys else "")
+        except ScoresFetchError as exc:
+            logger.error("%s", exc)
+            failed = True
+            continue
         for event in events:
             row = row_from_event(event)
             if row:
@@ -312,7 +349,7 @@ def main() -> int:
     logger.info("completed score rows normalized: %d", len(all_rows))
     for p in written:
         logger.info("wrote %s", p)
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

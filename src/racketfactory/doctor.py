@@ -150,6 +150,32 @@ def run_health_checks(*, expect_warehouse: bool = False,
     if not check_localdata_exists():
         return checks
 
+    from racketfactory.warehouse import odds_api_budget_ok, the_odds_api_keys
+    odds_keys = the_odds_api_keys()
+    if odds_keys:
+        credit_ok = odds_api_budget_ok(odds_keys)
+        add("providers:credit_authority", "OK" if credit_ok else "WARN",
+            "durable credit record available; operator must verify storage and cost bound" if credit_ok
+            else "paid The Odds API calls blocked: missing/invalid credit authority or cost bound")
+    else:
+        add("providers:credit_authority", "WARN", "The Odds API key not configured")
+    quota_services = []
+    if os.getenv("BZZOIRO_TOKEN"):
+        quota_services.append("bzzoiro")
+    forebet_disabled = os.getenv("RACKET_FACTORY_DISABLE_FOREBET", "").strip().lower() in {"1", "true", "yes", "on"}
+    if os.getenv("JINA_API_KEY") and not forebet_disabled:
+        quota_services.append("jina")
+    if not quota_services:
+        add("providers:quota_authority", "WARN", "no quota-limited providers configured")
+    elif not os.getenv("RACKET_FACTORY_QUOTA_DIR", "").strip():
+        add("providers:quota_authority", "WARN", "no durable quota directory configured; optional paid provider requests are blocked")
+    else:
+        from racketfactory.quota_guard import _load
+        missing = [service for service in quota_services if _load(service, today_s).get("authority_missing")]
+        add("providers:quota_authority", "WARN" if missing else "OK",
+            "missing or corrupt quota records: " + ", ".join(missing) if missing
+            else "quota records present; storage durability must be verified by operator")
+
     total_result_rows = 0
     for name, (pattern, max_lag_days) in RESULT_GROUPS.items():
         st = group_stats(pattern)
@@ -193,10 +219,9 @@ def run_health_checks(*, expect_warehouse: bool = False,
             add("warehouse:live_rows", "WARN", "no _is_live column/unreadable")
         elif live == 0:
             add("warehouse:live_rows", "WARN",
-                "0 live-injected rows — same-day mining starved "
-                "(all live prediction fetches failed/filtered)")
+                "0 warehouse rows labelled _is_live; this does not establish current feed coverage")
         else:
-            add("warehouse:live_rows", "OK", f"{live} live-injected rows")
+            add("warehouse:live_rows", "OK", f"{live} warehouse rows labelled _is_live (all dates; includes baseline, not current feed coverage)")
     else:
         add("warehouse", "CRITICAL" if expect_warehouse else "WARN",
             "warehouse.csv.gz missing")
@@ -244,6 +269,35 @@ def run_health_checks(*, expect_warehouse: bool = False,
             f"{name}: {priced}/{len(rows)} priced (not ticket eligibility; "
             "two legs are needed for an acca)")
 
+    # Export, admission and booked tickets are different populations.
+    # Never use yesterday's picks_today or infer admission from prices.
+    try:
+        exported = json.loads((LOCALDATA / f"picks_{today_s}.json").read_text())
+        if not isinstance(exported, list):
+            raise ValueError("not a list")
+        official = [r for r in exported if isinstance(r, dict) and
+                    str(r.get("ledger_kind", "")).lower() != "forecast"]
+        from racketfactory.execution import leg_market_odds
+        skipped = sum(str(r.get("bucket", "")).startswith("SKIPPED") for r in official)
+        priced_all = sum(leg_market_odds(r) is not None for r in official)
+        add("picks:export_breakdown", "OK", f"{len(official)} exported; {skipped} skipped; "
+            f"{priced_all} priced and {len(official)-priced_all} unpriced (counts can overlap)")
+    except (OSError, ValueError, TypeError):
+        add("picks:export_breakdown", "WARN", "dated official export missing/unreadable")
+
+    try:
+        ticket = json.loads((LOCALDATA / f"auto_tickets_{today_s}.json").read_text())
+        if ticket.get("date") != today_s:
+            raise ValueError("ticket date mismatch")
+        diag = ticket.get("diagnostics") or {}
+        add("tickets:stages", "OK" if diag else "WARN",
+            f"saved ticket snapshot generated {ticket.get('generated_at')}; "
+            f"playable {diag.get('playable', '?')}, builder inputs {diag.get('builder_input', '?')}, "
+            f"priced eligible {diag.get('priced_eligible', '?')}, paper eligible {diag.get('paper_eligible', '?')}, "
+            f"tickets {len(ticket.get('accas', []))}; booked is not proof of placement")
+    except (OSError, ValueError, TypeError, AttributeError):
+        add("tickets:stages", "WARN", "dated ticket snapshot missing/unreadable")
+
     audit_file = LOCALDATA / "picks_audit_rolling.json"
     if audit_file.exists():
         try:
@@ -257,6 +311,35 @@ def run_health_checks(*, expect_warehouse: bool = False,
             add("audit:rolling", "WARN", f"unreadable: {exc}")
     else:
         add("audit:rolling", "WARN", "picks_audit_rolling.json missing")
+
+    grade_status = LOCALDATA / "auto_tickets_grade_status.json"
+    if grade_status.exists():
+        try:
+            grade = json.loads(grade_status.read_text())
+            state_label = grade.get("status")
+            run_id, attempt = os.getenv("GITHUB_RUN_ID"), os.getenv("GITHUB_RUN_ATTEMPT")
+            if run_id and (grade.get("github_run_id") != run_id or
+                           (attempt and grade.get("github_run_attempt") != attempt)):
+                state_label = "not run in this workflow attempt"
+            add("tickets:grading", "OK" if state_label == "ok" else "CRITICAL",
+                f"grade {state_label} (run {grade.get('run_as_of')}); prior reports may be stale" if state_label != "ok"
+                else f"grade succeeded (run {grade.get('run_as_of')})")
+        except Exception as exc:
+            add("tickets:grading", "CRITICAL", f"unreadable grade status: {exc}")
+    else:
+        add("tickets:grading", "WARN", "no grade status; reporting freshness not established")
+
+    # Detect old or partially published reports independently of grade status.
+    try:
+        state_data = json.loads((LOCALDATA / "auto_tickets_state.json").read_text())
+        perf_data = json.loads((LOCALDATA / "auto_tickets_performance.json").read_text())
+        matches = ("bank" in state_data and perf_data.get("bank_pct") == state_data.get("bank") and
+                   (perf_data.get("paper_accas") or {}).get("bank_pct") == state_data.get("paper_bank") and
+                   all(perf_data.get(k) == state_data.get(k) for k in ("history", "open_slips", "events")))
+        add("tickets:report_snapshot", "OK" if matches else "WARN",
+            "report matches state" if matches else "report differs from authoritative state; do not treat as current")
+    except (OSError, ValueError, AttributeError):
+        add("tickets:report_snapshot", "WARN", "state or performance report missing/unreadable")
 
     state_file = LOCALDATA / "auto_tickets_state.json"
     if state_file.exists():

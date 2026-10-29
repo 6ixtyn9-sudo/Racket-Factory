@@ -81,3 +81,9 @@ def test_is_match_link_tolerates_event_id_shapes():
     assert _is_match_link("/tennis/usa/atp-us-open/") is None
     assert _is_match_link("/tennis/rankings/") is None
     assert _is_match_link("/tennis/usa/atp-us-open/tomorrow/") is None
+
+
+def test_tournament_navigation_is_not_a_match():
+    from racketfactory.sources.oddsportal_upcoming import _is_match_link
+    assert _is_match_link('/tennis/united-kingdom/atp-wimbledon/') is None
+    assert _is_match_link('/tennis/united-kingdom/wta-wimbledon/') is None

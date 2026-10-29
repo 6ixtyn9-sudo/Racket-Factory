@@ -310,3 +310,21 @@ def test_skipped_appears_in_the_no_bet_ticket_text():
     assert "NO BET" in text
     assert "1x kickoff unreadable" in text
     assert "A vs B" in text
+
+
+def test_frozen_empty_ticket_cannot_book_new_accas_in_state(tmp_path, monkeypatch):
+    """A denied ticket-file write also denies new state/bookings."""
+    monkeypatch.setattr(at, 'LOCALDATA', tmp_path)
+    monkeypatch.setattr(at, 'STATE_FILE', tmp_path / 'auto_tickets_state.json')
+    state = {'bank': 100.0, 'paper_bank': 100.0, 'open_slips': [], 'history': [], 'events': []}
+    (tmp_path / 'auto_tickets_state.json').write_text(json.dumps(state))
+    frozen = {'date': '2026-09-26', 'frozen': True, 'accas': []}
+    path = tmp_path / 'auto_tickets_2026-09-26.json'
+    path.write_text(json.dumps(frozen))
+    monkeypatch.setattr(at, 'now_local', lambda: datetime(2026, 9, 26, 15, 0, tzinfo=SAST))
+    monkeypatch.setattr(at, 'load_picks', lambda _: [])
+    monkeypatch.setattr(at, 'select_accas', lambda *a, **k: ([{'legs': [], 'odds': 2.0, 'type': 'synthetic'}], [], []))
+    monkeypatch.setattr(sys, 'argv', ['auto_tickets.py', '--date', '2026-09-26'])
+    assert at.main() == 0
+    assert json.loads(path.read_text()) == frozen
+    assert json.loads((tmp_path / 'auto_tickets_state.json').read_text()) == state

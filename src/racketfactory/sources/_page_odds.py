@@ -23,6 +23,13 @@ from bs4 import BeautifulSoup, Tag
 
 logger = logging.getLogger(__name__)
 
+
+class PageFetchError(RuntimeError):
+    """Structured provider failure, distinct from a successful empty board."""
+    def __init__(self, kind: str, detail: str):
+        self.kind = kind
+        super().__init__(f"{kind}: {detail}")
+
 BROWSER_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -69,12 +76,32 @@ def fetch_page_html(url: str, source_label: str, *, timeout: int = 30,
     Retry-After (capped 60s) with one delayed second pass.
     """
     order = (_plain_fetch, _curl_fetch) if prefer_plain else (_curl_fetch, _plain_fetch)
+    is_oddsportal = source_label.lower() == "oddsportal"
+    host = urlsplit(url).netloc.lower()
+    if is_oddsportal:
+        from racketfactory.quota_guard import cooldown_status, record_cooldown
+        for scope in ("host:" + host, "route:" + url):
+            failure = cooldown_status("oddsportal", scope)
+            if failure:
+                raise PageFetchError(failure["kind"], f"{source_label} cooldown active")
     html, status, retry_after = _run_order(order, url, source_label, timeout=timeout)
+    if is_oddsportal and status in (404, 429):
+        scope = "host:" + host if status == 429 else "route:" + url
+        kind = "rate_limit" if status == 429 else "route_invalid"
+        wait = max(1, retry_after or 900) if status == 429 else 6 * 3600
+        try:
+            record_cooldown("oddsportal", scope, kind, wait)
+        except OSError:
+            logger.error("%s failed to persist cooldown; skipping current request sequence", source_label)
+        logger.warning("%s HTTP %s: %s cooldown %.0fs", source_label, status, kind, wait)
+        raise PageFetchError(kind, f"{source_label} HTTP {status}; cooldown active")
+    if is_oddsportal and not html:
+        kind = "transport" if status is None else ("auth" if status in (401, 403) else "http" if status != 200 else "parser")
+        raise PageFetchError(kind, f"{source_label} HTTP {status} or empty response")
     if html or status != 429:
         return html
-    wait = max(5, min(retry_after or 10, 60))
-    logger.warning("%s rate-limited (429) for %s; retrying once after %ds",
-                   source_label, url, wait)
+    wait = max(1, retry_after or 10)
+    logger.warning("%s rate-limited (429) for %s; retrying once after %ds", source_label, url, wait)
     time.sleep(wait)
     html, _, _ = _run_order(order, url, source_label, timeout=timeout)
     return html
@@ -83,9 +110,9 @@ def fetch_page_html(url: str, source_label: str, *, timeout: int = 30,
 def _run_order(order, url: str, source_label: str, *,
                timeout: int) -> tuple[str, int | None, int]:
     html, status, retry_after = order[0](url, source_label, timeout=timeout)
-    if html or status not in (None, 429):
+    if html or status is not None:
         return html, status, retry_after
-    # First transport failed or was limited: try the other once.
+    # Only a transport failure can try the alternate client; never bypass an HTTP restriction.
     html2, status2, retry_after2 = order[1](url, source_label, timeout=timeout)
     return html2, status2, max(retry_after, retry_after2)
 
@@ -133,9 +160,9 @@ def _response_text(resp: object, url: str, source_label: str) -> tuple[str, int 
 
 
 def _retry_after(resp: object) -> int:
+    from racketfactory.quota_guard import retry_after_seconds
     try:
-        headers = resp.headers  # type: ignore[union-attr]
-        return int(str(headers.get("Retry-After", "") or "0").strip() or "0")
+        return int(retry_after_seconds(resp.headers, default=0))  # type: ignore[union-attr]
     except Exception:
         return 0
 

@@ -203,3 +203,24 @@ def test_post_review_reference_can_verify_or_detect_drift(tmp_path, monkeypatch)
              "match_time": "11:30", "match_date": "2026-10-29"}], day="2026-10-29")
     report = audit.audit(["2026-10-29"], today=date(2026, 10, 29))
     assert report["sample_size"] == 1 and report["status"] == ko.STATUS_DRIFT
+
+
+def test_run_40874657658_post_review_samples_and_expiry(tmp_path, monkeypatch):
+    """The median is near zero but two of six actual observations are outliers."""
+    monkeypatch.setattr(audit, 'LOCALDATA', tmp_path)
+    observations = [
+        ('cameron norrie|daniil medvedev', '14:30', '14:37', -7),
+        ('djokovic novak|jan lennard struff', '16:00', '19:00', -180),
+        ('alexander zverev|griekspoor tallon', '18:30', '18:30', 0),
+        ('darderi luciano|paul tommy', '14:30', '14:35', -5),
+        ('alcaraz carlos|basilashvili nikoloz', '16:00', '16:00', 0),
+        ('altmaier daniel|jiri lehecka', '14:00', '17:00', -180),
+    ]
+    evidence = [dict(date='2026-10-29', fixture=f, betclan=b, reference=r, delta_minutes=d)
+                for f, b, r, d in observations]
+    (tmp_path / 'kickoff_tz_samples.jsonl').write_text(''.join(json.dumps(x) + '\n' for x in evidence))
+    fresh = audit.audit([], today=date(2026, 10, 29), persist=False)
+    assert fresh['status'] == ko.STATUS_OK and fresh['status_median_offset_minutes'] == -6
+    assert len(fresh['status_outlier_samples']) == 2
+    expired = audit.audit([], today=date(2027, 2, 27), persist=False)
+    assert expired['sample_size'] == 0 and expired['status'] == ko.STATUS_REVIEW_DUE

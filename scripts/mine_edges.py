@@ -39,13 +39,9 @@ from racketfactory.sources.forebet import ForebetPredictor, forebet_cache_key
 from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice, get_min_ev_real, get_min_odds_base
 from racketfactory.regime import REGIME_ID
 from racketfactory.odds_compare import fetch_comparison_rows
-try:
-    from racketfactory.quota_guard import check_and_spend as quota_check_and_spend, record_402 as quota_record_402, get_count as quota_get_count, get_limit as quota_get_limit
-except Exception:
-    def quota_check_and_spend(service, n=1, day=None): return True
-    def quota_record_402(service, day=None): return None
-    def quota_get_count(service, day=None): return 0
-    def quota_get_limit(service): return 100
+from racketfactory.quota_guard import (check_and_spend as quota_check_and_spend,
+    record_402 as quota_record_402, get_count as quota_get_count, get_limit as quota_get_limit,
+    cooldown_status, record_cooldown, retry_after_seconds)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -868,11 +864,13 @@ def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
         logger.warning("Bzzoiro static cache unreadable for %s: %s", target_date, exc)
     token = os.getenv("BZZOIRO_TOKEN")
     if not token:
-        BZZOIRO_ODDS_CACHE[target_date] = None
+        return None
+    failure = cooldown_status("bzzoiro", token)
+    if failure:
+        logger.warning("Bzzoiro odds/best: %s cooldown active", failure["kind"])
         return None
     if not quota_check_and_spend("bzzoiro"):
         logger.warning("Bzzoiro odds/best quota exhausted — skipping fetch for %s", target_date)
-        BZZOIRO_ODDS_CACHE[target_date] = None
         return None
     try:
         import requests
@@ -880,19 +878,28 @@ def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
                f"?date_from={target_date}&date_to={target_date}&limit=100")
         headers = {"Authorization": f"Token {token}"}
         resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code == 401:
+            record_cooldown("bzzoiro", token, "auth", 24 * 3600)
+            logger.error("Bzzoiro odds authentication rejected (HTTP 401); check provider account/token configuration and endpoint permissions. Do not rotate keys to bypass restrictions.")
+            return None
+        if resp.status_code == 429:
+            record_cooldown("bzzoiro", token, "rate_limit", retry_after_seconds(getattr(resp, "headers", {})))
+            logger.warning("Bzzoiro odds/best rate limited; respecting Retry-After")
+            return None
         if resp.status_code == 402:
             quota_record_402("bzzoiro")
             logger.warning("Bzzoiro odds/best returned 402 for %s — our spend today: %d/%d — if under budget, the token's free trial/plan state is the likely cause (check the Bzzoiro account)",
                            target_date, quota_get_count("bzzoiro"), quota_get_limit("bzzoiro"))
-            BZZOIRO_ODDS_CACHE[target_date] = None
             return None
         if resp.status_code != 200:
             logger.warning("Bzzoiro odds/best returned %s for %s",
                            resp.status_code, target_date)
-            BZZOIRO_ODDS_CACHE[target_date] = None
             return None
         data = resp.json()
-        results = data.get("results", []) if isinstance(data, dict) else []
+        if not isinstance(data, dict) or not isinstance(data.get("results"), list):
+            logger.warning("Bzzoiro odds/best parser failure: invalid response structure")
+            return None
+        results = data["results"]
         BZZOIRO_ODDS_CACHE[target_date] = results
         try:
             _bzzoiro_cache_path(target_date).write_text(json.dumps(
@@ -903,7 +910,6 @@ def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
         return results
     except Exception as exc:
         logger.warning("Bzzoiro odds/best fetch failed for %s: %s", target_date, exc)
-        BZZOIRO_ODDS_CACHE[target_date] = None
         return None
 
 

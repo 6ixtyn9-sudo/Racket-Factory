@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import unicodedata
 from datetime import date, datetime
 from pathlib import Path
@@ -71,7 +72,20 @@ def load_state():
 
 def save_state(state):
     LOCALDATA.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state, indent=2, sort_keys=True))
+    # Replace only after the complete JSON is safely written.
+    with tempfile.NamedTemporaryFile("w", dir=STATE_FILE.parent, delete=False) as f:
+        tmp = Path(f.name)
+        try:
+            json.dump(state, f, indent=2, sort_keys=True)
+            f.flush()
+            os.fsync(f.fileno())
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
+    try:
+        os.replace(tmp, STATE_FILE)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 def load_warehouse():
     if not WAREHOUSE.exists():
@@ -174,7 +188,10 @@ def settle_open_slips(state, df, additional_df=None):
     for slip in state.get("open_slips", []):
         date_str = slip.get("date")
         if date_str in history_fully_settled and history_fully_settled[date_str]:
-            logs.append(f"{date_str}: already in history (fully settled), skipping (idempotent)")
+            # A date alone is not a slip identity. Do not settle twice, but
+            # also do not silently discard a distinct unresolved open slip.
+            remaining_open.append(slip)
+            logs.append(f"{date_str}: already in history; open slip held for review (not re-settled)")
             continue
         # Per-acca settlement (Edge parity) — accas settle independently with their own stake
         settled_accas = []
@@ -547,7 +564,8 @@ def price_band_ledger(history):
     }
 
 
-def write_performance(state):
+def write_performance(state, *, output_dir=None):
+    output_dir = Path(output_dir) if output_dir is not None else LOCALDATA
     bank = state.get("bank", 100.0)
     base = state.get("base_pct", 100.0)
     cycle_base = state.get("cycle_base", 100.0)
@@ -591,6 +609,7 @@ def write_performance(state):
     lines = []
     lines.append("AUTO-TICKETS (TENNIS) PERFORMANCE — percentages of capital only")
     lines.append("="*62)
+    lines.append("Booked ledger accounting; REAL denotes priced ledger entries, not proof of placement or executed cash.")
     lines.append(f"generated {datetime.now().isoformat(timespec='seconds')}")
     lines.append(f"bank {bank:.1f}% of capital (x{multiple:.2f}) · cycle baseline {cycle_base:.1f}% · next take-profit at {next_target:.1f}% (+100% per cycle)")
     if real:
@@ -600,7 +619,7 @@ def write_performance(state):
     if paper:
         lines.append(f"PAPER accas (phantom odds, excluded from bank): {paper_wins}W/{len(paper)-paper_wins}L  paper-PnL {paper_pnl_total:+.1f}%"
                      + (f"  paper-bank {paper_bank:.1f}%" if paper_bank is not None else ""))
-    lines.append(f"open slips {len(state.get('open_slips',[]))} · {len(state.get('events',[]))} take-profit notification(s)")
+    lines.append(f"open slips {len(state.get('open_slips',[]))} · {len(state.get('events',[]))} ledger event(s)")
     lines.append("")
     lines.append("--- bet-days (most recent first) ---")
     # Latest 15 unique bet-days (already merged per date, newest first)
@@ -620,7 +639,13 @@ def write_performance(state):
             extra = f" (paper {float(h['paper_pnl_pct']):+.1f}%)"
         lines.append(f"  {h['date']}  {acc_str:44s} bank {h['bank_pct']:7.1f}%{extra}")
     for e in state.get("events", []):
-        lines.append(f"  🔔 {e['date']}: TAKE-PROFIT — +{e['gain_pct']:.1f}% (bank {e['bank_after_pct']:.1f}%, next {e['next_target_pct']:.1f}%)")
+        if all(k in e for k in ("date", "gain_pct", "bank_after_pct", "next_target_pct")):
+            lines.append(f"  🔔 {e['date']}: TAKE-PROFIT — +{e['gain_pct']:.1f}% (bank {e['bank_after_pct']:.1f}%, next {e['next_target_pct']:.1f}%)")
+        elif e.get("event") == "execution_cycle_reset":
+            lines.append(f"  execution_cycle_reset: {json.dumps(e, sort_keys=True, default=str)}")
+        else:
+            # Preserve unknown/legacy event shapes without inventing timestamps.
+            lines.append(f"  ledger event: {json.dumps(e, sort_keys=True, default=str)}")
 
     price_bands = price_band_ledger(history)
     lines.append("")
@@ -657,8 +682,8 @@ def write_performance(state):
                          f"{item['committed_pct']}% committed")
 
     txt = "\n".join(lines)
-    (LOCALDATA / "auto_tickets_performance.txt").write_text(txt + "\n")
-    (LOCALDATA / "auto_tickets_performance.json").write_text(json.dumps({
+    (output_dir / "auto_tickets_performance.txt").write_text(txt + "\n")
+    (output_dir / "auto_tickets_performance.json").write_text(json.dumps({
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "unit": "percent_of_capital",
         "base_pct": base,
@@ -677,6 +702,7 @@ def write_performance(state):
         "events": state.get("events", []),
         "history": history,
     }, indent=2, default=str))
+    print("Performance below is provisional until the state is saved.")
     print(txt)
 
 def main(argv=None):
@@ -688,18 +714,27 @@ def main(argv=None):
     state = load_state()
     if not state:
         print("no state yet — run auto_tickets.py first")
-        return 0
+        return 1
     df = load_warehouse()
     additional_df = load_additional_results()
     if not additional_df.empty:
         print(f"Loaded {len(additional_df)} additional result rows from foretennis/forebet")
+    print("Settlement below is provisional until the state is saved.")
     for line in settle_open_slips(state, df, additional_df):
         print(line)
     if args.close_stale_days is not None:
         for line in close_stale_slips(state, days=args.close_stale_days):
             print(line)
-    write_performance(state)
-    save_state(state)
+    # Render both reports before committing the ledger. A rendering failure
+    # leaves the original state and reports untouched. Once state is committed,
+    # retrying only processes still-open slips. Publication is not a multi-file
+    # transaction; the pipeline's grade status flags any publication failure.
+    LOCALDATA.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".grade-", dir=LOCALDATA) as stage:
+        write_performance(state, output_dir=stage)
+        save_state(state)
+        for name in ("auto_tickets_performance.txt", "auto_tickets_performance.json"):
+            os.replace(Path(stage) / name, LOCALDATA / name)
     return 0
 
 if __name__ == "__main__":

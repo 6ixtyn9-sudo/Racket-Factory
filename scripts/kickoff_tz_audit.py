@@ -44,6 +44,7 @@ LOCALDATA = ROOT / "localdata"
 
 from racketfactory.kickoff import (  # noqa: E402
     BETCLAN_TZ_REVIEW_DATE,
+    BETCLAN_DRIFT_ALARM_MINUTES,
     SAST,
     STATUS_DRIFT,
     STATUS_REVIEW_DUE,
@@ -285,6 +286,10 @@ def audit(dates: list[str], *, persist: bool = True,
         "evidence_file": _display_path(evidence_file()),
         "median_offset_minutes": offset,
         "status_median_offset_minutes": status_offset,
+        # A median can hide reschedules, bad matches or fixture-specific
+        # discrepancies. Expose them without claiming a timezone cause.
+        "status_outlier_samples": [s for s in status_samples
+                                   if abs(s["delta_minutes"]) >= BETCLAN_DRIFT_ALARM_MINUTES],
         "samples": samples[:50],
         **status,
     }
@@ -327,6 +332,9 @@ def main(argv=None) -> int:
           + (f" · median offset {report['median_offset_minutes']:+.0f} min"
              if report["median_offset_minutes"] is not None else ""))
     print(f"  {report['detail']}")
+    if report["status_outlier_samples"]:
+        print(f"  WARNING: {len(report['status_outlier_samples'])} reference match(es) differ by at least "
+              f"{BETCLAN_DRIFT_ALARM_MINUTES} min; inspect fixture identity and reschedules. Median may hide discrepancies.")
     if report["status"] == STATUS_DRIFT:
         print("  ACTION: set RACKET_FACTORY_BETCLAN_TZ to the corrected zone "
               "(e.g. Europe/London) and re-run.")

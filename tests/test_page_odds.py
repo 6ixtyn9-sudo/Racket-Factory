@@ -215,3 +215,49 @@ def test_two_anchor_match_box_not_rejected_by_link_count():
     # or _row_container would refuse the box and the row would be lost.
     tr = BeautifulSoup(TWO_ANCHOR_ROW, "html.parser").find("tr")
     assert po._match_link_count(tr, _is_match) == 1
+
+
+def test_oddsportal_404_is_route_scoped(monkeypatch):
+    calls = []
+    def fake(url, *args, **kwargs):
+        calls.append(url)
+        return ('', 404, 0) if url.endswith('/missing/') else ('<html/>', 200, 0)
+    monkeypatch.setattr(po, '_curl_fetch', fake)
+    import pytest
+    with pytest.raises(po.PageFetchError, match='route_invalid'):
+        po.fetch_page_html('https://example.com/missing/', 'OddsPortal')
+    with pytest.raises(po.PageFetchError, match='route_invalid'):
+        po.fetch_page_html('https://example.com/missing/', 'OddsPortal')
+    assert po.fetch_page_html('https://example.com/other/', 'OddsPortal') == '<html/>'
+    assert len(calls) == 2
+
+
+def test_oddsportal_429_blocks_host_and_does_not_try_other_transport(monkeypatch):
+    calls = []
+    def fake(url, *args, **kwargs):
+        calls.append(url)
+        return '', 429, 180
+    monkeypatch.setattr(po, '_curl_fetch', fake)
+    monkeypatch.setattr(po, '_plain_fetch', lambda *a, **kw: (_ for _ in ()).throw(AssertionError('no alternate client after 429')))
+    import pytest
+    with pytest.raises(po.PageFetchError, match='rate_limit'):
+        po.fetch_page_html('https://example.com/a/', 'OddsPortal')
+    with pytest.raises(po.PageFetchError, match='rate_limit'):
+        po.fetch_page_html('https://example.com/b/', 'OddsPortal')
+    assert len(calls) == 1
+
+
+def test_oddsportal_route_rechecks_after_expiry(monkeypatch):
+    import json, time, pytest
+    from racketfactory.quota_guard import _failure_path
+    calls = []
+    def fake(*args, **kwargs):
+        calls.append(1)
+        return ('', 404, 0) if len(calls) == 1 else ('<html/>', 200, 0)
+    monkeypatch.setattr(po, '_curl_fetch', fake)
+    url = 'https://example.com/missing/'
+    with pytest.raises(po.PageFetchError):
+        po.fetch_page_html(url, 'OddsPortal')
+    _failure_path('oddsportal', 'route:' + url).write_text(json.dumps({'kind': 'route_invalid', 'until': time.time() - 1}))
+    assert po.fetch_page_html(url, 'OddsPortal') == '<html/>'
+    assert len(calls) == 2

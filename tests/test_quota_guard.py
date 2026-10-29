@@ -19,6 +19,10 @@ from racketfactory.quota_guard import (
 
 def _tmp_quota_env(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("RACKET_FACTORY_QUOTA_DIR", str(tmp_path))
+    for day in ("2026-09-20", "2026-09-21"):
+        for service in ("bzzoiro", "jina"):
+            (tmp_path / f"{service}_{day}.json").write_text(json.dumps(
+                {"date": day, "service": service, "count": 0, "blocked": False}))
     return tmp_path
 
 
@@ -123,3 +127,56 @@ def test_402_log_includes_spend(monkeypatch, tmp_path, caplog):
     record_402("bzzoiro", day="2026-09-20")
     # warning should include spend count and account hint
     assert any("our spend today" in rec.message and "account" in rec.message.lower() for rec in caplog.records)
+
+
+def test_missing_or_corrupt_authority_fails_closed(monkeypatch, tmp_path):
+    monkeypatch.setenv('RACKET_FACTORY_QUOTA_DIR', str(tmp_path))
+    assert not check_and_spend('bzzoiro', day='2026-10-29')
+    path = tmp_path / 'bzzoiro_2026-10-29.json'
+    path.write_text('{broken')
+    assert not check_and_spend('bzzoiro', day='2026-10-29')
+    assert path.read_text() == '{broken'
+
+
+def test_write_failure_fails_closed(monkeypatch, tmp_path):
+    from racketfactory import quota_guard as guard
+    _tmp_quota_env(monkeypatch, tmp_path)
+    def fail(*args, **kwargs):
+        raise OSError('no write')
+    monkeypatch.setattr(guard, '_save', fail)
+    assert not guard.check_and_spend('bzzoiro', day='2026-09-20')
+    assert guard.get_count('bzzoiro', day='2026-09-20') == 0
+
+
+def test_concurrent_reservations_obey_budget(monkeypatch, tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    _tmp_quota_env(monkeypatch, tmp_path)
+    monkeypatch.setenv('RACKET_FACTORY_QUOTA_BZZOIRO', '3')
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(lambda _: check_and_spend('bzzoiro', day='2026-09-20'), range(20)))
+    assert sum(results) == 3
+    assert get_count('bzzoiro', day='2026-09-20') == 3
+
+
+def test_localdata_cache_cannot_be_authority(monkeypatch, tmp_path):
+    from racketfactory import quota_guard as guard
+    monkeypatch.setattr(guard, 'ROOT', tmp_path)
+    path = tmp_path / 'localdata' / 'quota'
+    path.mkdir(parents=True)
+    (path / 'bzzoiro_2026-10-29.json').write_text(json.dumps(
+        {'date': '2026-10-29', 'service': 'bzzoiro', 'count': 0, 'blocked': False}))
+    monkeypatch.setenv('RACKET_FACTORY_QUOTA_DIR', str(path))
+    assert not check_and_spend('bzzoiro', day='2026-10-29')
+
+
+def test_cooldown_does_not_shorten_and_expires(monkeypatch):
+    import time
+    from racketfactory.quota_guard import record_cooldown, cooldown_status, _failure_path
+    record_cooldown('bzzoiro', 'credential', 'auth', 500)
+    before = cooldown_status('bzzoiro', 'credential')
+    record_cooldown('bzzoiro', 'credential', 'rate_limit', 1)
+    assert cooldown_status('bzzoiro', 'credential') == before
+    path = _failure_path('bzzoiro', 'credential')
+    path.write_text(json.dumps({'kind': 'auth', 'until': time.time() - 1}))
+    assert cooldown_status('bzzoiro', 'credential') is None
+    assert 'credential' not in path.read_text()

@@ -80,6 +80,21 @@ def run_soft(cmd: str, label: str, *, env: dict | None = None) -> None:
         print(f"WARNING: non-critical step failed: {label}")
 
 
+def run_critical_grade(cmd: str, *, env: dict | None, run_as_of: str) -> None:
+    """Record interruption/failure durably and stop financial downstream work."""
+    grade_status = LOCALDATA / "auto_tickets_grade_status.json"
+    marker = {"run_as_of": run_as_of, "github_run_id": os.getenv("GITHUB_RUN_ID"),
+              "github_run_attempt": os.getenv("GITHUB_RUN_ATTEMPT")}
+    grade_status.write_text(json.dumps({**marker, "status": "running"}))
+    print("\n>>> auto_tickets_grade (settle past slips)", flush=True)
+    grade = subprocess.run(cmd, shell=True, cwd=ROOT, env=env)
+    grade_status.write_text(json.dumps({**marker, "status": "ok" if grade.returncode == 0 else "failed",
+                                        "returncode": grade.returncode}))
+    if grade.returncode:
+        print("FAILED: grading; ledger forensics and downstream sync skipped. Existing reports are not current.", file=sys.stderr)
+        raise SystemExit(grade.returncode)
+
+
 def run_capture(cmd: str, label: str, *, env: dict | None = None) -> str:
     """Run a command and return captured combined stdout/stderr.
 
@@ -586,6 +601,8 @@ def run_once(args: argparse.Namespace) -> None:
     run_as_of = make_run_as_of()
     load_daily_env()
     child_env = os.environ.copy()
+    # Stop trying Forebet access workarounds; retained history is unchanged.
+    child_env["RACKET_FACTORY_DISABLE_FOREBET"] = "1"
     child_env["RACKET_FACTORY_RUN_AS_OF"] = run_as_of
     child_env.setdefault("RACKET_FACTORY_TZ", DEFAULT_LOCAL_TZ)
     env_prefix = f"RACKET_FACTORY_RUN_AS_OF={shlex.quote(run_as_of)}"
@@ -665,7 +682,7 @@ def run_once(args: argparse.Namespace) -> None:
 
     # 3. Daily Prediction Sources — DEEP SEARCH FIX: warehouse only 20% pred coverage, Both 0.2%
     # Daily quick: yesterday/today/tomorrow + last 7 days to deepen coverage 20%->40%
-    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday today tomorrow --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet", env=child_env)
+    print("\n>>> Forebet live capture skipped; retained archives remain available")
     # Extra deep: last 7 days rolling (fixes missing June-August if files deleted)
     try:
         from datetime import timedelta
@@ -680,73 +697,7 @@ def run_once(args: argparse.Namespace) -> None:
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_betclan.py --output-dir localdata", "capture_betclan", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/capture_bzzoiro.py --output-dir localdata", "capture_bzzoiro", env=child_env)
 
-    # DEEP SEARCH: weekly tournament backfill for Forebet to lift coverage 20%->60%
-    # Runs on Mondays or when warehouse pred coverage <50% or when env RACKET_FACTORY_DEEP_BACKFILL=1
-    try:
-        import pandas as pd
-        wh_path = LOCALDATA / "warehouse.csv.gz"
-        deep_needed = False
-        if os.getenv("RACKET_FACTORY_DEEP_BACKFILL", "").lower() in {"1","true","yes"}:
-            deep_needed = True
-        else:
-            # Monday = 0
-            from datetime import datetime
-            if datetime.now().weekday() == 0:
-                deep_needed = True
-            elif wh_path.exists():
-                try:
-                    df = pd.read_csv(wh_path, low_memory=False, nrows=5000)
-                    total = len(df)
-                    if total>0:
-                        # any pred across all secondary sources
-                        pred_cols = [c for c in df.columns if c.startswith("predicted_winner")]
-                        has_any = 0
-                        if pred_cols:
-                            # count rows where at least one pred notna
-                            has_any = int(df[pred_cols].notna().any(axis=1).sum())
-                        else:
-                            for col in ["predicted_winner","predicted_winner_betclan","predicted_winner_foretennis","predicted_winner_bzzoiro"]:
-                                if col in df.columns:
-                                    has_any = max(has_any, int(df[col].notna().sum()))
-                        cov = has_any / max(1,total)
-                        print(f"deep check: coverage {has_any}/{total}={cov:.1%} (threshold 60%)")
-                        if cov < 0.60:
-                            deep_needed = True
-                except Exception as e:
-                    print(f"deep check failed {e}")
-                    deep_needed = True
-        # Burn cut: deep limit 15->5 (RACKET_FACTORY_FOREBET_DEEP_LIMIT), 12h TTL via fetch_cache, empty boards never cached
-        deep_limit = 5
-        try:
-            deep_limit = int(os.getenv("RACKET_FACTORY_FOREBET_DEEP_LIMIT", "5"))
-        except Exception:
-            deep_limit = 5
-        if deep_needed:
-            print(f"\n>>> DEEP SEARCH enabled: Forebet tournament backfill (limit {deep_limit} to reduce CF burst, was 50) to deepen warehouse")
-            run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode tournament --limit {deep_limit} --delay 5 --warehouse localdata/warehouse.csv.gz --output-dir localdata", f"backfill_forebet tournament deep {deep_limit}", env=child_env)
-            # Bzzoiro 30d backfill at most once per day (marker file) — 100 req/day free tank
-            if os.getenv("BZZOIRO_TOKEN"):
-                marker = LOCALDATA / "quota" / f"bzzoiro_backfill_{date.today().isoformat()}.marker"
-                if marker.exists():
-                    print(f">>> Bzzoiro 30d backfill skipped — already ran today (marker {marker.name})")
-                else:
-                    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_bzzoiro.py --start-date {(datetime.now()-timedelta(days=30)).date().isoformat()} --end-date {target} --output-dir localdata", "backfill_bzzoiro 30d deep", env=child_env)
-                    try:
-                        marker.parent.mkdir(parents=True, exist_ok=True)
-                        marker.write_text(f"{datetime.now().isoformat()} {target}\n")
-                    except Exception:
-                        pass
-            # Log Jina quota for burn visibility
-            try:
-                import sys
-                sys.path.insert(0, str(ROOT / "src"))
-                from racketfactory.quota_guard import get_count as _q_cnt, get_limit as _q_lim
-                print(f"quota jina: {_q_cnt('jina')}/{_q_lim('jina')} today")
-                print(f"quota bzzoiro: {_q_cnt('bzzoiro')}/{_q_lim('bzzoiro')} today")
-            except Exception:
-                pass
-    except Exception as e:
-        print(f"deep search check failed: {e}")
+    # Historical repair is evaluated after grading, outside the candidate path.
     if os.getenv("RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES", "").strip().lower() in {"1", "true", "yes", "on"}:
         print("\n>>> capture_theoddsapi_scores skipped")
         print("RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES is set; avoiding The Odds API score quota burn.")
@@ -775,7 +726,7 @@ def run_once(args: argparse.Namespace) -> None:
     # are generated from yesterday's actual_result even if initial warehouse was stale.
     # This is critical for settlement: 3 settled of 45 was because foretennis_results not generated.
     print("\n>>> Second pass: backfill result sources for settlement (yesterday)")
-    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_forebet.py --mode daily --days yesterday --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_forebet yesterday (results)", env=child_env)
+    print("Forebet live result backfill skipped; retained results remain available")
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_foretennis.py --warehouse localdata/warehouse.csv.gz --output-dir localdata", "backfill_foretennis second pass (results)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/backfill_challenger_results.py --days 3 --output-dir localdata", "backfill_challenger_results (settlement)", env=child_env)
     if os.getenv("RACKET_FACTORY_DISABLE_THEODDSAPI_SCORES", "").strip().lower() not in {"1", "true", "yes", "on"}:
@@ -823,10 +774,13 @@ def run_once(args: argparse.Namespace) -> None:
     # early and kickoff_guard would stake matches already in progress.
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/kickoff_tz_audit.py --date {target} --days 7", "kickoff_tz_audit (BetClan offset)", env=child_env)
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets.py --date {target}", "auto_tickets (generate/freeze)", env=child_env)
-    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets_grade.py", "auto_tickets_grade (settle past slips)", env=child_env)
+    run_critical_grade(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets_grade.py", env=child_env, run_as_of=run_as_of)
     # Read-only forensics over the settled ledger: pool/ranking/calibration/
     # staking plus the search-winner null test. Reports, never tunes.
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/autobets_forensics.py --json localdata/autobets_forensics.json", "autobets_forensics (ledger audit)", env=child_env)
+
+    # Historical backfill is deliberately deferred from the daily ticket path.
+    # Its source-specific scheduling needs separate evidence and review.
 
     # 9. Supabase Live Dashboard Sync (Optional)
     sync_script = ROOT / "scripts" / "sync_supabase.py"
@@ -851,7 +805,7 @@ def _build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--intraday-only", action="store_true", help="Skip heavy captures; run live prediction fetch only")
     ap.add_argument("--skip-notify", action="store_true", help="Do not send the WhatsApp heads-up")
     ap.add_argument("--force-repick", action="store_true",
-                    help="Overwrite the morning baseline lock (dangerous — only use for replays)")
+                    help="Force a full auto-schedule run; does not override frozen tickets")
     ap.add_argument("--force-sync", action="store_true",
                     help="Force execution of Supabase sync script even if SUPABASE_URL is not in local env.")
     ap.add_argument("--auto-run", action="store_true",
