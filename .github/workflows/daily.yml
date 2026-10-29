@@ -108,6 +108,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run test suite (blocking)
+        id: tests
         env:
           SUPABASE_URL: ''
           SUPABASE_KEY: ''
@@ -125,6 +126,11 @@ jobs:
       - name: Install Playwright Chromium
         run: |
           python -m playwright install --with-deps chromium
+
+      - name: Discard test-created localdata in runner checkout
+        run: |
+          git restore --source=HEAD --worktree --staged -- localdata
+          git clean -fdx -- localdata
 
       - name: Restore localdata state (cache)
         uses: actions/cache/restore@v4
@@ -153,7 +159,19 @@ jobs:
 
       - name: Execute autonomous smart schedule
         id: execute
+        env:
+          RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR: ${{ github.event.inputs.force == 'true' && format('{0}/racket-rebuild-diagnostics', runner.temp) || '' }}
+          # No external publication until Git has accepted the card.
+          SUPABASE_URL: ''
         run: |
+          day="$(TZ=Africa/Johannesburg date +%F)"
+          echo "target_date=$day" >> "$GITHUB_OUTPUT"
+          marker="localdata/.publication_runs/${GITHUB_RUN_ID}"
+          if git cat-file -e "HEAD:$marker" 2>/dev/null; then
+            echo 'Run already published; do not repeat execution or notification.'
+            echo 'already_published=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           MODE='${{ github.event.inputs.mode }}'
           FORCE='${{ github.event.inputs.force }}'
           if [ -n "$MODE" ] && [ "$MODE" != "auto" ]; then
@@ -161,27 +179,35 @@ jobs:
             if [ "$MODE" = "official_morning" ]; then
               # Explicit morning mode is already a full run; never pass the
               # ticket builder's --force or bypass its frozen-output guard.
-              PYTHONPATH=src python3 scripts/daily.py --future-days 2
+              PYTHONPATH=src python3 scripts/daily.py --date "$day" --skip-notify --future-days 2
             elif [ "$MODE" = "intraday_only" ]; then
               if [ "$FORCE" = "true" ]; then
                 echo "force requests a full run and conflicts with intraday_only" >&2
                 exit 1
               fi
-              PYTHONPATH=src python3 scripts/daily.py --intraday-only --future-days 2
+              PYTHONPATH=src python3 scripts/daily.py --date "$day" --skip-notify --intraday-only --future-days 2
             fi
           else
             if [ "$FORCE" = "true" ]; then
-              RACKET_FACTORY_REBUILD_SERIALIZED=1 PYTHONPATH=src python3 scripts/daily.py --guarded-rebuild
+              RACKET_FACTORY_REBUILD_SERIALIZED=1 PYTHONPATH=src python3 scripts/daily.py --date "$day" --guarded-rebuild
             else
-              PYTHONPATH=src python3 scripts/daily.py --auto-once --future-days 2
+              PYTHONPATH=src python3 scripts/daily.py --date "$day" --skip-notify --auto-once --future-days 2
             fi
           fi
 
       - name: Pipeline health gate
         id: health
         if: ${{ !cancelled() && steps.execute.outcome != 'skipped' }}
+        env:
+          RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR: ${{ runner.temp }}/racket-rebuild-diagnostics
         run: |
-          PYTHONPATH=src python3 -m racketfactory.doctor --expect-warehouse --write-report
+          if [ '${{ steps.execute.outputs.already_published }}' = 'true' ]; then
+            echo 'Previously published run; no new health or publication.'
+          elif [ '${{ github.event.inputs.force }}' = 'true' ]; then
+            PYTHONPATH=src python3 -m racketfactory.doctor --expect-warehouse --expect-rebuild --write-report --report-path "$RUNNER_TEMP/racket-rebuild-diagnostics/pipeline_health.json"
+          else
+            PYTHONPATH=src python3 -m racketfactory.doctor --expect-warehouse --write-report
+          fi
 
       - name: Persist localdata state (cache)
         uses: actions/cache/save@v4
@@ -201,11 +227,17 @@ jobs:
 
       - name: Persist pipeline state to git
         id: publication
-        if: ${{ always() && steps.input_gate.outcome == 'success' && (github.event.inputs.force != 'true' || (steps.execute.outcome == 'success' && steps.health.outcome == 'success')) }}
+        if: ${{ !cancelled() && steps.input_gate.outcome == 'success' && steps.tests.outcome == 'success' && steps.execute.outcome == 'success' && steps.health.outcome == 'success' && steps.execute.outputs.already_published != 'true' }}
         run: |
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          baseline="$(git rev-parse HEAD)"
+          git fetch origin "refs/heads/${GITHUB_REF_NAME}"
+          if [ "$(git rev-parse FETCH_HEAD)" != "$baseline" ]; then
+            echo 'authoritative branch changed after checkout; refusing publication' >&2
+            exit 1
+          fi
           if [ '${{ github.event.inputs.force }}' != 'true' ]; then
             echo "Cleaning legacy files (keep dated pick archives — audit needs full history)..."
             rm -f localdata/picks_morning_*.json || true
@@ -220,36 +252,52 @@ jobs:
             ls -lh localdata/ | tail -n 100 || true
             echo "Warehouse + slice_table status:"
             ls -lh localdata/warehouse.csv.gz localdata/warehouse_merge_report.json localdata/slice_table_*.json 2>&1 | head -n 20 || true
-            git add -A localdata/ 2>/dev/null || true
+            git add -A localdata/
           fi
           if [ '${{ github.event.inputs.force }}' = 'true' ]; then
-            day="$(TZ=Africa/Johannesburg date +%F)"
+            day='${{ steps.execute.outputs.target_date }}'
+            [ "$day" = "$(TZ=Africa/Johannesburg date +%F)" ] || { echo 'betting day changed; refusing publication' >&2; exit 1; }
             git add -A -- "localdata/auto_tickets_${day}.json" "localdata/auto_tickets_${day}.txt" \
               localdata/auto_tickets_today.json localdata/auto_tickets_today.txt localdata/auto_tickets_state.json
             # The archive is non-actionable but must survive the runner.
-            archive="localdata/.auto_tickets_rebuild/archive_$(TZ=Africa/Johannesburg date +%F)_${GITHUB_RUN_ID}.json"
+            archive="localdata/.auto_tickets_rebuild/archive_${day}_${GITHUB_RUN_ID}.json"
             test -f "$archive" || { echo 'missing rebuild archive' >&2; exit 1; }
             git add -f -- "$archive"
-            baseline="$(git rev-parse HEAD)"
-            git fetch origin "refs/heads/${GITHUB_REF_NAME}"
-            if [ "$(git rev-parse FETCH_HEAD)" != "$baseline" ]; then
-              echo 'authoritative branch changed after checkout; refusing publication' >&2
-              exit 1
-            fi
-            git diff --cached --quiet && { echo 'no rebuild changes'; exit 0; }
-            git commit -m "feat: guarded empty-card rebuild $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
-            # A non-fast-forward is a conflict, never rebase financial state.
-            git push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
-          else
-            git diff --cached --quiet && echo "no changes" && exit 0
-            git commit -m "feat: autonomous picks + auto_tickets $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
-            git pull --rebase --autostash || { git rebase --abort; git pull --no-rebase || true; }
-            git push || { git pull --rebase --autostash; git push; }
           fi
+          # At-most-once per run ID; a crash after push can lose an alert.
+          marker="localdata/.publication_runs/${GITHUB_RUN_ID}"
+          mkdir -p "$(dirname "$marker")"
+          printf '%s\n' "${GITHUB_RUN_ID}" > "$marker"
+          git add -f -- "$marker"
+          git commit -m "feat: autonomous picks + auto_tickets $(date -u +%Y-%m-%d) (run ${{ github.run_id }})"
+          # A concurrent update is a failure, never rebase financial state.
+          git push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
+          echo 'published_new=true' >> "$GITHUB_OUTPUT"
+
+      - name: Publish dashboard and notify after Git push
+        if: ${{ steps.publication.outcome == 'success' && steps.publication.outputs.published_new == 'true' && github.event.inputs.force != 'true' }}
+        run: |
+          day='${{ steps.execute.outputs.target_date }}'
+          picks="localdata/picks_${day}.json"
+          if [ -n "$SUPABASE_URL" ]; then
+            PYTHONPATH=src python3 scripts/sync_supabase.py --picks "$picks" --target-date "$day" --replace-date || echo 'Dashboard sync failed after publication'
+          fi
+          if [ -n "$CALLMEBOT_APIKEY" ] && [ -n "$CALLMEBOT_PHONE" ]; then
+            PYTHONPATH=src python3 scripts/notify_whatsapp.py --date "$day" --picks "$picks" || echo 'Notification failed after publication'
+          fi
+
+      - name: Upload guarded rebuild diagnostics
+        uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event.inputs.force == 'true' }}
+        with:
+          name: RacketFactory-Rebuild-Diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/racket-rebuild-diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
-        if: ${{ always() && steps.input_gate.outcome == 'success' && (github.event.inputs.force != 'true' || steps.publication.outcome == 'success') }}
+        if: ${{ always() && steps.input_gate.outcome == 'success' && steps.publication.outcome == 'success' && steps.publication.outputs.published_new == 'true' }}
         with:
           name: RacketFactory-Reports
           path: |
