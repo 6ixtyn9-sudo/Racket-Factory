@@ -1,78 +1,78 @@
 {
   "status": "merged",
-  "baseline_rows": 15001,
-  "fresh_rows": 13835,
-  "shared_keys": 13677,
-  "new_from_fresh": 158,
-  "baseline_only": 1324,
+  "baseline_rows": 15159,
+  "fresh_rows": 15347,
+  "shared_keys": 13724,
+  "new_from_fresh": 1623,
+  "baseline_only": 1435,
   "settlement_updates": 0,
-  "live_rows_from_fresh": 31,
-  "dim_drift_rows": 4010,
+  "live_rows_from_fresh": 0,
+  "dim_drift_rows": 4093,
   "dim_drift_examples": [
     {
-      "key": "2026-09-09|ATP|US Open|alexanderblockx||karenkhachanov",
+      "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|mejian||zhengm",
       "col": "predicted_winner_foretennis",
       "baseline": "player_a",
       "fresh": ""
     },
     {
-      "key": "2026-09-14|WTA|WTA Guadalajara Open|carolinedolehide||renatazarazua",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_b"
-    },
-    {
-      "key": "2026-09-14|WTA|WTA Guadalajara Open|magdalenafrech||naohibino",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_a"
-    },
-    {
-      "key": "2026-09-14|WTA|WTA Guadalajara Open|carolemonnet||sloanestephens",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_b"
-    },
-    {
-      "key": "2026-09-14|WTA|WTA Guadalajara Open|tatjanamaria||taylortownsend",
-      "col": "predicted_winner_market",
-      "baseline": "",
-      "fresh": "player_b"
-    },
-    {
-      "key": "2026-09-30|ATP|ATP China Open|felixaugeraliassime||karenkhachanov",
-      "col": "predicted_winner_betclan",
+      "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|cinaf||dougaza",
+      "col": "predicted_winner_foretennis",
       "baseline": "player_b",
       "fresh": ""
     },
     {
-      "key": "2026-09-30|ATP|ATP China Open|janlennardstruff||thiagoagustintirante",
-      "col": "predicted_winner_betclan",
+      "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|basilashvilin||draxll",
+      "col": "predicted_winner_foretennis",
       "baseline": "player_b",
       "fresh": ""
     },
     {
-      "key": "2026-09-30|ATP|ATP Japan Open|alexanderblockx||valentinvacherot",
-      "col": "predicted_winner_betclan",
-      "baseline": "player_b",
-      "fresh": ""
-    },
-    {
-      "key": "2026-09-30|ATP|ATP Japan Open|jirilehecka||zizoubergs",
-      "col": "predicted_winner_betclan",
+      "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|mochizukis||safiullinr",
+      "col": "predicted_winner_foretennis",
       "baseline": "player_a",
       "fresh": ""
     },
     {
-      "key": "2026-09-30|ATP|ATP Japan Open|alejandrotabilo||tommypaul",
-      "col": "predicted_winner_betclan",
+      "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|skatovt||tomicb",
+      "col": "predicted_winner_foretennis",
       "baseline": "player_b",
+      "fresh": ""
+    },
+    {
+      "key": "2026-10-05|UNKNOWN|ATP Shanghai - Semi-finals - Qualification|hewittc||wongc",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": ""
+    },
+    {
+      "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|coppejansk||sweenyd",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": ""
+    },
+    {
+      "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|belluccim||mullera",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
+      "fresh": ""
+    },
+    {
+      "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|harrisl||wongc",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_b",
+      "fresh": ""
+    },
+    {
+      "key": "2026-10-06|UNKNOWN|ATP Shanghai - Final - Qualification|jacquetk||sakamotor",
+      "col": "predicted_winner_foretennis",
+      "baseline": "player_a",
       "fresh": ""
     }
   ],
-  "merged_rows": 15159,
-  "generated_at": "2026-10-14T06:14:15.704975+00:00",
-  "baseline_sha256": "2f4f7fb5f25f387dd456f77869391bad0979a96fde3546591a48b512085eda08",
-  "fresh_sha256": "c743c67bb10cc12d1c4edd3bea4ecfc5ba5f4dd2979d07e769602db277d8bbfe",
-  "merged_sha256": "b285c8975b702585cf3a17934b73fec756a5a83f6e315a82adab2b40c535f57a"
+  "merged_rows": 16782,
+  "generated_at": "2026-10-29T12:49:13.521841+00:00",
+  "baseline_sha256": "b285c8975b702585cf3a17934b73fec756a5a83f6e315a82adab2b40c535f57a",
+  "fresh_sha256": "b90ed4690dccdfe71ac0cb5f5c036022600ffb7f600fcbed702354a51b45d7a4",
+  "merged_sha256": "c4d9d173c47f5ddcbe21b0cd075c52e41958e7430eb7b8d59ca28adfb92374e5"
 }

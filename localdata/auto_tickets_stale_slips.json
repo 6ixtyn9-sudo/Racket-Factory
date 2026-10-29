@@ -1,11 +1,11 @@
 {
   "alarm_after_days": 3,
-  "generated_at": "2026-10-14T08:19:40+02:00",
+  "generated_at": "2026-10-29T14:55:41+02:00",
   "open_slips": 4,
   "stale": [
     {
       "accas": 1,
-      "age_days": 31,
+      "age_days": 46,
       "committed_pct": 0,
       "date": "2026-09-13",
       "faults": [],
@@ -16,7 +16,7 @@
     },
     {
       "accas": 1,
-      "age_days": 24,
+      "age_days": 39,
       "committed_pct": 0,
       "date": "2026-09-20",
       "faults": [],
@@ -27,7 +27,7 @@
     },
     {
       "accas": 1,
-      "age_days": 14,
+      "age_days": 29,
       "committed_pct": 0,
       "date": "2026-09-30",
       "faults": [],
@@ -38,7 +38,7 @@
     },
     {
       "accas": 1,
-      "age_days": 3,
+      "age_days": 18,
       "committed_pct": 0,
       "date": "2026-10-11",
       "faults": [],

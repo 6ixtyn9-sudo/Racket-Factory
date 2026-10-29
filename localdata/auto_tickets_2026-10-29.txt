@@ -1,0 +1,14 @@
+Racket Factory Auto Tickets — 2026-10-29
+Generated at: 2026-10-29T14:55:34.421024+02:00
+Bank: 100.00% (cycle base 100.00%)
+Take profit target: 200.00%
+
+Strategy: strengths-focused, avoid super short odds (min leg 1.35, min acca 1.5), 4 accas max per track, NO SINGLES
+Stake: 20% of bank per day (priced track only; paper is hit-rate only)
+
+NO BET — no qualifying priced ticket (zero qualifying bets is a valid outcome)
+Pipeline: 28 picks -> 0 playable -> 0 builder inputs -> 0 priced eligible legs, 0 paper eligible legs
+Admission exclusions: ML veto=13, bucket not playable=4, dead-edge gate=2, no-odds boost gate=6, veto bucket=3
+Ticket constraint: fewer than two eligible priced legs
+Playable buckets: {'CAUTION', 'FADE', 'CERTIFIED_CLEAN', 'WATCHLIST'} + ML NO_ODDS BOOST (paper track)
+Kickoff skips: none.

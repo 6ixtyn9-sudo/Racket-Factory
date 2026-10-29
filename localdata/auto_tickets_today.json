@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-14",
-  "generated_at": "2026-10-14T08:02:02+02:00",
+  "date": "2026-10-29",
+  "generated_at": "2026-10-29T14:55:34.387249+02:00",
   "bank_pct": 100.0,
   "free_bank_pct": 51.2,
   "committed_pct": 48.8,
@@ -11,5 +11,19 @@
   "paper_staked_pct": 0,
   "accas": [],
   "skipped": [],
-  "frozen": false
+  "diagnostics": {
+    "picks": 28,
+    "playable": 0,
+    "builder_input": 0,
+    "admission_rejections": {
+      "veto bucket": 3,
+      "bucket not playable": 4,
+      "ML veto": 13,
+      "dead-edge gate": 2,
+      "no-odds boost gate": 6
+    },
+    "priced_eligible": 0,
+    "paper_eligible": 0
+  },
+  "frozen": true
 }

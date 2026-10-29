@@ -1,0 +1,42 @@
+Racket Factory Picks — 2026-10-30
+============================================================
+Generated at: 2026-10-29 14:49:53
+Snapshot as of: 2026-10-29T14:38:09+02:00
+Ledger kind: forecast
+
+
+CERTIFIED CLEAN PICKS
+============================================================
+  (none)
+
+CAUTION PICKS
+============================================================
+  (none)
+
+WATCHLIST PICKS
+============================================================
+  (none)
+
+FADE PICKS — validated contrarian (bet AGAINST the model's pick; slice ROI is the edge basis, conf = faded side)
+============================================================
+  (none)
+
+WATCHLIST — NO MATCHED ODDS
+============================================================
+  (none)
+
+WATCHLIST — UNKNOWN CONTEXT
+============================================================
+  (none)
+
+SKIPPED — VETO CONTEXT
+============================================================
+  [no_slice_export] Alexandra Eala vs Diana Shnaider           KO 04:00 -> DIANA SHNAIDER  conf 63% @1.69  EV +0.06u
+     bucket=SKIPPED_VETO  tour=WTA  series=Premier  surface=Hard  source=BetClan  edge=WATCHLIST  tier=BANKER  grade=SILVER  roi=no_slice
+
+SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)
+============================================================
+  (none)
+
+⚠️  Flat stakes only. Best odds inflate ROI (~halve it).
+⚠️  Bet only what you can afford to lose.

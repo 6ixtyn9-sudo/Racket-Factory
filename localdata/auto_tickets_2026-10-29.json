@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-29",
+  "generated_at": "2026-10-29T14:55:34.387249+02:00",
+  "bank_pct": 100.0,
+  "free_bank_pct": 51.2,
+  "committed_pct": 48.8,
+  "day_cap_pct": 10.24,
+  "stake_frac": 0.2,
+  "stake_per_acca_pct": 0,
+  "staked_pct": 0,
+  "paper_staked_pct": 0,
+  "accas": [],
+  "skipped": [],
+  "diagnostics": {
+    "picks": 28,
+    "playable": 0,
+    "builder_input": 0,
+    "admission_rejections": {
+      "veto bucket": 3,
+      "bucket not playable": 4,
+      "ML veto": 13,
+      "dead-edge gate": 2,
+      "no-odds boost gate": 6
+    },
+    "priced_eligible": 0,
+    "paper_eligible": 0
+  },
+  "frozen": true
+}
