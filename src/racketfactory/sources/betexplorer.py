@@ -480,6 +480,7 @@ def _comparison_endpoint_candidates(html: str, event_id: str, *, metrics: dict |
     from urllib.parse import urljoin, urlparse, parse_qsl
     soup = BeautifulSoup(html, "html.parser")
     found = []
+    contexts = {}
     def record(key):
         if metrics is not None:
             metrics[key] = metrics.get(key, 0) + 1
@@ -496,25 +497,36 @@ def _comparison_endpoint_candidates(html: str, event_id: str, *, metrics: dict |
             continue
         market = str(node.get("data-market") or node.get("data-market-name") or "").strip().lower()
         period = str(node.get("data-period") or node.get("data-scope") or "").strip().lower()
+        market_id = str(node.get("data-market-id") or "")
+        # Compare explicit contexts for the *same validated endpoint* before
+        # rejecting unsupported markets/periods. Plain links with no context
+        # are not assertions about scope. Only the aliases already accepted by
+        # this parser are normalized; unsupported labels remain distinct.
+        market_key = "match winner" if market in {"match winner", "match_winner", "match-winner", "h2h"} else market
+        period_key = "match" if period in {"match", "full match", "full_match", "full-match"} else period
+        context = contexts.setdefault(url, {"market": set(), "period": set(), "market_id": set()})
+        for key, value in (("market", market_key), ("period", period_key), ("market_id", market_id)):
+            if value:
+                context[key].add(value)
         if market not in {"match winner", "match_winner", "match-winner", "h2h"}:
             record("endpoint_market_rejected")
             continue
         if period not in {"match", "full match", "full_match", "full-match"}:
             record("endpoint_period_rejected")
             continue
-        market_id = str(node.get("data-market-id") or "")
         if not re.fullmatch(r"[A-Za-z0-9_-]{0,32}", market_id):
             record("endpoint_market_id_rejected")
             continue
         found.append({"url": url, "raw_market": market, "raw_period": period, "market_id": market_id})
     # A page with competing explicit contexts is ambiguous, not a first hit.
+    if any(any(len(values) > 1 for values in contexts[item["url"]].values()) for item in found):
+        record("endpoint_conflicting_context")
+        return []
     unique = {}
     for item in found:
         previous = unique.get(item["url"])
-        if previous is not None and previous != item:
-            record("endpoint_conflicting_context")
-            return []
-        unique[item["url"]] = item
+        if previous is None:
+            unique[item["url"]] = item
     if len(unique) > 1:
         record("endpoint_ambiguous_urls")
     return list(unique.values()) if len(unique) == 1 else []
@@ -715,7 +727,8 @@ def _fetch_comparison_document(url: str, referer: str | None = None) -> tuple[st
     return body, when
 
 
-def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, stage_counts: dict | None = None) -> list[dict]:
+def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, stage_counts: dict | None = None,
+                             capture_replay: bool = False) -> list[dict]:
     """Fetch and cache one prediction-matched fixture, retaining timestamps."""
     from racketfactory.rebuild_diagnostics import capture_betexplorer_fragment
     event_id = str(fixture.get("event_id") or "")
@@ -743,8 +756,29 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
             raise
         count("match_page_success")
         capture_betexplorer_fragment(page, "detail", event_id=event_id, observed_at=page_at, status=200)
+        if capture_replay:
+            from racketfactory.betexplorer_evidence import capture_replay as save_replay
+            if save_replay(page, "detail", fixture, observed_at=page_at, request_url=match_url):
+                count("replay_detail_saved")
         discovery_metrics = {}
         endpoints = _comparison_endpoint_candidates(page, event_id, metrics=discovery_metrics)
+        if capture_replay and stage_counts is not None and stage_counts.get("replay_detail_saved"):
+            # Compare against the captured DOM, without implying that an empty
+            # result proves the omitted JavaScript is sufficient for a new parser.
+            import json
+            from racketfactory.rebuild_diagnostics import directory
+            replay_file = directory() / ("betexplorer_replay_" + event_id + ".json")
+            try:
+                evidence = json.loads(replay_file.read_text())
+                replay = _comparison_endpoint_candidates(evidence["detail"]["replay_html"], event_id)
+                agrees = replay == endpoints
+                evidence["detail"]["same_current_discovery_result"] = agrees
+                evidence["detail"]["empty_discovery_does_not_prove_future_parser_fidelity"] = not bool(endpoints)
+                replay_file.write_text(json.dumps(evidence, indent=2, ensure_ascii=True), encoding="utf-8")
+                if agrees:
+                    count("replay_discovery_agrees")
+            except (OSError, ValueError, KeyError, TypeError):
+                count("replay_comparison_failed")
         for key, amount in discovery_metrics.items():
             count(key, amount)
         if not endpoints:
@@ -769,6 +803,11 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
         except (ValueError, AttributeError):
             html = ""
         capture_betexplorer_fragment(html or "<div></div>", "comparison", event_id=event_id, observed_at=observed_at, status=200, response_body=payload)
+        if capture_replay:
+            from racketfactory.betexplorer_evidence import capture_replay as save_replay
+            if save_replay(html or "<div></div>", "comparison", fixture, observed_at=observed_at,
+                           response_body=payload, request_url=endpoints[0]["url"]):
+                count("replay_comparison_saved")
         try:
             rows, metrics = _comparison_response_rows(payload, fixture, endpoints[0], observed_at)
         except PageFetchError as exc:

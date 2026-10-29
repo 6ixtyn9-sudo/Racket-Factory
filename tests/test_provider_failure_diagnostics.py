@@ -141,7 +141,7 @@ def test_guarded_collection_required_and_optional_outcomes(monkeypatch):
     class FakeBetClan:
         last_collection_status = "complete"
         def fetch_daily(self):
-            return [{"match_date": "2026-10-29", "player_home": "Alice Adams", "player_away": "Beth Brown"}]
+            return [{"match_date": "2026-10-29", "match_time": "12:00", "player_home": "Alice Adams", "player_away": "Beth Brown"}]
     class FailedPredix:
         def fetch_daily(self):
             raise RuntimeError("offline")
@@ -150,6 +150,9 @@ def test_guarded_collection_required_and_optional_outcomes(monkeypatch):
     monkeypatch.delenv(betexplorer.DISABLE_ENV, raising=False)
     monkeypatch.setenv(oddsportal_upcoming.DISABLE_ENV, "1")
     from datetime import datetime, timezone
+    from racketfactory import quote_enrichment
+    from racketfactory.kickoff import SAST
+    monkeypatch.setattr(quote_enrichment, "_collection_now", lambda: datetime(2026, 10, 29, 10, 0, tzinfo=SAST))
     quote = {"match_date": "2026-10-29", "player_home": "Alice Adams", "player_away": "Beth Brown", "odds_home": 1.5, "odds_away": 2.5, "event_id": "synthetic",
              "market": "h2h", "period": "match", "observed_at": datetime.now(timezone.utc).isoformat(),
              "price_type": "bookmaker", "bookmaker": "Synthetic Book",
