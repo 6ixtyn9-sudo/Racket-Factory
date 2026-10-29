@@ -54,6 +54,12 @@ TODAY_EXTRA_PATHS = [
     "/tennis/itf-men/",
     "/tennis/itf-women/",
 ]
+# Run 40907989137 received 404s for these routes by 16:16:18 UTC.
+# Preserve that observed six-hour cooldown while the new marker cache is not
+# yet populated; expiry permits normal future checks without inventing a reset.
+_OBSERVED_INVALID_404_UNTIL = datetime(2026, 10, 29, 22, 16, 19, tzinfo=timezone.utc)
+_OBSERVED_INVALID_404_PATHS = frozenset(TODAY_EXTRA_PATHS)
+
 TOMORROW_EXTRA_PATHS = [
     "/tennis/tomorrow/next/",
     "/tennis/atp/tomorrow/",
@@ -477,6 +483,10 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
     # Extra category pages (broadens coverage for Challenger/ITF).
     partial = False
     for extra in (extra_paths or []):
+        if extra in _OBSERVED_INVALID_404_PATHS and datetime.now(timezone.utc) < _OBSERVED_INVALID_404_UNTIL:
+            logger.info("OddsPortal extra route skipped during observed 404 cooldown")
+            partial = True
+            continue
         try:
             eurl = BASE_URL + extra
             ehtml = fetch_page_html(eurl, SOURCE_NAME)

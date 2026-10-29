@@ -789,6 +789,24 @@ def _surname_tokens_equal(a: str, b: str) -> bool:
         return False
 
 
+def strict_quote_team_match(left: str, right: str) -> bool:
+    """Full participant proof for executable quotes; no bare-surname fallback."""
+    from racketfactory.settlement import players_match, split_team
+    a, b = split_team(left), split_team(right)
+    if len(a) != len(b) or len(a) not in (1, 2):
+        return False
+    def match(x, y):
+        ok, bare = players_match(x, y)
+        return ok and not bare
+    if len(a) == 1:
+        return match(a[0], b[0])
+    if players_match(a[0], a[1])[0] or players_match(b[0], b[1])[0]:
+        return False
+    direct = match(a[0], b[0]) and match(a[1], b[1])
+    reverse = match(a[0], b[1]) and match(a[1], b[0])
+    return direct != reverse
+
+
 def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_drift_days: int = 1) -> tuple[dict | None, bool]:
     """Find one same-date, full-match-winner quote and its orientation.
 
@@ -884,6 +902,15 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
             continue
         api_home = str(odds_row.get("player_home") or "")
         api_away = str(odds_row.get("player_away") or "")
+        # For new BetExplorer comparison offers, both full participants must
+        # match; historical surname-only fallback is not proof of this quote.
+        if odds_row.get("source") == "BetExplorer" and odds_row.get("response_sha256"):
+            direct = strict_quote_team_match(home, api_home) and strict_quote_team_match(away, api_away)
+            reverse = strict_quote_team_match(home, api_away) and strict_quote_team_match(away, api_home)
+            if names_match(home, away) or names_match(api_home, api_away) or direct == reverse:
+                continue
+            candidates.append((odds_row, reverse))
+            continue
         normal = _pair_matches(home, away, api_home, api_away)
         flipped = _pair_matches(home, away, api_away, api_home)
         both_orientations = normal is not None and flipped is not None and normal[1] == flipped[1]
@@ -1598,7 +1625,9 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str, *,
         # absent rather than being inferred from warehouse injection time.
         meta = {key: odds_row.get(key) for key in (
             "event_id", "observed_at", "market", "period", "line", "player_home", "player_away",
-            "match_date", "match_time", "commence_time", "bookmaker", "odds_home_bookmaker", "odds_away_bookmaker")}
+            "match_date", "match_time", "commence_time", "bookmaker", "odds_home_bookmaker", "odds_away_bookmaker",
+            "price_type", "settlement_rules", "match_url", "market_id", "raw_market", "raw_period",
+            "retrieved_at", "provider_price_updated_at", "provider_positions", "response_sha256", "bookmaker_id", "tournament", "tour_hint")}
         meta["source"] = src_label
         meta["reversed"] = reversed_order
         out.at[idx, "_quote_meta"] = json.dumps(meta, default=str)

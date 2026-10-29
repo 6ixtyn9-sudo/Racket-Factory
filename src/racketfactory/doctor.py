@@ -133,7 +133,7 @@ def _age_days(mtime: float | None, today: date) -> float | None:
 
 
 def run_health_checks(*, expect_warehouse: bool = False,
-                      as_of: str | None = None) -> dict:
+                      as_of: str | None = None, expect_rebuild: bool = False) -> dict:
     """Run all health checks. Returns {name: {status, detail}}.
 
     Status is OK / WARN / CRITICAL.
@@ -144,6 +144,26 @@ def run_health_checks(*, expect_warehouse: bool = False,
 
     def add(name: str, status: str, detail: str = "") -> None:
         checks[name] = {"status": status, "detail": detail}
+
+    if expect_rebuild:
+        from racketfactory.rebuild_diagnostics import directory
+        folder = directory() or LOCALDATA / ".rebuild_diagnostics"
+        try:
+            status = json.loads((folder / "rebuild_status.json").read_text())
+            if (status.get("github_run_id") != os.getenv("GITHUB_RUN_ID", "") or
+                    status.get("github_run_attempt") != os.getenv("GITHUB_RUN_ATTEMPT", "1")):
+                raise ValueError("status belongs to a different run attempt")
+            state = status.get("status")
+            if state == "failed":
+                add("rebuild:current", "CRITICAL", f"current rebuild failed at {status.get('stage')}; current ticket generation {status.get('ticket_generation')}; prior Git card remains authoritative until publication")
+            elif state == "staged":
+                add("rebuild:current", "OK", "ticket generation completed locally; Git publication has not yet occurred")
+            elif state == "already_published":
+                add("rebuild:current", "OK", "same run was already published; no rebuild repeated")
+            else:
+                add("rebuild:current", "CRITICAL", f"current rebuild incomplete ({state}); ticket generation not established")
+        except (OSError, ValueError, TypeError, AttributeError):
+            add("rebuild:current", "CRITICAL", "current run status missing, invalid or belongs to another attempt; ticket generation not established")
 
     add("localdata_exists", "OK" if check_localdata_exists() else "CRITICAL")
     add("localdata_writable", "OK" if check_localdata_writable() else "CRITICAL")
@@ -213,7 +233,7 @@ def run_health_checks(*, expect_warehouse: bool = False,
     if wh.exists():
         n, mx = _read_match_dates(wh)
         add("warehouse", "OK" if n > 0 else "WARN",
-            f"{n} rows, max_date {mx or '?'}")
+            f"historical committed warehouse: {n} rows, max_date {mx or '?'}")
         live = count_live_rows(wh)
         if live is None:
             add("warehouse:live_rows", "WARN", "no _is_live column/unreadable")
@@ -280,7 +300,7 @@ def run_health_checks(*, expect_warehouse: bool = False,
         from racketfactory.execution import leg_market_odds
         skipped = sum(str(r.get("bucket", "")).startswith("SKIPPED") for r in official)
         priced_all = sum(leg_market_odds(r) is not None for r in official)
-        add("picks:export_breakdown", "OK", f"{len(official)} exported; {skipped} skipped; "
+        add("picks:export_breakdown", "OK", f"saved dated export (not current-run evidence): {len(official)} exported; {skipped} skipped; "
             f"{priced_all} priced and {len(official)-priced_all} unpriced (counts can overlap)")
     except (OSError, ValueError, TypeError):
         add("picks:export_breakdown", "WARN", "dated official export missing/unreadable")
@@ -363,14 +383,17 @@ def main(argv: list[str] | None = None) -> int:
                     help="missing warehouse.csv.gz is CRITICAL (post-pipeline)")
     ap.add_argument("--as-of", default=None,
                     help="reference date YYYY-MM-DD (default: today / RUN_AS_OF)")
+    ap.add_argument("--expect-rebuild", action="store_true", help="require current-attempt guarded rebuild status")
     ap.add_argument("--write-report", action="store_true",
-                    help="write localdata/pipeline_health.json")
+                    help="write pipeline health report")
+    ap.add_argument("--report-path", default=None,
+                    help="optional isolated report path (default: localdata/pipeline_health.json)")
     args = ap.parse_args(argv)
 
     print("Racket Factory Doctor")
     print("=" * 70)
     results = run_health_checks(expect_warehouse=args.expect_warehouse,
-                                as_of=args.as_of)
+                                as_of=args.as_of, expect_rebuild=args.expect_rebuild)
     worst_rank = {"OK": 0, "WARN": 1, "CRITICAL": 2}
     worst = 0
     for name, res in results.items():
@@ -387,11 +410,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.write_report:
         try:
-            LOCALDATA.mkdir(parents=True, exist_ok=True)
-            (LOCALDATA / "pipeline_health.json").write_text(json.dumps(
+            report = Path(args.report_path) if args.report_path else LOCALDATA / "pipeline_health.json"
+            report.parent.mkdir(parents=True, exist_ok=True)
+            report.write_text(json.dumps(
                 {"as_of": (_today(args.as_of)).isoformat(), "checks": results},
                 indent=2))
-            print("wrote localdata/pipeline_health.json")
+            print(f"wrote {report}")
         except Exception as exc:
             print(f"report write failed: {exc}")
     return 1 if worst >= 2 else 0

@@ -144,7 +144,7 @@ def test_crosscheck_label_survives_live_warehouse_injection(monkeypatch):
 def test_recent_bzzoiro_cache_can_price_the_correct_selected_side(tmp_path, monkeypatch):
     path = tmp_path / "bzzoiro.json"
     payload = [{"match": {"player1": {"name": "Alice Adams"}, "player2": {"name": "Beth Brown"}},
-                "best_odds": [{"market": "h2h", "bookmaker": "example",
+                "best_odds": [{"market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "bookmaker": "example",
                                "outcomes": [{"outcome": "1", "odd": 1.55}, {"outcome": "2", "odd": 2.60}]}]}]
     path.write_text(json.dumps({"fetched_at": datetime.now(timezone.utc).isoformat(), "results": payload}))
     monkeypatch.setattr(miner, "_bzzoiro_cache_path", lambda d: path)
@@ -193,7 +193,7 @@ def test_mismatched_selected_side_cannot_reach_builder(monkeypatch):
 def test_quote_matching_reversed_date_and_ambiguity():
     card = pd.Series({"match_date": DAY, "player_home": "Alice Adams", "player_away": "Beth Brown"})
     quote = {"match_date": DAY, "player_home": "Beth Brown", "player_away": "Alice Adams",
-             "odds_home": 2.6, "odds_away": 1.55, "market": "h2h", "period": "match"}
+             "odds_home": 2.6, "odds_away": 1.55, "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "period": "match"}
     assert warehouse._match_api_odds_row(card, [quote]) == (quote, True)
     assert warehouse._match_api_odds_row(card, [quote, dict(quote)])[0] is None
     assert warehouse._match_api_odds_row(card, [dict(quote, match_date="2026-10-15")])[0] is None
@@ -205,7 +205,7 @@ def test_bzzoiro_selected_side_unique_full_match_and_observation_time(tmp_path, 
     path = tmp_path / "bzzoiro.json"
     payload = [{"match": {"id": "fixture-42", "player1": {"name": "Beth Brown"},
                            "player2": {"name": "Alice Adams"}},
-                "best_odds": [{"market": "h2h", "period": "match", "bookmaker": "example",
+                "best_odds": [{"market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "period": "match", "bookmaker": "example",
                                "outcomes": [{"outcome": "1", "odd": 2.6}, {"outcome": "2", "odd": 1.55}]}]}]
     path.write_text(json.dumps({"date": DAY, "fetched_at": datetime.now(timezone.utc).isoformat(), "results": payload}))
     monkeypatch.setattr(miner, "_bzzoiro_cache_path", lambda d: path)
@@ -230,7 +230,7 @@ def test_bzzoiro_selected_side_unique_full_match_and_observation_time(tmp_path, 
 def test_selected_quote_provenance_survives_builder_and_changes_block(monkeypatch):
     monkeypatch.setattr(tickets, "_ML_AVAILABLE", False)
     ts = datetime.now(timezone.utc).isoformat()
-    quote = {"odds": 1.55, "source": "Bzzoiro", "bookmaker": "example", "market": "h2h",
+    quote = {"odds": 1.55, "source": "Bzzoiro", "bookmaker": "example", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"},
              "period": "match", "selection": "Alice Adams", "observed_at": ts, "event_id": "fixture-42"}
     a = {"match": "Alice Adams vs Beth Brown", "selected_player": "Alice Adams", "bucket": "WATCHLIST",
          "odds": 1.55, "odds_source": "Bzzoiro", "odds_bookmaker": "example", "confidence": 75,
@@ -267,7 +267,7 @@ def test_model_probabilities_do_not_reverse_real_market_quote():
 def test_bzzoiro_lookup_rejects_bad_time_wrong_side_and_line(tmp_path, monkeypatch):
     path = tmp_path / "cache.json"
     payload = [{"match": {"id": "e", "player1": {"name": "Alice Adams"}, "player2": {"name": "Beth Brown"}},
-                "best_odds": [{"market": "h2h", "outcomes": [{"outcome": "1", "odd": 1.55},
+                "best_odds": [{"market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "outcomes": [{"outcome": "1", "odd": 1.55},
                                                                   {"outcome": "2", "odd": 2.7}]}]}]
     monkeypatch.setattr(miner, "_bzzoiro_cache_path", lambda d: path)
     monkeypatch.setattr(miner, "_bzzoiro_date_payload", lambda d: payload)
@@ -300,7 +300,7 @@ def test_original_market_observation_flows_from_matching_to_builder(monkeypatch)
                   "tournament": "ATP Shanghai", "predicted_winner": "2", "prob_home": 30, "prob_away": 70}
     observed = datetime.now(timezone.utc).isoformat()
     market = {"match_date": DAY, "player_home": "Beth Brown", "player_away": "Alice Adams",
-              "odds_home": 1.55, "odds_away": 2.60, "source": "TheOddsAPI", "market": "h2h",
+              "odds_home": 1.55, "odds_away": 2.60, "source": "TheOddsAPI", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"},
               "period": "match", "event_id": "original-event", "bookmaker": "book", "observed_at": observed}
     monkeypatch.setattr(warehouse, "cached_fetch", lambda key, fn: [prediction] if key == "betclan" else [])
     monkeypatch.setattr(warehouse, "fetch_the_odds_api_rows", lambda d: [market])
@@ -341,7 +341,7 @@ def test_rebuild_staging_is_pure_and_requires_complete_fresh_evidence(tmp_path, 
     evidence = {"status": "complete", "date": day, "observed_at": now.isoformat()}
     state = {"bank": 100.0, "paper_bank": 100.0, "open_slips": [], "history": []}
     def pick(name, other, odds):
-        quote = {"odds": odds, "source": "TheOddsAPI", "bookmaker": "book", "market": "h2h", "period": "match",
+        quote = {"odds": odds, "source": "TheOddsAPI", "bookmaker": "book", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "period": "match",
                  "selection": name, "provider_home": name, "provider_away": other, "provider_side": "1",
                  "event_id": name + "-fixture", "fixture_date": day, "observed_at": now.isoformat()}
         return {"date": day, "match": name + " vs " + other, "kickoff": "12:00", "selected_player": name,
@@ -369,7 +369,7 @@ def test_rebuild_staging_is_pure_and_requires_complete_fresh_evidence(tmp_path, 
 def test_rebuild_strict_selected_quote_rejects_opponent_and_missing_identity(monkeypatch):
     now = tickets.now_local()
     day = now.date().isoformat()
-    q = {"odds": 1.55, "source": "TheOddsAPI", "bookmaker": "book", "market": "h2h", "period": "match",
+    q = {"odds": 1.55, "source": "TheOddsAPI", "bookmaker": "book", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "period": "match",
          "selection": "Alice Adams", "provider_home": "Beth Brown", "provider_away": "Alice Adams",
          "provider_side": "2", "event_id": "event", "fixture_date": day, "observed_at": now.isoformat()}
     pick = {"odds": 1.55, "odds_source": "TheOddsAPI", "odds_bookmaker": "book",
@@ -391,7 +391,7 @@ def _local_rebuild_case(tmp_path, monkeypatch, *, picks=True):
     card.write_text(json.dumps(old)); sp.write_text(json.dumps(state))
     (tmp_path / "auto_tickets_today.json").write_text(json.dumps(old))
     def item(name, other, price):
-        q = {"odds": price, "source": "TheOddsAPI", "bookmaker": "book", "market": "h2h", "period": "match",
+        q = {"odds": price, "source": "TheOddsAPI", "bookmaker": "book", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "period": "match",
              "selection": name, "provider_home": name, "provider_away": other, "provider_side": "1",
              "event_id": name, "fixture_date": day, "observed_at": now.isoformat()}
         return {"date": day, "match": name + " vs " + other, "kickoff": "12:00", "selected_player": name,
@@ -516,7 +516,7 @@ def test_guarded_runner_empty_card_success_and_failures_are_isolated(tmp_path, m
     monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "1")
     collection = {"status": "complete", "date": day, "observed_at": now.isoformat(), "outcomes": {},
                   "predictions": [], "comparisons": []}
-    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d: copy.deepcopy(collection))
+    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d, **kwargs: copy.deepcopy(collection))
     monkeypatch.setattr(daily, "stage_fresh_rebuild_picks", lambda *a: [])
     before_state = state_path.read_bytes()
     daily.run_guarded_empty_rebuild(day)
@@ -527,7 +527,7 @@ def test_guarded_runner_empty_card_success_and_failures_are_isolated(tmp_path, m
     old = {"date": day, "frozen": True, "accas": [], "staked_pct": 0, "paper_staked_pct": 0}
     card.write_text(json.dumps(old))
     before_card = card.read_bytes()
-    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d: dict(collection, status="insufficient"))
+    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d, **kwargs: dict(collection, status="insufficient"))
     with pytest.raises(RuntimeError, match="required source collection incomplete"):
         daily.run_guarded_empty_rebuild(day)
     assert card.read_bytes() == before_card and json.loads(state_path.read_bytes()) == json.loads(before_state)
@@ -543,7 +543,7 @@ def test_guarded_runner_state_change_during_staging_aborts(tmp_path, monkeypatch
     monkeypatch.setenv("RACKET_FACTORY_REBUILD_SERIALIZED", "1")
     monkeypatch.setenv("GITHUB_RUN_ID", "12345")
     monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "1")
-    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d: {"status": "complete", "date": day,
+    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d, **kwargs: {"status": "complete", "date": day,
         "observed_at": now.isoformat(), "outcomes": {}, "predictions": [], "comparisons": []})
     def mutate(*args):
         state_path.write_text(json.dumps({"bank": 90, "open_slips": [], "history": []}))
@@ -573,8 +573,12 @@ def test_staged_miner_uses_only_supplied_fresh_sources(tmp_path, monkeypatch):
               "tournament": "ATP Shanghai", "surface": "Hard", "predicted_winner": "1", "prob_home": 70,
               "prob_away": 30, "source": "BetClan"}]
     quotes = [{"match_date": day, "player_home": "Alice Adams", "player_away": "Beth Brown", "odds_home": 1.5,
-               "odds_away": 2.5, "source": "BetExplorer", "bookmaker": "testbook", "market": "h2h",
-               "period": "match", "event_id": "fake-fixture", "observed_at": obs}]
+               "odds_away": 2.5, "source": "BetExplorer", "bookmaker": "testbook", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"},
+               "period": "match", "event_id": "fake-fixture", "observed_at": obs,
+               "match_url": "/tennis/atp/test/alice-beth/fake-fixture/", "market_id": "synthetic",
+               "raw_market": "match winner", "raw_period": "match", "retrieved_at": obs,
+               "provider_price_updated_at": ["100", "101"], "response_sha256": "a" * 64,
+               "bookmaker_id": "synthetic-book", "match_time": "12:00"}]
     # In addition to empty credentials, block Python sockets and native HTTP
     # clients in the subprocess before its imports; no external provider calls.
     isolation = tmp_path / "isolation"
@@ -589,10 +593,19 @@ def test_staged_miner_uses_only_supplied_fresh_sources(tmp_path, monkeypatch):
         return real_run(*args, **kwargs)
     monkeypatch.setattr(daily.subprocess, "run", run)
     picks = daily.stage_fresh_rebuild_picks(day, {"status": "complete", "date": day, "predictions": preds,
-        "comparisons": quotes}, tmp_path / "staging")
+        "raw_quotes": {"betexplorer": quotes, "oddsportal": []}}, tmp_path / "staging")
     assert len(picks) == 1
     assert picks[0]["selected_quote"]["observed_at"] == obs
     assert picks[0]["selected_quote"]["event_id"] == "fake-fixture"
+    assert picks[0]["selected_quote"]["market"] == "h2h"
+    assert picks[0]["selected_quote"]["period"] == "match"
+    assert picks[0]["selected_quote"]["price_type"] == "bookmaker"
+    assert picks[0]["selected_quote"]["settlement_rules"] == {"retirement": "advancer", "walkover": "void", "cancelled": "void"}
+    assert picks[0]["selected_quote"]["provider_side"] == "1"
+    assert picks[0]["selected_quote"]["response_sha256"] == "a" * 64
+    assert picks[0]["selected_quote"]["match_url"] == quotes[0]["match_url"]
+    assert picks[0]["selected_quote"]["provider_price_updated_at"] == ["100", "101"]
+    assert tickets.selected_quote_problem(picks[0], require_provenance=True) == ""
     assert (tmp_path / "staging" / f"picks_{day}.json").exists()
     assert not list(local.glob("picks*.json"))
 
@@ -610,7 +623,7 @@ def test_guarded_staging_does_not_let_unproven_primary_hide_valid_optional(tmp_p
     common = {"match_date": day, "player_home": "Alice Adams", "player_away": "Beth Brown",
               "odds_home": 1.5, "odds_away": 2.5, "observed_at": observed, "bookmaker": "book"}
     unproven = dict(common, source="BetExplorer")
-    valid = dict(common, source="OddsPortal", market="h2h", period="match")
+    valid = dict(common, source="OddsPortal", market="h2h", period="match", price_type="bookmaker", settlement_rules={"retirement": "advancer", "walkover": "void", "cancelled": "void"})
     used = []
     def build(**kwargs):
         used.extend(kwargs["supplied_comparisons"])

@@ -149,15 +149,16 @@ def test_guarded_collection_required_and_optional_outcomes(monkeypatch):
     monkeypatch.setattr(predixsport, "PredixSportPredictor", FailedPredix)
     monkeypatch.delenv(betexplorer.DISABLE_ENV, raising=False)
     monkeypatch.setenv(oddsportal_upcoming.DISABLE_ENV, "1")
-    quote = {"match_date": "2026-10-29", "player_home": "Alice Adams", "player_away": "Beth Brown", "odds_home": 1.5, "odds_away": 2.5}
-    monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False: ([quote], "complete"))
+    quote = {"match_date": "2026-10-29", "player_home": "Alice Adams", "player_away": "Beth Brown", "odds_home": 1.5, "odds_away": 2.5, "event_id": "synthetic"}
+    monkeypatch.setattr(betexplorer, "fetch_fixture_comparison", lambda f: [quote])
+    monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False, metrics=None: ([quote], "complete"))
     collection = daily.collect_rebuild_sources("2026-10-29")
     assert collection["status"] == "complete"
     assert collection["outcomes"]["predixsport"]["status"] == "failed"
     assert collection["outcomes"]["oddsportal"]["status"] == "disabled"
     assert collection["outcomes"]["theoddsapi"]["status"] == "not_attempted"
     assert collection["outcomes"]["bzzoiro"]["status"] == "not_attempted"
-    monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False: ([quote], "partial"))
+    monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False, metrics=None: ([quote], "partial"))
     assert daily.collect_rebuild_sources("2026-10-29")["status"] == "insufficient"
 
 
