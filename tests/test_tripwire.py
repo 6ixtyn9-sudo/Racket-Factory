@@ -141,21 +141,20 @@ def test_nothing_is_ever_enforced():
     assert tw.build_report([])["enforced"] is False
 
 
-# ------------------------------------------------------ against real data --
+# ---- pinned historical reporting input; not the mutable production ledger --
 
-def test_live_ledger_reproduces_the_known_calibration_hole():
-    """The finding the deep dive reported, re-derived by the shipped code."""
-    state_file = ROOT / "localdata" / "auto_tickets_state.json"
-    if not state_file.exists():
-        pytest.skip("no live state file in this checkout")
-    history = json.loads(state_file.read_text()).get("history", [])
+def test_pinned_historical_ledger_reproduces_the_calibration_hole():
+    """The fixture is minimized from Git commit 7465d69; no live-state dependency."""
+    fixture = ROOT / "tests/fixtures/tripwire_history_7465d69.json"
+    history = json.loads(fixture.read_text())["history"]
     report = tw.build_report(history)
-    if report["n_legs"] < 40:
-        pytest.skip("ledger too short for the documented figures")
     assert report["calibration"]["all"]["n"] == 50
-    assert report["calibration"]["all"]["realised_pct"] == 66.0
+    assert report["calibration"]["all"]["wins"] == 33
+    assert report["calibration"]["all"]["promised_pct"] == 75.0
+    assert report["calibration"]["all"]["realised_pct"] == 66.0  # 33 / 50
     hole = [b for b in report["calibration"]["bands"] if b["band"] == "0.70-0.75"][0]
-    assert hole["n"] == 13
+    assert hole["n"] == 13 and hole["wins"] == 4
+    assert hole["promised_pct"] == 73.6
     assert hole["realised_pct"] == pytest.approx(30.8, abs=0.1)
     assert hole["z"] == pytest.approx(-3.5, abs=0.15)
     # ...and it is STILL tagged NOISE, because n=13 < 30. That restraint is
