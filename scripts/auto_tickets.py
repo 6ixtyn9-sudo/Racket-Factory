@@ -353,7 +353,7 @@ _leg_real_odds = leg_market_odds
 _leg_paper_reason = leg_execution_block
 
 
-def selected_quote_problem(pick: dict, *, require_provenance: bool = False) -> str:
+def selected_quote_problem(pick: dict, *, require_provenance: bool = False, now: datetime | None = None) -> str:
     """Validate a provenance-bearing selected-side quote without replacing it.
 
     This applies when a collector supplies a quote record. Legacy rows without
@@ -395,10 +395,10 @@ def selected_quote_problem(pick: dict, *, require_provenance: bool = False) -> s
             return "selected quote provider orientation missing"
         if not quote.get("event_id") and not (quote.get("fixture_date") or quote.get("request_date")):
             return "selected quote fixture identity missing"
-        from racketfactory.warehouse import names_match
+        from racketfactory.warehouse import names_match, strict_quote_team_match
         selected = str(pick.get("selected_player") or "")
         expected, opponent = (home, away) if provider_side == "1" else (away, home)
-        if not names_match(selected, str(expected)) or names_match(selected, str(opponent)):
+        if not strict_quote_team_match(selected, str(expected)) or names_match(selected, str(opponent)):
             return "selected quote provider side mismatch"
         quote_date = quote.get("fixture_date") or quote.get("request_date")
         if quote.get("commence_time"):
@@ -416,7 +416,7 @@ def selected_quote_problem(pick: dict, *, require_provenance: bool = False) -> s
         observed = datetime.fromisoformat(str(quote.get("observed_at") or "").replace("Z", "+00:00"))
         if observed.tzinfo is None:
             return "selected quote timestamp missing timezone"
-        age = (now_local() - observed).total_seconds()
+        age = ((now or now_local()) - observed).total_seconds()
         if not 0 <= age <= 30 * 60:
             return "selected quote stale or future"
     except (TypeError, ValueError):
@@ -425,16 +425,26 @@ def selected_quote_problem(pick: dict, *, require_provenance: bool = False) -> s
 
 
 def is_playable(pick: dict, *, rejections: dict | None = None,
-                admitted: dict | None = None) -> bool:
+                admitted: dict | None = None, require_provenance: bool = False) -> bool:
+    if not valid_leg_price(pick.get("odds")):
+        if rejections is not None:
+            rejections["invalid or below-floor odds"] = rejections.get("invalid or below-floor odds", 0) + 1
+        return False
+    quote_error = selected_quote_problem(pick, require_provenance=require_provenance)
+    if quote_error:
+        if rejections is not None:
+            rejections[quote_error] = rejections.get(quote_error, 0) + 1
+        return False
+    return _is_playable_non_quote(pick, rejections=rejections, admitted=admitted)
+
+
+def _is_playable_non_quote(pick: dict, *, rejections: dict | None = None,
+                           admitted: dict | None = None) -> bool:
+    """Independent admission checks; diagnostics may call without admitting."""
     def reject(reason: str) -> bool:
         if rejections is not None:
             rejections[reason] = rejections.get(reason, 0) + 1
         return False
-    if not valid_leg_price(pick.get("odds")):
-        return reject("invalid or below-floor odds")
-    quote_error = selected_quote_problem(pick)
-    if quote_error:
-        return reject(quote_error)
     pick = restore_ev_only_bucket(pick)
     # Legacy labels were created using the removed EV gate. Re-evaluate the
     # original context veto rather than treating the stored verdict as fresh.
@@ -598,6 +608,75 @@ def skip_record(pick: dict) -> dict:
         "ml_verdict": pick.get("ml_verdict"),
         "odds": pick.get("odds"),
     }
+
+
+def fresh_ticket_problem(accas: list[dict], target_date: str, now: datetime) -> str:
+    """Recheck new ticket legs at the publication boundary, never historical cards."""
+    if now.tzinfo is None or now.astimezone(TZ).date().isoformat() != target_date:
+        return "ticket day changed or publication clock lacks timezone"
+    for acca in accas:
+        legs = acca.get("legs") if isinstance(acca, dict) else None
+        if not isinstance(legs, list) or len(legs) < 2:
+            return "invalid ticket legs"
+        for leg in legs:
+            if not isinstance(leg, dict) or not valid_leg_price(leg.get("odds")):
+                return "invalid ticket price"
+            problem = selected_quote_problem(leg, require_provenance=True, now=now)
+            if problem:
+                return problem
+            kickoff = parse_kickoff(leg, target_date)
+            if kickoff is None or kickoff <= now or leg.get("_kickoff_unknown") or leg.get("_late_start"):
+                return "kickoff passed or unknown"
+    return ""
+
+
+def independent_pick_diagnostics(picks: list[dict], target_date: str, now: datetime) -> dict:
+    """Counts overlap; these are diagnostic, never inputs to ticket admission."""
+    from collections import Counter
+    prices = Counter()
+    reasons = Counter()
+    fresh_not_started = 0
+    for pick in picks:
+        value = pick.get("odds")
+        if value is None or value == "":
+            prices["missing"] += 1
+        else:
+            try:
+                price = float(value)
+                if not math.isfinite(price):
+                    prices["malformed_or_nonfinite"] += 1
+                elif price < MIN_LEG_ODDS:
+                    prices["below_floor"] += 1
+                else:
+                    prices["at_or_above_floor"] += 1
+            except (TypeError, ValueError, OverflowError):
+                prices["malformed_or_nonfinite"] += 1
+        quote = pick.get("selected_quote")
+        if not isinstance(quote, dict):
+            reasons["selected_quote_missing_or_malformed"] += 1
+        else:
+            if not quote.get("market"):
+                reasons["market_missing"] += 1
+            if not quote.get("period"):
+                reasons["period_missing"] += 1
+        problem = selected_quote_problem(pick, require_provenance=True, now=now)
+        if problem:
+            reasons["quote: " + problem] += 1
+        kickoff = parse_kickoff(pick, target_date)
+        if valid_leg_price(value) and not problem and kickoff is not None and kickoff > now:
+            fresh_not_started += 1
+        non_quote = {}
+        try:
+            _is_playable_non_quote(dict(pick), rejections=non_quote)
+            reasons.update({"admission: " + k: v for k, v in non_quote.items()})
+        except (TypeError, ValueError, KeyError, OverflowError):
+            reasons["admission: invalid inputs"] += 1
+        kept, skipped = kickoff_guard([dict(pick)], target_date, now)
+        if not kept:
+            for _, why in skipped:
+                reasons["kickoff: " + str(why)] += 1
+    return {"price_classes": dict(prices), "overlapping_reasons": dict(reasons),
+            "fresh_proven_not_started_at_or_above_floor": fresh_not_started}
 
 
 def kickoff_guard(pool, target_date, now):
@@ -1476,6 +1555,9 @@ def publish_staged_rebuild_local(directory: Path, target_date: str, proposal: di
         files[card_name] = files["auto_tickets_today.json"] = encoded
         journal = {"version": 1, "run_id": run_id, "proposal_digest": proposal_digest,
                    "date": target_date, "status": "applying", "before": before}
+        problem = fresh_ticket_problem(proposal["accas"], target_date, now_local())
+        if problem:
+            raise ValueError("staged ticket is no longer executable: " + problem)
         _rebuild_atomic_bytes(journal_path, json.dumps(journal, sort_keys=True).encode())
         # Mark both aliases explicitly non-actionable before changing either to
         # the new card. A crash is rolled back from the durable journal.
@@ -1512,19 +1594,16 @@ def main():
     playable = []
     for pick in picks:
         admitted_pick = {}
-        if is_playable(pick, rejections=admission_rejections, admitted=admitted_pick):
+        if is_playable(pick, rejections=admission_rejections, admitted=admitted_pick,
+                       require_provenance=True):
             playable.append(admitted_pick)
     kept, skipped = kickoff_guard(playable, target_date, now)
-    if len(kept) < 2 and len(playable) >= 2:
-        late = [p for p in playable if p not in kept]
-        for p in late:
-            p["_late_start"] = True
-        # Append, don't replace: the kickoff-unknown reasons recorded above
-        # are part of the audit trail for why a leg went to the paper track.
-        skipped = skipped + [(skip_record(p), "paper_late_included") for p in late]
-        kept = playable
+    # Paper statistics cannot make a late or unknown kickoff executable.
+    # Do not build a new ticket from an unverified kickoff in either track.
+    kept = [p for p in kept if not p.get("_kickoff_unknown") and not p.get("_late_start")]
     diagnostics = {"picks": len(picks), "playable": len(playable), "builder_input": len(kept),
-                   "admission_rejections": admission_rejections}
+                   "admission_rejections": admission_rejections,
+                   "independent": independent_pick_diagnostics(picks, target_date, now)}
     priced, paper, sorted_pool = select_accas(kept, diagnostics=diagnostics)
     accas = priced + paper
     print(f"Auto tickets stages: {diagnostics}; priced tickets={len(priced)}, paper tickets={len(paper)}")
@@ -1590,16 +1669,48 @@ def main():
             and existing_ledger.get("date") == target_date:
         print(f"Generation window {GENERATE_HOUR_START}:00-{FREEZE_HOUR}:00 SAST – "
               f"frozen {target_date} ledger is refreshable (booked accas still protected)")
-    if not should_write_ticket_files(
-        existing_ledger,
-        len(accas_out), force=args.force,
+    allow_write = should_write_ticket_files(
+        existing_ledger, len(accas_out), force=args.force,
         is_frozen_now=is_frozen, target_date=target_date,
         in_generation_window=in_generation_window,
-    ):
+    )
+    run_as_of = os.environ.get("RACKET_FACTORY_RUN_AS_OF", "").strip()
+    collection_status = "unknown"
+    collection = {}
+    if run_as_of:
+        try:
+            collection = json.loads((LOCALDATA / f"quote_collection_{target_date}.json").read_text())
+            if collection.get("run_as_of") == run_as_of:
+                collection_status = collection.get("status", "unknown")
+                observed = datetime.fromisoformat(str(collection.get("oldest_offer_observed_at") or "").replace("Z", "+00:00"))
+                if observed.tzinfo is None or not 0 <= (now_local() - observed).total_seconds() <= 30 * 60:
+                    collection_status = "stale_or_unknown"
+        except (OSError, ValueError, TypeError, AttributeError):
+            collection_status = "unknown"
+        if collection_status != "complete":
+            allow_write = False
+    if run_as_of and collection_status == "complete":
+        out["collection_observed_at"] = collection.get("oldest_offer_observed_at")
+    if allow_write and accas_out:
+        problem = fresh_ticket_problem(accas_out, target_date, now_local())
+        if problem:
+            allow_write = False
+            print(f"REFUSING stale or invalid ticket publication: {problem}")
+    evaluation = {"date": target_date, "run_as_of": run_as_of,
+                  "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
+                  "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""),
+                  "evaluated_at": now_local().isoformat(), "collection_status": collection_status,
+                  "diagnostics": diagnostics, "priced_tickets": len(priced), "paper_tickets": len(paper),
+                  "publication": "local_write" if allow_write else "retained_previous_card"}
+    (LOCALDATA / f"auto_tickets_evaluation_{target_date}.json").write_text(json.dumps(evaluation, indent=2))
+    from racketfactory.rebuild_diagnostics import directory as diagnostics_directory
+    diagnostics_dir = diagnostics_directory()
+    if diagnostics_dir is not None:
+        diagnostics_dir.mkdir(parents=True, exist_ok=True)
+        (diagnostics_dir / "ticket_evaluation.json").write_text(json.dumps(evaluation, indent=2))
+    if not allow_write:
         print(f"REFUSING to overwrite auto_tickets_{target_date}.* "
-              f"(frozen/non-empty ledger guard; keeping existing files and state).")
-        # A denied file publication must not book the newly generated accas
-        # into open_slips behind the frozen ticket snapshot's back.
+              f"(frozen/non-empty ledger guard or quote collection {collection_status}; keeping existing files and state).")
         return 0
     else:
         (LOCALDATA / f"auto_tickets_{target_date}.json").write_text(json.dumps(out, indent=2))

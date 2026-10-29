@@ -385,7 +385,8 @@ def _fetch_live(target: str, *, with_status: bool = False, metrics: dict | None 
             page_date=target, require_odds=False,
         )
 
-    if target == date.today().isoformat():
+    from racketfactory.kickoff import SAST
+    if target == datetime.now(SAST).date().isoformat():
         # Also try day page for today
         if not link_rows:
             logger.info("%s: dated shape missed for %s; trying day page", SOURCE_NAME, target)
@@ -698,7 +699,7 @@ def _fetch_comparison_document(url: str, referer: str | None = None) -> tuple[st
     return body, when
 
 
-def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False) -> list[dict]:
+def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, stage_counts: dict | None = None) -> list[dict]:
     """Fetch and cache one prediction-matched fixture, retaining timestamps."""
     from racketfactory.rebuild_diagnostics import capture_betexplorer_fragment
     event_id = str(fixture.get("event_id") or "")
@@ -707,7 +708,14 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False) -
             or "\\" in href or urlsplit(href).query or urlsplit(href).fragment
             or not _is_match_link(href) or href.rstrip('/').split('/')[-1] != event_id):
         raise PageFetchError("parser", "fixture URL or event identity invalid")
+    fetched = False
+    def count(key, amount=1):
+        if stage_counts is not None:
+            stage_counts[key] = stage_counts.get(key, 0) + amount
     def fetch():
+        nonlocal fetched
+        fetched = True
+        count("match_page_attempts")
         # Per-fixture variables are reset on every invocation, including errors.
         match_url = BASE_URL + href
         try:
@@ -715,19 +723,27 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False) -
         except PageFetchError as exc:
             from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
             capture_betexplorer_failure(event_id, "detail", exc.kind, status=getattr(exc, "http_status", None), observed_at=getattr(exc, "observed_at", ""), response_sha256=getattr(exc, "response_sha256", ""))
+            exc.stage = "match_page"
             raise
+        count("match_page_success")
         capture_betexplorer_fragment(page, "detail", event_id=event_id, observed_at=page_at, status=200)
         endpoints = _comparison_endpoint_candidates(page, event_id)
         if not endpoints:
             from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
             capture_betexplorer_failure(event_id, "detail", "parser")
-            raise PageFetchError("parser", "tennis match-winner endpoint or scope not explicitly established")
+            error = PageFetchError("parser", "tennis match-winner endpoint or scope not explicitly established")
+            error.stage = "endpoint_discovery"
+            raise error
+        count("comparison_endpoint_discovered")
+        count("comparison_attempts")
         try:
             payload, observed_at = _fetch_comparison_document(endpoints[0]["url"], referer=match_url)
         except PageFetchError as exc:
             from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
             capture_betexplorer_failure(event_id, "comparison", exc.kind, status=getattr(exc, "http_status", None), observed_at=getattr(exc, "observed_at", ""), response_sha256=getattr(exc, "response_sha256", ""))
+            exc.stage = "comparison_request"
             raise
+        count("comparison_response_success")
         try:
             import json
             html = json.loads(payload).get("odds", "")
@@ -739,14 +755,24 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False) -
         except PageFetchError as exc:
             from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
             capture_betexplorer_failure(event_id, "comparison", exc.kind, status=200, observed_at=observed_at)
+            exc.stage = "comparison_parse"
             raise
+        count("comparison_parsed")
+        count("concrete_bookmaker_rows", metrics.get("bookmaker_rows", 0))
+        count("identified_offers", len(rows))
+        from racketfactory.execution import rebuild_quote_execution_problem
+        count("settlement_compatible_offers", sum(not rebuild_quote_execution_problem(r) for r in rows))
         from racketfactory.rebuild_diagnostics import capture_comparison_offers
         capture_comparison_offers(event_id, rows, metrics)
         logger.info("BetExplorer comparison parse counts: %s", metrics)
         if not rows:
-            raise PageFetchError("parser", "no uniquely oriented named-bookmaker quotes")
+            error = PageFetchError("parser", "no uniquely oriented named-bookmaker quotes")
+            error.stage = "bookmaker_rows"
+            raise error
         return rows
     rows = cached_fetch("betexplorer_detail_" + event_id, fetch, fetch_day=str(fixture.get("match_date") or "")[:10], ttl_minutes=0 if refresh_evidence else 30)
+    if not fetched:
+        count("detail_cache_hits")
     from racketfactory.warehouse import strict_quote_team_match
     if any(str(row.get("event_id") or "") != event_id or row.get("match_url") != href
            or not strict_quote_team_match(str(row.get("player_home") or ""), str(fixture.get("player_home") or ""))

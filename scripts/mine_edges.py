@@ -871,7 +871,13 @@ def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
         logger.warning("Bzzoiro odds/best: %s cooldown active", failure["kind"])
         return None
     if not quota_check_and_spend("bzzoiro"):
-        logger.warning("Bzzoiro odds/best quota exhausted — skipping fetch for %s", target_date)
+        # A denial is not evidence of exhaustion. Repeated candidate lookups in
+        # this process must not repeat denied reservations for the same date.
+        from racketfactory.quota_guard import _load as quota_load
+        state = quota_load("bzzoiro")
+        reason = "missing_or_invalid_authority" if state.get("authority_missing") else "blocked_exhausted_or_reservation_failed"
+        BZZOIRO_ODDS_CACHE[target_date] = None
+        logger.warning("Bzzoiro odds/best request denied for %s: %s", target_date, reason)
         return None
     try:
         import requests

@@ -271,7 +271,7 @@ def test_live_card_export_preserves_scraped_fallback_odds_source(monkeypatch):
     monkeypatch.setattr(warehouse, "BetClanPredictor", OneRowPredictor)
     monkeypatch.setattr(warehouse, "ForebetPredictor", EmptyPredictor)
 
-    rows = warehouse.build_live_rows()
+    rows = warehouse.build_live_rows(target_date="2026-06-29")
 
     assert len(rows) == 1
     assert rows.loc[0, "odds_a"] == 1.20

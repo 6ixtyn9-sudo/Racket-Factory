@@ -135,7 +135,7 @@ def test_crosscheck_label_survives_live_warehouse_injection(monkeypatch):
     monkeypatch.setattr(warehouse, "fetch_comparison_rows", lambda d: [
         {"match_date": DAY, "player_home": "Alice Adams", "player_away": "Beth Brown",
          "odds_home": 1.55, "odds_away": 2.60, "source": "BetExplorer", "odds_cross_checked": "single"}])
-    live = warehouse.build_live_rows()
+    live = warehouse.build_live_rows(target_date=DAY)
     assert len(live) == 1
     assert live.iloc[0]["_odds_source"] == "BetExplorer"
     assert live.iloc[0]["odds_cross_checked"] == "single"
@@ -305,7 +305,7 @@ def test_original_market_observation_flows_from_matching_to_builder(monkeypatch)
     monkeypatch.setattr(warehouse, "cached_fetch", lambda key, fn: [prediction] if key == "betclan" else [])
     monkeypatch.setattr(warehouse, "fetch_the_odds_api_rows", lambda d: [market])
     monkeypatch.setattr(warehouse, "fetch_comparison_rows", lambda d: [])
-    live = warehouse.build_live_rows()
+    live = warehouse.build_live_rows(target_date=DAY)
     assert len(live) == 1
     # CSV is the actual warehouse interchange; it must not replace observation time.
     restored = pd.read_csv(__import__("io").StringIO(live.to_csv(index=False))).iloc[0]
