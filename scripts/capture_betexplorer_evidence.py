@@ -13,7 +13,10 @@ from racketfactory.sources._page_odds import PageFetchError
 def capture(target: str) -> dict:
     out = {"target_date": target, "purpose": "evidence_only", "publication_attempted": False,
            "listing_attempted": False, "fixtures_attempted": 0, "stage_counts": {}, "failures": [],
-           "capture_status": "not_attempted", "parser_status": "not_attempted", "quote_eligibility": "not_evaluated"}
+           "capture_status": "not_attempted", "parser_status": "not_attempted", "quote_eligibility": "not_evaluated",
+           "detail_response_fetched": False, "evidence_file_written": False,
+           "discovery_material_retained": False, "material_sufficiency": "not_evaluated",
+           "current_parser_replay_agreement": "not_compared", "comparison_request": "not_attempted"}
     try:
         out["listing_attempted"] = True
         rows, status = betexplorer._fetch_live(target, with_status=True)
@@ -63,7 +66,33 @@ def capture(target: str) -> dict:
             stage = getattr(exc, 'stage', 'unknown')
             out['failures'].append({'kind': kind, 'stage': stage})
             out['parser_status'] = 'failed_' + stage
-        out['capture_status'] = 'detail_saved' if out['stage_counts'].get('replay_detail_saved') else 'not_saved'
+        counts = out['stage_counts']
+        out['detail_response_fetched'] = bool(counts.get('match_page_success'))
+        out['evidence_file_written'] = bool(counts.get('replay_detail_file_written'))
+        out['discovery_material_retained'] = bool(counts.get('replay_detail_material_retained'))
+        if out['evidence_file_written']:
+            out['material_sufficiency'] = 'insufficient' if counts.get('replay_detail_insufficient') else 'not_established'
+            if not out['discovery_material_retained']:
+                out['capture_status'] = 'detail_insufficient'
+            elif counts.get('replay_detail_insufficient'):
+                out['capture_status'] = 'detail_saved_incomplete'
+            else:
+                out['capture_status'] = 'detail_saved'
+        else:
+            out['capture_status'] = 'not_saved'
+        if counts.get('replay_discovery_agrees_nonempty'):
+            out['current_parser_replay_agreement'] = 'match_nonempty'
+        elif counts.get('replay_discovery_empty_inconclusive'):
+            out['current_parser_replay_agreement'] = 'match_empty_inconclusive'
+        elif counts.get('replay_discovery_mismatch'):
+            out['current_parser_replay_agreement'] = 'mismatch'
+        elif counts.get('replay_comparison_failed'):
+            out['current_parser_replay_agreement'] = 'comparison_failed'
+        if counts.get('comparison_http_response_observed'):
+            out['comparison_request'] = 'response_observed'
+        elif counts.get('comparison_attempts'):
+            # A cooldown or transport error can occur before a request is sent.
+            out['comparison_request'] = 'attempted_not_confirmed'
     except Exception as exc:
         out["failures"].append({"kind": exc.kind if isinstance(exc, PageFetchError) else "unexpected", "stage": "listing"})
     return out
