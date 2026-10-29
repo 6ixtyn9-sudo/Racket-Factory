@@ -790,19 +790,10 @@ def _surname_tokens_equal(a: str, b: str) -> bool:
 
 
 def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_drift_days: int = 1) -> tuple[dict | None, bool]:
-    """Return matching API odds row and whether it was reversed vs card row.
+    """Find one same-date, full-match-winner quote and its orientation.
 
-    Date matching is tolerant: first try exact date, then allow ±1 day for
-    Grand Slams where commence_time may be in different timezone (e.g. US Open
-    01:45 UTC on 12th listed as 11th in US). This fixes missing odds for
-    Tiafoe vs Shelton type matches where card_date 2026-09-12 but API date 2026-09-11.
-
-    Matching is now multi-strategy (in order):
-      1) strict+loose names_match (settlement + surname-overlap fallback)
-      2) live_player_key equality (surname-tail) – catches "D. E. Galan" vs "Galan D. E."
-      3) surname_tokens equality or overlap for both sides (handles Von der Schulenburg)
-      4) last-token + initial compatibility as final lenient fallback
-      All strategies respect the date gate; drift is allowed for doubles too.
+    ``max_date_drift_days`` is retained for caller compatibility but drift is
+    not accepted without independently established fixture identity.
     """
     card_date = str(card_row.get("match_date", "") or "")[:10]
     home = str(card_row.get("player_home") or "")
@@ -860,36 +851,53 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
             pass
         return None
 
-    # First pass: exact date match
+    # SAST dates are normalized at ingestion. Never pick the first fuzzy hit:
+    # several compatible rows mean the fixture is not uniquely identified.
+    candidates = []
+    if not card_date:
+        return None, False
     for odds_row in odds_rows:
         odds_date = str(odds_row.get("match_date", "") or "")[:10]
-        if card_date and odds_date and card_date != odds_date:
-            continue
-        api_home = str(odds_row.get("player_home") or "")
-        api_away = str(odds_row.get("player_away") or "")
-        res = _pair_matches(home, away, api_home, api_away)
-        if res is not None:
-            matched, rev = res
-            if matched:
-                return odds_row, rev
-
-    # Second pass: same names within ±max_date_drift_days (now allowed for doubles too to push 9->30+)
-    card_dt = _parse_iso_date(card_date)
-    for odds_row in odds_rows:
-        odds_date = str(odds_row.get("match_date", "") or "")[:10]
-        if card_dt is not None:
-            odds_dt = _parse_iso_date(odds_date)
-            if odds_dt is not None and abs((odds_dt - card_dt).days) > max_date_drift_days:
+        # An explicitly offset commencement timestamp proves the betting-day
+        # date even when a provider also includes a UTC calendar date. Do not
+        # assume a timezone for a naive or invalid timestamp.
+        raw_start = odds_row.get("commence_time")
+        if raw_start:
+            try:
+                start = datetime.fromisoformat(str(raw_start).replace("Z", "+00:00"))
+                if start.tzinfo is None:
+                    continue
+                from racketfactory.kickoff import SAST
+                odds_date = start.astimezone(SAST).date().isoformat()
+            except (TypeError, ValueError, OverflowError):
                 continue
-        if card_date and odds_date and card_date == odds_date:
+        if odds_date != card_date:
+            continue
+        market = str(odds_row.get("market") or odds_row.get("market_key") or "").strip().lower()
+        period = str(odds_row.get("period") or "").strip().lower()
+        line = odds_row.get("line")
+        if market and market not in {"h2h", "1x2", "match_winner", "match winner"}:
+            continue
+        if period and period not in {"match", "full match", "full_match", "full", "0"}:
+            continue
+        if line is not None and str(line).strip().lower() not in {"", "none", "nan"}:
             continue
         api_home = str(odds_row.get("player_home") or "")
         api_away = str(odds_row.get("player_away") or "")
-        res = _pair_matches(home, away, api_home, api_away)
-        if res is not None:
-            matched, rev = res
-            if matched:
-                return odds_row, rev
+        normal = _pair_matches(home, away, api_home, api_away)
+        flipped = _pair_matches(home, away, api_away, api_home)
+        both_orientations = normal is not None and flipped is not None and normal[1] == flipped[1]
+        if both_orientations:
+            logger.warning("Ambiguous participant orientation for %s vs %s", home, away)
+            return None, False
+        if normal is not None:
+            candidates.append((odds_row, normal[1]))
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
+        logger.warning("Ambiguous odds fixture %s vs %s on %s (%d matches)",
+                       home, away, card_date, len(candidates))
+        return None, False
 
     logged = 0
     for odds_row in odds_rows:
@@ -1168,7 +1176,7 @@ def odds_api_budget_ok(api_keys: tuple[str, ...]) -> bool:
     from racketfactory.quota_guard import odds_credit_available
     ok = bool(api_keys) and odds_credit_available(api_keys[0], reserve=odds_api_min_remaining_reserve())
     if not ok:
-        logger.error("The Odds API: durable credit authority or verified per-call cost missing, blocked or below reserve; paid calls denied")
+        logger.error("The Odds API: durable credit authority or verified per-call cost missing, blocked or below reserve; quota-metered calls denied")
     return ok
 
 
@@ -1250,7 +1258,7 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     regions = os.getenv("THE_ODDS_API_REGIONS", "eu,uk,us")
     bookmakers = os.getenv("THE_ODDS_API_BOOKMAKERS", "").strip()
 
-    # A previously paid, configuration-matched quote may still be valid even
+    # A previously fetched, configuration-matched quote may still be valid even
     # when credentials or credit authority are unavailable. Never probe a
     # provider before checking its original observation-time TTL.
     cached_rows = _load_the_odds_api_cache(str(target_date)[:10], sports, regions, bookmakers)
@@ -1368,6 +1376,7 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
                     from racketfactory.quota_guard import reconcile_odds_credits
                     reconcile_odds_credits(api_keys[key_index], resp.headers)
                     events = resp.json()
+                    observed_at = datetime.now(timezone.utc).isoformat()
                     break
 
                 if resp.status_code in {401, 402, 403, 429}:
@@ -1487,6 +1496,10 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
                 "source": "TheOddsAPI",
                 "sport_key": sport,
                 "event_id": event.get("id"),
+                "commence_time": event.get("commence_time"),
+                "observed_at": observed_at,
+                "market": "h2h",
+                "period": "match",
             })
 
 
@@ -1505,7 +1518,9 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
     _write_the_odds_api_cache(str(target_date)[:10], sports, regions, bookmakers, rows)
     return rows
 
-def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.DataFrame:
+def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str, *,
+                                    supplied_odds: list[dict] | None = None,
+                                    supplied_comparisons: list[dict] | None = None) -> pd.DataFrame:
     """Attach live pricing, preferring The Odds API with guarded scrape fallback.
 
     Scraped BetClan/Forebet prices are preserved in debug columns. If no API
@@ -1527,11 +1542,12 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
     out["odds_source"] = ""
     out["odds_bookmaker"] = ""
     out["odds_cross_checked"] = ""
+    out["_quote_meta"] = ""
     out["odds_home"] = pd.NA
     out["odds_away"] = pd.NA
 
-    odds_rows = fetch_the_odds_api_rows(target_date)
-    compare_rows = fetch_comparison_rows(target_date)
+    odds_rows = fetch_the_odds_api_rows(target_date) if supplied_odds is None else supplied_odds
+    compare_rows = fetch_comparison_rows(target_date) if supplied_comparisons is None else supplied_comparisons
     comparison_counts = {}
     for quote in compare_rows:
         label = str(quote.get("source") or "unknown")
@@ -1578,6 +1594,14 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
         out.at[idx, "odds_source"] = src_label
         out.at[idx, "odds_cross_checked"] = str(odds_row.get("odds_cross_checked") or "")
         out.at[idx, "odds_bookmaker"] = odds_row.get("bookmaker") or ("The Odds API" if src_label == "TheOddsAPI" else src_label)
+        # Preserve the provider's original observation; absent fields stay
+        # absent rather than being inferred from warehouse injection time.
+        meta = {key: odds_row.get(key) for key in (
+            "event_id", "observed_at", "market", "period", "line", "player_home", "player_away",
+            "match_date", "match_time", "commence_time", "bookmaker", "odds_home_bookmaker", "odds_away_bookmaker")}
+        meta["source"] = src_label
+        meta["reversed"] = reversed_order
+        out.at[idx, "_quote_meta"] = json.dumps(meta, default=str)
         if src_label == "TheOddsAPI":
             api_matched += 1
         else:
@@ -1635,35 +1659,40 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
     )
     return out
 
-def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
+def build_live_rows(include_tomorrow: bool = True, *,
+                    supplied_predictions: list[dict] | None = None,
+                    target_date: str | None = None,
+                    supplied_odds: list[dict] | None = None,
+                    supplied_comparisons: list[dict] | None = None) -> pd.DataFrame:
     rows = []
-    # Live fetches are shared via the same-job fetch cache: the first caller
-    # crawls the site, later warehouse builds / the miner fallback reuse the
-    # rows instead of hammering the site again (rate-limit protection).
-    bzzoiro_key = "bzzoiro_2day" if include_tomorrow else "bzzoiro_1day"
-    for source_name, cache_key, predictor, fetcher in [
-        ("PredixSport", "predixsport", PredixSportPredictor(), lambda p: p.fetch_daily()),
-        ("BetClan", "betclan", BetClanPredictor(), lambda p: p.fetch_daily()),
-        ("Forebet", "", ForebetPredictor(), None),
-        ("Bzzoiro", bzzoiro_key, BzzoiroPredictor(), lambda p: p.fetch_daily(include_tomorrow=include_tomorrow)),
-    ]:
-        try:
-            if source_name == "Forebet":
-                preds = cached_fetch(forebet_cache_key("today"), lambda: predictor.fetch_daily_predictions("today"))
-                if include_tomorrow:
-                    preds = list(preds) + list(cached_fetch(forebet_cache_key("tomorrow"), lambda: predictor.fetch_daily_predictions("tomorrow")))
-            elif source_name == "Bzzoiro":
-                preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p), cache_empty=True)
-            else:
-                preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p))
-        except Exception as e:
-            logger.warning("Live source %s failed during warehouse build: %s", source_name, e)
-            continue
-        logger.info("Live predictions received: source=%s rows=%d", source_name, len(preds))
-        for row in preds:
-            row = dict(row)
-            row["source"] = source_name
-            rows.append(row)
+    if supplied_predictions is not None:
+        rows = [dict(row) for row in supplied_predictions]
+    else:
+        # Live fetches are shared via the same-job fetch cache.
+        bzzoiro_key = "bzzoiro_2day" if include_tomorrow else "bzzoiro_1day"
+        for source_name, cache_key, predictor, fetcher in [
+            ("PredixSport", "predixsport", PredixSportPredictor(), lambda p: p.fetch_daily()),
+            ("BetClan", "betclan", BetClanPredictor(), lambda p: p.fetch_daily()),
+            ("Forebet", "", ForebetPredictor(), None),
+            ("Bzzoiro", bzzoiro_key, BzzoiroPredictor(), lambda p: p.fetch_daily(include_tomorrow=include_tomorrow)),
+        ]:
+            try:
+                if source_name == "Forebet":
+                    preds = cached_fetch(forebet_cache_key("today"), lambda: predictor.fetch_daily_predictions("today"))
+                    if include_tomorrow:
+                        preds = list(preds) + list(cached_fetch(forebet_cache_key("tomorrow"), lambda: predictor.fetch_daily_predictions("tomorrow")))
+                elif source_name == "Bzzoiro":
+                    preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p), cache_empty=True)
+                else:
+                    preds = cached_fetch(cache_key, lambda _p=predictor, _f=fetcher: _f(_p))
+            except Exception as e:
+                logger.warning("Live source %s failed during warehouse build: %s", source_name, e)
+                continue
+            logger.info("Live predictions received: source=%s rows=%d", source_name, len(preds))
+            for row in preds:
+                row = dict(row)
+                row["source"] = source_name
+                rows.append(row)
     if not rows:
         return pd.DataFrame()
 
@@ -1671,7 +1700,7 @@ def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
     if card.empty:
         return card
 
-    today_str = date.today().isoformat()
+    today_str = target_date or date.today().isoformat()
     if "match_date" in card.columns:
         card["match_date"] = card["match_date"].astype(str).str.strip()
         card = card[card["match_date"] == today_str].copy()
@@ -1731,7 +1760,8 @@ def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
             unknown += 1
     logger.info("Normalized live card %s: %d rows, future=%d started=%d unknown_time=%d; sources=%s",
                 today_str, len(card), future, past, unknown, card["source"].value_counts().to_dict())
-    card = enrich_live_card_with_api_odds(card, today_str)
+    card = enrich_live_card_with_api_odds(card, today_str, supplied_odds=supplied_odds,
+                                          supplied_comparisons=supplied_comparisons)
 
     grouped_rows = []
     for _, first in card.iterrows():
@@ -1778,6 +1808,7 @@ def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
             "_loser_rank": pd.NA,
             "_odds_source": odds_source if odds_h is not None and not pd.isna(odds_h) and str(odds_source or "").strip() else "",
             "odds_cross_checked": first.get("odds_cross_checked", ""),
+            "_quote_meta": first.get("_quote_meta", ""),
             "api_odds_a": first.get("api_odds_home", pd.NA),
             "api_odds_b": first.get("api_odds_away", pd.NA),
             "debug_scraped_odds_a": first.get("scraped_odds_home", pd.NA),

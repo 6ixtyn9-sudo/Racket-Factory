@@ -11,6 +11,7 @@ from datetime import date
 from curl_cffi import requests
 
 from racketfactory.entities import normalize_player
+from racketfactory.sources._page_odds import PageFetchError
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +24,11 @@ class PredixSportPredictor:
         try:
             resp = requests.get(url, impersonate="chrome133a", timeout=20)
             if resp.status_code != 200:
-                logger.error("Failed to fetch PredixSport index")
-                return []
+                raise PageFetchError("http", f"PredixSport index HTTP {resp.status_code}")
+        except PageFetchError:
+            raise
         except Exception as e:
-            logger.error(f"PredixSport request failed: {e}")
-            return []
+            raise PageFetchError("transport", f"PredixSport index unavailable: {type(e).__name__}") from e
 
         soup = BeautifulSoup(resp.text, 'html.parser')
         links = [a['href'] for a in soup.find_all('a', href=True) if '/tennis/' in a['href'] and '.html' in a['href']]

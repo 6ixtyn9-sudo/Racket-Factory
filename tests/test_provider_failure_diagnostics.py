@@ -93,3 +93,87 @@ def test_bzzoiro_rechecks_after_auth_cooldown_expires(monkeypatch):
     _failure_path('bzzoiro', 'token').write_text(json.dumps({'kind': 'auth', 'until': time.time() - 1}))
     assert bzzoiro.BzzoiroPredictor().fetch_daily() == []
     assert len(calls) == 2
+
+
+def test_prediction_sources_fail_on_transport_not_success_empty(monkeypatch):
+    from racketfactory.sources import betclan, predixsport
+    from racketfactory.sources._page_odds import PageFetchError
+    def fail(*args, **kwargs):
+        raise RuntimeError("synthetic offline failure")
+    monkeypatch.setattr(betclan.requests, "get", fail)
+    with pytest.raises(PageFetchError, match="BetClan today listing unavailable"):
+        betclan.BetClanPredictor().fetch_daily()
+    monkeypatch.setattr(predixsport.requests, "get", fail)
+    with pytest.raises(PageFetchError, match="PredixSport index unavailable"):
+        predixsport.PredixSportPredictor().fetch_daily()
+
+
+def test_comparison_provider_failure_is_recorded(tmp_path, monkeypatch):
+    import json
+    from racketfactory import odds_compare
+    from racketfactory.sources import betexplorer, oddsportal_upcoming
+    from racketfactory.sources._page_odds import PageFetchError
+    monkeypatch.setenv(odds_compare.STATUS_ENV, str(tmp_path / "status.json"))
+    monkeypatch.setattr(betexplorer, "fetch_betexplorer_rows", lambda *a: (_ for _ in ()).throw(PageFetchError("transport", "failed")))
+    monkeypatch.setattr(oddsportal_upcoming, "fetch_oddsportal_upcoming_rows", lambda *a: [])
+    assert odds_compare.fetch_comparison_rows("2026-10-29") == []
+    status = json.loads((tmp_path / "status.json").read_text())["2026-10-29"]
+    assert "transport" in status["errors"]["betexplorer"]
+
+
+def test_comparison_status_keeps_partial_and_unknown_distinct(tmp_path, monkeypatch):
+    import json
+    from racketfactory import odds_compare
+    from racketfactory.sources import betexplorer, oddsportal_upcoming
+    monkeypatch.setenv(odds_compare.STATUS_ENV, str(tmp_path / "status.json"))
+    monkeypatch.setattr(betexplorer, "fetch_betexplorer_rows", lambda *a: [{
+        "match_date": "2026-10-29", "player_home": "Alice Adams", "player_away": "Beth Brown",
+        "odds_home": 1.5, "odds_away": 2.5, "_collection_partial": True}])
+    monkeypatch.setattr(oddsportal_upcoming, "fetch_oddsportal_upcoming_rows", lambda *a: [])
+    assert len(odds_compare.fetch_comparison_rows("2026-10-29")) == 1
+    status = json.loads((tmp_path / "status.json").read_text())["2026-10-29"]["source_status"]
+    assert status == {"betexplorer": "partial", "oddsportal_upcoming": "empty_or_unknown"}
+
+
+def test_guarded_collection_required_and_optional_outcomes(monkeypatch):
+    from scripts import daily
+    from racketfactory.sources import betclan, predixsport, betexplorer, oddsportal_upcoming
+    class FakeBetClan:
+        last_collection_status = "complete"
+        def fetch_daily(self):
+            return [{"match_date": "2026-10-29", "player_home": "Alice Adams", "player_away": "Beth Brown"}]
+    class FailedPredix:
+        def fetch_daily(self):
+            raise RuntimeError("offline")
+    monkeypatch.setattr(betclan, "BetClanPredictor", FakeBetClan)
+    monkeypatch.setattr(predixsport, "PredixSportPredictor", FailedPredix)
+    monkeypatch.delenv(betexplorer.DISABLE_ENV, raising=False)
+    monkeypatch.setenv(oddsportal_upcoming.DISABLE_ENV, "1")
+    quote = {"match_date": "2026-10-29", "player_home": "Alice Adams", "player_away": "Beth Brown", "odds_home": 1.5, "odds_away": 2.5}
+    monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False: ([quote], "complete"))
+    collection = daily.collect_rebuild_sources("2026-10-29")
+    assert collection["status"] == "complete"
+    assert collection["outcomes"]["predixsport"]["status"] == "failed"
+    assert collection["outcomes"]["oddsportal"]["status"] == "disabled"
+    assert collection["outcomes"]["theoddsapi"]["status"] == "not_attempted"
+    assert collection["outcomes"]["bzzoiro"]["status"] == "not_attempted"
+    monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False: ([quote], "partial"))
+    assert daily.collect_rebuild_sources("2026-10-29")["status"] == "insufficient"
+
+
+def test_betclan_required_status_detects_partial_match_pages(monkeypatch):
+    from racketfactory.sources import betclan
+    class Response:
+        status_code = 200
+        def __init__(self, text): self.text = text
+    url = "https://www.betclan.com/tennis/predictionsdetails/example/"
+    def fake_get(link, **kwargs):
+        if "todays-tennis-predictions" in link:
+            return Response(f'<a href="{url}">Match</a>')
+        if "predictionsdetails" in link:
+            raise RuntimeError("synthetic match-page failure")
+        return Response("<html>No predictions</html>")
+    monkeypatch.setattr(betclan.requests, "get", fake_get)
+    source = betclan.BetClanPredictor()
+    assert source.fetch_daily() == []
+    assert source.last_collection_status == "partial"

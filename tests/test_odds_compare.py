@@ -105,3 +105,21 @@ def test_status_keeps_freshest_7_dates(tmp_path, monkeypatch):
     assert len(payload) == 7
     assert "2000-01-01" not in payload
     assert "2000-01-09" in payload
+
+
+def test_ambiguous_comparison_and_date_or_market_mismatch_are_not_cross_checked():
+    be = [_row("Alice Adams", "Beth Brown", 1.5, 2.5)]
+    op = _row("Beth Brown", "Alice Adams", 2.5, 1.5, "OddsPortal")
+    merged = merge_comparison_rows(be, [op, dict(op)])
+    assert len(merged) == 3 and all(r["odds_cross_checked"] == "single" for r in merged)
+    assert len(merge_comparison_rows(be, [dict(op, match_date="2026-09-14")])) == 2
+    assert len(merge_comparison_rows(be, [dict(op, market="h2h_set1")])) == 2
+
+
+def test_comparison_ambiguity_on_either_side_and_missing_date():
+    be = _row("Alice Adams", "Beth Brown", 1.5, 2.5)
+    op = _row("Alice Adams", "Beth Brown", 1.5, 2.5, "OddsPortal")
+    assert all(r["odds_cross_checked"] == "single" for r in merge_comparison_rows([be, dict(be)], [op]))
+    assert len(merge_comparison_rows([dict(be, match_date="")], [dict(op, match_date="")])) == 2
+    be["market"] = op["market"] = "set1_winner"
+    assert len(merge_comparison_rows([be], [op])) == 2

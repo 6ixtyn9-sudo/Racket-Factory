@@ -103,3 +103,27 @@ def test_disable_env_short_circuits(monkeypatch):
     monkeypatch.setenv("RACKET_FACTORY_DISABLE_BETEXPLORER", "1")
     from datetime import date
     assert be.fetch_betexplorer_rows(date.today().isoformat()) == []
+
+
+def test_original_observation_is_preserved_by_cache(tmp_path, monkeypatch):
+    from datetime import datetime
+    from racketfactory.fetch_cache import cached_fetch
+    calls = []
+    monkeypatch.setattr(be, "fetch_page_html", lambda *a, **k: calls.append(1) or RESULTS_FIXTURE)
+    first = cached_fetch("betexplorer-observation", lambda: be._fetch_live("2026-09-13"),
+                         fetch_day="2026-09-13", cache_dir=tmp_path, ttl_minutes=10)
+    second = cached_fetch("betexplorer-observation", lambda: (_ for _ in ()).throw(AssertionError("cache miss")),
+                          fetch_day="2026-09-13", cache_dir=tmp_path, ttl_minutes=10)
+    assert len(calls) == 1
+    assert datetime.fromisoformat(first[0]["observed_at"]).tzinfo is not None
+    assert second[0]["observed_at"] == first[0]["observed_at"]
+    assert "market" not in first[0]  # Parser has not established market identity.
+
+
+def test_guarded_collection_distinguishes_verified_empty_day(monkeypatch):
+    from datetime import date
+    day = date.today().isoformat()
+    responses = iter(["<html>unknown shape</html>", "<html>No matches</html>"])
+    monkeypatch.setattr(be, "fetch_page_html", lambda *a, **k: next(responses))
+    rows, status = be._fetch_live(day, with_status=True)
+    assert rows == [] and status == "complete"

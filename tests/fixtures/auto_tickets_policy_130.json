@@ -1,0 +1,449 @@
+{
+  "2026-09-20:late_half": {
+    "n_playable": 13,
+    "priced": [],
+    "paper": [],
+    "sorted_head": [
+      "Jakupovic / Karamoko vs Burillo / Fossa Huergo",
+      "Alja Senica vs Enola Chiesa",
+      "Jessica Pieri vs Yana Morderger",
+      "Tayisiya Morderger vs Katerina Tsygourova",
+      "Jamilah Snells vs Iva Primorac Pavicic",
+      "Jasmijn Gimbrere vs Reese Brantmeier",
+      "Angelina Voloshchuk vs Jana Otzipka",
+      "Semra Aksu vs Ekaterina Yashina",
+      "Gabriella Da Silva Fick vs Valentina Steiner",
+      "Michael Mmoh vs J.J. Wolf",
+      "Pavel Kotov vs Marat Sharipov",
+      "Mona Barthel vs Samira De Stefano"
+    ]
+  },
+  "2026-09-20:plain": {
+    "n_playable": 13,
+    "priced": [],
+    "paper": [],
+    "sorted_head": [
+      "Jakupovic / Karamoko vs Burillo / Fossa Huergo",
+      "Alja Senica vs Enola Chiesa",
+      "Jessica Pieri vs Yana Morderger",
+      "Tayisiya Morderger vs Katerina Tsygourova",
+      "Jamilah Snells vs Iva Primorac Pavicic",
+      "Jasmijn Gimbrere vs Reese Brantmeier",
+      "Angelina Voloshchuk vs Jana Otzipka",
+      "Semra Aksu vs Ekaterina Yashina",
+      "Gabriella Da Silva Fick vs Valentina Steiner",
+      "Michael Mmoh vs J.J. Wolf",
+      "Pavel Kotov vs Marat Sharipov",
+      "Mona Barthel vs Samira De Stefano"
+    ]
+  },
+  "2026-09-21:late_half": {
+    "n_playable": 17,
+    "priced": [],
+    "paper": [],
+    "sorted_head": [
+      "David Goffin vs Mark Lajal",
+      "Laura Samson vs Noemi Basiletti",
+      "Lizette Cabrera vs Sinja Kraus",
+      "Ksenia Zaytseva vs Ilay Yoruk",
+      "Xinxin Yao vs Maya Joint",
+      "Daria Egorova vs Melisa Ercan",
+      "Katie Volynets vs Elvina Kalieva",
+      "Kylie Collins vs Valentina Steiner",
+      "Lisa Zaar vs Enola Chiesa",
+      "Marie Vogt vs Ekaterina Yashina",
+      "Yue Yuan vs Dayeon Back",
+      "Ferro / Fruhvirtova vs Tang / Xu"
+    ]
+  },
+  "2026-09-21:plain": {
+    "n_playable": 17,
+    "priced": [],
+    "paper": [],
+    "sorted_head": [
+      "David Goffin vs Mark Lajal",
+      "Laura Samson vs Noemi Basiletti",
+      "Lizette Cabrera vs Sinja Kraus",
+      "Ksenia Zaytseva vs Ilay Yoruk",
+      "Xinxin Yao vs Maya Joint",
+      "Daria Egorova vs Melisa Ercan",
+      "Katie Volynets vs Elvina Kalieva",
+      "Kylie Collins vs Valentina Steiner",
+      "Lisa Zaar vs Enola Chiesa",
+      "Marie Vogt vs Ekaterina Yashina",
+      "Yue Yuan vs Dayeon Back",
+      "Ferro / Fruhvirtova vs Tang / Xu"
+    ]
+  },
+  "2026-09-22:late_half": {
+    "n_playable": 28,
+    "priced": [
+      {
+        "type": "value_2leg_mutual",
+        "odds": 1.85,
+        "prob": 0.5793,
+        "kelly": 0.15,
+        "paper": false,
+        "legs": [
+          {
+            "match": "Matteo Martineau vs Tristan Schoolkate",
+            "sel": "Tristan Schoolkate",
+            "odds": 1.4,
+            "paper_reason": null
+          },
+          {
+            "match": "Katarina Kuzmova vs Cagla Buyukakcay",
+            "sel": "Katarina Kuzmova",
+            "odds": 1.32,
+            "paper_reason": null
+          }
+        ]
+      },
+      {
+        "type": "value_2leg_mutual",
+        "odds": 2.17,
+        "prob": 0.5526,
+        "kelly": 0.15,
+        "paper": false,
+        "legs": [
+          {
+            "match": "Maria Sakkari vs Linda Fruhvirtova",
+            "sel": "Maria Sakkari",
+            "odds": 1.53,
+            "paper_reason": null
+          },
+          {
+            "match": "Victoria Jimenez Kasintseva vs Naiktha Bains",
+            "sel": "Victoria Jimenez Kasintseva",
+            "odds": 1.42,
+            "paper_reason": null
+          }
+        ]
+      }
+    ],
+    "paper": [
+      {
+        "type": "value_2leg_mutual_paper",
+        "odds": null,
+        "prob": 0.5489,
+        "kelly": null,
+        "paper": true,
+        "legs": [
+          {
+            "match": "Pridankina / Tikhonova vs Drazic / Zaytseva",
+            "sel": "Pridankina / Tikhonova",
+            "odds": 1.55,
+            "paper_reason": "already started at generation time (stale price)"
+          },
+          {
+            "match": "Valentina Steiner vs Caroline Werner",
+            "sel": "Caroline Werner",
+            "odds": 1.47,
+            "paper_reason": "already started at generation time (stale price)"
+          }
+        ]
+      },
+      {
+        "type": "value_2leg_mutual_paper",
+        "odds": null,
+        "prob": 0.5648,
+        "kelly": null,
+        "paper": true,
+        "legs": [
+          {
+            "match": "Grigor Dimitrov vs Edas Butvilas",
+            "sel": "Grigor Dimitrov",
+            "odds": 1.41,
+            "paper_reason": "already started at generation time (stale price)"
+          },
+          {
+            "match": "Remy Bertola vs Jesper De Jong",
+            "sel": "Jesper De Jong",
+            "odds": 1.38,
+            "paper_reason": "already started at generation time (stale price)"
+          }
+        ]
+      }
+    ],
+    "sorted_head": [
+      "Maria Sakkari vs Linda Fruhvirtova",
+      "Pridankina / Tikhonova vs Drazic / Zaytseva",
+      "Valentina Steiner vs Caroline Werner",
+      "Grigor Dimitrov vs Edas Butvilas",
+      "Matteo Martineau vs Tristan Schoolkate",
+      "Remy Bertola vs Jesper De Jong",
+      "Victoria Jimenez Kasintseva vs Naiktha Bains",
+      "Jennifer Ruggeri vs Julia Grabher",
+      "Katarina Kuzmova vs Cagla Buyukakcay",
+      "Matilde Jorge vs Celia Cervino Ruiz",
+      "Titouan Droguet vs Karl Poling",
+      "Weronika Falkowska vs Ilay Yoruk"
+    ]
+  },
+  "2026-09-22:plain": {
+    "n_playable": 28,
+    "priced": [
+      {
+        "type": "value_2leg_mutual",
+        "odds": 1.82,
+        "prob": 0.5793,
+        "kelly": 0.15,
+        "paper": false,
+        "legs": [
+          {
+            "match": "Remy Bertola vs Jesper De Jong",
+            "sel": "Jesper De Jong",
+            "odds": 1.38,
+            "paper_reason": null
+          },
+          {
+            "match": "Katarina Kuzmova vs Cagla Buyukakcay",
+            "sel": "Katarina Kuzmova",
+            "odds": 1.32,
+            "paper_reason": null
+          }
+        ]
+      },
+      {
+        "type": "value_2leg_mutual",
+        "odds": 1.97,
+        "prob": 0.5648,
+        "kelly": 0.15,
+        "paper": false,
+        "legs": [
+          {
+            "match": "Grigor Dimitrov vs Edas Butvilas",
+            "sel": "Grigor Dimitrov",
+            "odds": 1.41,
+            "paper_reason": null
+          },
+          {
+            "match": "Matteo Martineau vs Tristan Schoolkate",
+            "sel": "Tristan Schoolkate",
+            "odds": 1.4,
+            "paper_reason": null
+          }
+        ]
+      },
+      {
+        "type": "value_2leg_mutual",
+        "odds": 1.99,
+        "prob": 0.5424,
+        "kelly": 0.15,
+        "paper": false,
+        "legs": [
+          {
+            "match": "Victoria Jimenez Kasintseva vs Naiktha Bains",
+            "sel": "Victoria Jimenez Kasintseva",
+            "odds": 1.42,
+            "paper_reason": null
+          },
+          {
+            "match": "Jennifer Ruggeri vs Julia Grabher",
+            "sel": "Julia Grabher",
+            "odds": 1.4,
+            "paper_reason": null
+          }
+        ]
+      },
+      {
+        "type": "value_2leg_mutual",
+        "odds": 2.37,
+        "prob": 0.5601,
+        "kelly": 0.15,
+        "paper": false,
+        "legs": [
+          {
+            "match": "Maria Sakkari vs Linda Fruhvirtova",
+            "sel": "Maria Sakkari",
+            "odds": 1.53,
+            "paper_reason": null
+          },
+          {
+            "match": "Pridankina / Tikhonova vs Drazic / Zaytseva",
+            "sel": "Pridankina / Tikhonova",
+            "odds": 1.55,
+            "paper_reason": null
+          }
+        ]
+      }
+    ],
+    "paper": [],
+    "sorted_head": [
+      "Maria Sakkari vs Linda Fruhvirtova",
+      "Pridankina / Tikhonova vs Drazic / Zaytseva",
+      "Valentina Steiner vs Caroline Werner",
+      "Grigor Dimitrov vs Edas Butvilas",
+      "Matteo Martineau vs Tristan Schoolkate",
+      "Remy Bertola vs Jesper De Jong",
+      "Victoria Jimenez Kasintseva vs Naiktha Bains",
+      "Jennifer Ruggeri vs Julia Grabher",
+      "Katarina Kuzmova vs Cagla Buyukakcay",
+      "Matilde Jorge vs Celia Cervino Ruiz",
+      "Titouan Droguet vs Karl Poling",
+      "Weronika Falkowska vs Ilay Yoruk"
+    ]
+  },
+  "2026-09-23:late_half": {
+    "n_playable": 19,
+    "priced": [],
+    "paper": [
+      {
+        "type": "value_2leg_mutual_paper",
+        "odds": null,
+        "prob": 0.4898,
+        "kelly": null,
+        "paper": true,
+        "legs": [
+          {
+            "match": "Lloyd Harris vs Aleksandar Kovacevic",
+            "sel": "Aleksandar Kovacevic",
+            "odds": 2.46,
+            "paper_reason": "already started at generation time (stale price)"
+          },
+          {
+            "match": "Elena Pridankina vs Ksenia Zaytseva",
+            "sel": "Elena Pridankina",
+            "odds": 1.47,
+            "paper_reason": "already started at generation time (stale price)"
+          }
+        ]
+      }
+    ],
+    "sorted_head": [
+      "Lloyd Harris vs Aleksandar Kovacevic",
+      "Fabian Marozsan vs Alex Bolt",
+      "Jie Cui vs Adolfo Daniel Vallejo",
+      "Dane Sweeny vs Taro Daniel",
+      "Elena Pridankina vs Ksenia Zaytseva",
+      "James Duckworth vs Lorenzo Sonego",
+      "Sho Shimabukuro vs Hugo Gaston",
+      "Isabella Maria Serban vs Rebeka Masarova",
+      "Arslan / Ulueren vs Crawley / Daniel",
+      "Da Silva Fick / Mcgiffin vs Isakova / Pereira De Aguiar",
+      "Dino Prizmic vs David Jorda Sanchis",
+      "Talia Gibson vs Amanda Anisimova"
+    ]
+  },
+  "2026-09-23:plain": {
+    "n_playable": 19,
+    "priced": [
+      {
+        "type": "value_2leg_mutual",
+        "odds": 2.54,
+        "prob": 0.4812,
+        "kelly": 0.15,
+        "paper": false,
+        "legs": [
+          {
+            "match": "Elena Pridankina vs Ksenia Zaytseva",
+            "sel": "Elena Pridankina",
+            "odds": 1.47,
+            "paper_reason": null
+          },
+          {
+            "match": "James Duckworth vs Lorenzo Sonego",
+            "sel": "Lorenzo Sonego",
+            "odds": 1.73,
+            "paper_reason": null
+          }
+        ]
+      }
+    ],
+    "paper": [],
+    "sorted_head": [
+      "Lloyd Harris vs Aleksandar Kovacevic",
+      "Fabian Marozsan vs Alex Bolt",
+      "Jie Cui vs Adolfo Daniel Vallejo",
+      "Dane Sweeny vs Taro Daniel",
+      "Elena Pridankina vs Ksenia Zaytseva",
+      "James Duckworth vs Lorenzo Sonego",
+      "Sho Shimabukuro vs Hugo Gaston",
+      "Isabella Maria Serban vs Rebeka Masarova",
+      "Arslan / Ulueren vs Crawley / Daniel",
+      "Da Silva Fick / Mcgiffin vs Isakova / Pereira De Aguiar",
+      "Dino Prizmic vs David Jorda Sanchis",
+      "Talia Gibson vs Amanda Anisimova"
+    ]
+  },
+  "2026-09-24:late_half": {
+    "n_playable": 4,
+    "priced": [],
+    "paper": [],
+    "sorted_head": [
+      "Andrea Guerrieri vs Jesper De Jong",
+      "Nuno Borges vs Camilo Ugo Carabelli",
+      "Jie Cui vs Adolfo Daniel Vallejo",
+      "Zhizhen Zhang vs Coleman Wong"
+    ]
+  },
+  "2026-09-24:plain": {
+    "n_playable": 4,
+    "priced": [],
+    "paper": [],
+    "sorted_head": [
+      "Andrea Guerrieri vs Jesper De Jong",
+      "Nuno Borges vs Camilo Ugo Carabelli",
+      "Jie Cui vs Adolfo Daniel Vallejo",
+      "Zhizhen Zhang vs Coleman Wong"
+    ]
+  },
+  "2026-09-25:late_half": {
+    "n_playable": 2,
+    "priced": [],
+    "paper": [],
+    "sorted_head": [
+      "Jaime Faria vs Hugo Gaston",
+      "Reynolds / Watt vs Gille / Verbeek"
+    ]
+  },
+  "2026-09-25:plain": {
+    "n_playable": 2,
+    "priced": [
+      {
+        "type": "value_2leg_mutual",
+        "odds": 2.86,
+        "prob": 0.4368,
+        "kelly": 0.15,
+        "paper": false,
+        "legs": [
+          {
+            "match": "Jaime Faria vs Hugo Gaston",
+            "sel": "Jaime Faria",
+            "odds": 1.5,
+            "paper_reason": null
+          },
+          {
+            "match": "Reynolds / Watt vs Gille / Verbeek",
+            "sel": "Reynolds / Watt",
+            "odds": 1.91,
+            "paper_reason": null
+          }
+        ]
+      }
+    ],
+    "paper": [],
+    "sorted_head": [
+      "Jaime Faria vs Hugo Gaston",
+      "Reynolds / Watt vs Gille / Verbeek"
+    ]
+  },
+  "2026-09-26:late_half": {
+    "n_playable": 2,
+    "priced": [],
+    "paper": [],
+    "sorted_head": [
+      "Juan Manuel Cerundolo vs Alejandro Davidovich Fokina",
+      "Federico Cina vs Alexandre Muller"
+    ]
+  },
+  "2026-09-26:plain": {
+    "n_playable": 2,
+    "priced": [],
+    "paper": [],
+    "sorted_head": [
+      "Juan Manuel Cerundolo vs Alejandro Davidovich Fokina",
+      "Federico Cina vs Alexandre Muller"
+    ]
+  }
+}

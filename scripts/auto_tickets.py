@@ -2,14 +2,13 @@
 """RACKET FACTORY AUTO TICKETS — ML chooses winners, self-monitors, BetExplorer REAL
 
 Recipe v4 (ML winner chooser + BetExplorer REAL):
-  LEGS      CERTIFIED_CLEAN, WATCHLIST, CAUTION + WATCHLIST_NO_ODDS if ML BOOST strength>=0.4
+  LEGS      CERTIFIED_CLEAN, WATCHLIST, CAUTION and FADE with a valid price
   FILTER    ML calibrated prob (High 84.2% n=38, Medium 77.2% n=101, Low 61.1% n=108):
-            - MIN_ODDS_PER_LEG dynamic 1.20 base (ML monitor: High hit >=80% -> max(1.20, adj)) CAPITAL PROTECTION REVISED
-            - BOOST legs allowed down to 1.15 + EV>=+1% required (0% too low, 2% too strict, doubles need 5%)
+            - Shared minimum leg odds 1.30, including BOOST and replay
             - MIN_ACCA_ODDS 2.0, BetExplorer consensus = REAL price (fixed bad=10 fused names)
-            - ML EV gating: prob * odds -1, calibrated prob from history, not raw confidence
+            - ML EV: diagnostic based on calibrated probability and quoted odds
   ACCAS     4 accas max, all multi-leg, mutually exclusive, Kelly-sized:
-            - 3x 2-leg value accas (top ML EV)
+            - 3x 2-leg value accas
             - 1x 3-leg high-strength BOOST
             No singles
   STAKE     25% bank per day, value 2-leg 28.3% each, 3-leg 15%
@@ -34,6 +33,7 @@ LOCALDATA = ROOT / "localdata"
 # tests reach for, and keeping one import surface makes it obvious that the
 # builder owns no private copy of the paper/real rule.
 from racketfactory.regime import EXECUTION_REGIME_ID  # noqa: E402
+from racketfactory.leg_policy import MIN_LEG_ODDS, valid_leg_price, restore_ev_only_bucket  # noqa: E402
 from racketfactory.execution import (  # noqa: E402,F401
     TRUSTED_MARKET_SOURCES,
     stamp_acca,
@@ -50,7 +50,7 @@ try:
     from racketfactory.ml import (
         load_audit_rolling, build_context_registry, score_pick_strengths, source_weights_from_audit,
         ml_predict_proba, ml_ev, ml_answer_odds_question, monitor_performance, load_clv_rolling,
-        get_min_ev_real, get_min_odds_base
+        get_min_ev_real, get_min_odds_base, ml_filter_picks
     )
     _ML_AVAILABLE = True
 except Exception as _ml_e:
@@ -120,24 +120,10 @@ PLAYABLE_BUCKETS = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "FADE"}
 PLAYABLE_BUCKETS_WITH_ML = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "FADE", "WATCHLIST_NO_ODDS"}
 
 def _get_min_odds_per_leg() -> float:
-    """Dynamic min odds: CAPITAL PROTECTION (prompt 2026-09-18: base 1.30).
-    1.19/1.24 shorts with EV -20% once lost -12.68% bank. Base is
-    get_min_odds_base() (1.30, restorable to the RED-DAY 1.20 via
-    RACKET_FACTORY_MIN_ODDS); BOOST legs still reach 1.15 with EV>=1%.
-    """
-    base = get_min_odds_base()
-    try:
-        health = monitor_performance()
-        adj = health.get("adjustments", {}) if isinstance(health, dict) else {}
-        if "min_odds_per_leg" in adj:
-            # Respect ML monitor but never go below the capital-protection base
-            return max(base, float(adj["min_odds_per_leg"]))
-    except Exception:
-        pass
-    return base
+    return MIN_LEG_ODDS
 
-MIN_ODDS_PER_LEG = _get_min_odds_per_leg()
-MIN_ODDS_BOOST = 1.15  # BOOST down to 1.15 (was 1.20 too strict, was 1.10 too loose) + EV>=1% blocks 1.05 -11%
+MIN_ODDS_PER_LEG = MIN_LEG_ODDS
+MIN_ODDS_BOOST = MIN_LEG_ODDS
 # DYNAMIC MAX: base 1.8 (winning range 1.28-1.88), scales with prob + ROI + edge_n
 # Static fallback kept for backward compat, but eligible_pool now uses dynamic_max_odds()
 MAX_ODDS_PER_LEG = 2.5  # fallback static
@@ -179,26 +165,19 @@ def dynamic_max_odds(p: dict, knobs: "AccaKnobs | None" = None) -> float:
     # Stray dog guard: low samples + low prob = never chase
     if n < 10 and prob < 0.70:
         return k.dynamic_max_base
-    # Not restrictive: proven high-EV dogs allowed up to 3.5
-    # REVISED: allow high EV even with medium prob (e.g. Charaeva 2.23 EV 25% prob 56% n=54 ROI 17% should be allowed)
-    # Check EV from ml_ev if available
-    try:
-        ev = float(p.get("ml_ev") or 0)
-    except Exception:
-        ev = 0.0
+    # Separate the former EV-assisted cap exceptions: keep their existing
+    # sample and ROI evidence requirements, but not a model-EV threshold.
     if prob >= 0.85 and n >= 30 and roi >= 0.10:
         cap = k.dynamic_max_cap
-    elif ev >= 0.20 and n >= 20 and roi >= 0.05:  # High EV 20%+ like Charaeva 25% should be allowed up to 3.0
+    elif n >= 20 and roi >= 0.05:
         cap = 3.0
-    elif prob >= 0.80 and n >= 20 and roi >= 0.05:
-        cap = 2.8
-    elif ev >= 0.10 and n >= 15 and roi >= 0.03:  # EV 10%+ like Jorge 22% should be allowed up to 2.5
+    elif n >= 15 and roi >= 0.03:
         cap = 2.5
     elif prob >= 0.75 and n >= 15:
         cap = 2.4
     elif prob >= 0.70:
         cap = 2.0
-    elif ev >= 0.05 and n >= 15:  # Even low prob but EV 5%+ and proven n>=15 gets 2.2
+    elif n >= 15:
         cap = 2.2
     else:
         cap = k.dynamic_max_base
@@ -239,8 +218,8 @@ class AccaKnobs:
     max_accas: int = MAX_ACCAS
     legs_per_acca: int = 2
     boost_legs: int = 3
-    min_odds_per_leg: float | None = None      # None -> live MIN_ODDS_PER_LEG
-    min_odds_boost: float = MIN_ODDS_BOOST
+    min_odds_per_leg: float | None = None      # legacy replay input; floor is fixed
+    min_odds_boost: float = MIN_ODDS_BOOST     # legacy replay input; floor is fixed
     min_acca_odds: float = MIN_ACCA_ODDS
     min_acca_odds_boost: float = MIN_ACCA_ODDS_BOOST
     max_acca_odds: float = MAX_ACCA_ODDS
@@ -248,27 +227,22 @@ class AccaKnobs:
     acca_overshoot: float = 1.2                # allowed overshoot when prob high
     boost_acca_overshoot: float = 1.5
     min_ev_real: float | None = None           # None -> ml.get_min_ev_real()
-    # Fitted to "doubles 0W/5L -40%". The settled ledger since then: doubles
-    # 8W-3L, +6.82% flat ROI, versus -6.90% for singles-match legs. The
-    # justification is falsified by its own data, but n=11 does not license
-    # a change — it licenses a pre-registered test.
-    min_ev_doubles: float = 0.05
+    min_ev_doubles: float = 0.05             # legacy replay input; no EV gate
     dynamic_max_base: float = 1.8
     dynamic_max_cap: float = 3.5
     dynamic_max_unknown: float = 2.5
     tier_cap_bonus: float = 0.2
     kelly_cap_2leg: float = 0.15
     kelly_cap_3leg: float = 0.10
-    # BOOST currently unlocks five separate overrides (lower leg floor, VETO
-    # override, EV override, higher odds cap, sort bonus) on the strength of
-    # the label alone. Measured over the settled ledger BOOST legs returned
+    # BOOST retains its pre-existing non-EV privileges (including VETO
+    # override, higher odds cap and sort bonus) on the strength of the label. Measured over the settled ledger BOOST legs returned
     # -13.83% (n=30) against ALLOW's +11.05% (n=20) — a 24.9pp gap at
     # permutation p=0.126, i.e. unproven in BOTH directions. The switch makes
     # the privilege testable instead of load-bearing-by-default.
     boost_privileges: bool = True
 
     def effective_min_odds_per_leg(self) -> float:
-        return MIN_ODDS_PER_LEG if self.min_odds_per_leg is None else self.min_odds_per_leg
+        return MIN_LEG_ODDS
 
     def effective_min_ev_real(self) -> float:
         return get_min_ev_real() if self.min_ev_real is None else self.min_ev_real
@@ -379,11 +353,94 @@ _leg_real_odds = leg_market_odds
 _leg_paper_reason = leg_execution_block
 
 
-def is_playable(pick: dict, *, rejections: dict | None = None) -> bool:
+def selected_quote_problem(pick: dict, *, require_provenance: bool = False) -> str:
+    """Validate a provenance-bearing selected-side quote without replacing it.
+
+    This applies when a collector supplies a quote record. Legacy rows without
+    provenance are not upgraded to fresh evidence by this check.
+    """
+    quote = pick.get("selected_quote")
+    if quote is None:
+        return "selected quote provenance missing" if require_provenance else ""
+    if not isinstance(quote, dict):
+        return "malformed selected quote"
+    try:
+        if float(quote.get("odds")) != float(pick.get("odds")):
+            return "selected quote price changed"
+    except (TypeError, ValueError, OverflowError):
+        return "invalid selected quote price"
+    if str(quote.get("selection") or "").strip() != str(pick.get("selected_player") or "").strip():
+        return "selected quote player changed"
+    if str(quote.get("source") or "").strip() != str(pick.get("odds_source") or "").strip():
+        return "selected quote source changed"
+    if str(quote.get("bookmaker") or "").strip() != str(pick.get("odds_bookmaker") or "").strip():
+        return "selected quote bookmaker changed"
+    if str(quote.get("market") or "").lower() not in {"h2h", "1x2", "match_winner", "match winner"}:
+        return "selected quote market mismatch"
+    if str(quote.get("period") or "").lower() not in {"match", "full match", "full_match", "full", "0"}:
+        return "selected quote period mismatch"
+    line = quote.get("line")
+    if line is not None and str(line).strip().lower() not in {"", "none", "nan"}:
+        return "selected quote line mismatch"
+    if require_provenance:
+        if not str(quote.get("source") or "").strip() or not str(quote.get("bookmaker") or "").strip():
+            return "selected quote source or bookmaker missing"
+        home, away = quote.get("provider_home"), quote.get("provider_away")
+        provider_side = str(quote.get("provider_side") or "")
+        if not home or not away or provider_side not in {"1", "2"}:
+            return "selected quote provider orientation missing"
+        if not quote.get("event_id") and not (quote.get("fixture_date") or quote.get("request_date")):
+            return "selected quote fixture identity missing"
+        from racketfactory.warehouse import names_match
+        selected = str(pick.get("selected_player") or "")
+        expected, opponent = (home, away) if provider_side == "1" else (away, home)
+        if not names_match(selected, str(expected)) or names_match(selected, str(opponent)):
+            return "selected quote provider side mismatch"
+        quote_date = quote.get("fixture_date") or quote.get("request_date")
+        if quote.get("commence_time"):
+            try:
+                start = datetime.fromisoformat(str(quote["commence_time"]).replace("Z", "+00:00"))
+                if start.tzinfo is None:
+                    return "selected quote kickoff timezone unknown"
+                quote_date = start.astimezone(TZ).date().isoformat()
+            except (TypeError, ValueError, OverflowError):
+                return "selected quote kickoff timestamp invalid"
+        pick_date = pick.get("date") or pick.get("match_date")
+        if quote_date and pick_date and str(quote_date)[:10] != str(pick_date)[:10]:
+            return "selected quote date mismatch"
+    try:
+        observed = datetime.fromisoformat(str(quote.get("observed_at") or "").replace("Z", "+00:00"))
+        if observed.tzinfo is None:
+            return "selected quote timestamp missing timezone"
+        age = (now_local() - observed).total_seconds()
+        if not 0 <= age <= 30 * 60:
+            return "selected quote stale or future"
+    except (TypeError, ValueError):
+        return "selected quote timestamp invalid"
+    return ""
+
+
+def is_playable(pick: dict, *, rejections: dict | None = None,
+                admitted: dict | None = None) -> bool:
     def reject(reason: str) -> bool:
         if rejections is not None:
             rejections[reason] = rejections.get(reason, 0) + 1
         return False
+    if not valid_leg_price(pick.get("odds")):
+        return reject("invalid or below-floor odds")
+    quote_error = selected_quote_problem(pick)
+    if quote_error:
+        return reject(quote_error)
+    pick = restore_ev_only_bucket(pick)
+    # Legacy labels were created using the removed EV gate. Re-evaluate the
+    # original context veto rather than treating the stored verdict as fresh.
+    if pick.get("legacy_ev_only_skip") or pick.get("legacy_ev_only_veto"):
+        if not _ML_AVAILABLE:
+            return reject("legacy ML rescore unavailable")
+        try:
+            pick = ml_filter_picks([pick])[0][0]
+        except Exception:
+            return reject("legacy ML rescore unavailable")
     bucket = str(pick.get("bucket","")).upper()
     is_no_odds = "NO_ODDS" in bucket
     is_dead_edge = "DEAD_EDGE" in bucket
@@ -420,43 +477,24 @@ def is_playable(pick: dict, *, rejections: dict | None = None) -> bool:
             conf_f = 0
         if not (cross == "Both" and conf_f >= 60 and ml_strength >= 0.2):
             return reject("ML veto")
-    # USER FIX: those odds are high because favorites marked SKIPPED_DEAD_EDGE (EV negative via confidence) were excluded,
-    # leaving only underdogs 2.78*2.68=7.45. Allow DEAD_EDGE if ML prob high (>=0.80) or conf >=65 with odds <=2.0
-    # This brings back low-odds winners like 1.28,1.30,1.41 that produce accas 1.28-1.88 like user's tickets
+    if is_dead_edge:
+        # An unrecognised DEAD_EDGE can reflect a non-EV/ROBBER signal.
+        return reject("dead-edge gate")
     if bucket not in PLAYABLE_BUCKETS:
-        if is_no_odds and bucket in PLAYABLE_BUCKETS_WITH_ML:
-            pass
-        elif is_dead_edge:
-            # CAPITAL PROTECTION: DEAD_EDGE only if EV>=+1% + odds>=1.20 + high prob (was 1.05 EV -11% allowed -> -12.68% loss)
-            # Revised: 1% not 2% (2% blocked Bejlek 0.7% winner), odds 1.20 not 1.30 (1.30 blocked 1.24/1.27 winners)
-            # Doubles 0W/5L -40% need EV>=5% (handled in ml.py but also here)
-            try:
-                cp = float(pick.get("ml_calibrated_prob") or 0)
-                conf = float(pick.get("confidence") or 0)
-                if conf <= 1.0:
-                    conf *= 100
-                odds_f = float(pick.get("odds") or 0)
-                ev = float(pick.get("ml_ev") or -1)
-                match_str = str(pick.get("match") or "")
-                is_doubles = "/" in match_str
-                # Doubles carry a 5x EV surcharge. The comment this rule
-                # shipped with said "Doubles 0W/5L -40%"; the settled ledger
-                # now says doubles are 8W-3L at +6.82% while singles-match
-                # legs are -6.90% — the only positive cohort in the book. It
-                # is NOT relaxed here: n=11 is far under the bar, and the
-                # deep dive's null test is exactly the reason this codebase
-                # stopped acting on 11-sample reversals. Registered as a
-                # pre-registered hypothesis instead (AccaKnobs.min_ev_doubles,
-                # scripts/autobets_forensics.py --preregistration).
-                min_ev = 0.05 if is_doubles else 0.01
-                if ev >= min_ev and odds_f >= 1.20 and (cp >= 0.70 or (conf >= 65 and odds_f <= 2.2)):
-                    pass
-                else:
-                    return reject("dead-edge gate")
-            except Exception:
-                return reject("invalid dead-edge inputs")
-        else:
+        if not (is_no_odds and bucket in PLAYABLE_BUCKETS_WITH_ML):
             return reject("bucket not playable")
+    if pick.get("legacy_ev_only_skip"):
+        # The old mixed dead-edge rule also required probability/confidence;
+        # retain those independent conditions after removing its EV component.
+        try:
+            cp = float(pick.get("ml_calibrated_prob") or 0)
+            conf = float(pick.get("confidence") or 0)
+            if conf <= 1.0:
+                conf *= 100
+            if not (cp >= 0.70 or (conf >= 65 and float(pick["odds"]) <= 2.2)):
+                return reject("dead-edge probability gate")
+        except (TypeError, ValueError):
+            return reject("invalid dead-edge inputs")
     if not clean_text(pick.get("selected_player")):
         return reject("missing selection")
     if not clean_text(pick.get("match")):
@@ -503,6 +541,8 @@ def is_playable(pick: dict, *, rejections: dict | None = None) -> bool:
                 return reject("invalid odds")
         except Exception:
             return reject("invalid odds")
+    if admitted is not None:
+        admitted.update(pick)
     return True
 
 def kickoff_fail_open() -> bool:
@@ -606,14 +646,13 @@ def select_accas(pool, knobs: AccaKnobs | None = None, *, diagnostics: dict | No
     Two tracks, never mixed:
     - PRICED: every leg carries REAL market odds (BetExplorer consensus is REAL, now fixed bad=10).
       Staked from real bank, Kelly-sized, ML calibrated prob.
-    - PAPER: unpriced or late. Hit-rate only.
+    - PAPER: priced but non-executable or late. Hit-rate only; unpriced legs are ineligible.
 
     - Mutually exclusive, ML strengths, Kelly growth, continuous self-monitor
-    - MIN_ODDS dynamic: 1.20 base CAPITAL PROTECTION REVISED (was 1.30 too strict), BOOST 1.15 + EV>=1% (was 2% too strict, doubles 5%)
-    - ML chooses winners via calibrated prob (High 84%, Medium 77%, Low 61%) + EV vs BetExplorer
+    - All candidate legs require the shared 1.30 minimum; EV is diagnostic.
+    - ML scores candidates using calibrated probability and independent context evidence
     """
     k = knobs if knobs is not None else live_knobs()
-    min_odds_per_leg = k.effective_min_odds_per_leg()
     audit = {}
     registry = {}
     weights = {}
@@ -631,39 +670,36 @@ def select_accas(pool, knobs: AccaKnobs | None = None, *, diagnostics: dict | No
         return _leg_real_odds(p)
 
     def get_prob(p):
-        # ML calibrated prob if available, else raw confidence
-        if _ML_AVAILABLE:
-            try:
-                if p.get("ml_calibrated_prob") is not None:
-                    return float(p["ml_calibrated_prob"])
-                cp = ml_predict_proba(p, registry, weights, clv)
-                if cp:
-                    return cp
-            except Exception:
-                pass
-        prob = p.get("prediction_prob") or p.get("prob") or p.get("confidence")
+        # Never invoke the calibrator's default when no valid input exists.
+        calibrated = p.get("ml_calibrated_prob")
         try:
-            pf = float(prob)
-            if pf <= 1.0:
-                pf *= 100
-            pf = pf / 100.0
-            if 0 < pf < 1:
-                return pf
-        except Exception:
+            if calibrated is not None and not isinstance(calibrated, bool):
+                value = float(calibrated)
+                if math.isfinite(value) and 0 < value <= 1:
+                    return value
+        except (TypeError, ValueError, OverflowError):
             pass
-        conf = p.get("confidence") or 60
+        raw = p.get("confidence") or p.get("prediction_prob") or p.get("prob")
         try:
-            cf = float(conf)
-            if cf <= 1.0:
-                cf *= 100
-            return max(0.51, min(0.90, cf / 100.0))
-        except Exception:
-            return 0.6
+            if isinstance(raw, bool):
+                return None
+            value = float(raw)
+            if not math.isfinite(value) or not 0 < value <= 100:
+                return None
+            if _ML_AVAILABLE and (p.get("confidence") or p.get("prediction_prob")):
+                cp = ml_predict_proba(p, registry, weights, clv)
+                if math.isfinite(cp) and 0 < cp <= 1:
+                    return cp
+            return value / 100 if value > 1 else value
+        except (TypeError, ValueError, OverflowError):
+            return None
 
     def kelly_fraction(p, odds):
         if odds is None:
             return 0.0
         prob = get_prob(p)
+        if prob is None:
+            return 0.0
         b = odds - 1
         if b <= 0:
             return 0.0
@@ -684,14 +720,6 @@ def select_accas(pool, knobs: AccaKnobs | None = None, *, diagnostics: dict | No
                 ml_score = max(ml_score, float(p.get("ml_strength_score")))
             except Exception:
                 pass
-        # Boost score if ML EV positive
-        if p.get("ml_ev") is not None:
-            try:
-                ev = float(p["ml_ev"])
-                if ev > 0.05:
-                    ml_score += ev
-            except Exception:
-                pass
         return ml_score
 
     def conf_of(p):
@@ -707,18 +735,12 @@ def select_accas(pool, knobs: AccaKnobs | None = None, *, diagnostics: dict | No
     def sort_key(p):
         ml_score = ml_score_of(p)
         conf_f = conf_of(p)
-        prob_f = get_prob(p)
+        prob_f = get_prob(p) or 0.0  # ordering only, never a displayed estimate
         odds_f = get_odds(p)
         if odds_f is None:
             return (-prob_f, -ml_score, -conf_f, str(p.get("match", "")))
         kelly_f = kelly_fraction(p, odds_f)
         edge = prob_f * odds_f - 1
-        # ML EV overrides edge if available
-        if p.get("ml_ev") is not None:
-            try:
-                edge = float(p["ml_ev"])
-            except Exception:
-                pass
         source_count = int(p.get("source_count") or 1)
         # USER FIX: those odds are high (7.45) – prioritize high prob favorites like user's winning tickets (1.05-1.40)
         # Penalize high odds >2.5, boost high prob
@@ -742,88 +764,42 @@ def select_accas(pool, knobs: AccaKnobs | None = None, *, diagnostics: dict | No
                 counts = diagnostics.setdefault("priced_exclusions", {})
                 counts[reason] = counts.get(reason, 0) + 1
         for p in pool_sorted:
+            quote_error = selected_quote_problem(p)
+            if quote_error:
+                reject(quote_error)
+                continue
             o = get_odds(p)
             # The two tracks are the two sides of ONE predicate, so they
             # always partition the pool and can never disagree about a leg.
             # (Previously each track re-derived "is this paper?" inline.)
             blocked = leg_execution_block(p) != ""
             if paper:
-                if not blocked:
+                if not blocked or not valid_leg_price(p.get("odds")):
+                    continue
+                if get_prob(p) is None:
                     continue
             else:
                 if blocked:
                     reject(leg_execution_block(p))
                     continue
-                # Dynamic min odds: BOOST picks allowed down to 1.20 CAPITAL PROTECTION (was 1.10)
+                if get_prob(p) is None:
+                    reject("missing valid probability")
+                    continue
+                if not valid_leg_price(o):
+                    reject("leg odds below minimum or invalid")
+                    continue
                 is_boost_leg = k.boost_privileges and str(p.get("ml_verdict")) == "BOOST"
-                min_leg = k.min_odds_boost if is_boost_leg else min_odds_per_leg
-                # DYNAMIC MAX: scales with prob + ROI + edge_n (e.g. Bobichon 2.28 allowed only because 85%+51n+15.9% ROI)
                 max_leg = dynamic_max_odds(p, knobs=k)
-                if o < min_leg:
-                    # CAPITAL PROTECTION: 1.05 EV -11.8% blocked by EV>=1%, not just odds
-                    # Allow below min_leg only if BOOST + Both + High>=70 + EV>=1% + odds>=1.15 + prob>=75%
-                    # If no ml_ev (test picks n=0), allow via prob check
-                    try:
-                        cp = float(p.get("ml_calibrated_prob") or 0)
-                        ml_ev_raw = p.get("ml_ev")
-                        if ml_ev_raw is None:
-                            # No EV data (test picks), allow if prob high
-                            if cp >= 0.75 and o >= k.min_odds_boost and is_boost_leg:
-                                pass
-                            else:
-                                reject("leg odds below minimum")
-                                continue
-                        else:
-                            ev = float(ml_ev_raw)
-                            if cp >= 0.75 and o >= k.min_odds_boost and ev >= 0.01 and is_boost_leg:
-                                pass
-                            else:
-                                reject("leg odds below minimum")
-                                continue
-                    except Exception:
-                        reject("invalid minimum-odds inputs")
-                        continue
                 if o > max_leg:
-                    # Dynamic cap blocks random underdogs, allows proven high-EV dogs
                     reject("leg odds above maximum")
                     continue
-                # CAPITAL PROTECTION: Require min prob 0.60 AND EV>=+1% for REAL (0% too low, 2% too strict)
-                # RED DAY: EV -0.01 to -0.20 -> NO BET, doubles 0W/5L -40% need EV>=5% no exception
-                # Revised: 1% allows 1.08% leg, doubles 5% blocks losing doubles
-                # If no ml_ev (test picks n=0), skip EV check (allow) to keep tests green
+                # Preserve the independent probability, confidence, BOOST and
+                # odds predicates in the old mixed probability/EV exception.
                 try:
                     cp = float(p.get("ml_calibrated_prob") or get_prob(p) or 0)
-                    ml_ev_raw = p.get("ml_ev")
-                    if ml_ev_raw is not None:
-                        ev = float(ml_ev_raw)
-                        match_str = str(p.get("match") or "")
-                        is_doubles = "/" in match_str
-                        min_ev = k.min_ev_doubles if is_doubles else k.effective_min_ev_real()
-                        if ev < min_ev:
-                            if is_doubles:
-                                reject("doubles EV below minimum")
-                                continue
-                            if ev < -0.02:
-                                reject("EV below minimum")
-                                continue
-                            is_boost = is_boost_leg
-                            cross = str(p.get("cross_source_agree") or "")
-                            conf_f = conf_of(p)
-                            if not (is_boost and cross == "Both" and conf_f >= 70):
-                                reject("EV below minimum")
-                                continue
-                    # If ml_ev is None (test picks), skip EV gate
-                    # REVISED 2026-09-17: allow prob 55-60% if high EV (>=10%) or conf>=60 and EV>=5%
-                    # Charaeva 56% prob 25% EV 2.23 odds conf 62% should be allowed (was blocked at 2.2)
                     if cp < 0.60 and not is_boost_leg:
-                        try:
-                            ev_check = float(p.get("ml_ev") or 0) if p.get("ml_ev") is not None else 0
-                        except Exception:
-                            ev_check = 0
-                        # Allow if high EV dog: EV>=10% and odds<=3.0 and conf>=60 and prob>=0.55
-                        if cp >= 0.55 and ev_check >= 0.10 and o <= 3.0 and conf_of(p) >= 60:
-                            pass  # allow high EV dog like Charaeva 56% 25% EV
-                        elif not (o <= 2.2 and conf_of(p) >= 60):
+                        if not ((cp >= 0.55 and o <= 3.0 and conf_of(p) >= 60)
+                                or (o <= 2.2 and conf_of(p) >= 60)):
                             reject("probability below minimum")
                             continue
                 except Exception:
@@ -1229,18 +1205,311 @@ def should_write_ticket_files(existing: dict | None, new_acca_count: int,
     return True
 
 
+def rebuild_replacement_problem(existing: dict, state: dict, target_date: str) -> str:
+    """Check the existing accounting record without modifying or releasing it.
+
+    This can prove a same-day empty card is unexposed when the authoritative
+    state is readable. Nonempty tickets have no authoritative placement
+    record in this repository, so they remain ambiguous and cannot be replaced.
+    This predicate does not provide locking or publication by itself.
+    """
+    if not isinstance(existing, dict) or existing.get("date") != target_date:
+        return "current card missing, malformed, or for another day"
+    accas = existing.get("accas")
+    if not isinstance(accas, list):
+        return "current card tickets are ambiguous"
+    if accas:
+        return "nonempty card lacks authoritative unplaced status"
+    try:
+        real = float(existing["staked_pct"])
+        paper = float(existing.get("paper_staked_pct", 0))
+        if not math.isfinite(real) or not math.isfinite(paper) or real != 0 or paper != 0:
+            return "empty card has recorded stake or ambiguous exposure"
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return "empty card has recorded stake or ambiguous exposure"
+    if not isinstance(state, dict):
+        return "authoritative financial state unavailable"
+    for key in ("open_slips", "history"):
+        records = state.get(key)
+        if not isinstance(records, list):
+            return "authoritative financial state incomplete"
+        for record in records:
+            if not isinstance(record, dict):
+                return "authoritative financial record malformed"
+            record_date = record.get("date")
+            if not isinstance(record_date, str):
+                return "authoritative financial record date ambiguous"
+            try:
+                parsed_date = date.fromisoformat(record_date)
+            except ValueError:
+                return "authoritative financial record date ambiguous"
+            if parsed_date.isoformat() == target_date:
+                return "same-day open or settled financial record exists"
+    return ""
+
+
+def stage_rebuild_evaluation(picks: list[dict], state: dict, target_date: str,
+                             now: datetime, collection: dict) -> dict:
+    """Evaluate a rebuild in memory only; this does not publish or book slips.
+
+    The eventual collector must establish a complete fresh run independently.
+    No existing partial-source sufficiency rule is assumed here. The caller
+    remains responsible for the publication lock, state recheck and journal.
+    """
+    import copy
+    if now.tzinfo is None or now.astimezone(TZ).date().isoformat() != target_date:
+        raise ValueError("rebuild requires the current configured betting day")
+    if (not isinstance(collection, dict) or collection.get("status") != "complete"
+            or collection.get("date") != target_date):
+        raise ValueError("fresh collection is failed, partial, or unknown")
+    try:
+        collected = datetime.fromisoformat(str(collection.get("observed_at") or "").replace("Z", "+00:00"))
+        if collected.tzinfo is None or not 0 <= (now - collected).total_seconds() <= 30 * 60:
+            raise ValueError("fresh collection timestamp invalid or stale")
+    except (TypeError, ValueError) as exc:
+        raise ValueError("fresh collection timestamp invalid or stale") from exc
+    if not isinstance(picks, list) or not isinstance(state, dict):
+        raise ValueError("invalid staging inputs")
+    # select_accas stamps and kickoff_guard annotates legs. Never mutate the
+    # caller's inputs while evaluating a proposal.
+    candidates = copy.deepcopy(picks)
+    snapshot = copy.deepcopy(state)
+    rejected: dict[str, int] = {}
+    playable = []
+    for pick in candidates:
+        if not isinstance(pick, dict) or str(pick.get("ledger_kind") or "").lower() == "forecast":
+            rejected["invalid or forecast pick"] = rejected.get("invalid or forecast pick", 0) + 1
+            continue
+        if str(pick.get("date") or pick.get("match_date") or "")[:10] != target_date:
+            rejected["pick date mismatch"] = rejected.get("pick date mismatch", 0) + 1
+            continue
+        quote_problem = selected_quote_problem(pick, require_provenance=True)
+        if quote_problem:
+            rejected[quote_problem] = rejected.get(quote_problem, 0) + 1
+            continue
+        admitted = {}
+        if is_playable(pick, rejections=rejected, admitted=admitted):
+            playable.append(admitted)
+    kept, skipped = kickoff_guard(playable, target_date, now)
+    # Started or unknown fixtures cannot be resurrected as a rebuild pick.
+    diagnostics = {"picks": len(candidates), "playable": len(playable), "builder_input": len(kept),
+                   "admission_rejections": rejected}
+    priced, paper, _ = select_accas(kept, diagnostics=diagnostics)
+    bank = float(snapshot.get("bank", 100.0))
+    stakeable = free_bank(snapshot)
+    day_cap = round(stakeable * STAKE_FRAC, 4)
+    real_stakes = allocate_stakes(day_cap if priced else 0, priced)
+    paper_stakes = allocate_stakes(round(float(snapshot.get("paper_bank", bank)) * STAKE_FRAC, 4) if paper else 0, paper)
+    if sum(real_stakes) > day_cap + 1e-9:
+        raise ValueError("staged stakes exceed available day cap")
+    accas = []
+    for track, stakes, is_paper in ((priced, real_stakes, False), (paper, paper_stakes, True)):
+        for acca, stake in zip(track, stakes):
+            accas.append({"legs": acca.get("legs", []), "odds": acca.get("odds"),
+                          "type": acca.get("type", ""), "stake_pct": stake, "paper": is_paper})
+    booked_real = round(sum(real_stakes), 4)
+    return {"date": target_date, "generated_at": now.isoformat(), "collection_observed_at": collected.isoformat(),
+            "status": "PROPOSED" if accas else "NO BET", "bank_pct": bank, "free_bank_pct": stakeable,
+            "committed_pct": round(bank - stakeable, 4), "day_cap_pct": day_cap, "stake_frac": STAKE_FRAC,
+            "stake_per_acca_pct": round(booked_real / len(priced), 4) if priced else 0,
+            "staked_pct": booked_real, "paper_staked_pct": round(sum(paper_stakes), 4),
+            "accas": accas, "skipped": skipped, "diagnostics": diagnostics,
+            "frozen": now.astimezone(TZ).hour >= FREEZE_HOUR or now.astimezone(TZ).hour < GENERATE_HOUR_START}
+
+
+def _rebuild_digest(data: bytes) -> str:
+    import hashlib
+    return hashlib.sha256(data).hexdigest()
+
+
+def _rebuild_atomic_bytes(path: Path, data: bytes) -> None:
+    """Durably replace one file; set-level recovery is handled by the journal."""
+    import tempfile
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".rf-rebuild-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+        dirfd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(dirfd)
+        finally:
+            os.close(dirfd)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+def _recover_rebuild_journal(directory: Path) -> None:
+    """Roll an interrupted local publication back under its publication lock.
+
+    This is only the local-filesystem primitive. Existing external readers and
+    independently cloned runners do not yet share this lock; it is not wired
+    into the workflow until a shared publication authority is established.
+    """
+    import base64
+    journal_path = directory / ".auto_tickets_rebuild" / "journal.json"
+    if not journal_path.exists():
+        return
+    journal = json.loads(journal_path.read_text())
+    if journal.get("status") != "applying":
+        return
+    entries = journal.get("before")
+    if not isinstance(entries, dict):
+        raise RuntimeError("rebuild journal is malformed; manual recovery required")
+    for name, value in entries.items():
+        if Path(name).name != name:
+            raise RuntimeError("rebuild journal contains unsafe filename")
+        path = directory / name
+        if value is None:
+            path.unlink(missing_ok=True)
+        else:
+            _rebuild_atomic_bytes(path, base64.b64decode(value, validate=True))
+    journal["status"] = "rolled_back"
+    _rebuild_atomic_bytes(journal_path, json.dumps(journal, sort_keys=True).encode())
+
+
+def publish_staged_rebuild_local(directory: Path, target_date: str, proposal: dict,
+                                 *, expected_card_digest: str, expected_state_digest: str,
+                                 run_id: str) -> str:
+    """Publish a staged empty-card rebuild within one shared local filesystem.
+
+    This internal primitive is *not* a multi-runner lock or the workflow entry
+    point. It journals previous bytes before writing; interruption recovery rolls
+    back while holding the same lock. No notification or settlement is run.
+    """
+    import base64
+    import copy
+    import fcntl
+    from contextlib import closing
+    directory = Path(directory)
+    if not run_id or not re.fullmatch(r"[a-zA-Z0-9_-]{1,80}", run_id):
+        raise ValueError("invalid rebuild transaction id")
+    now = now_local()
+    if now.date().isoformat() != target_date or not isinstance(proposal, dict) or proposal.get("date") != target_date:
+        raise ValueError("rebuild must target the current betting day")
+    try:
+        collected = datetime.fromisoformat(str(proposal.get("collection_observed_at") or "").replace("Z", "+00:00"))
+        if collected.tzinfo is None or not 0 <= (now - collected).total_seconds() <= 30 * 60:
+            raise ValueError("stale collection")
+    except (TypeError, ValueError) as exc:
+        raise ValueError("staged collection is no longer fresh") from exc
+    proposal_digest = _rebuild_digest(json.dumps(proposal, sort_keys=True, default=str).encode())
+    if proposal.get("status") not in {"PROPOSED", "NO BET"} or not isinstance(proposal.get("accas"), list):
+        raise ValueError("invalid staged proposal")
+    if (proposal["status"] == "NO BET") != (not proposal["accas"]):
+        raise ValueError("proposal status disagrees with tickets")
+    for acca in proposal["accas"]:
+        if not isinstance(acca, dict) or len(acca.get("legs") or []) < 2:
+            raise ValueError("staged ticket is invalid")
+        for leg in acca["legs"]:
+            if selected_quote_problem(leg, require_provenance=True):
+                raise ValueError("staged quote changed or is stale")
+            allowed, _ = kickoff_guard([leg], target_date, now)
+            if not allowed:
+                raise ValueError("staged match has started or kickoff is unknown")
+    directory.mkdir(parents=True, exist_ok=True)
+    txn_dir = directory / ".auto_tickets_rebuild"
+    txn_dir.mkdir(parents=True, exist_ok=True)
+    with closing(open(txn_dir / "publication.lock", "a+b")) as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise RuntimeError("another local rebuild is publishing") from exc
+        _recover_rebuild_journal(directory)
+        journal_path = txn_dir / "journal.json"
+        if journal_path.exists():
+            prev = json.loads(journal_path.read_text())
+            if prev.get("status") == "committed" and prev.get("run_id") == run_id:
+                if prev.get("proposal_digest") != proposal_digest:
+                    raise RuntimeError("rebuild transaction id reused for a different proposal")
+                return "already_committed"
+        card_name = f"auto_tickets_{target_date}.json"
+        state_name = "auto_tickets_state.json"
+        card_path, state_path = directory / card_name, directory / state_name
+        card_raw, state_raw = card_path.read_bytes(), state_path.read_bytes()
+        if _rebuild_digest(card_raw) != expected_card_digest or _rebuild_digest(state_raw) != expected_state_digest:
+            raise RuntimeError("current card or financial state changed during staging")
+        existing, state = json.loads(card_raw), json.loads(state_raw)
+        problem = rebuild_replacement_problem(existing, state, target_date)
+        if problem:
+            raise RuntimeError(problem)
+        try:
+            total = sum(float(a.get("stake_pct", 0)) for a in proposal["accas"] if not a.get("paper"))
+            cap = round(free_bank(state) * STAKE_FRAC, 4)
+            if not math.isfinite(total) or total < 0 or total > cap + 1e-9 or abs(total - float(proposal["staked_pct"])) > 1e-6:
+                raise ValueError("staged stakes do not match the current available bank")
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("invalid staged stakes or available bank") from exc
+        replacement = copy.deepcopy(proposal)
+        replacement["rebuild_id"] = run_id
+        replacement["status"] = "CURRENT" if replacement["accas"] else "NO BET"
+        new_state = copy.deepcopy(state)
+        if replacement["accas"]:
+            for acca in replacement["accas"]:
+                stamp_acca(acca)
+            new_state["open_slips"].append({"date": target_date, "generated_at": replacement["generated_at"],
+                "accas": copy.deepcopy(replacement["accas"]), "staked_pct": replacement["staked_pct"],
+                "stake_per_acca_pct": replacement["stake_per_acca_pct"], "_exec_regime": EXECUTION_REGIME_ID})
+        text = format_tickets_txt(target_date, replacement["accas"], new_state,
+                                  replacement.get("skipped", []), replacement.get("diagnostics"))
+        encoded = json.dumps(replacement, indent=2).encode()
+        files = {card_name: encoded, "auto_tickets_today.json": encoded,
+                 f"auto_tickets_{target_date}.txt": text.encode(), "auto_tickets_today.txt": text.encode(),
+                 state_name: json.dumps(new_state, indent=2).encode()}
+        before = {name: base64.b64encode((directory / name).read_bytes()).decode()
+                  if (directory / name).exists() else None for name in files}
+        archive_name = f"archive_{target_date}_{run_id}.json"
+        archive = {"reason": "guarded empty-card replacement", "transaction_id": run_id,
+                   "original_card_sha256": _rebuild_digest(card_raw), "original_card_base64": base64.b64encode(card_raw).decode(),
+                   "actionable": False}
+        _rebuild_atomic_bytes(txn_dir / archive_name, json.dumps(archive, sort_keys=True).encode())
+        replacement["prior_archive"] = f".auto_tickets_rebuild/{archive_name}"
+        encoded = json.dumps(replacement, indent=2).encode()
+        files[card_name] = files["auto_tickets_today.json"] = encoded
+        journal = {"version": 1, "run_id": run_id, "proposal_digest": proposal_digest,
+                   "date": target_date, "status": "applying", "before": before}
+        _rebuild_atomic_bytes(journal_path, json.dumps(journal, sort_keys=True).encode())
+        # Mark both aliases explicitly non-actionable before changing either to
+        # the new card. A crash is rolled back from the durable journal.
+        pending = json.dumps({"date": target_date, "status": "PUBLICATION_IN_PROGRESS", "accas": [],
+                              "actionable": False, "rebuild_id": run_id}).encode()
+        try:
+            for name in (card_name, "auto_tickets_today.json"):
+                _rebuild_atomic_bytes(directory / name, pending)
+            for name in (f"auto_tickets_{target_date}.txt", "auto_tickets_today.txt"):
+                _rebuild_atomic_bytes(directory / name, b"PUBLICATION IN PROGRESS - NOT ACTIONABLE\n")
+            for name, data in files.items():
+                _rebuild_atomic_bytes(directory / name, data)
+            journal["status"] = "committed"
+            _rebuild_atomic_bytes(journal_path, json.dumps(journal, sort_keys=True).encode())
+        except Exception:
+            _recover_rebuild_journal(directory)
+            raise
+        return "committed"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", default=None)
     ap.add_argument("--ignore-kickoff", action="store_true")
     ap.add_argument("--force", action="store_true",
-                    help="overwrite frozen/non-empty ticket files (default: never clobber)")
+                    help="guarded force rebuild requested (currently unavailable)")
     args = ap.parse_args()
+    if args.force:
+        ap.error("guarded force rebuild is unavailable; existing tickets and financial state are preserved")
     target_date = args.date or today_str()
     now = now_local()
     picks = load_picks(target_date)
     admission_rejections = {}
-    playable = [p for p in picks if is_playable(p, rejections=admission_rejections)]
+    playable = []
+    for pick in picks:
+        admitted_pick = {}
+        if is_playable(pick, rejections=admission_rejections, admitted=admitted_pick):
+            playable.append(admitted_pick)
     kept, skipped = kickoff_guard(playable, target_date, now)
     if len(kept) < 2 and len(playable) >= 2:
         late = [p for p in playable if p not in kept]

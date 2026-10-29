@@ -22,11 +22,11 @@ def test_min_odds_base_default_is_130():
     assert ml.get_min_odds_base() == 1.30
 
 
-def test_min_odds_base_env_override(monkeypatch):
+def test_min_odds_base_ignores_legacy_override(monkeypatch):
     from racketfactory import ml
 
     monkeypatch.setenv("RACKET_FACTORY_MIN_ODDS", "1.20")
-    assert ml.get_min_odds_base() == 1.20
+    assert ml.get_min_odds_base() == 1.30  # old env override cannot lower the floor
     monkeypatch.setenv("RACKET_FACTORY_MIN_ODDS", "garbage")
     assert ml.get_min_odds_base() == 1.30
 
@@ -38,7 +38,7 @@ def test_monitor_performance_emits_base_min_odds(monkeypatch):
     health = ml.monitor_performance()
     adj = health.get("adjustments", {})
     # High-hit branch emits the base; otherwise 1.35. Both must respect the base floor.
-    assert adj.get("min_odds_per_leg") in (1.32, 1.35)
+    assert adj.get("min_odds_per_leg") in (1.30, 1.35)
 
 
 # --- monitor_performance self-tightening loop (reads clv_rolling.json's real
@@ -65,9 +65,9 @@ def _clv_high(hit_rate, n=333):
     }}
 
 
-def test_monitor_tightens_when_real_high_band_below_80(monkeypatch, tmp_path):
+def test_monitor_reports_low_hit_rate_without_raising_shared_floor(monkeypatch, tmp_path):
     adj = _isolated_monitor(monkeypatch, tmp_path, _clv_high(0.7538))
-    assert adj["min_odds_per_leg"] == 1.35
+    assert adj["min_odds_per_leg"] == 1.30
     assert "75.4%" in adj["reason"] and "n=333" in adj["reason"]
 
 

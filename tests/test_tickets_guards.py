@@ -328,3 +328,38 @@ def test_frozen_empty_ticket_cannot_book_new_accas_in_state(tmp_path, monkeypatc
     assert at.main() == 0
     assert json.loads(path.read_text()) == frozen
     assert json.loads((tmp_path / 'auto_tickets_state.json').read_text()) == state
+
+
+def test_unsafe_cli_force_is_blocked_before_read_or_write(monkeypatch, capsys):
+    import sys
+    import pytest
+    monkeypatch.setattr(sys, "argv", ["auto_tickets.py", "--force"])
+    monkeypatch.setattr(at, "load_picks", lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not read state")))
+    with pytest.raises(SystemExit) as exc:
+        at.main()
+    assert exc.value.code != 0
+    assert "guarded force rebuild is unavailable" in capsys.readouterr().err
+
+
+def test_guarded_rebuild_rejects_intraday_before_collection(monkeypatch):
+    import sys
+    import pytest
+    from scripts import daily
+    monkeypatch.setattr(sys, "argv", ["daily.py", "--guarded-rebuild", "--intraday-only"])
+    monkeypatch.setattr(daily, "run_guarded_empty_rebuild", lambda *a: (_ for _ in ()).throw(AssertionError("must not collect")))
+    with pytest.raises(SystemExit, match="conflicts with intraday-only"):
+        daily.main()
+
+
+def test_empty_rebuild_eligibility_preserves_other_dates_and_rejects_ambiguity():
+    day = "2026-10-29"
+    old = {"date": day, "frozen": True, "accas": [], "staked_pct": 0, "paper_staked_pct": 0}
+    state = {"bank": 100, "open_slips": [{"date": "2026-10-11", "staked_pct": 12}],
+             "history": [{"date": "2026-09-25", "staked_pct": 2}]}
+    assert at.rebuild_replacement_problem(old, state, day) == ""
+    assert at.rebuild_replacement_problem(dict(old, accas=[{"legs": []}]), state, day) == "nonempty card lacks authoritative unplaced status"
+    assert "exposure" in at.rebuild_replacement_problem(dict(old, staked_pct=2), state, day)
+    assert "same-day" in at.rebuild_replacement_problem(old, dict(state, open_slips=[{"date": day, "staked_pct": 0}]), day)
+    assert "same-day" in at.rebuild_replacement_problem(old, dict(state, history=[{"date": day}]), day)
+    assert "incomplete" in at.rebuild_replacement_problem(old, {"open_slips": []}, day)
+    assert "ambiguous" in at.rebuild_replacement_problem(old, dict(state, history=[{}]), day)

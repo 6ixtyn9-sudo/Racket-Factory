@@ -6,6 +6,7 @@ Automated combinatorial discovery of Bankers and Robbers, including prediction s
 WARNING: ROI is currently calculated using Market Closing Odds. AI predictions captured early in the day must be evaluated against Opening Odds before live capital is deployed.
 """
 import os
+import math
 
 import pandas as pd
 import argparse
@@ -25,6 +26,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from racketfactory.assay import assay_segment
 from racketfactory.fetch_cache import cached_fetch
 from racketfactory.warehouse import (
+    _match_api_odds_row,
     align_odds_to_probabilities,
     coerce_decimal_odds,
     fetch_the_odds_api_rows,
@@ -36,7 +38,8 @@ from racketfactory.warehouse import (
 from racketfactory.sources.predixsport import PredixSportPredictor
 from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.forebet import ForebetPredictor, forebet_cache_key
-from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice, get_min_ev_real, get_min_odds_base
+from racketfactory.ml import ml_filter_picks, build_context_registry, load_audit_rolling, should_veto_slice
+from racketfactory.leg_policy import MIN_LEG_ODDS, valid_leg_price
 from racketfactory.regime import REGIME_ID
 from racketfactory.odds_compare import fetch_comparison_rows
 from racketfactory.quota_guard import (check_and_spend as quota_check_and_spend,
@@ -359,45 +362,36 @@ def enrich_fallback_card_with_api_odds(card: pd.DataFrame, target_date: str) -> 
         if not home or not away or not priced_rows:
             continue
 
-        for odds_row in priced_rows:
-            api_home = str(odds_row.get("player_home") or "").strip()
-            api_away = str(odds_row.get("player_away") or "").strip()
+        # Reuse the warehouse's date/fixture/market and orientation checks;
+        # never select the first fuzzy candidate from a forecast card.
+        odds_row, reversed_order = _match_api_odds_row(row, odds_rows)
+        if odds_row is None:
+            odds_row, reversed_order = _match_api_odds_row(row, compare_rows)
+        if odds_row is None:
+            continue
+        if reversed_order:
+            odds_home, odds_away = odds_row.get("odds_away"), odds_row.get("odds_home")
+        else:
+            odds_home, odds_away = odds_row.get("odds_home"), odds_row.get("odds_away")
+        if not valid_two_way_decimal_pair(odds_home, odds_away):
+            continue
 
-            normal = names_match(home, api_home) and names_match(away, api_away)
-            reverse = names_match(home, api_away) and names_match(away, api_home)
-            if not (normal or reverse):
-                continue
-
-            if normal:
-                odds_home = odds_row.get("odds_home")
-                odds_away = odds_row.get("odds_away")
-            else:
-                odds_home = odds_row.get("odds_away")
-                odds_away = odds_row.get("odds_home")
-
-            odds_home, odds_away = align_odds_to_probabilities(
-                row.get("prob_home"), row.get("prob_away"), odds_home, odds_away
-            )
-            if not valid_two_way_decimal_pair(odds_home, odds_away):
-                continue
-
-            src_label = str(odds_row.get("source") or "TheOddsAPI")
-            out.at[idx, "odds_home"] = odds_home
-            out.at[idx, "odds_away"] = odds_away
-            out.at[idx, "odds_a"] = odds_home
-            out.at[idx, "odds_b"] = odds_away
-            out.at[idx, "_odds_source"] = src_label
-            out.at[idx, "odds_cross_checked"] = str(odds_row.get("odds_cross_checked") or "")
-            out.at[idx, "_is_live"] = True
-            out.at[idx, "_comment"] = (
-                "forecast_upcoming_api_priced" if src_label == "TheOddsAPI"
-                else "forecast_upcoming_compare_priced"
-            )
-            if src_label == "TheOddsAPI":
-                api_matched += 1
-            else:
-                compare_matched += 1
-            break
+        src_label = str(odds_row.get("source") or "TheOddsAPI")
+        out.at[idx, "odds_home"] = odds_home
+        out.at[idx, "odds_away"] = odds_away
+        out.at[idx, "odds_a"] = odds_home
+        out.at[idx, "odds_b"] = odds_away
+        out.at[idx, "_odds_source"] = src_label
+        out.at[idx, "odds_cross_checked"] = str(odds_row.get("odds_cross_checked") or "")
+        out.at[idx, "_is_live"] = True
+        out.at[idx, "_comment"] = (
+            "forecast_upcoming_api_priced" if src_label == "TheOddsAPI"
+            else "forecast_upcoming_compare_priced"
+        )
+        if src_label == "TheOddsAPI":
+            api_matched += 1
+        else:
+            compare_matched += 1
 
     fallback_matched = 0
     for idx, row in out.iterrows():
@@ -640,6 +634,13 @@ def build_upcoming_fallback_card(target_date: str) -> pd.DataFrame:
     out_df = pd.DataFrame(grouped_rows).reset_index(drop=True)
     out_df = enrich_fallback_card_with_api_odds(out_df, target_date)
     return out_df
+
+
+def mark_below_leg_floor(pick: dict) -> None:
+    """Keep a below-floor quote visible but ineligible for a ticket."""
+    if pick.get("odds") is not None and not valid_leg_price(pick.get("odds")):
+        pick["bucket"] = "SKIPPED_LOW_ODDS"
+        pick["skip_reason"] = f"invalid odds or odds below {MIN_LEG_ODDS:.2f} floor"
 
 
 def classify_bucket(best_pick: dict) -> str:
@@ -914,84 +915,86 @@ def _bzzoiro_date_payload(target_date: str) -> list[dict] | None:
 
 
 def lookup_bzzoiro_selected_odds(target_date: str, pick: dict) -> dict | None:
-    """Try Bzzoiro odds best API for selected side — Challenger/ITF coverage.
+    """Resolve an unambiguous full-match selected-side Bzzoiro quote.
 
-    Best-price across bookmakers for the SELECTED side only (no Frankenstein
-    pair is built). Labeled ``Bzzoiro`` with the quoting bookmaker.
+    The dated payload and its observation time must be fresh. Participant
+    orientation is derived from identities, never probability or price.
     """
     try:
         results = _bzzoiro_date_payload(target_date)
         if not results:
             return None
-        # The existing cache is permanent per date. Old/untimestamped best-price
-        # payloads are useful archives, not provably current execution quotes.
-        # Do not re-fetch a stale cache (and thereby spend quota) here.
-        try:
-            cached = json.loads(_bzzoiro_cache_path(target_date).read_text())
-            fetched = datetime.fromisoformat(str(cached.get("fetched_at", "")).replace("Z", "+00:00"))
-            if fetched.tzinfo is None:
-                return None
-            age = (datetime.now(timezone.utc) - fetched).total_seconds()
-            if not 0 <= age <= 30 * 60:
-                logger.warning("Bzzoiro odds cache for %s is stale; not executable", target_date)
-                return None
-        except (OSError, ValueError, TypeError):
-            logger.warning("Bzzoiro odds cache for %s has no trustworthy capture time", target_date)
+        cached = json.loads(_bzzoiro_cache_path(target_date).read_text())
+        fetched = datetime.fromisoformat(str(cached.get("fetched_at", "")).replace("Z", "+00:00"))
+        if fetched.tzinfo is None:
+            return None
+        age = (datetime.now(timezone.utc) - fetched).total_seconds()
+        if not 0 <= age <= 30 * 60 or str(cached.get("date", target_date))[:10] != str(target_date)[:10]:
+            logger.warning("Bzzoiro odds cache for %s is stale or date-mismatched", target_date)
             return None
         home = str(pick.get("player_home") or "").strip()
         away = str(pick.get("player_away") or "").strip()
         selected = str(pick.get("selected_player") or "").strip()
+        side = normalize_side_token(pick.get("selected_side"))
         if not home or not away or not selected:
             return None
+        from racketfactory.warehouse import names_match
+        if side is None:
+            # Legacy picks sometimes carry only the selected name; require a
+            # unique exact side match rather than guessing.
+            hm, am = names_match(selected, home), names_match(selected, away)
+            if hm == am:
+                return None
+            side = "player_a" if hm else "player_b"
+        expected = home if side == "player_a" else away
+        if not names_match(selected, expected):
+            return None
+        matches = []
         for item in results:
             match = item.get("match", {}) or {}
-            p1 = match.get("player1", {}).get("name", "")
-            p2 = match.get("player2", {}).get("name", "")
-            if not p1 or not p2:
+            p1 = str((match.get("player1") or {}).get("name") or "")
+            p2 = str((match.get("player2") or {}).get("name") or "")
+            fixture_date = str(match.get("match_date") or match.get("date") or "")[:10]
+            if fixture_date and fixture_date != str(target_date)[:10]:
                 continue
-            # Name matching
-            from racketfactory.sources.forebet import name_signature
-            def sig(s): return name_signature(s)
-            home_sig, away_sig = sig(home), sig(away)
-            p1_sig, p2_sig = sig(p1), sig(p2)
-            normal = (home_sig == p1_sig and away_sig == p2_sig)
-            reverse = (home_sig == p2_sig and away_sig == p1_sig)
-            if not (normal or reverse):
+            normal = bool(p1 and p2 and names_match(home, p1) and names_match(away, p2))
+            reverse = bool(p1 and p2 and names_match(home, p2) and names_match(away, p1))
+            if normal and reverse:
+                return None
+            if normal or reverse:
+                matches.append((item, p1, p2, reverse))
+        if len(matches) != 1:
+            if len(matches) > 1:
+                logger.warning("Bzzoiro ambiguous fixture for %s vs %s on %s", home, away, target_date)
+            return None
+        item, p1, p2, reverse = matches[0]
+        provider_side = "2" if ((side == "player_a") == reverse) else "1"
+        for bo in item.get("best_odds", []) or []:
+            market = str(bo.get("market") or "").strip().lower()
+            period = str(bo.get("period") or "match").strip().lower()
+            line = bo.get("line")
+            if market not in {"1x2", "h2h", "match_winner", "match winner"}:
                 continue
-            # Find best odds for 1x2 market
-            best_odds = item.get("best_odds", []) or []
-            for bo in best_odds:
-                market = str(bo.get("market") or "").lower()
-                if "1x2" not in market and "h2h" not in market:
+            if period not in {"match", "full match", "full_match", "full", "0"}:
+                continue
+            if line is not None and str(line).strip().lower() not in {"", "none", "nan"}:
+                continue
+            for oc in bo.get("outcomes", []) or []:
+                outcome = str(oc.get("outcome") or oc.get("name") or "").strip()
+                if outcome != provider_side:
                     continue
-                outcomes = bo.get("outcomes", []) or []
-                for oc in outcomes:
-                    outcome_name = str(oc.get("outcome") or oc.get("name") or "").strip()
-                    # Bzzoiro outcome 1 = player1, 2 = player2
-                    if outcome_name == "1" and sig(selected) == p1_sig:
-                        odds = oc.get("odd") or oc.get("odds")
-                        try:
-                            odds_f = float(odds)
-                            if odds_f > 1.01:
-                                return {"odds": odds_f, "bookmaker": str(bo.get("bookmaker") or "Bzzoiro"), "source": "Bzzoiro", "matched_market": f"{p1} vs {p2}"}
-                        except:
-                            pass
-                    if outcome_name == "2" and sig(selected) == p2_sig:
-                        odds = oc.get("odd") or oc.get("odds")
-                        try:
-                            odds_f = float(odds)
-                            if odds_f > 1.01:
-                                return {"odds": odds_f, "bookmaker": str(bo.get("bookmaker") or "Bzzoiro"), "source": "Bzzoiro", "matched_market": f"{p1} vs {p2}"}
-                        except:
-                            pass
+                odds_f = coerce_decimal_odds(oc.get("odd") or oc.get("odds"))
+                if odds_f is not None:
+                    return {"odds": odds_f, "bookmaker": str(bo.get("bookmaker") or "Bzzoiro"),
+                            "source": "Bzzoiro", "matched_market": f"{p1} vs {p2}",
+                            "event_id": (item.get("match") or {}).get("id"), "market": market, "period": period,
+                            "line": None, "request_date": str(target_date)[:10],
+                            "fixture_date": str((item.get("match") or {}).get("match_date") or (item.get("match") or {}).get("date") or "")[:10] or None,
+                            "provider_home": p1, "provider_away": p2, "provider_side": provider_side,
+                            "selection": selected, "observed_at": fetched.isoformat()}
         return None
-    except Exception as e:
-        # Soft fail
-        try:
-            import logging
-            logging.getLogger(__name__).debug(f"Bzzoiro odds lookup failed: {e}")
-        except:
-            pass
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        logger.warning("Bzzoiro selected odds unavailable: %s", exc)
         return None
 
 def lookup_local_oddsportal_selected_odds(target_date: str, pick: dict) -> dict | None:
@@ -1002,6 +1005,38 @@ def lookup_local_oddsportal_selected_odds(target_date: str, pick: dict) -> dict 
     logger.info("Not promoting archived OddsPortal CSV odds to executable prices for %s", target_date)
     return None
 
+
+
+def warehouse_selected_quote(row: pd.Series, pick: dict, odds: object,
+                             source: str, bookmaker: str) -> dict | None:
+    """Carry the quote record through export; never supply missing metadata.
+
+    Existing warehouse CSVs without observation evidence remain unproven.
+    The selected provider side follows the matched fixture orientation.
+    """
+    raw = row.get("_quote_meta")
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    try:
+        meta = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(meta, dict) or str(meta.get("source") or "") != source:
+        return None
+    side = normalize_side_token(pick.get("selected_side"))
+    if side not in {"player_a", "player_b"}:
+        return None
+    reversed_order = meta.get("reversed") is True
+    provider_side = "2" if ((side == "player_a") == reversed_order) else "1"
+    return {
+        "odds": odds, "source": source, "bookmaker": bookmaker,
+        "market": meta.get("market"), "period": meta.get("period"), "line": meta.get("line"),
+        "selection": pick.get("selected_player"), "observed_at": meta.get("observed_at"),
+        "event_id": meta.get("event_id"), "fixture_date": meta.get("match_date"),
+        "commence_time": meta.get("commence_time"), "provider_home": meta.get("player_home"),
+        "provider_away": meta.get("player_away"), "provider_side": provider_side,
+        "provider_side_bookmaker": meta.get("odds_home_bookmaker" if provider_side == "1" else "odds_away_bookmaker"),
+    }
 
 
 def select_player_from_row(row: pd.Series, target_date: str) -> dict:
@@ -1112,8 +1147,8 @@ def should_write_pick_outputs(picks: list[dict], existing: list | None) -> bool:
     return True
 
 
-def write_official_pick_outputs(target_date: str, picks: list[dict]) -> None:
-    out_dir = ROOT / "localdata"
+def write_official_pick_outputs(target_date: str, picks: list[dict], *, output_dir: Path | None = None) -> None:
+    out_dir = Path(output_dir) if output_dir is not None else ROOT / "localdata"
     out_dir.mkdir(parents=True, exist_ok=True)
     today_path = out_dir / "picks_today.json"
     archive_path = out_dir / f"picks_{target_date}.json"
@@ -1367,34 +1402,30 @@ def dedupe_same_match_picks(picks: list[dict]) -> list[dict]:
 
 
 def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
-    """Reduce future fallback ledgers to a priced, positive-EV review list.
+    """Reduce future fallback ledgers to a priced, confidence-filtered review list.
 
     This only applies to future dates. Same-day picks are untouched.
 
     Forecast rows are inherently weaker than same-day live rows because they can
-    come from sparse fallback source cards. The goal is to avoid dumping every
-    priced prediction into tomorrow's report while keeping the strongest
-    positive-EV items for operator review.
+    come from sparse fallback source cards. EV is diagnostic, not a filter.
     """
     if not _is_future_target(target_date):
         return picks
 
     min_conf = _env_float("RACKET_FACTORY_FORECAST_MIN_CONF", 60.0)
-    min_ev = _env_float("RACKET_FACTORY_FORECAST_MIN_EV", 0.05)
     max_rows = max(1, _env_int("RACKET_FACTORY_FORECAST_MAX_ROWS", 20))
     include_no_odds = _env_bool("RACKET_FACTORY_FORECAST_INCLUDE_NO_ODDS", False)
     include_skipped = _env_bool("RACKET_FACTORY_FORECAST_INCLUDE_SKIPPED", False)
 
     actionable_buckets = {"CERTIFIED_CLEAN", "WATCHLIST", "CAUTION", "FADE"}
     no_odds_buckets = {"WATCHLIST_NO_ODDS", "WATCHLIST_UNKNOWN_CTX"}
-    skipped_buckets = {"SKIPPED_DEAD_EDGE", "SKIPPED_VETO"}
+    skipped_buckets = {"SKIPPED_DEAD_EDGE", "SKIPPED_VETO", "SKIPPED_LOW_ODDS"}
 
     kept: list[dict] = []
     dropped = 0
 
     for pick in picks:
         bucket = str(pick.get("bucket") or "")
-        ev = _pick_float(pick, "expected_value")
         conf = _pick_float(pick, "confidence")
         odds = _pick_float(pick, "odds")
 
@@ -1414,12 +1445,9 @@ def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
             if odds is None:
                 keep = False
                 reason = "forecast missing odds"
-            elif ev is None:
+            elif not valid_leg_price(odds):
                 keep = False
-                reason = "forecast missing EV"
-            elif ev < min_ev:
-                keep = False
-                reason = f"forecast EV {ev:.3f} < {min_ev:.3f}"
+                reason = "forecast invalid or below-floor odds"
             elif conf is None:
                 keep = False
                 reason = "forecast missing confidence"
@@ -1432,7 +1460,6 @@ def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
             pick["ledger_kind"] = "forecast"
             pick["forecast_hygiene"] = {
                 "min_conf": min_conf,
-                "min_ev": min_ev,
                 "max_rows": max_rows,
                 "include_no_odds": include_no_odds,
                 "include_skipped": include_skipped,
@@ -1446,7 +1473,6 @@ def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
         kept,
         key=lambda p: (
             {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "FADE": 1, "CAUTION": 2}.get(str(p.get("bucket")), 9),
-            -float(p.get("expected_value") or 0.0),
             -float(p.get("confidence") or 0.0),
             str(p.get("match") or ""),
         ),
@@ -1457,12 +1483,11 @@ def apply_forecast_hygiene(target_date: str, picks: list[dict]) -> list[dict]:
         kept = kept[:max_rows]
 
     logger.info(
-        "Forecast hygiene for %s: kept %d, dropped %d (min_conf=%.1f, min_ev=%.3f, max_rows=%d)",
+        "Forecast hygiene for %s: kept %d, dropped %d (min_conf=%.1f, max_rows=%d)",
         target_date,
         len(kept),
         dropped,
         min_conf,
-        min_ev,
         max_rows,
     )
     return kept
@@ -1568,6 +1593,8 @@ def _nearest_slice_gap(row: pd.Series, res: dict) -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Mine the warehouse for automated edges")
     ap.add_argument("--warehouse", default="localdata/warehouse.csv.gz", help="Path to warehouse")
+    ap.add_argument("--output-dir", default=None, help="Directory for generated picks and diagnostics")
+    ap.add_argument("--fresh-only", action="store_true", help="Do not collect fallback predictions or archived prices")
     ap.add_argument("--min-n", type=int, default=15,
                     help="Minimum matches per slice (default 15)")
     ap.add_argument("--min-export-n", type=int, default=30,
@@ -1577,25 +1604,15 @@ def main() -> int:
                          "no exportable slice). Anything smaller is kept for transparency but cannot "
                          "become a pick. User rule n<30 fluke, so 30 is minimum meaningful.")
     ap.add_argument("--min-ev", type=float, default=None,
-                    help="REDTEAM Finding #4: minimum per-bet expected value (decimal) required "
-                         "for a pick to be exported. EV = conf*(odds-1) - (1-conf). Default None "
-                         "resolves to ml.get_min_ev_real() (RACKET_FACTORY_MIN_EV, +2% policy — "
-                         "the same floor the ML capital-protection gate enforces on stakeable "
-                         "legs). Set explicitly (e.g. 0.0 or a negative value) to override.")
+                    help="Deprecated compatibility option; EV no longer filters exports.")
     ap.add_argument("--bet-side", choices=["favorite", "prediction"], default="favorite",
                     help="REDTEAM Finding #3: what side does the slice assay test? 'favorite' "
                          "(default, historical behaviour) or 'prediction' (follow predicted_winner*).")
     ap.add_argument("--date", default=None, help="Target date YYYY-MM-DD to extract specific picks (default: today)")
     args = ap.parse_args()
 
-    # Close the policy gap: when --min-ev is not passed on the CLI, resolve it
-    # through the SAME source the ML capital-protection gate uses (ml.py),
-    # i.e. RACKET_FACTORY_MIN_EV with a +2% default. Previously the export
-    # gate defaulted to 0.0 while ml.py enforced 2%, so a 0.5%-EV pick could
-    # be exported by mine_edges but the policy floor was +2%. One env var now
-    # governs both; an explicit --min-ev still wins for diagnostics.
-    if args.min_ev is None:
-        args.min_ev = get_min_ev_real()
+    if args.min_ev is not None:
+        logger.warning("--min-ev is deprecated and does not filter picks")
 
     try:
         df = pd.read_csv(args.warehouse, low_memory=False)
@@ -1845,6 +1862,9 @@ def main() -> int:
 
     target_date = args.date or datetime.now().strftime("%Y-%m-%d")
 
+    output_dir = Path(args.output_dir) if args.output_dir else ROOT / "localdata"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     # Mining-time slice table artifact (committed): the exact table this run
     # matched candidates against, with the warehouse fingerprint. See
     # dump_slice_table for why (snapshot drift flips boundary verdicts).
@@ -1853,7 +1873,7 @@ def main() -> int:
         results,
         df,
         args.warehouse,
-        ROOT / "localdata" / f"slice_table_{target_date}.json",
+        output_dir / f"slice_table_{target_date}.json",
     )
 
     # REDTEAM Finding #2 follow-up: today's pick candidates need BOTH
@@ -1913,7 +1933,7 @@ def main() -> int:
             fallback = fallback[fallback["_series"].notna() & (~fallback["_series"].astype(str).str.strip().isin(["", "nan", "<NA>", "None"]))]
         today_df = fallback
         logger.info("Today candidate rows after live filtering: 0; fallback prediction-bearing rows: %d", len(today_df))
-        if today_df.empty:
+        if today_df.empty and not args.fresh_only:
             upcoming_df = build_upcoming_fallback_card(target_date)
             logger.info("Upcoming-card fallback rows: %d", len(upcoming_df))
             if not upcoming_df.empty:
@@ -1936,8 +1956,8 @@ def main() -> int:
     #   (2) opt-in no-slice export (RACKET_FACTORY_EXPORT_NO_SLICE) — added
     #       after run 35402614701, where 81 candidates matched no exportable
     #       slice and the day went to NO BET with zero operator-visible trace.
-    # Either way the row's own prediction confidence prices it, the EV gate
-    # still applies, and unpriced/arbitrary rows stay watchlist/paper.
+    # The row's prediction confidence supplies diagnostic EV; unpriced and
+    # arbitrary rows remain non-executable watchlist entries.
     def _export_candidate_as_watchlist(row: pd.Series, marker: str, roi_label: str) -> dict:
         base = select_player_from_row(row, target_date)
         prob = None
@@ -1964,14 +1984,19 @@ def main() -> int:
                 odds_source = "OddsPortal"
                 odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
             else:
-                bzzoiro_op = lookup_bzzoiro_selected_odds(target_date, base)
+                bzzoiro_op = None if args.fresh_only else lookup_bzzoiro_selected_odds(target_date, base)
                 if bzzoiro_op is not None:
                     odds_val = bzzoiro_op.get("odds")
+                    base["selected_quote"] = dict(bzzoiro_op)
                     odds_reject_reason = None
                     odds_source = "Bzzoiro"
                     odds_bookmaker = str(bzzoiro_op.get("bookmaker") or "Bzzoiro")
+        if odds_val is not None and "selected_quote" not in base:
+            quote = warehouse_selected_quote(row, base, odds_val, odds_source, odds_bookmaker)
+            if quote is not None:
+                base["selected_quote"] = quote
         ev = None
-        if prob is not None and odds_val is not None and odds_val > 1.0:
+        if prob is not None and math.isfinite(prob) and 0 < prob <= 100 and odds_val is not None and math.isfinite(odds_val) and odds_val > 1.0:
             p_dec = max(0.0, min(1.0, prob / 100.0))
             ev = p_dec * (odds_val - 1.0) - (1.0 - p_dec)
         basis, is_paper = market_basis_for_pick(odds_source, odds_val)
@@ -1987,6 +2012,7 @@ def main() -> int:
             "_is_paper": is_paper,
             "confidence": prob,
             "expected_value": ev,
+            "expected_value_provenance": "prediction probability and quoted odds" if ev is not None else None,
             "slice_matched": marker,
             "edge_dims": 0,
             "edge_n": 0,
@@ -1997,19 +2023,7 @@ def main() -> int:
             "edge_verdict": "WATCHLIST",
             "roi_estimate": roi_label,
         })
-        # Capital protection: enforce min EV +2% and min odds 1.30 (user 2026-09-16)
-        # no_slice_export previously had 0.0 floor to improve priced_share, but
-        # now priced_share is healthy (6/6) and we prefer NO BET over losing.
-        # Keep floor at args.min_ev (0.02) for all, including no_slice_export.
-        effective_min_ev_watchlist = args.min_ev
-        # Hard floor 1.15 blocks super-shorts like 1.04-1.07 with negative EV
-        min_odds_hard = 1.15
-        if odds_val is not None and odds_val < min_odds_hard:
-            base["bucket"] = "SKIPPED_DEAD_EDGE"
-            base["skip_reason"] = f"short odds {odds_val:.2f} < {min_odds_hard} hard floor (capital protection)"
-        elif ev is not None and ev < effective_min_ev_watchlist:
-            base["bucket"] = "SKIPPED_DEAD_EDGE"
-            base["skip_reason"] = f"negative EV ({ev:.3f} < {effective_min_ev_watchlist:.3f})"
+        mark_below_leg_floor(base)
         if base.get("_selection_basis") == "arbitrary_default":
             base["bucket"] = "WATCHLIST_UNKNOWN_CTX"
             base["skip_reason"] = "no prediction and no odds: selection would be arbitrary"
@@ -2100,16 +2114,21 @@ def main() -> int:
                         odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
                         oddsportal_match = str(local_op.get("matched_market") or "")
                     else:
-                        bzzoiro_op = lookup_bzzoiro_selected_odds(target_date, base)
+                        bzzoiro_op = None if args.fresh_only else lookup_bzzoiro_selected_odds(target_date, base)
                         if bzzoiro_op is not None:
                             odds_val = bzzoiro_op.get("odds")
+                            base["selected_quote"] = dict(bzzoiro_op)
                             odds_reject_reason = None
                             odds_source = "Bzzoiro"
                             odds_bookmaker = str(bzzoiro_op.get("bookmaker") or "Bzzoiro")
                             oddsportal_match = str(bzzoiro_op.get("matched_market") or "")
 
-                # REDTEAM Finding #4: compute per-bet expected value and drop
-                # non-positive-EV rows from the actionable set. EV is computed
+                if odds_val is not None and "selected_quote" not in base:
+                    quote = warehouse_selected_quote(row, base, odds_val, odds_source, odds_bookmaker)
+                    if quote is not None:
+                        base["selected_quote"] = quote
+
+                # Compute diagnostic per-bet expected value. EV is computed
                 # on the decimal odds captured at scrape time, so live picks
                 # inherit the same approximation caveat the HANDOVER already
                 # documents (closing vs opening odds).
@@ -2117,6 +2136,7 @@ def main() -> int:
                 # (GOLD BANKER) — prediction prob can be overconfident but slice
                 # ROI is validated. For GOLD slices, use max(prob, shrunk_rate).
                 ev = None
+                ev_provenance = None
                 slice_prob_for_ev = None
                 grade = str(best_pick.get("Grade", ""))
                 tier = str(best_pick.get("Tier", ""))
@@ -2133,8 +2153,10 @@ def main() -> int:
                         slice_prob_for_ev = float(shrunk_str) / 100.0
                 except Exception:
                     slice_prob_for_ev = None
+                if slice_prob_for_ev is not None and (not math.isfinite(slice_prob_for_ev) or not 0 < slice_prob_for_ev <= 1):
+                    slice_prob_for_ev = None
 
-                if prob is not None and odds_val is not None and odds_val > 1.0:
+                if prob is not None and math.isfinite(prob) and 0 < prob <= 100 and odds_val is not None and math.isfinite(odds_val) and odds_val > 1.0:
                     p_dec = max(0.0, min(1.0, prob / 100.0))
                     # For GOLD BANKER winning slices, use slice win rate as floor
                     # (prevents 89% conf @1.13 EV 0.005 being killed when slice is +21% ROI)
@@ -2147,6 +2169,8 @@ def main() -> int:
                     else:
                         effective_p = p_dec
                     ev = effective_p * (odds_val - 1.0) - (1.0 - effective_p)
+                    ev_provenance = ("max of prediction and qualifying shrunk slice probability, with quoted odds"
+                                     if use_slice_prob else "prediction probability and quoted odds")
 
                 basis, is_paper = market_basis_for_pick(odds_source, odds_val)
                 display_conf = prob
@@ -2174,6 +2198,7 @@ def main() -> int:
                     "_is_paper": is_paper,
                     "confidence": display_conf,
                     "expected_value": ev,
+                    "expected_value_provenance": ev_provenance,
                     "slice_matched": best_pick["Slice"],
                     "edge_dims": best_pick.get("Dims"),
                     "edge_n": best_pick.get("N"),
@@ -2189,25 +2214,7 @@ def main() -> int:
                     base["bucket"] = "WATCHLIST_NO_ODDS"
                     base["skip_reason"] = odds_reject_reason or "missing selected-side odds"
 
-                # Capital protection: enforce min EV +2% and min odds 1.30
-                # Previously GOLD BANKER n>=50 had 0.0 floor to keep picks, but
-                # user wants +2% minimum and prefers NO BET over losing.
-                # Hard floor 1.15 blocks super-shorts (1.04-1.07) even if slice is GOLD.
-                effective_min_ev = args.min_ev
-                min_odds_hard = 1.15
-                min_odds_base = get_min_odds_base()
-                if odds_val is not None and odds_val < min_odds_hard:
-                    base["bucket"] = "SKIPPED_DEAD_EDGE"
-                    base["skip_reason"] = f"short odds {odds_val:.2f} < {min_odds_hard} hard floor (capital protection)"
-                elif ev is not None and ev < effective_min_ev:
-                    base["bucket"] = "SKIPPED_DEAD_EDGE"
-                    base["skip_reason"] = f"negative EV ({ev:.3f} < {effective_min_ev:.3f})"
-                elif odds_val is not None and odds_val < min_odds_base:
-                    # Below 1.30 but above 1.15: allow only if EV>=1% and potential BOOST (Both+High)
-                    # This mirrors auto_tickets BOOST exception; here we keep it strict and let ML decide,
-                    # but mark as CAUTION for operator visibility if it survives.
-                    # For now, keep as is and let ML filter enforce BOOST+EV>=0.01.
-                    pass
+                mark_below_leg_floor(base)
 
                 picks_to_export.append(base)
                 continue
@@ -2289,13 +2296,19 @@ def main() -> int:
                         odds_bookmaker = str(local_op.get("bookmaker") or "OddsPortal")
                         oddsportal_match = str(local_op.get("matched_market") or "")
                     else:
-                        bzzoiro_op = lookup_bzzoiro_selected_odds(target_date, base)
+                        bzzoiro_op = None if args.fresh_only else lookup_bzzoiro_selected_odds(target_date, base)
                         if bzzoiro_op is not None:
                             odds_val = bzzoiro_op.get("odds")
+                            base["selected_quote"] = dict(bzzoiro_op)
                             odds_reject_reason = None
                             odds_source = "Bzzoiro"
                             odds_bookmaker = str(bzzoiro_op.get("bookmaker") or "Bzzoiro")
                             oddsportal_match = str(bzzoiro_op.get("matched_market") or "")
+                if odds_val is not None and "selected_quote" not in base:
+                    quote = warehouse_selected_quote(row, base, odds_val, odds_source, odds_bookmaker)
+                    if quote is not None:
+                        base["selected_quote"] = quote
+
                 # EV basis for a fade: the validated slice's (shrunk) win rate
                 # at the live fade price. Using the model's probability of the
                 # faded side would be structurally <50% and veto every fade.
@@ -2304,7 +2317,7 @@ def main() -> int:
                     shrunk_fade = float(str(best_fade["Shrunk"]).strip('%')) / 100.0
                 except (TypeError, ValueError):
                     shrunk_fade = None
-                if shrunk_fade is not None and odds_val is not None and odds_val > 1.0:
+                if shrunk_fade is not None and math.isfinite(shrunk_fade) and 0 < shrunk_fade <= 1 and odds_val is not None and math.isfinite(odds_val) and odds_val > 1.0:
                     ev = shrunk_fade * (odds_val - 1.0) - (1.0 - shrunk_fade)
                 basis, is_paper = market_basis_for_pick(odds_source, odds_val)
                 fade_conf = (shrunk_fade * 100.0) if shrunk_fade is not None else fade_prob
@@ -2321,6 +2334,7 @@ def main() -> int:
                     "_is_paper": is_paper,
                     "confidence": fade_conf,
                     "expected_value": ev,
+                    "expected_value_provenance": "fade slice probability and quoted odds" if ev is not None else None,
                     "slice_matched": best_fade["Slice"],
                     "edge_dims": best_fade.get("Dims"),
                     "edge_n": best_fade.get("N"),
@@ -2332,9 +2346,7 @@ def main() -> int:
                 if odds_val is None and base.get("bucket") == "FADE":
                     base["bucket"] = "WATCHLIST_NO_ODDS"
                     base["skip_reason"] = odds_reject_reason or "missing selected-side odds"
-                if ev is not None and ev < args.min_ev:
-                    base["bucket"] = "SKIPPED_DEAD_EDGE"
-                    base["skip_reason"] = f"fade EV ({ev:.3f} < {args.min_ev:.3f}) at live fade price"
+                mark_below_leg_floor(base)
                 matched_row_ids.add(row.name)
                 picks_to_export.append(base)
                 fade_exported += 1
@@ -2354,7 +2366,7 @@ def main() -> int:
     # and the day went to NO BET with this single log line as the only trace.
     # (a) Opt-in export: RACKET_FACTORY_EXPORT_NO_SLICE=1 routes the would-be
     #     dropped candidates through the same watchlist fallback exporter
-    #     (EV gate / veto gates / ML filter all still apply). Only fires on
+    #     (odds floor / veto gates / ML filter all still apply). Only fires on
     #     would-be empty days — it never dilutes a day that has picks.
     #     Default OFF keeps the validated-slice policy exactly as before.
     # (b) Diagnostics: when rows are dropped, dump their dims + nearest slice
@@ -2392,7 +2404,7 @@ def main() -> int:
             no_slice_fallback_ran = True
             logger.warning("After no-slice export: picks_to_export=%d", len(picks_to_export))
 
-    unmatched_dump_path = ROOT / "localdata" / f"picks_unmatched_{target_date}.json"
+    unmatched_dump_path = output_dir / f"picks_unmatched_{target_date}.json"
     if unmatched_slice_rows and not no_slice_fallback_ran:
         unmatched_rows = []
         for _, row in today_df.iterrows():
@@ -2460,7 +2472,6 @@ def main() -> int:
             {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "FADE": 1, "CAUTION": 2,
              "SKIPPED_DEAD_EDGE": 3, "WATCHLIST_NO_ODDS": 4, "WATCHLIST_UNKNOWN_CTX": 5,
              "SKIPPED_VETO": 6}.get(str(p.get("bucket")), 9),
-            -float(p.get("expected_value") or 0.0),
             -int(p.get("source_count") or 0),
             str(p.get("match")),
         )
@@ -2484,7 +2495,7 @@ def main() -> int:
         logger.warning("ML feedback loop failed: %s", e)
         ml_summary = {}
 
-    write_official_pick_outputs(target_date, picks_to_export)
+    write_official_pick_outputs(target_date, picks_to_export, output_dir=output_dir)
     logger.info("Exported %d post-hygiene pick rows for %s", len(picks_to_export), target_date)
     return 0
 

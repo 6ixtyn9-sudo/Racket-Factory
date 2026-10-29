@@ -166,8 +166,11 @@ def format_summary(target_date: str, picks: list[dict[str, Any]], *, late_slate:
     # rows but is not tempted to act on them from a phone notification.
     skipped = buckets.get("SKIPPED_DEAD_EDGE", [])
     if skipped:
-        lines.append(f"🚫 *{len(skipped)} FADE / NEG-EV rows suppressed* "
-                     f"(ROBBER slices + non-positive EV). Not actionable.\n")
+        lines.append(f"🚫 *{len(skipped)} dead-edge rows suppressed* "
+                     f"(ROBBER or legacy skips). Not actionable.\n")
+    low_odds = buckets.get("SKIPPED_LOW_ODDS", [])
+    if low_odds:
+        lines.append(f"🚫 *{len(low_odds)} invalid or below-floor odds rows suppressed* (minimum 1.30).\n")
 
     caution = buckets.get(BUCKET_CAUTION, [])
     if caution:
@@ -216,12 +219,11 @@ def main() -> int:
     # REDTEAM Finding #1: SKIPPED_DEAD_EDGE rows are never sent through
     # WhatsApp. The notify set below is intentional — only CERTIFIED_CLEAN
     # and (optionally) CAUTION reach the operator. CAUTION is gated by the
-    # `--min-ev 0` default in mine_edges so anything reaching this bucket
-    # has positive EV; SKIPPED_DEAD_EDGE is still excluded for clarity.
+    # independent evidence and market checks; EV is diagnostic only.
     notify_buckets = {BUCKET_CLEAN, BUCKET_CAUTION}
     if os.environ.get("RACKET_FACTORY_NOTIFY_WATCHLIST", "").strip().lower() in {"1", "true", "yes", "on"}:
         notify_buckets |= {BUCKET_WL_ODDS, BUCKET_WL_SIGNAL}
-    notify_buckets -= {"SKIPPED_DEAD_EDGE", "SKIPPED_VETO"}
+    notify_buckets -= {"SKIPPED_DEAD_EDGE", "SKIPPED_VETO", "SKIPPED_LOW_ODDS"}
 
     candidates = [p for p in raw if p.get("bucket") in notify_buckets]
     if not candidates:

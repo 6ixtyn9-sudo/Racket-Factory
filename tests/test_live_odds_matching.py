@@ -1,7 +1,7 @@
-"""Live-card odds matching: bounded date tolerance + single-side collapse.
+"""Live-card odds matching: exact normalized date + single-side collapse.
 
-Covers warehouse._match_api_odds_row (exact date first, then ±1 day for
-singles only — never dateless) and collapse_live_card's single-side
+Covers warehouse._match_api_odds_row (same date only, never dateless)
+and collapse_live_card's single-side
 fallback (one valid side preserved, both-long pairs rejected, strict
 two-way pairs always win over singles).
 """
@@ -31,21 +31,23 @@ def test_api_match_exact_date_preferred_over_drifted():
     assert reversed_order is False
 
 
-def test_api_match_allows_minus_one_day_slam_drift():
-    # Tiafoe/Shelton replay: card 09-12, API commence 09-11 (UTC straddle).
+def test_api_match_rejects_unproven_minus_one_day_slam_drift():
+    # A claimed timezone straddle does not prove identity without timestamps.
     card = _card_row("2026-09-12", "Frances Tiafoe", "Ben Shelton")
     api = _api_row("2026-09-11", "Frances Tiafoe", "Ben Shelton")
     matched, reversed_order = _match_api_odds_row(card, [api])
-    assert matched is api
+    assert matched is None
     assert reversed_order is False
 
 
-def test_api_match_allows_plus_one_day_with_reversed_flag():
+def test_api_match_rejects_unproven_plus_one_day_even_reversed():
     card = _card_row("2026-09-12")
     api = _api_row("2026-09-13", "Karen Khachanov", "Alexander Zverev")
     matched, reversed_order = _match_api_odds_row(card, [api])
-    assert matched is api
-    assert reversed_order is True
+    assert matched is None
+    assert reversed_order is False
+    same_day = dict(api, match_date="2026-09-12")
+    assert _match_api_odds_row(card, [same_day]) == (same_day, True)
 
 
 def test_api_match_rejects_two_day_drift():
@@ -60,18 +62,20 @@ def test_api_match_rejects_rematch_weeks_later():
     assert _match_api_odds_row(card, [_api_row("2026-09-19")])[0] is None
 
 
-def test_api_match_second_pass_allows_doubles():
-    # Updated: second pass now allows doubles too to push comparison 9->30+
+def test_api_match_doubles_require_same_date():
+    # Reordered team members are accepted, but not a different date.
     card = _card_row("2026-09-12", "Siniakova / Townsend", "Cascino / Feng")
     api = {"match_date": "2026-09-11", "player_home": "Townsend / Siniakova",
            "player_away": "Cascino / Feng", "odds_home": 1.5, "odds_away": 2.5}
-    assert _match_api_odds_row(card, [api])[0] is not None
+    assert _match_api_odds_row(card, [api])[0] is None
+    same_day = dict(api, match_date="2026-09-12")
+    assert _match_api_odds_row(card, [same_day])[0] is same_day
 
 
-def test_api_match_dateless_card_stays_fail_open():
+def test_api_match_dateless_card_fails_closed():
     card = _card_row("")
     matched, _ = _match_api_odds_row(card, [_api_row("2026-09-12")])
-    assert matched is not None
+    assert matched is None
 
 
 def _live_row(home_odds, away_odds, **over):

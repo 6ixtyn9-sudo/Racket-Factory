@@ -13,6 +13,7 @@ from curl_cffi import requests
 
 from racketfactory.entities import normalize_player
 from racketfactory.kickoff import BETCLAN_TZ, parse_source_timestamp, to_sast_parts
+from racketfactory.sources._page_odds import PageFetchError
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +217,10 @@ class BetClanPredictor:
 
     def fetch_daily(self) -> list[dict[str, Any]]:
         results = []
+        today_ok = False
+        today_links = 0
+        today_failed = 0
+        today_empty_verified = False
         # Fetch today and tomorrow
         for day_offset, endpoint in [(-1, "yesterdays-tennis-predictions"), (0, "todays-tennis-predictions"), (1, "tomorrows-tennis-predictions")]:
             target_date = (date.today() + timedelta(days=day_offset)).strftime("%Y-%m-%d")
@@ -223,23 +228,33 @@ class BetClanPredictor:
             try:
                 resp = requests.get(url, impersonate="chrome133a", timeout=20)
                 if resp.status_code != 200:
+                    logger.warning("BetClan %s HTTP %s", endpoint, resp.status_code)
                     continue
             except Exception as e:
                 logger.error(f"BetClan request failed: {e}")
                 continue
+            if day_offset == 0:
+                today_ok = True
 
             links = re.findall(r'https://www\.betclan\.com/tennis/predictionsdetails/[^"\']+', resp.text)
+            if day_offset == 0:
+                today_links = len(set(links))
+                today_empty_verified = not links and any(marker in resp.text.lower() for marker in ("no matches", "no events", "no predictions"))
 
             for match_url in set(links):
                 try:
                     r = requests.get(match_url, impersonate="chrome133a", timeout=20)
                     if r.status_code != 200:
+                        if day_offset == 0:
+                            today_failed += 1
                         continue
                     s = BeautifulSoup(r.text, 'html.parser')
 
                     home_div = s.find('div', class_='teamtophome')
                     away_div = s.find('div', class_='teamtopaway')
                     if not home_div or not away_div:
+                        if day_offset == 0:
+                            today_failed += 1
                         continue
 
                     p1 = home_div.text.strip()
@@ -247,6 +262,8 @@ class BetClanPredictor:
 
                     winner_tag = s.find(lambda tag: tag.name == "h4" and "winner" in tag.text.lower())
                     if not winner_tag:
+                        if day_offset == 0:
+                            today_failed += 1
                         continue
                     next_sib = winner_tag.find_next_sibling("h5")
                     winner_name = next_sib.text.strip() if next_sib else ""
@@ -271,7 +288,14 @@ class BetClanPredictor:
                     else:
                         clean_w = re.sub(r"[^a-z]", "", winner_name.lower())
                         clean_p1 = re.sub(r"[^a-z]", "", p1.lower())
-                        pred_win = "player_a" if clean_p1 in clean_w or clean_w in clean_p1 else "player_b"
+                        clean_p2 = re.sub(r"[^a-z]", "", p2.lower())
+                        home_match = bool(clean_w and clean_p1 and (clean_p1 in clean_w or clean_w in clean_p1))
+                        away_match = bool(clean_w and clean_p2 and (clean_p2 in clean_w or clean_w in clean_p2))
+                        if home_match == away_match:
+                            if day_offset == 0:
+                                today_failed += 1
+                            continue
+                        pred_win = "player_a" if home_match else "player_b"
 
                     # Robustly extract bookmaker odds from the prediction page itself.
                     # This is the historical behaviour; for many matches BetClan hides
@@ -327,6 +351,13 @@ class BetClanPredictor:
                             "source_url": match_url,
                         })
                 except Exception as e:
+                    if day_offset == 0:
+                        today_failed += 1
                     logger.warning(f"Error parsing BetClan match {match_url}: {e}")
 
+        if not today_ok:
+            self.last_collection_status = "failed"
+            raise PageFetchError("transport", "BetClan today listing unavailable")
+        self.last_collection_status = ("partial" if today_failed else
+            "complete" if today_links or today_empty_verified else "unknown")
         return results

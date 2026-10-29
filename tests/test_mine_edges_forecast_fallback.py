@@ -213,3 +213,15 @@ def test_build_upcoming_fallback_card_prices_single_side_forebet_row(monkeypatch
     assert card.loc[0, "_odds_source"] == "ScrapedFallback"
     assert pd.isna(card.loc[0, "odds_a"])
     assert card.loc[0, "odds_b"] == 1.78
+
+
+def test_forecast_api_reversed_and_ambiguous_matches(monkeypatch):
+    monkeypatch.setattr(mine_edges, "fetch_comparison_rows", lambda day: [])
+    match = {"match_date": "2026-06-30", "player_home": "Zizou Bergs", "player_away": "Ugo Humbert",
+             "odds_home": 2.35, "odds_away": 1.59}
+    monkeypatch.setattr(mine_edges, "fetch_the_odds_api_rows", lambda day: [match])
+    row = mine_edges.enrich_fallback_card_with_api_odds(_forecast_card(None, None), "2026-06-30").iloc[0]
+    assert (row["odds_a"], row["odds_b"]) == (1.59, 2.35)
+    monkeypatch.setattr(mine_edges, "fetch_the_odds_api_rows", lambda day: [match, dict(match)])
+    row = mine_edges.enrich_fallback_card_with_api_odds(_forecast_card(None, None), "2026-06-30").iloc[0]
+    assert pd.isna(row["odds_a"]) and pd.isna(row["odds_b"])

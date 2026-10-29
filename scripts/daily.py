@@ -37,6 +37,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 DEFAULT_LOCAL_TZ = "Africa/Johannesburg"
 LOCALDATA = ROOT / "localdata"
 
@@ -216,9 +217,8 @@ def merge_picks(existing_ledger: list[dict[str, Any]], fresh_run: list[dict[str,
     merged.sort(
         key=lambda p: (
             {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2,
-             "SKIPPED_DEAD_EDGE": 3, "WATCHLIST_NO_ODDS": 4, "WATCHLIST_UNKNOWN_CTX": 5,
+             "SKIPPED_DEAD_EDGE": 3, "SKIPPED_LOW_ODDS": 3, "WATCHLIST_NO_ODDS": 4, "WATCHLIST_UNKNOWN_CTX": 5,
              "SKIPPED_VETO": 6}.get(str(p.get("bucket")), 9),
-            -float(p.get("expected_value") or 0.0),
             -int(p.get("source_count") or 0),
             str(p.get("match", "")),
         )
@@ -337,6 +337,7 @@ def generate_daily_report(
             "WATCHLIST_UNKNOWN_CTX",
             "SKIPPED_VETO",
             "SKIPPED_DEAD_EDGE",
+            "SKIPPED_LOW_ODDS",
         ]
         bucket_labels = {
             "CERTIFIED_CLEAN": "CERTIFIED CLEAN PICKS",
@@ -346,7 +347,8 @@ def generate_daily_report(
             "WATCHLIST_NO_ODDS": "WATCHLIST — NO MATCHED ODDS",
             "WATCHLIST_UNKNOWN_CTX": "WATCHLIST — UNKNOWN CONTEXT",
             "SKIPPED_VETO": "SKIPPED — VETO CONTEXT",
-            "SKIPPED_DEAD_EDGE": "SKIPPED — DEAD EDGE (ROBBER slices / negative-EV — DO NOT BET)",
+            "SKIPPED_DEAD_EDGE": "SKIPPED — DEAD EDGE (ROBBER or legacy skip — DO NOT BET)",
+            "SKIPPED_LOW_ODDS": "SKIPPED — INVALID OR BELOW-FLOOR ODDS (1.30 MINIMUM)",
         }
 
         for b in bucket_order:
@@ -545,9 +547,8 @@ def run_future_planner(
         key=lambda p: (
             pick_date(p, "9999-99-99"),
             {"CERTIFIED_CLEAN": 0, "WATCHLIST": 1, "CAUTION": 2,
-             "SKIPPED_DEAD_EDGE": 3, "WATCHLIST_NO_ODDS": 4, "WATCHLIST_UNKNOWN_CTX": 5,
+             "SKIPPED_DEAD_EDGE": 3, "SKIPPED_LOW_ODDS": 3, "WATCHLIST_NO_ODDS": 4, "WATCHLIST_UNKNOWN_CTX": 5,
              "SKIPPED_VETO": 6}.get(str(p.get("bucket")), 9),
-            -float(p.get("expected_value") or 0.0),
             -int(p.get("source_count") or 0),
             str(p.get("match", "")),
         )
@@ -558,6 +559,223 @@ def run_future_planner(
 # ------------------------------------------------- autonomous smart schedule --
 def _now_local() -> datetime:
     return datetime.now(local_tz())
+
+
+# Explicitly approved for guarded rebuilds. Metered providers remain optional
+# and are not contacted here without a verified durable quota authority.
+REBUILD_REQUIRED_SOURCES = ("betclan", "betexplorer")
+REBUILD_OPTIONAL_SOURCES = ("predixsport", "oddsportal", "theoddsapi", "bzzoiro")
+
+
+def collect_rebuild_sources(target_date: str) -> dict[str, Any]:
+    """Collect once, directly into memory, without caches or publication.
+
+    Exceptions, ambiguous empty responses and partial detail-page crawls are
+    distinct from a verified empty board. No provider is retried via a relay.
+    """
+    from racketfactory.sources.betclan import BetClanPredictor
+    from racketfactory.sources.predixsport import PredixSportPredictor
+    from racketfactory.sources import betexplorer, oddsportal_upcoming
+    from racketfactory.odds_compare import merge_comparison_rows
+
+    result: dict[str, Any] = {"date": target_date, "observed_at": make_run_as_of(),
+                              "outcomes": {}, "predictions": [], "comparisons": []}
+    outcomes = result["outcomes"]
+    betclan = BetClanPredictor()
+    try:
+        rows = betclan.fetch_daily()
+        status = getattr(betclan, "last_collection_status", "unknown")
+        outcomes["betclan"] = {"status": status, "rows": len(rows)}
+        result["predictions"].extend(dict(row, source="BetClan") for row in rows)
+    except Exception as exc:
+        outcomes["betclan"] = {"status": "failed", "error_type": type(exc).__name__}
+    try:
+        if os.getenv(betexplorer.DISABLE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}:
+            be_rows, status = [], "disabled"
+        else:
+            be_rows, status = betexplorer._fetch_live(target_date, with_status=True)
+        outcomes["betexplorer"] = {"status": status, "rows": len(be_rows)}
+    except Exception as exc:
+        be_rows = []
+        outcomes["betexplorer"] = {"status": "failed", "error_type": type(exc).__name__}
+    try:
+        px_rows = PredixSportPredictor().fetch_daily()
+        outcomes["predixsport"] = {"status": "rows_observed" if px_rows else "unknown", "rows": len(px_rows)}
+        result["predictions"].extend(dict(row, source="PredixSport") for row in px_rows)
+    except Exception as exc:
+        outcomes["predixsport"] = {"status": "failed", "error_type": type(exc).__name__}
+    try:
+        if os.getenv(oddsportal_upcoming.DISABLE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}:
+            op_rows = []
+            outcomes["oddsportal"] = {"status": "disabled"}
+        else:
+            page = oddsportal_upcoming._page_for_target(target_date)
+            if page is None:
+                op_rows = []
+                outcomes["oddsportal"] = {"status": "unknown"}
+            else:
+                path, _ = page
+                extras = oddsportal_upcoming.TODAY_EXTRA_PATHS if target_date == date.today().isoformat() else oddsportal_upcoming.TOMORROW_EXTRA_PATHS
+                op_rows = oddsportal_upcoming._fetch_live(path, target_date, extra_paths=extras)
+                status = ("partial" if any(row.get("_collection_partial") for row in op_rows)
+                          else "rows_observed" if op_rows else "unknown")
+                outcomes["oddsportal"] = {"status": status, "rows": len(op_rows)}
+    except Exception as exc:
+        op_rows = []
+        outcomes["oddsportal"] = {"status": "failed", "error_type": type(exc).__name__}
+    result["comparisons"] = merge_comparison_rows(be_rows, op_rows)
+    # Keep both raw sources so an unverified primary quote never hides a
+    # separately verifiable optional-source quote for the same fixture.
+    result["raw_quotes"] = {"betexplorer": be_rows, "oddsportal": op_rows}
+    for name in ("theoddsapi", "bzzoiro"):
+        outcomes[name] = {"status": "not_attempted", "reason": "durable quota authority not established for rebuild"}
+    result["status"] = ("complete" if all(outcomes.get(name, {}).get("status") == "complete"
+                                           for name in REBUILD_REQUIRED_SOURCES) else "insufficient")
+    return result
+
+
+def stage_fresh_rebuild_picks(target_date: str, collection: dict, workdir: Path) -> list[dict]:
+    """Use the existing live normalizer and miner against an isolated snapshot."""
+    import pandas as pd
+    from racketfactory.warehouse import build_live_rows
+    if collection.get("status") != "complete":
+        raise RuntimeError("required fresh collection is incomplete")
+    target_predictions = [row for row in collection.get("predictions", [])
+                          if str(row.get("match_date") or "")[:10] == target_date]
+    from datetime import timezone
+    from racketfactory.odds_compare import merge_comparison_rows
+    # Do not let a source with missing provenance suppress another source's
+    # verifiable quote. Verify original observation, fixture and market before
+    # merging; a cached row never receives a new observation timestamp.
+    def proven(row: dict) -> bool:
+        try:
+            observed = datetime.fromisoformat(str(row.get("observed_at") or "").replace("Z", "+00:00"))
+            age = (datetime.now(timezone.utc) - observed).total_seconds() if observed.tzinfo else -1
+            return (0 <= age <= 30 * 60
+                    and str(row.get("market") or "").lower() in {"h2h", "1x2", "match_winner", "match winner"}
+                    and str(row.get("period") or "").lower() in {"match", "full", "full_match", "full match", "0"}
+                    and (row.get("line") is None or str(row.get("line")).strip() == "")
+                    and str(row.get("match_date") or "")[:10] == target_date
+                    and bool(row.get("player_home") and row.get("player_away") and row.get("source") and row.get("bookmaker")))
+        except (TypeError, ValueError, OverflowError):
+            return False
+    raw = collection.get("raw_quotes")
+    if isinstance(raw, dict):
+        be_rows, op_rows = raw.get("betexplorer", []), raw.get("oddsportal", [])
+        comparisons = list(be_rows) + list(op_rows)
+        verified = merge_comparison_rows([r for r in be_rows if proven(r)], [r for r in op_rows if proven(r)])
+    else:
+        comparisons = collection.get("comparisons", [])
+        verified = [row for row in comparisons if proven(row)]
+    if comparisons and not verified:
+        raise RuntimeError("collection has no market-identified fresh quotes")
+    baseline = LOCALDATA / "warehouse.csv.gz"
+    if not baseline.exists():
+        raise RuntimeError("historical warehouse baseline unavailable")
+    history = pd.read_csv(baseline, low_memory=False)
+    if "_is_live" in history.columns:
+        historical = ~history["_is_live"].astype(str).str.lower().isin({"1", "true", "yes"})
+        history = history[historical].copy()
+    # No old same-day fixture or archived price may be relabelled as fresh,
+    # even if it already has a result. This only changes the staged snapshot.
+    if "match_date" in history.columns:
+        history = history[history["match_date"].astype(str).str[:10] != target_date].copy()
+    live = build_live_rows(include_tomorrow=False, supplied_predictions=target_predictions,
+                           target_date=target_date, supplied_odds=[], supplied_comparisons=verified)
+    if not live.empty:
+        live["predicted_winner_live"] = live["live_predicted_winner"]
+        live["prediction_prob_live"] = live["live_prediction_prob"]
+        history = pd.concat([history, live], ignore_index=True, sort=False)
+    workdir.mkdir(parents=True, exist_ok=True)
+    warehouse_path = workdir / "warehouse.csv.gz"
+    history.to_csv(warehouse_path, index=False, compression="gzip")
+    child_env = os.environ.copy()
+    for key in ("BZZOIRO_TOKEN", "THE_ODDS_API_KEY", "THE_ODDS_API_KEYS", "JINA_API_KEY", "JINA_READER_API_KEY",
+                "SUPABASE_URL", "SUPABASE_KEY", "SUPABASE_SERVICE_KEY", "CALLMEBOT_APIKEY", "CALLMEBOT_PHONE"):
+        child_env[key] = ""
+    child_env["RACKET_FACTORY_DISABLE_FOREBET"] = "1"
+    child_env["RACKET_FACTORY_FETCH_CACHE_TTL_MINUTES"] = "0"
+    child_env["PYTHONPATH"] = str(ROOT / "src")
+    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "mine_edges.py"), "--warehouse", str(warehouse_path),
+                           "--output-dir", str(workdir), "--fresh-only", "--bet-side", "prediction", "--date", target_date],
+                          cwd=ROOT, env=child_env, check=False)
+    if proc.returncode:
+        raise RuntimeError(f"staged miner failed with exit {proc.returncode}")
+    path = workdir / f"picks_{target_date}.json"
+    try:
+        picks = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        raise RuntimeError("staged miner did not produce valid picks") from exc
+    if not isinstance(picks, list):
+        raise RuntimeError("staged picks are not a list")
+    return picks
+
+
+def run_guarded_empty_rebuild(target_date: str | None = None) -> None:
+    """Collect and stage without settlement, then update the isolated checkout.
+
+    External publication must be a separate atomic Git ref update under the
+    workflow's concurrency group; this function never pushes or notifies.
+    """
+    import tempfile
+    from scripts import auto_tickets
+    now = _now_local()
+    target = target_date or now.date().isoformat()
+    if target != now.date().isoformat():
+        raise RuntimeError("rebuild only supports the configured current betting day")
+    if os.getenv("RACKET_FACTORY_REBUILD_SERIALIZED") != "1":
+        raise RuntimeError("guarded rebuild requires serialized workflow publication")
+    run_id = os.getenv("GITHUB_RUN_ID", "")
+    attempt = os.getenv("GITHUB_RUN_ATTEMPT", "1")
+    if not run_id.isdigit() or not attempt.isdigit():
+        raise RuntimeError("guarded rebuild requires a workflow run identity")
+    # A Git-committed archive is a durable transaction record across runners.
+    # The run ID is stable across Actions retries; an attempt must not rebook.
+    archives = sorted((LOCALDATA / ".auto_tickets_rebuild").glob(f"archive_*_{run_id}.json"))
+    if archives:
+        if len(archives) != 1:
+            raise RuntimeError("ambiguous rebuild transaction archive")
+        import subprocess
+        import base64
+        archive = archives[0]
+        relative = f"localdata/.auto_tickets_rebuild/{archive.name}"
+        committed = subprocess.run(["git", "show", f"HEAD:{relative}"], cwd=ROOT, capture_output=True)
+        if committed.returncode != 0 or committed.stdout != archive.read_bytes():
+            raise RuntimeError("uncommitted rebuild archive exists; refusing retry")
+        record = json.loads(committed.stdout)
+        original = base64.b64decode(record.get("original_card_base64", ""), validate=True)
+        if (record.get("transaction_id") != run_id or record.get("actionable") is not False
+                or auto_tickets._rebuild_digest(original) != record.get("original_card_sha256")):
+            raise RuntimeError("committed rebuild archive is invalid")
+        if archive.name != f"archive_{target}_{run_id}.json":
+            raise RuntimeError("this workflow run already published on a different betting day")
+        print(f"Guarded rebuild {run_id} was already published; no changes")
+        return
+    card_path = LOCALDATA / f"auto_tickets_{target}.json"
+    state_path = LOCALDATA / "auto_tickets_state.json"
+    try:
+        card_raw, state_raw = card_path.read_bytes(), state_path.read_bytes()
+        card, state = json.loads(card_raw), json.loads(state_raw)
+    except (OSError, ValueError) as exc:
+        raise RuntimeError("authoritative card or state is unavailable") from exc
+    problem = auto_tickets.rebuild_replacement_problem(card, state, target)
+    if problem:
+        raise RuntimeError(problem)
+    card_digest, state_digest = auto_tickets._rebuild_digest(card_raw), auto_tickets._rebuild_digest(state_raw)
+    collection = collect_rebuild_sources(target)
+    print("Guarded rebuild source outcomes:", json.dumps(collection["outcomes"], sort_keys=True))
+    if collection["status"] != "complete":
+        raise RuntimeError("required source collection incomplete; old card remains unchanged")
+    with tempfile.TemporaryDirectory(prefix="racket-rebuild-") as stage:
+        picks = stage_fresh_rebuild_picks(target, collection, Path(stage))
+        # The run's real start time is retained. Old cached quotes are never
+        # stamped with that time; each candidate carries its own observation.
+        proposal = auto_tickets.stage_rebuild_evaluation(picks, state, target, _now_local(), collection)
+        proposal["collection_outcomes"] = collection["outcomes"]
+        print("Guarded rebuild funnel:", json.dumps(proposal["diagnostics"], sort_keys=True))
+    result = auto_tickets.publish_staged_rebuild_local(LOCALDATA, target, proposal,
+        expected_card_digest=card_digest, expected_state_digest=state_digest, run_id=run_id)
+    print(f"Guarded rebuild staged locally: {result}; tickets={len(proposal['accas'])}. Awaiting atomic Git publication.")
 
 
 def run_smart_auto(args: argparse.Namespace) -> None:
@@ -802,6 +1020,7 @@ def run_once(args: argparse.Namespace) -> None:
 def _build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--date", default=None, help="Target date YYYY-MM-DD")
+    ap.add_argument("--guarded-rebuild", action="store_true", help="Stage a serialized same-day empty-card rebuild")
     ap.add_argument("--intraday-only", action="store_true", help="Skip heavy captures; run live prediction fetch only")
     ap.add_argument("--skip-notify", action="store_true", help="Do not send the WhatsApp heads-up")
     ap.add_argument("--force-repick", action="store_true",
@@ -823,6 +1042,14 @@ def main() -> None:
     import time
 
     args = _build_parser().parse_args()
+    if args.guarded_rebuild:
+        if args.intraday_only:
+            raise SystemExit("guarded rebuild conflicts with intraday-only")
+        try:
+            run_guarded_empty_rebuild(args.date)
+        except RuntimeError as exc:
+            raise SystemExit(f"Guarded rebuild failed: {exc}") from exc
+        return
 
     # Autonomous accumulating-ledger schedule
     if args.auto_once:

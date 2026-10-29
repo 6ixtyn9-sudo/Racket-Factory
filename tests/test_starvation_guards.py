@@ -403,23 +403,18 @@ def _low_ev_fallback_fixture(target):
     return rows
 
 
-def test_mine_default_min_ev_matches_ml_two_percent_policy(tmp_path, monkeypatch):
-    # Gap closed (2026-09-19): mine_edges' export gate previously defaulted to
-    # 0.0 while ml.py enforced the +2% AGENT_PROMPT policy. A +1.6% EV row must
-    # now be SKIPPED_DEAD_EDGE by default (same floor as ml.get_min_ev_real).
+def test_mine_default_does_not_reject_low_ev(tmp_path, monkeypatch):
+    # The old +2% EV-only rejection is intentionally removed.
     monkeypatch.delenv("RACKET_FACTORY_MIN_EV", raising=False)
     target = "2026-09-13"
     picks = _run_mine(tmp_path, monkeypatch, _low_ev_fallback_fixture(target), target)
     assert len(picks) == 1
-    assert picks[0]["bucket"] == "SKIPPED_DEAD_EDGE"
+    assert picks[0]["bucket"] == "WATCHLIST"
     assert picks[0]["expected_value"] == pytest.approx(0.016)
-    assert "0.016 < 0.020" in picks[0]["skip_reason"]
 
 
-def test_mine_min_ev_env_var_restores_red_day_tuning(tmp_path, monkeypatch):
-    # The same env var ml.py reads (RACKET_FACTORY_MIN_EV) now governs the
-    # export gate too: 1% restores the post-RED-DAY tuning and the +1.6% row
-    # exports as WATCHLIST.
+def test_mine_legacy_min_ev_env_does_not_filter(tmp_path, monkeypatch):
+    # The legacy environment setting no longer filters the +1.6% row.
     monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
     target = "2026-09-13"
     picks = _run_mine(tmp_path, monkeypatch, _low_ev_fallback_fixture(target), target)
@@ -428,8 +423,8 @@ def test_mine_min_ev_env_var_restores_red_day_tuning(tmp_path, monkeypatch):
     assert picks[0]["expected_value"] == pytest.approx(0.016)
 
 
-def test_mine_min_ev_cli_flag_beats_env_and_default(tmp_path, monkeypatch):
-    # Explicit --min-ev still wins over env/default (diagnostics escape hatch).
+def test_mine_legacy_min_ev_cli_does_not_filter(tmp_path, monkeypatch):
+    # The legacy CLI flag no longer reintroduces an export veto.
     monkeypatch.setenv("RACKET_FACTORY_MIN_EV", "0.01")
     import pandas as pd
 
@@ -447,7 +442,8 @@ def test_mine_min_ev_cli_flag_beats_env_and_default(tmp_path, monkeypatch):
     assert mine_edges.main() == 0
     picks = json.loads((tmp_path / "localdata" / f"picks_{target}.json").read_text())
     assert len(picks) == 1
-    assert picks[0]["bucket"] == "SKIPPED_DEAD_EDGE"  # 0.016 < 0.05 explicit floor
+    assert picks[0]["bucket"] == "WATCHLIST"
+    assert picks[0]["expected_value"] == pytest.approx(0.016)
 
 
 def _fade_settled_row(i, *, won_model=False):
@@ -566,10 +562,8 @@ def test_model_slice_beats_fade_slice(tmp_path, monkeypatch):
     assert len(picks) == 2
 
 
-def test_fade_ml_exempt_from_model_ev_gate(tmp_path, monkeypatch):
-    # A FADE pick's model-EV is structurally negative (the model favours its
-    # own side) — the capital-protection gate must not veto it, while the
-    # identical row as a normal WATCHLIST pick IS vetoed (control).
+def test_fade_and_watchlist_no_ev_only_veto(tmp_path, monkeypatch):
+    # A negative model EV alone vetoes neither the fade nor the normal pick.
     from racketfactory import ml
     monkeypatch.setattr(ml, "LOCALDATA", tmp_path / "localdata")
     (tmp_path / "localdata").mkdir(parents=True, exist_ok=True)
@@ -584,9 +578,8 @@ def test_fade_ml_exempt_from_model_ev_gate(tmp_path, monkeypatch):
     kept, _ = ml.ml_filter_picks([fade, wl])
     by_bucket = {p["bucket"]: p for p in kept}
     assert by_bucket["FADE"]["ml_verdict"] == "ALLOW"
-    # Control: the identical row as a normal WATCHLIST pick IS vetoed by the
-    # capital-protection gate (model-EV -37% < +2%) and re-bucketed.
-    assert by_bucket["SKIPPED_VETO"]["ml_verdict"] == "VETO"
+    assert by_bucket["WATCHLIST"]["ml_verdict"] == "ALLOW"
+    assert by_bucket["WATCHLIST"]["ml_ev"] < 0
 
 
 def test_fade_row_without_prediction_not_faded(tmp_path, monkeypatch):
@@ -1699,6 +1692,9 @@ def test_write_predictions_collapses_identity_twins(tmp_path):
 
 
 def test_fetch_daily_fails_fast_on_runner_skips_direct(monkeypatch):
+    # Exercise the legacy transport branch only with mocked fetchers. The
+    # production disable flag remains enabled and is tested separately.
+    monkeypatch.delenv("RACKET_FACTORY_DISABLE_FOREBET", raising=False)
     relay_calls = []
     direct_calls = []
 

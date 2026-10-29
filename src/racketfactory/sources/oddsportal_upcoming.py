@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urljoin, urlsplit
 
@@ -474,7 +474,8 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
                 seen_keys.add(key)
                 all_links.append(lk)
 
-    # Extra category pages (broadens coverage for Challenger/ITF) - Jina first
+    # Extra category pages (broadens coverage for Challenger/ITF).
+    partial = False
     for extra in (extra_paths or []):
         try:
             eurl = BASE_URL + extra
@@ -491,6 +492,7 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
             if exc.kind in ("rate_limit", "auth", "transport"):
                 raise
             logger.warning("OddsPortal extra path failed: %s", exc)
+            partial = True
             continue
 
     rows: list[dict[str, Any]] = []
@@ -503,6 +505,7 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
         murl = urljoin(BASE_URL, _strip_fragment(href))
         try:
             mhtml = fetch_page_html(murl, SOURCE_NAME)
+            observed_at = datetime.now(timezone.utc).isoformat()
         except PageFetchError as exc:
             if exc.kind in ("rate_limit", "auth", "transport"):
                 raise
@@ -521,9 +524,13 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
         link["odds_away"] = best[1]
         link["bookmaker"] = BOOK_LABEL
         link["source"] = SOURCE_NAME
+        link["observed_at"] = observed_at
         match_url = str(link.pop("match_url", "") or "")
         link["event_id"] = match_url.rstrip("/").rsplit("/", 1)[-1] if match_url else ""
         rows.append(link)
+    partial = partial or bool(n_failed or len(all_links) > MAX_MATCH_PAGES)
+    for row in rows:
+        row["_collection_partial"] = partial
     if all_links and not rows and n_failed:
         raise PageFetchError("parser", "OddsPortal match pages contained no usable paired prices")
     logger.info("OddsPortal match pages %s: candidates=%d priced=%d live_skipped=%d failed=%d (extra_paths=%d)",

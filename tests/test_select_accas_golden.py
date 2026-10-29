@@ -1,13 +1,7 @@
-"""select_accas() must be build_accas() with the knobs pulled out — exactly.
+"""Pin complete ticket output for seven retained input days in two variants.
 
-The fixture was captured from the PRE-refactor engine on seven real
-pick-days (2026-09-20..26), in two variants each (as-is, and with every
-other pick marked late so the paper track is exercised). If a single acca,
-price, probability, Kelly fraction, leg order or paper reason moves, this
-fails.
-
-This is what makes the knobs safe to add: without it, "I only extracted some
-constants" is a claim, not a fact.
+The original pre-refactor capture stays unchanged. A separate 1.30/EV policy
+capture pins the deliberately changed output, including paper and leg order.
 """
 import json
 import sys
@@ -90,7 +84,7 @@ INTENTIONAL_DIVERGENCES = {
 
 
 @pytest.mark.parametrize("case", sorted(_load()["expected"]))
-def test_select_accas_matches_pre_refactor_output(case, deterministic_ml):
+def test_select_accas_matches_current_policy_golden(case, deterministic_ml):
     fixture = _load()
     day, variant = case.split(":")
     pool = _pool(fixture, day, variant)
@@ -101,19 +95,15 @@ def test_select_accas_matches_pre_refactor_output(case, deterministic_ml):
         "paper": _summarise(paper),
         "sorted_head": [p.get("match") for p in sorted_pool[:12]],
     }
-    expected = fixture["expected"][case]
-    if case in INTENTIONAL_DIVERGENCES:
-        assert got != expected, (
-            f"{case} is listed as an intentional divergence but now matches "
-            f"the pre-refactor capture — delete the entry")
-        # The divergence must be confined to the ungated fallback and nothing
-        # else: pool order and the paper track are still byte-identical.
-        assert got["sorted_head"] == expected["sorted_head"]
-        assert got["paper"] == expected["paper"]
-        assert all("fallback" in a["type"] for a in expected["priced"])
-        assert got["priced"] == []
-        return
+    # The original capture remains unchanged. The authorized 1.30/EV policy
+    # changes selections and removes unpriced paper legs; compare the complete
+    # output to a separate, pinned policy capture, not merely counts.
+    expected = json.loads((ROOT / "tests" / "fixtures" / "auto_tickets_policy_130.json").read_text())[case]
     assert got == expected
+    for acca in got["priced"] + got["paper"]:
+        for leg in acca["legs"]:
+            assert leg["odds"] is not None and float(leg["odds"]) >= 1.30
+
 
 
 def test_ungated_fallback_is_closed(deterministic_ml):
