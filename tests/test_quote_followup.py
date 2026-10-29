@@ -195,3 +195,80 @@ def test_detail_skips_match_that_starts_while_earlier_requests_run(monkeypatch):
     monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda f, **kw: calls.append(f['event_id']) or [])
     _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures, fixtures, 'complete')
     assert calls == ['first'] and counts['skipped_started_fixtures'] == 1 and partial
+
+
+def test_coverage_excludes_started_only_and_still_requires_all_relevant(monkeypatch):
+    from datetime import timezone
+    from racketfactory import quote_enrichment as qe
+    from racketfactory.kickoff import SAST
+    monkeypatch.setattr(qe, '_collection_now', lambda: datetime(2026, 10, 29, 10, 0, tzinfo=SAST))
+    fixtures = [
+        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'future', 'match_time': '11:00'},
+        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'started', 'match_time': '09:00'},
+    ]
+    def quote(f, **kwargs):
+        return [dict(f, odds_home=1.5, odds_away=2.5, market='match_winner', period='match',
+                     observed_at=datetime.now(timezone.utc).isoformat(), price_type='bookmaker', bookmaker='Synthetic Book',
+                     settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})]
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', quote)
+    _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures, fixtures, 'complete')
+    assert not partial
+    assert (counts['matched_fixtures'], counts['excluded_started_fixtures'], counts['relevant_upcoming_fixtures'], counts['fresh_settlement_compatible_fixtures']) == (2, 1, 1, 1)
+    assert counts['unresolved_fixtures'] == 0
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: [])
+    _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures, fixtures, 'complete')
+    assert partial and counts['unresolved_fixtures'] == 1
+
+
+def test_unknown_kickoff_is_unresolved_even_with_a_compatible_quote(monkeypatch):
+    from datetime import timezone
+    from racketfactory import quote_enrichment as qe
+    fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'future', 'match_time': '00:00'}
+    row = dict(fixture, odds_home=1.5, odds_away=2.5, market='match_winner', period='match',
+               observed_at=datetime.now(timezone.utc).isoformat(), price_type='bookmaker', bookmaker='Synthetic Book',
+               settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: [row])
+    _, counts, partial = qe.collect_prediction_comparisons(DAY, [fixture], [fixture], 'complete')
+    assert partial and counts['unknown_or_conflicting_kickoff_fixtures'] == 1
+    assert counts['excluded_started_fixtures'] == 0 and counts['unresolved_fixtures'] == 1
+
+
+def test_coverage_counts_unmatched_predictions_and_budget_exhaustion(monkeypatch):
+    from racketfactory import quote_enrichment as qe
+    from racketfactory.kickoff import SAST
+    monkeypatch.setattr(qe, '_collection_now', lambda: datetime(2026, 10, 29, 10, 0, tzinfo=SAST))
+    monkeypatch.setattr(betexplorer, 'MAX_COMPARISON_FIXTURES', 1)
+    fixtures = [
+        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'a', 'match_time': '11:00'},
+        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'b', 'match_time': '12:00'},
+    ]
+    extra = {'match_date': DAY, 'player_home': 'Erin Evans', 'player_away': 'Fiona Ford', 'match_time': '13:00'}
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: [])
+    _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures + [dict(fixtures[0]), extra], fixtures, 'complete')
+    assert partial and counts['predictions'] == 4 and counts['matched_fixtures'] == 2
+    assert counts['unmatched_or_ambiguous'] == 1 and counts['limit_exceeded'] == 1
+    assert counts['unexamined_fixtures'] == 1 and counts['unresolved_fixtures'] == 2
+
+
+def test_started_during_previous_fetch_is_excluded_from_verified_denominator(monkeypatch):
+    from datetime import timezone
+    from racketfactory import quote_enrichment as qe
+    from racketfactory.kickoff import SAST
+    start = datetime(2026, 10, 29, 10, 0, tzinfo=SAST)
+    times = iter([start, start, start + timedelta(minutes=40)])
+    monkeypatch.setattr(qe, '_collection_now', lambda: next(times))
+    fixtures = [
+        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'first', 'match_time': '10:30'},
+        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'later', 'match_time': '10:35'},
+    ]
+    calls = []
+    def quote(f, **kwargs):
+        calls.append(f['event_id'])
+        return [dict(f, odds_home=1.5, odds_away=2.5, market='h2h', period='match',
+                     observed_at=datetime.now(timezone.utc).isoformat(), price_type='bookmaker', bookmaker='Synthetic Book',
+                     settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})]
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', quote)
+    _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures, fixtures, 'complete')
+    assert calls == ['first'] and not partial
+    assert counts['excluded_started_fixtures'] == 1 and counts['relevant_upcoming_fixtures'] == 1
+    assert counts['fresh_settlement_compatible_fixtures'] == 1

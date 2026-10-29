@@ -25,7 +25,14 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                      "comparison_attempts": 0, "comparison_response_success": 0, "comparison_parsed": 0,
                      "concrete_bookmaker_rows": 0, "identified_offers": 0,
                      "settlement_compatible_offers": 0, "detail_cache_hits": 0,
-                     "skipped_started_fixtures": 0, "skipped_conflicting_kickoff_fixtures": 0}
+                     "skipped_started_fixtures": 0, "skipped_conflicting_kickoff_fixtures": 0,
+                     "excluded_started_fixtures": 0, "relevant_upcoming_fixtures": 0,
+                     "unknown_or_conflicting_kickoff_fixtures": 0, "unexamined_fixtures": 0,
+                     "unresolved_fixtures": 0, "fresh_settlement_compatible_fixtures": 0}
+    if listing_status == "complete" and not be_rows:
+        detail_counts["predictions"] = sum(str(p.get("match_date") or "")[:10] == target_date for p in predictions)
+        detail_counts["unmatched_or_ambiguous"] = detail_counts["predictions"]
+        partial = bool(detail_counts["predictions"])
     if listing_status == "complete" and be_rows:
         import pandas as pd
         from racketfactory.warehouse import _match_api_odds_row, names_match, strict_quote_team_match
@@ -34,6 +41,8 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
         priorities = {}
         kickoff_states = {}
         kickoff_values = {}
+        kickoff_unknown = set()
+        identity_conflicts = set()
         from datetime import datetime
         from racketfactory.kickoff import SAST
         now = _collection_now()
@@ -56,7 +65,13 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
             if not eid:
                 detail_counts["unmatched_or_ambiguous"] += 1
                 continue
-            matched[eid] = fixture
+            previous = matched.get(eid)
+            if previous and (not strict_quote_team_match(str(previous.get("player_home") or ""), fh)
+                             or not strict_quote_team_match(str(previous.get("player_away") or ""), fa)
+                             or str(previous.get("match_url") or "") != str(fixture.get("match_url") or "")):
+                identity_conflicts.add(eid)
+            else:
+                matched[eid] = fixture
             try:
                 # BetClan uses 00:00 as its missing-time fallback; it is not
                 # evidence that the match really started at midnight.
@@ -67,6 +82,7 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                 kickoff_states.setdefault(eid, set()).add(priority[0])
                 kickoff_values.setdefault(eid, set()).add(start.isoformat())
             except (TypeError, ValueError):
+                kickoff_unknown.add(eid)
                 priority = (1, "")
             priorities[eid] = min(priorities.get(eid, priority), priority)
         detail_counts["matched_fixtures"] = len(matched)
@@ -74,12 +90,19 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
         # duplicate predictions disagree across kickoff, fail closed rather
         # than letting the earlier priority choose a purported future time.
         ordered = []
+        excluded = set()
+        conflicting = set(identity_conflicts)
+        attempted_ids = set()
         for eid in sorted(matched, key=lambda e: (priorities[e], e)):
             states = kickoff_states.get(eid, set())
+            if eid in identity_conflicts:
+                continue
             if len(kickoff_values.get(eid, set())) > 1:
                 detail_counts["skipped_conflicting_kickoff_fixtures"] += 1
-            elif 2 in states:
+                conflicting.add(eid)
+            elif 2 in states and eid not in kickoff_unknown:
                 detail_counts["skipped_started_fixtures"] += 1
+                excluded.add(eid)
             else:
                 ordered.append(eid)
         detail_counts["limit_exceeded"] = max(0, len(ordered) - betexplorer.MAX_COMPARISON_FIXTURES)
@@ -88,10 +111,15 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                 break
             # A match can start while earlier detail requests are in flight.
             if priorities[eid][0] == 0 and datetime.fromisoformat(priorities[eid][1]) <= _collection_now():
-                detail_counts["skipped_started_fixtures"] += 1
-                continue
+                # An unknown duplicate kickoff is unresolved, not an
+                # authoritative basis for exclusion.
+                if eid not in kickoff_unknown:
+                    detail_counts["skipped_started_fixtures"] += 1
+                    excluded.add(eid)
+                    continue
             fixture = matched[eid]
             detail_counts["attempted"] += 1
+            attempted_ids.add(eid)
             try:
                 # Capture real response structure for up to two fixtures;
                 # all other fixtures can reuse their original cached observation.
@@ -129,9 +157,24 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                 verified.add(str(row.get("event_id") or ""))
             except (TypeError, ValueError, OverflowError):
                 continue
-        detail_counts["fresh_settlement_compatible_fixtures"] = len(verified & set(matched))
-        if (detail_counts["failures"] or detail_counts["limit_exceeded"] or
-                detail_counts["unmatched_or_ambiguous"] or len(verified & set(matched)) < len(matched)):
+        matched_ids = set(matched)
+        unknown = (kickoff_unknown | conflicting) - excluded
+        relevant = matched_ids - excluded - unknown
+        unexamined = matched_ids - excluded - conflicting - attempted_ids
+        # An expired known fixture is removed only after a reliable kickoff;
+        # unknown/conflicting kickoff and unexamined relevant fixtures remain
+        # unresolved even if some quotes happened to be obtained.
+        verified_relevant = verified & relevant
+        unresolved = unknown | (relevant - verified_relevant)
+        detail_counts["limit_exceeded"] = (len(unexamined) if detail_counts["attempted"] >= betexplorer.MAX_COMPARISON_FIXTURES else 0)
+        detail_counts.update({"excluded_started_fixtures": len(excluded),
+                              "relevant_upcoming_fixtures": len(relevant),
+                              "unknown_or_conflicting_kickoff_fixtures": len((kickoff_unknown | (conflicting - identity_conflicts)) - excluded),
+                              "ambiguous_identity_fixtures": len(identity_conflicts),
+                              "unexamined_fixtures": len(unexamined),
+                              "unresolved_fixtures": len(unresolved),
+                              "fresh_settlement_compatible_fixtures": len(verified_relevant)})
+        if (detail_counts["failures"] or detail_counts["unmatched_or_ambiguous"] or unresolved or unexamined):
             partial = True
     return detail_offers, detail_counts, partial
 

@@ -208,3 +208,13 @@ def test_synthetic_success_http_unexpected_page_never_requests_comparison(monkey
     assert exc.value.stage == 'endpoint_discovery'
     assert counts['match_page_success'] == 1 and counts.get('comparison_attempts', 0) == 0
     assert len(calls) == 1
+
+
+def test_same_endpoint_conflicting_rejected_before_market_period_filter():
+    # Synthetic regression: a rejected set or totals context must not vanish
+    # before conflict detection for the very same endpoint.
+    assert be._comparison_endpoint_candidates(PAGE + PAGE.replace('data-period="match"', 'data-period="set1"'), 'a1B2') == []
+    assert be._comparison_endpoint_candidates(PAGE + PAGE.replace('Match Winner', 'Total Games'), 'a1B2') == []
+    unrelated = PAGE.replace('/a1B2/', '/other/').replace('data-period="match"', 'data-period="set1"')
+    assert len(be._comparison_endpoint_candidates(PAGE + unrelated, 'a1B2')) == 1
+    assert len(be._comparison_endpoint_candidates(PAGE + PAGE.replace('Match Winner', 'h2h').replace('data-period="match"', 'data-period="full match"'), 'a1B2')) == 1
