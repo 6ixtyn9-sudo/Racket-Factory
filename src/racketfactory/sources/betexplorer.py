@@ -471,7 +471,7 @@ def fetch_betexplorer_rows(target_date: str) -> list[dict[str, Any]]:
     return [dict(r) for r in rows] if rows else []
 
 
-def _comparison_endpoint_candidates(html: str, event_id: str) -> list[dict]:
+def _comparison_endpoint_candidates(html: str, event_id: str, *, metrics: dict | None = None) -> list[dict]:
     """Discover *literal* tennis comparison URLs and explicit tab metadata.
 
     No football endpoint or missing market/scope is inferred. Only same-host,
@@ -480,7 +480,11 @@ def _comparison_endpoint_candidates(html: str, event_id: str) -> list[dict]:
     from urllib.parse import urljoin, urlparse, parse_qsl
     soup = BeautifulSoup(html, "html.parser")
     found = []
+    def record(key):
+        if metrics is not None:
+            metrics[key] = metrics.get(key, 0) + 1
     for node in soup.select('[data-url], [data-endpoint], [data-ajax-url], a[href]'):
+        record("endpoint_nodes_scanned")
         raw = next((str(node.get(k) or "") for k in ("data-url", "data-endpoint", "data-ajax-url", "href") if node.get(k)), "")
         url = urljoin(BASE_URL, raw)
         parsed = urlparse(url)
@@ -488,19 +492,31 @@ def _comparison_endpoint_candidates(html: str, event_id: str) -> list[dict]:
                 or parsed.fragment or not parsed.path.startswith("/match-odds/")
                 or event_id not in parsed.path.split("/")
                 or any(k != "lang" or v != "en" for k, v in parse_qsl(parsed.query, keep_blank_values=True))):
+            record("endpoint_url_rejected")
             continue
         market = str(node.get("data-market") or node.get("data-market-name") or "").strip().lower()
         period = str(node.get("data-period") or node.get("data-scope") or "").strip().lower()
         if market not in {"match winner", "match_winner", "match-winner", "h2h"}:
+            record("endpoint_market_rejected")
             continue
         if period not in {"match", "full match", "full_match", "full-match"}:
+            record("endpoint_period_rejected")
             continue
         market_id = str(node.get("data-market-id") or "")
         if not re.fullmatch(r"[A-Za-z0-9_-]{0,32}", market_id):
+            record("endpoint_market_id_rejected")
             continue
         found.append({"url": url, "raw_market": market, "raw_period": period, "market_id": market_id})
     # A page with competing explicit contexts is ambiguous, not a first hit.
-    unique = {item["url"]: item for item in found}
+    unique = {}
+    for item in found:
+        previous = unique.get(item["url"])
+        if previous is not None and previous != item:
+            record("endpoint_conflicting_context")
+            return []
+        unique[item["url"]] = item
+    if len(unique) > 1:
+        record("endpoint_ambiguous_urls")
     return list(unique.values()) if len(unique) == 1 else []
 
 
@@ -727,7 +743,10 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
             raise
         count("match_page_success")
         capture_betexplorer_fragment(page, "detail", event_id=event_id, observed_at=page_at, status=200)
-        endpoints = _comparison_endpoint_candidates(page, event_id)
+        discovery_metrics = {}
+        endpoints = _comparison_endpoint_candidates(page, event_id, metrics=discovery_metrics)
+        for key, amount in discovery_metrics.items():
+            count(key, amount)
         if not endpoints:
             from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
             capture_betexplorer_failure(event_id, "detail", "parser")

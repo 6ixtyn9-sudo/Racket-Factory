@@ -3,6 +3,13 @@ from __future__ import annotations
 
 import os
 
+
+def _collection_now():
+    from datetime import datetime
+    from racketfactory.kickoff import SAST
+    return datetime.now(SAST)
+
+
 def collect_prediction_comparisons(target_date: str, predictions: list[dict], be_rows: list[dict], listing_status: str) -> tuple[list[dict], dict, bool]:
     """Target detail requests to uniquely identified prediction fixtures.
 
@@ -17,16 +24,19 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                      "match_page_attempts": 0, "match_page_success": 0, "comparison_endpoint_discovered": 0,
                      "comparison_attempts": 0, "comparison_response_success": 0, "comparison_parsed": 0,
                      "concrete_bookmaker_rows": 0, "identified_offers": 0,
-                     "settlement_compatible_offers": 0, "detail_cache_hits": 0}
+                     "settlement_compatible_offers": 0, "detail_cache_hits": 0,
+                     "skipped_started_fixtures": 0, "skipped_conflicting_kickoff_fixtures": 0}
     if listing_status == "complete" and be_rows:
         import pandas as pd
         from racketfactory.warehouse import _match_api_odds_row, names_match, strict_quote_team_match
         from racketfactory.sources._page_odds import PageFetchError
         matched = {}
         priorities = {}
+        kickoff_states = {}
+        kickoff_values = {}
         from datetime import datetime
         from racketfactory.kickoff import SAST
-        now = datetime.now(SAST)
+        now = _collection_now()
         for pred in predictions:
             if str(pred.get("match_date") or "")[:10] != target_date:
                 continue
@@ -48,15 +58,38 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                 continue
             matched[eid] = fixture
             try:
+                # BetClan uses 00:00 as its missing-time fallback; it is not
+                # evidence that the match really started at midnight.
+                if str(pred.get("match_time") or "") == "00:00":
+                    raise ValueError("ambiguous midnight fallback")
                 start = datetime.strptime(f"{target_date} {pred.get('match_time')}", "%Y-%m-%d %H:%M").replace(tzinfo=SAST)
                 priority = (0 if start > now else 2, start.isoformat())
+                kickoff_states.setdefault(eid, set()).add(priority[0])
+                kickoff_values.setdefault(eid, set()).add(start.isoformat())
             except (TypeError, ValueError):
                 priority = (1, "")
             priorities[eid] = min(priorities.get(eid, priority), priority)
         detail_counts["matched_fixtures"] = len(matched)
-        detail_counts["limit_exceeded"] = max(0, len(matched) - betexplorer.MAX_COMPARISON_FIXTURES)
-        ordered = sorted(matched, key=lambda eid: (priorities[eid], eid))
-        for eid in ordered[:betexplorer.MAX_COMPARISON_FIXTURES]:
+        # A started fixture cannot yield an executable prematch quote. If
+        # duplicate predictions disagree across kickoff, fail closed rather
+        # than letting the earlier priority choose a purported future time.
+        ordered = []
+        for eid in sorted(matched, key=lambda e: (priorities[e], e)):
+            states = kickoff_states.get(eid, set())
+            if len(kickoff_values.get(eid, set())) > 1:
+                detail_counts["skipped_conflicting_kickoff_fixtures"] += 1
+            elif 2 in states:
+                detail_counts["skipped_started_fixtures"] += 1
+            else:
+                ordered.append(eid)
+        detail_counts["limit_exceeded"] = max(0, len(ordered) - betexplorer.MAX_COMPARISON_FIXTURES)
+        for eid in ordered:
+            if detail_counts["attempted"] >= betexplorer.MAX_COMPARISON_FIXTURES:
+                break
+            # A match can start while earlier detail requests are in flight.
+            if priorities[eid][0] == 0 and datetime.fromisoformat(priorities[eid][1]) <= _collection_now():
+                detail_counts["skipped_started_fixtures"] += 1
+                continue
             fixture = matched[eid]
             detail_counts["attempted"] += 1
             try:

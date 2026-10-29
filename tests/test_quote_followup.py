@@ -155,3 +155,43 @@ def test_betclan_required_status_is_run_scoped(monkeypatch, tmp_path):
     assert betclan.current_run_status('run-two') == 'unknown'
     betclan._record_run_status('complete', 3, {'detail_requests': 5})
     assert betclan.current_run_status('run-one') == 'complete'
+
+
+def test_detail_budget_prioritizes_upcoming_and_never_fetches_known_started(monkeypatch):
+    """Synthetic kickoff metadata; exclusions never make the source complete."""
+    from racketfactory import quote_enrichment as qe
+    from racketfactory.kickoff import SAST
+    now = datetime(2026, 10, 29, 10, 0, tzinfo=SAST)
+    monkeypatch.setattr(qe, '_collection_now', lambda: now)
+    fixtures = [
+        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'future', 'match_time': '11:00'},
+        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'started', 'match_time': '09:00'},
+        {'match_date': DAY, 'player_home': 'Erin Evans', 'player_away': 'Fiona Ford', 'event_id': 'unknown', 'match_time': '00:00'},
+        {'match_date': DAY, 'player_home': 'Gina Green', 'player_away': 'Helen Hall', 'event_id': 'conflict', 'match_time': '09:00'},
+    ]
+    predictions = fixtures + [dict(fixtures[3], match_time='12:00')]
+    calls = []
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda f, **kw: calls.append(f['event_id']) or [])
+    _, counts, partial = qe.collect_prediction_comparisons(DAY, predictions, fixtures, 'complete')
+    assert calls == ['future', 'unknown']
+    assert counts['matched_fixtures'] == 4
+    assert counts['skipped_started_fixtures'] == 1
+    assert counts['skipped_conflicting_kickoff_fixtures'] == 1
+    assert partial
+
+
+def test_detail_skips_match_that_starts_while_earlier_requests_run(monkeypatch):
+    from racketfactory import quote_enrichment as qe
+    from racketfactory.kickoff import SAST
+    start = datetime(2026, 10, 29, 10, 0, tzinfo=SAST)
+    times = iter([start, start, start + timedelta(minutes=40)])
+    monkeypatch.setattr(qe, '_collection_now', lambda: next(times))
+    fixtures = [
+        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'first', 'match_time': '10:30'},
+        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'later', 'match_time': '10:35'},
+    ]
+    # The second fixture passes its kickoff while the first fetch runs.
+    calls = []
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda f, **kw: calls.append(f['event_id']) or [])
+    _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures, fixtures, 'complete')
+    assert calls == ['first'] and counts['skipped_started_fixtures'] == 1 and partial

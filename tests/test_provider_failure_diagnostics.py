@@ -182,3 +182,37 @@ def test_betclan_required_status_detects_partial_match_pages(monkeypatch):
     source = betclan.BetClanPredictor()
     assert source.fetch_daily() == []
     assert source.last_collection_status == "partial"
+    profile = source.last_request_stats
+    assert profile["today_discovered_unique"] == profile["today_detail_attempted"] == 1
+    assert profile["today_detail_parsed"] == 0 and profile["today_detail_failed"] == 1
+    assert profile["today_detail_failure_kinds"]["exception"] == 1
+
+
+def test_betclan_detail_profile_counts_success_http_markup_and_exception(monkeypatch):
+    from racketfactory.sources import betclan
+    class Response:
+        def __init__(self, text='', status=200):
+            self.status_code, self.text = status, text
+    urls = [f'https://www.betclan.com/tennis/predictionsdetails/{key}/' for key in ('good', 'badhttp', 'missing', 'error')]
+    good = '<div class="teamtophome">Alice Adams</div><div class="teamtopaway">Beth Brown</div><h4>Winner</h4><h5>Alice Adams</h5>'
+    def fake_get(link, **kwargs):
+        if 'todays-tennis-predictions' in link:
+            return Response(''.join(f'<a href="{u}">Match</a>' for u in urls))
+        if '/predictionsdetails/good/' in link:
+            return Response(good)
+        if '/predictionsdetails/badhttp/' in link:
+            return Response(status=503)
+        if '/predictionsdetails/missing/' in link:
+            return Response('<html>unexpected</html>')
+        if '/predictionsdetails/error/' in link:
+            raise RuntimeError('synthetic')
+        return Response('<html>No predictions</html>')
+    monkeypatch.setattr(betclan.requests, 'get', fake_get)
+    monkeypatch.setattr(betclan.BetClanPredictor, '_extract_odds_from_soup', lambda *_: (1.5, 2.5))
+    source = betclan.BetClanPredictor()
+    rows = source.fetch_daily()
+    profile = source.last_request_stats
+    assert len(rows) == 1 and source.last_collection_status == 'partial'
+    assert profile['today_discovered_unique'] == profile['today_detail_attempted'] == 4
+    assert profile['today_detail_parsed'] == 1 and profile['today_detail_failed'] == 3
+    assert profile['today_detail_failure_kinds'] == {'http': 1, 'participant_markup': 1, 'winner_markup': 0, 'winner_ambiguous': 0, 'exception': 1}
