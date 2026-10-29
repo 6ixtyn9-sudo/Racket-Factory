@@ -814,6 +814,12 @@ def _match_api_odds_row(card_row: pd.Series, odds_rows: list[dict], *, max_date_
             return True, False
         if names_match(h1, a2) and names_match(a1, h2):
             return True, True
+        # The loose surname fallbacks below collapse teams to individual
+        # surnames and can match a team with the wrong partner. Team identity
+        # must be proved by names_match on both complete teams.
+        from racketfactory.settlement import split_team
+        if any(len(split_team(n)) > 1 for n in (h1, a1, h2, a2)):
+            return None
         # Fallback: live_player_key equality (surname-based)
         try:
             if live_player_key(h1) and live_player_key(h2) and live_player_key(a1) and live_player_key(a2):
@@ -1514,6 +1520,11 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str) -> pd.D
 
     odds_rows = fetch_the_odds_api_rows(target_date)
     compare_rows = fetch_comparison_rows(target_date)
+    comparison_counts = {}
+    for quote in compare_rows:
+        label = str(quote.get("source") or "unknown")
+        comparison_counts[label] = comparison_counts.get(label, 0) + 1
+    logger.info("Live H2H quotes %s: TheOddsAPI=%d comparisons=%s", target_date, len(odds_rows), comparison_counts)
 
     api_matched = 0
     compare_matched = 0
@@ -1634,6 +1645,7 @@ def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
         except Exception as e:
             logger.warning("Live source %s failed during warehouse build: %s", source_name, e)
             preds = []
+        logger.info("Live predictions received: source=%s rows=%d", source_name, len(preds))
         for row in preds:
             row = dict(row)
             row["source"] = source_name
@@ -1689,6 +1701,22 @@ def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
     card = collapse_live_card(card)
     if card.empty:
         return card
+    # Counts reflect the normalized card, not a claim that source clocks or
+    # quoted prices have independently been verified.
+    from racketfactory.kickoff import SAST
+    now = datetime.now(SAST)
+    future = past = unknown = 0
+    for _, item in card.iterrows():
+        try:
+            stamp = datetime.strptime(f"{item.get('match_date')} {item.get('match_time')}", "%Y-%m-%d %H:%M").replace(tzinfo=SAST)
+            if stamp > now:
+                future += 1
+            else:
+                past += 1
+        except (TypeError, ValueError):
+            unknown += 1
+    logger.info("Normalized live card %s: %d rows, future=%d started=%d unknown_time=%d; sources=%s",
+                today_str, len(card), future, past, unknown, card["source"].value_counts().to_dict())
     card = enrich_live_card_with_api_odds(card, today_str)
 
     grouped_rows = []
@@ -1735,6 +1763,7 @@ def build_live_rows(include_tomorrow: bool = True) -> pd.DataFrame:
             "_winner_rank": pd.NA,
             "_loser_rank": pd.NA,
             "_odds_source": odds_source if odds_h is not None and not pd.isna(odds_h) and str(odds_source or "").strip() else "",
+            "odds_cross_checked": first.get("odds_cross_checked", ""),
             "api_odds_a": first.get("api_odds_home", pd.NA),
             "api_odds_b": first.get("api_odds_away", pd.NA),
             "debug_scraped_odds_a": first.get("scraped_odds_home", pd.NA),

@@ -121,7 +121,7 @@ def test_audit_detects_a_one_hour_shift(tmp_path, monkeypatch):
              "match_time": "11:30", "match_date": "2026-09-26"},
             {"player_home": "Federico Cina", "player_away": "Alexandre Muller",
              "match_time": "09:30", "match_date": "2026-09-26"}])
-    report = audit.audit(["2026-09-26"])
+    report = audit.audit(["2026-09-26"], today=date(2026, 9, 26))
     assert report["matched_fixtures"] == 2
     assert report["median_offset_minutes"] == -60
     assert report["status"] == ko.STATUS_DRIFT
@@ -133,7 +133,7 @@ def test_audit_confirms_agreement(tmp_path, monkeypatch):
            [{"source": "BetClan", "match": "A Player vs B Player", "kickoff": "11:30"}],
            [{"player_home": "B Player", "player_away": "A Player",
              "match_time": "11:30", "match_date": "2026-09-26"}])
-    report = audit.audit(["2026-09-26"])
+    report = audit.audit(["2026-09-26"], today=date(2026, 9, 26))
     assert report["matched_fixtures"] == 1 and report["status"] == ko.STATUS_OK
 
 
@@ -143,12 +143,12 @@ def test_audit_ignores_non_betclan_picks(tmp_path, monkeypatch):
            [{"source": "Forebet", "match": "A Player vs B Player", "kickoff": "09:00"}],
            [{"player_home": "A Player", "player_away": "B Player",
              "match_time": "11:30", "match_date": "2026-09-26"}])
-    assert audit.audit(["2026-09-26"])["matched_fixtures"] == 0
+    assert audit.audit(["2026-09-26"], today=date(2026, 9, 26))["matched_fixtures"] == 0
 
 
 def test_audit_is_fail_safe_on_missing_data(tmp_path, monkeypatch):
     monkeypatch.setattr(audit, "LOCALDATA", tmp_path)
-    report = audit.audit(["2026-09-26"])
+    report = audit.audit(["2026-09-26"], today=date(2026, 9, 26))
     assert report["matched_fixtures"] == 0
     assert report["median_offset_minutes"] is None
     assert report["status"] == ko.STATUS_UNKNOWN
@@ -158,12 +158,14 @@ def test_audit_survives_corrupt_files(tmp_path, monkeypatch):
     monkeypatch.setattr(audit, "LOCALDATA", tmp_path)
     (tmp_path / "picks_2026-09-26.json").write_text("{not json")
     (tmp_path / "theoddsapi_odds_cache_2026-09-26.json").write_text("[]")
-    assert audit.audit(["2026-09-26"])["status"] == ko.STATUS_UNKNOWN
+    assert audit.audit(["2026-09-26"], today=date(2026, 9, 26))["status"] == ko.STATUS_UNKNOWN
 
 
 def test_audit_cli_reports_without_failing_the_pipeline(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(audit, "LOCALDATA", tmp_path)
     monkeypatch.setattr(audit, "OUT_FILE", tmp_path / "kickoff_tz_audit.json")
+    real_audit = audit.audit
+    monkeypatch.setattr(audit, "audit", lambda dates: real_audit(dates, today=date(2026, 9, 26)))
     assert audit.main(["--date", "2026-09-26", "--days", "1"]) == 0
     assert "BetClan timezone assumption: UNKNOWN" in capsys.readouterr().out
     assert (tmp_path / "kickoff_tz_audit.json").exists()
@@ -176,4 +178,28 @@ def test_audit_cli_strict_mode_can_fail(tmp_path, monkeypatch):
            [{"source": "BetClan", "match": "A Player vs B Player", "kickoff": "10:30"}],
            [{"player_home": "A Player", "player_away": "B Player",
              "match_time": "11:30", "match_date": "2026-09-26"}])
+    real_audit = audit.audit
+    monkeypatch.setattr(audit, "audit", lambda dates: real_audit(dates, today=date(2026, 9, 26)))
     assert audit.main(["--date", "2026-09-26", "--days", "1", "--strict"]) == 1
+
+
+def test_pre_review_samples_cannot_validate_post_review_zone(tmp_path, monkeypatch):
+    monkeypatch.setattr(audit, "LOCALDATA", tmp_path)
+    _write(tmp_path,
+           [{"source": "BetClan", "match": "A Player vs B Player", "kickoff": "11:30"}],
+           [{"player_home": "A Player", "player_away": "B Player",
+             "match_time": "11:30", "match_date": "2026-09-26"}])
+    report = audit.audit(["2026-09-26"], today=date(2026, 10, 29))
+    assert report["matched_fixtures"] == 1
+    assert report["sample_size"] == 0
+    assert report["status"] == ko.STATUS_REVIEW_DUE
+
+
+def test_post_review_reference_can_verify_or_detect_drift(tmp_path, monkeypatch):
+    monkeypatch.setattr(audit, "LOCALDATA", tmp_path)
+    _write(tmp_path,
+           [{"source": "BetClan", "match": "A Player vs B Player", "kickoff": "10:30"}],
+           [{"player_home": "A Player", "player_away": "B Player",
+             "match_time": "11:30", "match_date": "2026-10-29"}], day="2026-10-29")
+    report = audit.audit(["2026-10-29"], today=date(2026, 10, 29))
+    assert report["sample_size"] == 1 and report["status"] == ko.STATUS_DRIFT

@@ -149,7 +149,12 @@ def merge_baselines(baseline: pd.DataFrame, fresh: pd.DataFrame) -> tuple[pd.Dat
         in_b, in_f = key in set(b_index), key in set(f_index)
         if in_b and not in_f:
             report["baseline_only"] += 1
-            rows.append(b.loc[key])
+            row = b.loc[key].copy()
+            if _is_live(row):
+                # Preserve the historical row, but never present a quote
+                # absent from the current build as a fresh live candidate.
+                row["_live_stale"] = True
+            rows.append(row)
             continue
         if in_f and not in_b:
             report["new_from_fresh"] += 1
@@ -163,6 +168,8 @@ def merge_baselines(baseline: pd.DataFrame, fresh: pd.DataFrame) -> tuple[pd.Dat
             # candidates must carry today's odds (including matches that
             # were still live in the previous snapshot).
             report["live_rows_from_fresh"] += 1
+            fr = fr.copy()
+            fr["_live_stale"] = False
             rows.append(fr)
             continue
 

@@ -336,23 +336,24 @@ def names_match(a, b) -> bool:
     return bool(overlap) and len(overlap) >= min(len(ta), len(tb))
 
 def now_local() -> datetime:
-    run_as_of = os.environ.get("RACKET_FACTORY_RUN_AS_OF", "").strip()
-    if run_as_of:
-        try:
-            dt = datetime.fromisoformat(run_as_of.replace("Z", "+00:00"))
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=TZ)
-            else:
-                dt = dt.astimezone(TZ)
-            return dt
-        except Exception:
-            pass
+    # RACKET_FACTORY_RUN_AS_OF marks pipeline start, not ticket creation.
+    # A 15-minute pipeline must not stake an event that started meanwhile.
     return datetime.now(TZ)
 
 def today_str() -> str:
     return now_local().date().isoformat()
 
 def load_picks(target_date: str) -> list[dict]:
+    run_as_of = os.environ.get("RACKET_FACTORY_RUN_AS_OF", "").strip()
+    if run_as_of:
+        try:
+            status = json.loads((LOCALDATA / f".pick_run_status_{target_date}.json").read_text())
+            if status.get("run_as_of") != run_as_of or int(status.get("fresh_picks", 0)) <= 0:
+                print("No fresh official picks from this pipeline run; preserved archives are not ticket inputs")
+                return []
+        except (OSError, ValueError, TypeError, AttributeError):
+            print("Missing or invalid current-run pick status; refusing to use preserved archives")
+            return []
     paths = [LOCALDATA / f"picks_{target_date}.json", LOCALDATA / "picks_today.json"]
     for p in paths:
         if not p.exists():
@@ -360,10 +361,10 @@ def load_picks(target_date: str) -> list[dict]:
         try:
             data = json.loads(p.read_text())
             if isinstance(data, list):
-                filtered = [r for r in data if isinstance(r, dict) and str(r.get("ledger_kind","")).lower() != "forecast"]
-                if filtered:
-                    return filtered
-                return [r for r in data if isinstance(r, dict)]
+                return [r for r in data if isinstance(r, dict)
+                        and str(r.get("ledger_kind", "")).lower() != "forecast"
+                        and (p.name != "picks_today.json"
+                             or str(r.get("date") or r.get("match_date") or "")[:10] == target_date)]
         except Exception:
             continue
     return []
@@ -378,7 +379,11 @@ _leg_real_odds = leg_market_odds
 _leg_paper_reason = leg_execution_block
 
 
-def is_playable(pick: dict) -> bool:
+def is_playable(pick: dict, *, rejections: dict | None = None) -> bool:
+    def reject(reason: str) -> bool:
+        if rejections is not None:
+            rejections[reason] = rejections.get(reason, 0) + 1
+        return False
     bucket = str(pick.get("bucket","")).upper()
     is_no_odds = "NO_ODDS" in bucket
     is_dead_edge = "DEAD_EDGE" in bucket
@@ -403,7 +408,7 @@ def is_playable(pick: dict) -> bool:
         if cross == "Both" and conf_f >= 60 and ml_strength >= 0.2:
             pass  # allow surface-only VETO when Both agree
         elif not (ml_verdict == "BOOST" and ml_strength >= 0.5):
-            return False
+            return reject("veto bucket")
     if ml_verdict == "VETO" and ml_strength < 0.5:
         # Allow if Both agree + conf>=60 + strength>=0.2 (surface-only VETO case)
         cross = str(pick.get("cross_source_agree") or "")
@@ -414,7 +419,7 @@ def is_playable(pick: dict) -> bool:
         except Exception:
             conf_f = 0
         if not (cross == "Both" and conf_f >= 60 and ml_strength >= 0.2):
-            return False
+            return reject("ML veto")
     # USER FIX: those odds are high because favorites marked SKIPPED_DEAD_EDGE (EV negative via confidence) were excluded,
     # leaving only underdogs 2.78*2.68=7.45. Allow DEAD_EDGE if ML prob high (>=0.80) or conf >=65 with odds <=2.0
     # This brings back low-odds winners like 1.28,1.30,1.41 that produce accas 1.28-1.88 like user's tickets
@@ -447,15 +452,23 @@ def is_playable(pick: dict) -> bool:
                 if ev >= min_ev and odds_f >= 1.20 and (cp >= 0.70 or (conf >= 65 and odds_f <= 2.2)):
                     pass
                 else:
-                    return False
+                    return reject("dead-edge gate")
             except Exception:
-                return False
+                return reject("invalid dead-edge inputs")
         else:
-            return False
+            return reject("bucket not playable")
     if not clean_text(pick.get("selected_player")):
-        return False
+        return reject("missing selection")
     if not clean_text(pick.get("match")):
-        return False
+        return reject("missing fixture")
+    side = clean_text(pick.get("selected_side")).lower()
+    if side in {"player_a", "player_b"}:
+        expected = clean_text(pick.get("player_home" if side == "player_a" else "player_away"))
+        selected = clean_text(pick.get("selected_player"))
+        # Miner copies the side name directly. Refuse inconsistent new inputs;
+        # do not reinterpret historical booked slips during settlement.
+        if expected and " ".join(expected.casefold().split()) != " ".join(selected.casefold().split()):
+            return reject("selected player does not match selected side")
     if _ML_AVAILABLE:
         try:
             audit = load_audit_rolling()
@@ -472,24 +485,24 @@ def is_playable(pick: dict) -> bool:
                     pick_strength = strength
                 if pick_strength < 0.5:
                     if not (is_dead_edge and float(pick.get("ml_calibrated_prob") or 0) >= 0.80):
-                        return False
+                        return reject("rescored context veto")
             if is_no_odds:
                 if not (scoring.get("should_boost") and scoring.get("strength_score", 0) >= 0.4):
-                    return False
+                    return reject("no-odds boost gate")
         except Exception:
             if is_no_odds:
-                return False
+                return reject("no-odds scoring unavailable")
     else:
         if is_no_odds:
-            return False
+            return reject("no-odds scoring unavailable")
     odds = pick.get("odds")
     if odds is not None:
         try:
             o = float(odds)
             if o <= 1.0:
-                return False
+                return reject("invalid odds")
         except Exception:
-            return False
+            return reject("invalid odds")
     return True
 
 def kickoff_fail_open() -> bool:
@@ -519,7 +532,7 @@ def parse_kickoff(pick: dict, target_date: str):
                 dt = datetime.strptime(d, "%Y-%m-%d").replace(tzinfo=TZ)
                 return dt.replace(hour=h, minute=mi)
             else:
-                return datetime.strptime(d, "%Y-%m-%d").replace(tzinfo=TZ)
+                return None  # a date is not a provable start time
         except Exception:
             return None
     return None
@@ -563,12 +576,12 @@ def kickoff_guard(pool, target_date, now):
     """
     kept = []
     skipped = []
-    is_today = target_date == now.date().isoformat()
+    is_past_or_today = target_date <= now.date().isoformat()
     fail_open = kickoff_fail_open()
     for pick in pool:
         ko = parse_kickoff(pick, target_date)
         if ko is None:
-            if not fail_open and is_today:
+            if not fail_open and is_past_or_today:
                 pick["_kickoff_unknown"] = True
                 raw = clean_text(pick.get("kickoff") or pick.get("match_time")
                                  or pick.get("time") or "")
@@ -576,13 +589,13 @@ def kickoff_guard(pool, target_date, now):
             kept.append(pick)
             continue
         pick.pop("_kickoff_unknown", None)
-        if is_today and ko.date().isoformat() == target_date and ko <= now:
+        if ko <= now:
             skipped.append((skip_record(pick), "already started"))
         else:
             kept.append(pick)
     return kept, skipped
 
-def select_accas(pool, knobs: AccaKnobs | None = None):
+def select_accas(pool, knobs: AccaKnobs | None = None, *, diagnostics: dict | None = None):
     """ML-driven mutually exclusive accas – ML chooses winners, monitors itself.
 
     Returns ``(priced, paper, sorted_pool)``. ``knobs`` defaults to the live
@@ -724,6 +737,10 @@ def select_accas(pool, knobs: AccaKnobs | None = None):
 
     def eligible_pool(pool_sorted, paper):
         out = []
+        def reject(reason):
+            if diagnostics is not None and not paper:
+                counts = diagnostics.setdefault("priced_exclusions", {})
+                counts[reason] = counts.get(reason, 0) + 1
         for p in pool_sorted:
             o = get_odds(p)
             # The two tracks are the two sides of ONE predicate, so they
@@ -735,6 +752,7 @@ def select_accas(pool, knobs: AccaKnobs | None = None):
                     continue
             else:
                 if blocked:
+                    reject(leg_execution_block(p))
                     continue
                 # Dynamic min odds: BOOST picks allowed down to 1.20 CAPITAL PROTECTION (was 1.10)
                 is_boost_leg = k.boost_privileges and str(p.get("ml_verdict")) == "BOOST"
@@ -753,17 +771,21 @@ def select_accas(pool, knobs: AccaKnobs | None = None):
                             if cp >= 0.75 and o >= k.min_odds_boost and is_boost_leg:
                                 pass
                             else:
+                                reject("leg odds below minimum")
                                 continue
                         else:
                             ev = float(ml_ev_raw)
                             if cp >= 0.75 and o >= k.min_odds_boost and ev >= 0.01 and is_boost_leg:
                                 pass
                             else:
+                                reject("leg odds below minimum")
                                 continue
                     except Exception:
+                        reject("invalid minimum-odds inputs")
                         continue
                 if o > max_leg:
                     # Dynamic cap blocks random underdogs, allows proven high-EV dogs
+                    reject("leg odds above maximum")
                     continue
                 # CAPITAL PROTECTION: Require min prob 0.60 AND EV>=+1% for REAL (0% too low, 2% too strict)
                 # RED DAY: EV -0.01 to -0.20 -> NO BET, doubles 0W/5L -40% need EV>=5% no exception
@@ -779,13 +801,16 @@ def select_accas(pool, knobs: AccaKnobs | None = None):
                         min_ev = k.min_ev_doubles if is_doubles else k.effective_min_ev_real()
                         if ev < min_ev:
                             if is_doubles:
+                                reject("doubles EV below minimum")
                                 continue
                             if ev < -0.02:
+                                reject("EV below minimum")
                                 continue
                             is_boost = is_boost_leg
                             cross = str(p.get("cross_source_agree") or "")
                             conf_f = conf_of(p)
                             if not (is_boost and cross == "Both" and conf_f >= 70):
+                                reject("EV below minimum")
                                 continue
                     # If ml_ev is None (test picks), skip EV gate
                     # REVISED 2026-09-17: allow prob 55-60% if high EV (>=10%) or conf>=60 and EV>=5%
@@ -799,13 +824,17 @@ def select_accas(pool, knobs: AccaKnobs | None = None):
                         if cp >= 0.55 and ev_check >= 0.10 and o <= 3.0 and conf_of(p) >= 60:
                             pass  # allow high EV dog like Charaeva 56% 25% EV
                         elif not (o <= 2.2 and conf_of(p) >= 60):
+                            reject("probability below minimum")
                             continue
                 except Exception:
                     pass
             bucket = str(p.get("bucket", ""))
             if "NO_ODDS" in bucket and str(p.get("ml_verdict")) != "BOOST":
+                reject("no-odds bucket without BOOST")
                 continue
             out.append(p)
+        if diagnostics is not None:
+            diagnostics["paper_eligible" if paper else "priced_eligible"] = len(out)
         return out
 
     def build_track(pool_sorted, paper, used_matches):
@@ -1039,7 +1068,7 @@ def _acca_weights(accas):
 def format_skips(skipped_info) -> list[str]:
     """Group the skip list by reason, worst-offender first."""
     if not skipped_info:
-        return ["Skipped: none — the pool was empty before any guard ran."]
+        return ["Kickoff skips: none."]
     by_reason: dict[str, list[str]] = {}
     for entry in skipped_info:
         try:
@@ -1066,7 +1095,7 @@ def format_skips(skipped_info) -> list[str]:
     return lines
 
 
-def format_tickets_txt(target_date, accas, state, skipped_info):
+def format_tickets_txt(target_date, accas, state, skipped_info, diagnostics=None):
     now = now_local()
     bank = state.get("bank", 100.0)
     cycle_base = state.get("cycle_base", 100.0)
@@ -1083,7 +1112,23 @@ def format_tickets_txt(target_date, accas, state, skipped_info):
         "",
     ]
     if not priced:
-        lines.append("NO BET — no priced legs available (zero qualifying bets is a valid outcome)")
+        lines.append("NO BET — no qualifying priced ticket (zero qualifying bets is a valid outcome)")
+        if diagnostics is not None:
+            lines.append(f"Pipeline: {diagnostics['picks']} picks -> {diagnostics['playable']} playable -> "
+                         f"{diagnostics['builder_input']} builder inputs -> "
+                         f"{diagnostics.get('priced_eligible', 0)} priced eligible legs, "
+                         f"{diagnostics.get('paper_eligible', 0)} paper eligible legs")
+            admission = diagnostics.get("admission_rejections", {})
+            if admission:
+                lines.append("Admission exclusions: " + ", ".join(
+                    f"{reason}={count}" for reason, count in sorted(admission.items())))
+            exclusions = diagnostics.get("priced_exclusions", {})
+            if exclusions:
+                lines.append("Priced-track exclusions: " + ", ".join(
+                    f"{reason}={count}" for reason, count in sorted(exclusions.items())))
+            n = diagnostics.get("priced_eligible", 0)
+            lines.append("Ticket constraint: " + ("fewer than two eligible priced legs" if n < 2
+                         else "no pair met the existing pairing/acca constraints"))
         lines.append(f"Playable buckets: {PLAYABLE_BUCKETS} + ML NO_ODDS BOOST (paper track)")
         # This block is the answer to "why did the engine surface nothing
         # today". It used to dump the raw list of (full pick dict, reason)
@@ -1194,7 +1239,8 @@ def main():
     target_date = args.date or today_str()
     now = now_local()
     picks = load_picks(target_date)
-    playable = [p for p in picks if is_playable(p)]
+    admission_rejections = {}
+    playable = [p for p in picks if is_playable(p, rejections=admission_rejections)]
     kept, skipped = kickoff_guard(playable, target_date, now)
     if len(kept) < 2 and len(playable) >= 2:
         late = [p for p in playable if p not in kept]
@@ -1204,8 +1250,11 @@ def main():
         # are part of the audit trail for why a leg went to the paper track.
         skipped = skipped + [(skip_record(p), "paper_late_included") for p in late]
         kept = playable
-    priced, paper, sorted_pool = build_accas(kept)
+    diagnostics = {"picks": len(picks), "playable": len(playable), "builder_input": len(kept),
+                   "admission_rejections": admission_rejections}
+    priced, paper, sorted_pool = select_accas(kept, diagnostics=diagnostics)
     accas = priced + paper
+    print(f"Auto tickets stages: {diagnostics}; priced tickets={len(priced)}, paper tickets={len(paper)}")
     state = load_state()
     bank = state.get("bank", 100.0)
     # Size on FREE bank, not total bank: capital riding on unsettled slips is
@@ -1255,6 +1304,7 @@ def main():
         "paper_staked_pct": round(sum(paper_stakes), 4),
         "accas": accas_out,
         "skipped": skipped,
+        "diagnostics": diagnostics,
         "frozen": is_frozen,
     }
     LOCALDATA.mkdir(parents=True, exist_ok=True)
@@ -1277,9 +1327,9 @@ def main():
               f"(frozen/non-empty ledger guard; keeping existing files).")
     else:
         (LOCALDATA / f"auto_tickets_{target_date}.json").write_text(json.dumps(out, indent=2))
-        (LOCALDATA / f"auto_tickets_{target_date}.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
+        (LOCALDATA / f"auto_tickets_{target_date}.txt").write_text(format_tickets_txt(target_date, accas, state, skipped, diagnostics))
         (LOCALDATA / "auto_tickets_today.json").write_text(json.dumps(out, indent=2))
-        (LOCALDATA / "auto_tickets_today.txt").write_text(format_tickets_txt(target_date, accas, state, skipped))
+        (LOCALDATA / "auto_tickets_today.txt").write_text(format_tickets_txt(target_date, accas, state, skipped, diagnostics))
     # --- RECONSTRUCT missing historical open_slips (Edge parity) ---
     try:
         from datetime import timedelta

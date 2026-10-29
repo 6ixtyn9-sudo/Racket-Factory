@@ -275,7 +275,11 @@ def test_mine_mines_unsettled_nonlive_row(tmp_path, monkeypatch):
     picks = _run_mine(tmp_path, monkeypatch, rows, target)
     assert len(picks) == 1
     assert picks[0]["match"] == "Today A vs Today B"
-    assert picks[0]["bucket"] == "WATCHLIST"
+    # Unsettled historical fixtures may be shown, but their undated archive
+    # prices are not evidence of an executable live quote.
+    assert picks[0]["bucket"] == "WATCHLIST_NO_ODDS"
+    assert picks[0]["odds"] is None
+    assert picks[0]["odds_reject_reason"] == "historical price is not a live quote"
 
 
 def test_mine_logs_today_rows_matching_no_slice(tmp_path, monkeypatch, caplog):

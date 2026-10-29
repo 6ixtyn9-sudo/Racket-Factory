@@ -233,3 +233,16 @@ def test_dump_slice_table_failure_is_non_fatal(tmp_path):
     blocker.write_text("x")
     bad = blocker / "slice_table.json"
     assert dump_slice_table("2026-09-20", [], None, tmp_path / "x.csv.gz", bad) is None
+
+
+def test_baseline_only_live_quote_is_preserved_but_marked_stale():
+    baseline = _df([_row(_is_live=True)])
+    fresh = _df([_row(player_a="Clara Adams", player_b="Diana Brown")])
+    merged, _ = merge_baselines(baseline, fresh)
+    old = merged[merged.player_a == "Ana Ivanova"].iloc[0]
+    assert old["_live_stale"] == True
+    assert float(old["odds_a"]) == 1.20
+    new = _df([_row(_is_live=True, odds_a=1.40)])
+    merged_again, _ = merge_baselines(merged, new)
+    current = merged_again[merged_again.player_a == "Ana Ivanova"].iloc[0]
+    assert current["_live_stale"] == False and float(current["odds_a"]) == 1.40
