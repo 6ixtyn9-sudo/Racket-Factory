@@ -160,7 +160,10 @@ def _failure_path(service: str, credential: str) -> Path:
     import hashlib
     fingerprint = hashlib.sha256(credential.encode("utf-8")).hexdigest()
     safe = "".join(c for c in service.lower() if c.isalnum() or c in "-_")
-    return quota_dir() / f"{safe}_failure_{fingerprint}.json"
+    # OddsPortal cooldown markers are non-financial and may survive in the
+    # existing disposable marker cache; quota records never derive from them.
+    ext = "marker" if safe == "oddsportal" else "json"
+    return quota_dir() / f"{safe}_failure_{fingerprint}.{ext}"
 
 
 def cooldown_status(service: str, credential: str) -> dict | None:

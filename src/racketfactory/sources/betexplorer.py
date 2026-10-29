@@ -7,10 +7,8 @@ a simple UA first, 3s per-host throttle, dated results URLs for any date::
 
 Listing parse is Edge-style primary (``tr.js-tournament`` headers +
 ``tr[data-dt]`` match rows + ``td.table-main__tt`` names) with the generic
-row scanner as fallback. The listing 1/2 prices track the bookmaker
-consensus (spot checked 2026-09-13 against Betway SA: within ~2-4%), so
-they are usable as indicative market prices for EV gating and acca
-building. Display them as indicative, never as the ticket price.
+row scanner as fallback. Listing prices are indicative consensus only;
+they do not establish an executable single-bookmaker ticket quote.
 
 Finished/retired/walkover rows are skipped: only actionable pre-match
 prices are wanted. Disable with RACKET_FACTORY_DISABLE_BETEXPLORER=1.
@@ -55,7 +53,7 @@ def _is_match_link(href: str) -> dict[str, Any] | None:
     return {"tour_hint": segs[1].replace("-", " "), "tournament": segs[2].replace("-", " ")}
 
 
-def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
+def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None, include_unpriced: bool = False) -> list[dict[str, Any]]:
     """Edge-style primary parse: js-tournament headers + data-dt rows."""
     if not html:
         return []
@@ -167,7 +165,7 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
             if len(player_cands) >= 2:
                 a1, txt1, ctx1, href1 = player_cands[0]
                 a2, txt2, ctx2, href2 = player_cands[1]
-                if txt1 != txt2 and len(txt1) >= 2 and len(txt2) >= 2:
+                if txt1 != txt2 and len(txt1) >= 2 and len(txt2) >= 2 and href1 == href2:
                     # Clean trailing odds if present
                     txt1_clean = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", txt1).strip()
                     txt2_clean = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", txt2).strip()
@@ -197,8 +195,10 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
                 decimals = []
         if len(decimals) < 2:
             n_no_odds += 1
-            continue
-        key = f"{chosen_home}\x00{chosen_away}"
+            if not include_unpriced:
+                continue
+            decimals = [None, None]
+        key = chosen_href
         if key in seen:
             continue
         seen.add(key)
@@ -217,6 +217,9 @@ def parse_results_page(html: str, page_date: str) -> list[dict[str, Any]]:
             "tour_hint": (chosen_ctx.get("tour_hint") if chosen_ctx else "") or tour_hint,
             "match_url": chosen_href,
         })
+    if metrics is not None:
+        metrics.update({"data_dt_rows": n_dt, "parsed_priced_rows": sum(r.get("odds_home") is not None for r in rows), "discovered_rows": len(rows), "finished_rows": n_finished,
+                        "no_odds_rows": n_no_odds, "unrecognized_rows": n_bad})
     logger.info("%s results parse %s: data-dt rows=%d parsed=%d finished=%d no_odds=%d bad=%d",
                 SOURCE_NAME, page_date, n_dt, len(rows), n_finished, n_no_odds, n_bad)
     return rows
@@ -235,7 +238,7 @@ def _finalize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in rows:
         row["bookmaker"] = BOOK_LABEL
         row["source"] = SOURCE_NAME
-        url = str(row.pop("match_url", "") or "")
+        url = str(row.get("match_url") or "")
         row["event_id"] = url.rstrip("/").rsplit("/", 1)[-1] if url else ""
     return rows
 
@@ -246,6 +249,8 @@ def _results_url(target: str) -> str:
 
 
 MAX_MATCH_PAGES = 60
+# A detail plus comparison consumes two requests within the old 60-page budget.
+MAX_COMPARISON_FIXTURES = MAX_MATCH_PAGES // 2
 
 
 def _strip_fragment(href: str) -> str:
@@ -339,7 +344,7 @@ def parse_match_page_odds(html: str) -> tuple[float | None, float | None]:
     return avg_home, avg_away
 
 
-def _fetch_live(target: str, *, with_status: bool = False):
+def _fetch_live(target: str, *, with_status: bool = False, metrics: dict | None = None):
     def done(rows, status):
         return (rows, status) if with_status else rows
 
@@ -348,14 +353,25 @@ def _fetch_live(target: str, *, with_status: bool = False):
         html = fetch_page_html(_results_url(target), SOURCE_NAME, prefer_plain=True)
         observed_at = datetime.now(timezone.utc).isoformat()
     except Exception as exc:
+        if isinstance(exc, PageFetchError):
+            raise
         logger.warning("%s dated fetch failed for %s: %s", SOURCE_NAME, target, exc)
         html = ""
-    rows = parse_results_page(html, target) if html else []
+    if html:
+        from racketfactory.rebuild_diagnostics import capture_betexplorer_fragment
+        capture_betexplorer_fragment(html, "listing")
+    parse_metrics: dict[str, int] = {}
+    rows = parse_results_page(html, target, metrics=parse_metrics, include_unpriced=with_status) if html else []
+    if metrics is not None:
+        metrics.update(parse_metrics)
     if rows:
         for row in rows:
             row["observed_at"] = observed_at
         logger.info("%s: dated results shape hit for %s (%d rows)", SOURCE_NAME, target, len(rows))
-        return done(_finalize(rows), "complete")
+        partial = bool(parse_metrics.get("unrecognized_rows") or (not with_status and parse_metrics.get("no_odds_rows")))
+        for row in rows:
+            row["_collection_partial"] = partial
+        return done(_finalize(rows), "partial" if partial else "complete")
 
     # 2) For any date, if results page missed, try to collect links without odds
     #    and price via match pages (new fallback for JS-rendered listings)
@@ -390,6 +406,13 @@ def _fetch_live(target: str, *, with_status: bool = False):
             raise PageFetchError("parser", "BetExplorer listing has no recognised fixtures or empty-board marker")
         return done([], "complete")
 
+    if with_status:
+        # Guarded rebuild uses this listing as discovery, never an indiscriminate
+        # match-page crawl. Detail fetches are selected from the prediction pool.
+        for row in link_rows:
+            row["observed_at"] = observed_at
+        return done(_finalize(link_rows), "complete")
+
     # 3) Price each link via its match page (bounded)
     priced: list[dict[str, Any]] = []
     n_live = n_failed = 0
@@ -400,6 +423,9 @@ def _fetch_live(target: str, *, with_status: bool = False):
         full_url = href if href.startswith("http") else (BASE_URL + href if href.startswith("/") else href)
         mhtml = fetch_page_html(full_url, SOURCE_NAME, prefer_plain=True)
         observed_at = datetime.now(timezone.utc).isoformat()
+        if mhtml:
+            from racketfactory.rebuild_diagnostics import capture_betexplorer_fragment
+            capture_betexplorer_fragment(mhtml, "detail")
         if not mhtml:
             n_failed += 1
             continue
@@ -442,3 +468,288 @@ def fetch_betexplorer_rows(target_date: str) -> list[dict[str, Any]]:
         return []
     rows = cached_fetch(f"betexplorer_v6_{target}", lambda: _fetch_live(target))
     return [dict(r) for r in rows] if rows else []
+
+
+def _comparison_endpoint_candidates(html: str, event_id: str) -> list[dict]:
+    """Discover *literal* tennis comparison URLs and explicit tab metadata.
+
+    No football endpoint or missing market/scope is inferred. Only same-host,
+    HTTPS URLs for this event, with an innocuous language parameter, are used.
+    """
+    from urllib.parse import urljoin, urlparse, parse_qsl
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
+    for node in soup.select('[data-url], [data-endpoint], [data-ajax-url], a[href]'):
+        raw = next((str(node.get(k) or "") for k in ("data-url", "data-endpoint", "data-ajax-url", "href") if node.get(k)), "")
+        url = urljoin(BASE_URL, raw)
+        parsed = urlparse(url)
+        if (parsed.scheme != "https" or parsed.netloc.lower() != "www.betexplorer.com" or parsed.username or parsed.password
+                or parsed.fragment or not parsed.path.startswith("/match-odds/")
+                or event_id not in parsed.path.split("/")
+                or any(k != "lang" or v != "en" for k, v in parse_qsl(parsed.query, keep_blank_values=True))):
+            continue
+        market = str(node.get("data-market") or node.get("data-market-name") or "").strip().lower()
+        period = str(node.get("data-period") or node.get("data-scope") or "").strip().lower()
+        if market not in {"match winner", "match_winner", "match-winner", "h2h"}:
+            continue
+        if period not in {"match", "full match", "full_match", "full-match"}:
+            continue
+        market_id = str(node.get("data-market-id") or "")
+        if not re.fullmatch(r"[A-Za-z0-9_-]{0,32}", market_id):
+            continue
+        found.append({"url": url, "raw_market": market, "raw_period": period, "market_id": market_id})
+    # A page with competing explicit contexts is ambiguous, not a first hit.
+    unique = {item["url"]: item for item in found}
+    return list(unique.values()) if len(unique) == 1 else []
+
+
+def _comparison_response_rows(payload: str, fixture: dict, context: dict, observed_at: str) -> tuple[list[dict], dict]:
+    """Parse two explicitly labelled tennis columns and individual book rows.
+
+    The format covered here is synthetic until actual tennis fragments validate
+    the provider contract. A comparison average is never a bookmaker offer.
+    """
+    import hashlib
+    import json
+    import math
+    from racketfactory.warehouse import names_match, strict_quote_team_match
+    if (context.get("raw_market") not in {"match winner", "match_winner", "match-winner", "h2h"}
+            or context.get("raw_period") not in {"match", "full match", "full_match", "full-match"}):
+        raise PageFetchError("parser", "comparison market or scope not established")
+    metrics = {"bookmaker_rows": 0, "offers": 0, "average_rows": 0,
+               "missing_bookmaker": 0, "invalid_price": 0, "duplicate_rows": 0,
+               "ambiguous_columns": 0, "ambiguous_bookmaker_rows": 0, "average_prices": []}
+    try:
+        data = json.loads(payload)
+    except (ValueError, TypeError):
+        raise PageFetchError("parser", "comparison response is not JSON")
+    html = data.get("odds") if isinstance(data, dict) else None
+    if not isinstance(html, str):
+        raise PageFetchError("parser", "comparison response has no odds HTML")
+    soup = BeautifulSoup(html, "html.parser")
+    home, away = str(fixture.get("player_home") or ""), str(fixture.get("player_away") or "")
+    if not home or not away or names_match(home, away):
+        raise PageFetchError("parser", "ambiguous fixture participants")
+    digest = hashlib.sha256(payload.encode()).hexdigest()
+    offers, seen, conflicts = [], {}, set()
+    def unique_book(book_id, book, prices):
+        key = book_id or book.casefold()
+        value = (book.casefold(), tuple(prices))
+        if key in seen:
+            if seen[key] == value:
+                metrics["duplicate_rows"] += 1
+            else:
+                conflicts.add(key)
+                metrics["ambiguous_bookmaker_rows"] += 1
+            return False
+        seen[key] = value
+        return True
+    for table in soup.find_all("table"):
+        thead = table.find("thead")
+        headers = thead.find_all("th") if thead else []
+        labels = [x.get_text(" ", strip=True) for x in headers]
+        hidx = [i for i, text in enumerate(labels) if strict_quote_team_match(home, text)]
+        aidx = [i for i, text in enumerate(labels) if strict_quote_team_match(away, text)]
+        extra_outcome = any(i not in hidx + aidx and (n.get("data-pos") or labels[i].strip().lower() in {"1", "2", "x", "draw", "tie"})
+                            for i, n in enumerate(headers))
+        if len(hidx) != 1 or len(aidx) != 1 or hidx[0] == aidx[0] or extra_outcome:
+            metrics["ambiguous_columns"] += 1
+            continue
+        for row in table.select("tbody tr"):
+            classes = " ".join(row.get("class") or []).lower()
+            if "average" in classes or (row.find("td") and row.find("td").get_text(" ", strip=True).lower() in {"average", "avg"}):
+                metrics["average_rows"] += 1
+                avg_cells = row.find_all("td", recursive=False)
+                if max(hidx[0], aidx[0]) < len(avg_cells):
+                    try:
+                        avg_nodes = [avg_cells[i].find(attrs={"data-odd": True}) or avg_cells[i] for i in (hidx[0], aidx[0])]
+                        avg = [float(n.get("data-odd") or n.get_text(" ", strip=True)) for n in avg_nodes]
+                        if all(math.isfinite(v) and v > 1 for v in avg) and len(metrics["average_prices"]) < 2:
+                            metrics["average_prices"].append(avg)
+                    except (TypeError, ValueError, OverflowError):
+                        pass
+                continue
+            cells = row.find_all("td", recursive=False)
+            if max(hidx[0], aidx[0]) >= len(cells):
+                continue
+            if any((c.has_attr("data-odd") or c.find(attrs={"data-odd": True}))
+                   for i, c in enumerate(cells) if i not in (hidx[0], aidx[0])):
+                metrics["ambiguous_columns"] += 1
+                continue
+            metrics["bookmaker_rows"] += 1
+            logo = row.select_one('img[title], a[title]')
+            bookmaker = str(row.get("data-bookmaker-name") or (logo.get("title") if logo else "") or "").strip()
+            book_id = str(row.get("data-bookie") or "").strip()
+            if not bookmaker or bookmaker.lower() in {"betexplorer_best", "betexplorer best"}:
+                metrics["missing_bookmaker"] += 1
+                continue
+            try:
+                price_nodes = [cells[i].find(attrs={"data-odd": True}) or cells[i] for i in (hidx[0], aidx[0])]
+                for i, node in zip((hidx[0], aidx[0]), price_nodes):
+                    if headers[i].get("data-pos") and node.get("data-pos") and str(headers[i].get("data-pos")) != str(node.get("data-pos")):
+                        raise ValueError("conflicting position")
+                prices = [float(n.get("data-odd")) for n in price_nodes]
+                if not all(math.isfinite(v) and v > 1 for v in prices):
+                    raise ValueError("invalid decimal")
+            except (TypeError, ValueError, OverflowError):
+                metrics["invalid_price"] += 1
+                continue
+            if not unique_book(book_id, bookmaker, prices):
+                continue
+            offers.append({**{k: fixture.get(k) for k in ("event_id", "match_url", "match_date", "match_time", "commence_time", "player_home", "player_away", "tournament", "tour_hint")},
+                "odds_home": prices[0], "odds_away": prices[1], "bookmaker": bookmaker, "bookmaker_id": book_id, "odds_home_bookmaker": bookmaker, "odds_away_bookmaker": bookmaker,
+                "source": SOURCE_NAME, "market": "match_winner", "period": "match", "line": None,
+                "raw_market": context["raw_market"], "raw_period": context["raw_period"], "market_id": context.get("market_id"),
+                "observed_at": observed_at, "retrieved_at": observed_at,
+                "provider_price_updated_at": [n.get("data-created") for n in price_nodes],
+                "provider_positions": [n.get("data-pos") for n in price_nodes],
+                "response_sha256": digest, "price_type": "bookmaker", "settlement_rules": None})
+    # Hidden all-bookmaker rows are accepted only when one table explicitly
+    # binds participant headings to data-pos tokens used by the hidden cells.
+    header_maps = []
+    for table in soup.find_all("table"):
+        head = table.find("thead")
+        heads = head.find_all("th") if head else []
+        hm = [str(n.get("data-pos") or "") for n in heads if strict_quote_team_match(home, n.get_text(" ", strip=True))]
+        am = [str(n.get("data-pos") or "") for n in heads if strict_quote_team_match(away, n.get_text(" ", strip=True))]
+        if len(hm) == len(am) == 1 and hm[0] and am[0] and hm[0] != am[0] and sum(bool(n.get("data-pos")) for n in heads) == 2:
+            header_maps.append((hm[0], am[0]))
+    if len(header_maps) == 1:
+        hpos, apos = header_maps[0]
+        for row in soup.find_all("div", class_=lambda c: c and "oddsComparisonAll__rowBookie" in str(c)):
+            if "average" in " ".join(row.get("class") or []).lower():
+                metrics["average_rows"] += 1
+                continue
+            metrics["bookmaker_rows"] += 1
+            logo = row.select_one('img[title], a[title]')
+            book = str(row.get("data-bookmaker-name") or (logo.get("title") if logo else "") or "").strip()
+            book_id = str(row.get("data-bookie") or "").strip()
+            if not book or book.lower() in {"betexplorer_best", "betexplorer best"}:
+                metrics["missing_bookmaker"] += 1
+                continue
+            nodes = row.find_all(attrs={"data-odd": True})
+            h = [n for n in nodes if str(n.get("data-pos") or "") == hpos]
+            a = [n for n in nodes if str(n.get("data-pos") or "") == apos]
+            try:
+                if len(h) != 1 or len(a) != 1 or len(nodes) != 2: raise ValueError("ambiguous position")
+                prices = [float(h[0].get("data-odd")), float(a[0].get("data-odd"))]
+                if not all(math.isfinite(v) and v > 1 for v in prices): raise ValueError("invalid price")
+            except (TypeError, ValueError, OverflowError):
+                metrics["invalid_price"] += 1
+                continue
+            if not unique_book(book_id, book, prices):
+                continue
+            offers.append({**{k: fixture.get(k) for k in ("event_id", "match_url", "match_date", "match_time", "commence_time", "player_home", "player_away", "tournament", "tour_hint")},
+                "odds_home": prices[0], "odds_away": prices[1], "bookmaker": book, "bookmaker_id": book_id, "odds_home_bookmaker": book, "odds_away_bookmaker": book,
+                "source": SOURCE_NAME, "market": "match_winner", "period": "match", "line": None,
+                "raw_market": context["raw_market"], "raw_period": context["raw_period"], "market_id": context.get("market_id"),
+                "observed_at": observed_at, "retrieved_at": observed_at,
+                "provider_price_updated_at": [h[0].get("data-created"), a[0].get("data-created")],
+                "provider_positions": [h[0].get("data-pos"), a[0].get("data-pos")],
+                "response_sha256": digest, "price_type": "bookmaker", "settlement_rules": None})
+    offers = [row for row in offers if (row.get("bookmaker_id") or row["bookmaker"].casefold()) not in conflicts]
+    metrics["offers"] = len(offers)
+    return offers, metrics
+
+
+def _fetch_comparison_document(url: str, referer: str | None = None) -> tuple[str, str]:
+    """Single throttled request, no alternate route on a restriction."""
+    import requests
+    from racketfactory.quota_guard import cooldown_status, record_cooldown
+    host = urlsplit(url).netloc.lower()
+    if cooldown_status("betexplorer", "host:" + host):
+        raise PageFetchError("rate_limit", "BetExplorer cooldown active")
+    po._throttle(host)
+    headers = {"User-Agent": po.EDGE_SIMPLE_UA, "Accept-Language": "en-US,en;q=0.9"}
+    if referer:
+        headers["Referer"] = referer
+    try:
+        response = requests.get(url, timeout=30, headers=headers, allow_redirects=False)
+    except requests.RequestException as exc:
+        raise PageFetchError("transport", type(exc).__name__) from exc
+    when = datetime.now(timezone.utc).isoformat()
+    if response.status_code == 429:
+        from email.utils import parsedate_to_datetime
+        raw = str(response.headers.get("Retry-After") or "")
+        try:
+            wait = float(raw)
+        except ValueError:
+            try:
+                wait = (parsedate_to_datetime(raw) - datetime.now(timezone.utc)).total_seconds()
+            except (TypeError, ValueError, OverflowError):
+                wait = 900
+        try:
+            record_cooldown("betexplorer", "host:" + host, "rate_limit", max(1, wait))
+        except OSError:
+            logger.warning("BetExplorer cooldown could not be persisted")
+    body = response.text or ""
+    def refusal(kind: str, detail: str):
+        import hashlib
+        exc = PageFetchError(kind, detail)
+        exc.http_status, exc.observed_at = response.status_code, when
+        exc.response_sha256 = hashlib.sha256(body.encode()).hexdigest()
+        raise exc
+    if response.status_code in (401, 403, 429):
+        refusal("challenge" if response.status_code in (401, 403) else "rate_limit", f"HTTP {response.status_code}")
+    if response.status_code != 200:
+        refusal("http", f"HTTP {response.status_code}")
+    if any(x in body[:6000].lower() for x in ("cf-chl", "just a moment", "attention required", "verify you are human")):
+        refusal("challenge", "verification page")
+    return body, when
+
+
+def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False) -> list[dict]:
+    """Fetch and cache one prediction-matched fixture, retaining timestamps."""
+    from racketfactory.rebuild_diagnostics import capture_betexplorer_fragment
+    event_id = str(fixture.get("event_id") or "")
+    href = str(fixture.get("match_url") or "")
+    if (not re.fullmatch(r"[A-Za-z0-9]{1,32}", event_id) or not href.startswith("/tennis/")
+            or "\\" in href or urlsplit(href).query or urlsplit(href).fragment
+            or not _is_match_link(href) or href.rstrip('/').split('/')[-1] != event_id):
+        raise PageFetchError("parser", "fixture URL or event identity invalid")
+    def fetch():
+        # Per-fixture variables are reset on every invocation, including errors.
+        match_url = BASE_URL + href
+        try:
+            page, page_at = _fetch_comparison_document(match_url)
+        except PageFetchError as exc:
+            from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
+            capture_betexplorer_failure(event_id, "detail", exc.kind, status=getattr(exc, "http_status", None), observed_at=getattr(exc, "observed_at", ""), response_sha256=getattr(exc, "response_sha256", ""))
+            raise
+        capture_betexplorer_fragment(page, "detail", event_id=event_id, observed_at=page_at, status=200)
+        endpoints = _comparison_endpoint_candidates(page, event_id)
+        if not endpoints:
+            from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
+            capture_betexplorer_failure(event_id, "detail", "parser")
+            raise PageFetchError("parser", "tennis match-winner endpoint or scope not explicitly established")
+        try:
+            payload, observed_at = _fetch_comparison_document(endpoints[0]["url"], referer=match_url)
+        except PageFetchError as exc:
+            from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
+            capture_betexplorer_failure(event_id, "comparison", exc.kind, status=getattr(exc, "http_status", None), observed_at=getattr(exc, "observed_at", ""), response_sha256=getattr(exc, "response_sha256", ""))
+            raise
+        try:
+            import json
+            html = json.loads(payload).get("odds", "")
+        except (ValueError, AttributeError):
+            html = ""
+        capture_betexplorer_fragment(html or "<div></div>", "comparison", event_id=event_id, observed_at=observed_at, status=200, response_body=payload)
+        try:
+            rows, metrics = _comparison_response_rows(payload, fixture, endpoints[0], observed_at)
+        except PageFetchError as exc:
+            from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
+            capture_betexplorer_failure(event_id, "comparison", exc.kind, status=200, observed_at=observed_at)
+            raise
+        from racketfactory.rebuild_diagnostics import capture_comparison_offers
+        capture_comparison_offers(event_id, rows, metrics)
+        logger.info("BetExplorer comparison parse counts: %s", metrics)
+        if not rows:
+            raise PageFetchError("parser", "no uniquely oriented named-bookmaker quotes")
+        return rows
+    rows = cached_fetch("betexplorer_detail_" + event_id, fetch, fetch_day=str(fixture.get("match_date") or "")[:10], ttl_minutes=0 if refresh_evidence else 30)
+    from racketfactory.warehouse import strict_quote_team_match
+    if any(str(row.get("event_id") or "") != event_id or row.get("match_url") != href
+           or not strict_quote_team_match(str(row.get("player_home") or ""), str(fixture.get("player_home") or ""))
+           or not strict_quote_team_match(str(row.get("player_away") or ""), str(fixture.get("player_away") or "")) for row in rows):
+        raise PageFetchError("parser", "cached fixture identity mismatch")
+    return rows

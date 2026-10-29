@@ -127,3 +127,17 @@ def test_guarded_collection_distinguishes_verified_empty_day(monkeypatch):
     monkeypatch.setattr(be, "fetch_page_html", lambda *a, **k: next(responses))
     rows, status = be._fetch_live(day, with_status=True)
     assert rows == [] and status == "complete"
+
+
+def test_guarded_results_shape_discovers_unpriced_fixtures(monkeypatch):
+    html = RESULTS_FIXTURE.replace('</table>', '''
+<tr data-dt="13,09,2026,11,00"><td>11:00</td>
+<td><a href="/tennis/challenger/valencia/alpha-beta/ABCD1234/">Alpha A. - Beta B.</a></td>
+<td>-</td><td>-</td></tr></table>''')
+    monkeypatch.setattr(be, "fetch_page_html", lambda *a, **k: html)
+    metrics = {}
+    rows, status = be._fetch_live("2026-09-13", with_status=True, metrics=metrics)
+    assert len(rows) == 2 and status == "complete"
+    assert rows[1]["odds_home"] is None
+    assert metrics == {"data_dt_rows": 3, "parsed_priced_rows": 1, "discovered_rows": 2, "finished_rows": 1,
+                       "no_odds_rows": 1, "unrecognized_rows": 0}

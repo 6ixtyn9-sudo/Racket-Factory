@@ -567,7 +567,7 @@ REBUILD_REQUIRED_SOURCES = ("betclan", "betexplorer")
 REBUILD_OPTIONAL_SOURCES = ("predixsport", "oddsportal", "theoddsapi", "bzzoiro")
 
 
-def collect_rebuild_sources(target_date: str) -> dict[str, Any]:
+def collect_rebuild_sources(target_date: str, *, progress=None) -> dict[str, Any]:
     """Collect once, directly into memory, without caches or publication.
 
     Exceptions, ambiguous empty responses and partial detail-page crawls are
@@ -581,6 +581,10 @@ def collect_rebuild_sources(target_date: str) -> dict[str, Any]:
     result: dict[str, Any] = {"date": target_date, "observed_at": make_run_as_of(),
                               "outcomes": {}, "predictions": [], "comparisons": []}
     outcomes = result["outcomes"]
+    def notify(provider, phase):
+        if progress:
+            progress(provider, phase, dict(outcomes))
+    notify("betclan", "starting")
     betclan = BetClanPredictor()
     try:
         rows = betclan.fetch_daily()
@@ -589,21 +593,78 @@ def collect_rebuild_sources(target_date: str) -> dict[str, Any]:
         result["predictions"].extend(dict(row, source="BetClan") for row in rows)
     except Exception as exc:
         outcomes["betclan"] = {"status": "failed", "error_type": type(exc).__name__}
+    notify("betexplorer", "starting")
     try:
+        be_metrics = {}
         if os.getenv(betexplorer.DISABLE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}:
             be_rows, status = [], "disabled"
         else:
-            be_rows, status = betexplorer._fetch_live(target_date, with_status=True)
-        outcomes["betexplorer"] = {"status": status, "rows": len(be_rows)}
+            be_rows, status = betexplorer._fetch_live(target_date, with_status=True, metrics=be_metrics)
+        outcomes["betexplorer"] = {"status": status, "rows": len(be_rows), "parser_counts": be_metrics}
     except Exception as exc:
         be_rows = []
-        outcomes["betexplorer"] = {"status": "failed", "error_type": type(exc).__name__}
+        outcomes["betexplorer"] = {"status": "failed", "error_type": type(exc).__name__, "failure_kind": getattr(exc, "kind", "unexpected")}
+    notify("predixsport", "starting")
     try:
         px_rows = PredixSportPredictor().fetch_daily()
         outcomes["predixsport"] = {"status": "rows_observed" if px_rows else "unknown", "rows": len(px_rows)}
         result["predictions"].extend(dict(row, source="PredixSport") for row in px_rows)
     except Exception as exc:
         outcomes["predixsport"] = {"status": "failed", "error_type": type(exc).__name__}
+    # Discover prices only for uniquely matched prediction fixtures; discovery
+    # rows are not bookmaker quotes. A missing detail is not a verified empty.
+    notify("betexplorer_details", "starting")
+    detail_offers = []
+    detail_counts = {"predictions": 0, "matched_fixtures": 0, "unmatched_or_ambiguous": 0,
+                     "attempted": 0, "offers": 0, "failures": {}, "limit_exceeded": 0}
+    if outcomes.get("betexplorer", {}).get("status") == "complete" and be_rows:
+        import pandas as pd
+        from racketfactory.warehouse import _match_api_odds_row, names_match, strict_quote_team_match
+        from racketfactory.sources._page_odds import PageFetchError
+        matched = {}
+        for pred in result["predictions"]:
+            if str(pred.get("match_date") or "")[:10] != target_date:
+                continue
+            detail_counts["predictions"] += 1
+            fixture, reversed_order = _match_api_odds_row(pd.Series(pred), be_rows)
+            if not fixture:
+                detail_counts["unmatched_or_ambiguous"] += 1
+                continue
+            ph, pa = str(pred.get("player_home") or ""), str(pred.get("player_away") or "")
+            fh, fa = str(fixture.get("player_home") or ""), str(fixture.get("player_away") or "")
+            direct = strict_quote_team_match(ph, fh) and strict_quote_team_match(pa, fa)
+            reverse = strict_quote_team_match(ph, fa) and strict_quote_team_match(pa, fh)
+            if names_match(ph, pa) or names_match(fh, fa) or direct == reverse:
+                detail_counts["unmatched_or_ambiguous"] += 1
+                continue
+            eid = str(fixture.get("event_id") or "")
+            if not eid:
+                detail_counts["unmatched_or_ambiguous"] += 1
+                continue
+            matched[eid] = fixture
+        detail_counts["matched_fixtures"] = len(matched)
+        detail_counts["limit_exceeded"] = max(0, len(matched) - betexplorer.MAX_COMPARISON_FIXTURES)
+        for fixture in list(matched.values())[:betexplorer.MAX_COMPARISON_FIXTURES]:
+            detail_counts["attempted"] += 1
+            try:
+                # Capture real response structure for up to two fixtures;
+                # all other fixtures can reuse their original cached observation.
+                if os.getenv("RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR") and detail_counts["attempted"] <= 2:
+                    offers = betexplorer.fetch_fixture_comparison(fixture, refresh_evidence=True)
+                else:
+                    offers = betexplorer.fetch_fixture_comparison(fixture)
+                detail_offers.extend(offers)
+            except Exception as exc:
+                kind = exc.kind if isinstance(exc, PageFetchError) else "unexpected"
+                detail_counts["failures"][kind] = detail_counts["failures"].get(kind, 0) + 1
+                if kind in {"challenge", "rate_limit", "auth"}:
+                    break
+        detail_counts["offers"] = len(detail_offers)
+        if detail_counts["failures"] or detail_counts["limit_exceeded"] or detail_counts["unmatched_or_ambiguous"]:
+            outcomes["betexplorer"]["status"] = "partial"
+    outcomes["betexplorer"]["detail_counts"] = detail_counts
+    notify("betexplorer_details", "finished")
+    notify("oddsportal", "starting")
     try:
         if os.getenv(oddsportal_upcoming.DISABLE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}:
             op_rows = []
@@ -623,10 +684,13 @@ def collect_rebuild_sources(target_date: str) -> dict[str, Any]:
     except Exception as exc:
         op_rows = []
         outcomes["oddsportal"] = {"status": "failed", "error_type": type(exc).__name__}
+    notify("oddsportal", "finished")
     result["comparisons"] = merge_comparison_rows(be_rows, op_rows)
     # Keep both raw sources so an unverified primary quote never hides a
     # separately verifiable optional-source quote for the same fixture.
-    result["raw_quotes"] = {"betexplorer": be_rows, "oddsportal": op_rows}
+    # Keep discovery rows when no detail offers exist so unknown provenance
+    # cannot be mistaken for a verified empty market.
+    result["raw_quotes"] = {"betexplorer": detail_offers or be_rows, "oddsportal": op_rows}
     for name in ("theoddsapi", "bzzoiro"):
         outcomes[name] = {"status": "not_attempted", "reason": "durable quota authority not established for rebuild"}
     result["status"] = ("complete" if all(outcomes.get(name, {}).get("status") == "complete"
@@ -644,29 +708,74 @@ def stage_fresh_rebuild_picks(target_date: str, collection: dict, workdir: Path)
                           if str(row.get("match_date") or "")[:10] == target_date]
     from datetime import timezone
     from racketfactory.odds_compare import merge_comparison_rows
-    # Do not let a source with missing provenance suppress another source's
-    # verifiable quote. Verify original observation, fixture and market before
-    # merging; a cached row never receives a new observation timestamp.
-    def proven(row: dict) -> bool:
-        try:
-            observed = datetime.fromisoformat(str(row.get("observed_at") or "").replace("Z", "+00:00"))
-            age = (datetime.now(timezone.utc) - observed).total_seconds() if observed.tzinfo else -1
-            return (0 <= age <= 30 * 60
-                    and str(row.get("market") or "").lower() in {"h2h", "1x2", "match_winner", "match winner"}
-                    and str(row.get("period") or "").lower() in {"match", "full", "full_match", "full match", "0"}
-                    and (row.get("line") is None or str(row.get("line")).strip() == "")
-                    and str(row.get("match_date") or "")[:10] == target_date
-                    and bool(row.get("player_home") and row.get("player_away") and row.get("source") and row.get("bookmaker")))
-        except (TypeError, ValueError, OverflowError):
-            return False
+    from collections import Counter
+    from math import isfinite
+    from racketfactory.execution import rebuild_quote_execution_problem
+
+    # Count independent failures, not just the first; no prices or fixture
+    # identities are written to the diagnostics artifact.
+    counts: dict[str, Any] = {"sources": {}}
+    def inspect(name, rows):
+        reasons = Counter()
+        accepted = []
+        pairs = 0
+        for row in rows:
+            failures = []
+            try:
+                h, a = float(row.get("odds_home")), float(row.get("odds_away"))
+                pair = isfinite(h) and isfinite(a) and h > 1 and a > 1
+            except (TypeError, ValueError, OverflowError):
+                pair = False
+            pairs += int(pair)
+            if not pair: failures.append("invalid_or_missing_pair")
+            market = str(row.get("market") or "").strip().lower()
+            period = str(row.get("period") or "").strip().lower()
+            if not market: failures.append("market_missing")
+            elif market not in {"h2h", "1x2", "match_winner", "match winner"}: failures.append("market_incompatible")
+            if not period: failures.append("period_missing")
+            elif period not in {"match", "full", "full_match", "full match", "0"}: failures.append("period_incompatible")
+            if row.get("line") is not None and str(row.get("line")).strip(): failures.append("line_incompatible")
+            try:
+                observed = datetime.fromisoformat(str(row.get("observed_at") or "").replace("Z", "+00:00"))
+                age = (datetime.now(timezone.utc) - observed).total_seconds() if observed.tzinfo else -1
+                if not 0 <= age <= 30 * 60: failures.append("observation_stale_or_future")
+            except (TypeError, ValueError, OverflowError):
+                failures.append("observation_missing_or_invalid")
+            if str(row.get("match_date") or "")[:10] != target_date: failures.append("date_mismatch")
+            if not all(row.get(k) for k in ("player_home", "player_away", "source", "bookmaker")):
+                failures.append("fixture_source_or_bookmaker_missing")
+            execution_problem = rebuild_quote_execution_problem(row)
+            if execution_problem: failures.append("execution:" + execution_problem)
+            if failures:
+                reasons.update(failures)
+            else:
+                accepted.append(row)
+        counts["sources"][name] = {"fixture_rows": len(rows), "quote_pairs": pairs,
+                                   "eligible_rows": len(accepted), "rejection_reasons": dict(reasons)}
+        return accepted
+
     raw = collection.get("raw_quotes")
     if isinstance(raw, dict):
         be_rows, op_rows = raw.get("betexplorer", []), raw.get("oddsportal", [])
         comparisons = list(be_rows) + list(op_rows)
-        verified = merge_comparison_rows([r for r in be_rows if proven(r)], [r for r in op_rows if proven(r)])
+        be_verified = inspect("betexplorer", be_rows)
+        # Several bookmaker offers on one event are not multiple fixtures.
+        # Pick deterministically by bookmaker identity, never by best price.
+        chosen = {}
+        for row in sorted(be_verified, key=lambda r: (str(r.get("event_id") or ""), str(r.get("bookmaker") or "").casefold(), str(r.get("bookmaker_id") or ""))):
+            key = (str(row.get("event_id") or ""), str(row.get("match_date") or ""),
+                   str(row.get("player_home") or ""), str(row.get("player_away") or ""))
+            chosen.setdefault(key, row)
+        verified = merge_comparison_rows(list(chosen.values()), inspect("oddsportal", op_rows))
     else:
         comparisons = collection.get("comparisons", [])
-        verified = [row for row in comparisons if proven(row)]
+        verified = inspect("comparison", comparisons)
+    counts["verified_merged_rows"] = len(verified)
+    counts["warehouse_matched_rows"] = None
+    counts["exported_picks"] = None
+    counts["exported_selected_quotes"] = None
+    collection["quote_diagnostics"] = counts
+    print("Guarded rebuild quote stages:", json.dumps(counts, sort_keys=True))
     if comparisons and not verified:
         raise RuntimeError("collection has no market-identified fresh quotes")
     baseline = LOCALDATA / "warehouse.csv.gz"
@@ -682,6 +791,7 @@ def stage_fresh_rebuild_picks(target_date: str, collection: dict, workdir: Path)
         history = history[history["match_date"].astype(str).str[:10] != target_date].copy()
     live = build_live_rows(include_tomorrow=False, supplied_predictions=target_predictions,
                            target_date=target_date, supplied_odds=[], supplied_comparisons=verified)
+    counts["warehouse_matched_rows"] = int(live["_odds_source"].fillna("").astype(str).ne("").sum()) if "_odds_source" in live else 0
     if not live.empty:
         live["predicted_winner_live"] = live["live_predicted_winner"]
         live["prediction_prob_live"] = live["live_prediction_prob"]
@@ -708,10 +818,51 @@ def stage_fresh_rebuild_picks(target_date: str, collection: dict, workdir: Path)
         raise RuntimeError("staged miner did not produce valid picks") from exc
     if not isinstance(picks, list):
         raise RuntimeError("staged picks are not a list")
+    counts["exported_picks"] = len(picks)
+    counts["exported_selected_quotes"] = sum(isinstance(p, dict) and isinstance(p.get("selected_quote"), dict) for p in picks)
+    from scripts.auto_tickets import selected_quote_problem
+    export_rejections = Counter()
+    for pick in picks:
+        if not isinstance(pick, dict):
+            export_rejections["malformed pick"] += 1
+            continue
+        try:
+            price = float(pick.get("odds"))
+            priced = isfinite(price) and price > 1
+        except (TypeError, ValueError, OverflowError):
+            priced = False
+        if priced:
+            problem = selected_quote_problem(pick, require_provenance=True)
+            if problem:
+                export_rejections[problem] += 1
+    counts["export_rejections"] = dict(export_rejections)
+    print("Guarded rebuild quote stages:", json.dumps(counts, sort_keys=True))
+    if export_rejections:
+        raise RuntimeError("staged priced picks lost or invalidated quote provenance")
     return picks
 
 
 def run_guarded_empty_rebuild(target_date: str | None = None) -> None:
+    """Track this attempt separately from historical files and financial state."""
+    from racketfactory.rebuild_diagnostics import directory, write_status
+    diagnostic_dir = directory() or LOCALDATA / ".rebuild_diagnostics"
+    status = {"version": 1, "github_run_id": os.getenv("GITHUB_RUN_ID", ""),
+              "github_run_attempt": os.getenv("GITHUB_RUN_ATTEMPT", "1"),
+              "target_date": target_date or _now_local().date().isoformat(),
+              "started_at": _now_local().isoformat(), "stage": "starting", "status": "running",
+              "ticket_generation": "not_completed", "authoritative_publication": "not_started"}
+    def update(**fields):
+        status.update(fields, updated_at=_now_local().isoformat())
+        write_status(status, diagnostic_dir)
+    update()
+    try:
+        _run_guarded_empty_rebuild(target_date, update)
+    except BaseException as exc:
+        update(status="failed", error_type=type(exc).__name__)
+        raise
+
+
+def _run_guarded_empty_rebuild(target_date: str | None, update) -> None:
     """Collect and stage without settlement, then update the isolated checkout.
 
     External publication must be a separate atomic Git ref update under the
@@ -750,6 +901,7 @@ def run_guarded_empty_rebuild(target_date: str | None = None) -> None:
         if archive.name != f"archive_{target}_{run_id}.json":
             raise RuntimeError("this workflow run already published on a different betting day")
         print(f"Guarded rebuild {run_id} was already published; no changes")
+        update(stage="already_published", status="already_published", ticket_generation="previously_completed", authoritative_publication="previously_published")
         return
     card_path = LOCALDATA / f"auto_tickets_{target}.json"
     state_path = LOCALDATA / "auto_tickets_state.json"
@@ -762,19 +914,30 @@ def run_guarded_empty_rebuild(target_date: str | None = None) -> None:
     if problem:
         raise RuntimeError(problem)
     card_digest, state_digest = auto_tickets._rebuild_digest(card_raw), auto_tickets._rebuild_digest(state_raw)
-    collection = collect_rebuild_sources(target)
+    update(stage="collecting")
+    collection = collect_rebuild_sources(target, progress=lambda provider, phase, outcomes:
+        update(stage="collecting_" + provider, provider_phase=phase, source_outcomes=outcomes))
+    update(stage="collection_complete", source_outcomes=collection["outcomes"], collection_status=collection["status"])
     print("Guarded rebuild source outcomes:", json.dumps(collection["outcomes"], sort_keys=True))
     if collection["status"] != "complete":
         raise RuntimeError("required source collection incomplete; old card remains unchanged")
     with tempfile.TemporaryDirectory(prefix="racket-rebuild-") as stage:
-        picks = stage_fresh_rebuild_picks(target, collection, Path(stage))
+        update(stage="validating_and_staging_quotes")
+        try:
+            picks = stage_fresh_rebuild_picks(target, collection, Path(stage))
+        finally:
+            if collection.get("quote_diagnostics") is not None:
+                update(quote_stages=collection["quote_diagnostics"])
+        update(stage="ticket_generation")
         # The run's real start time is retained. Old cached quotes are never
         # stamped with that time; each candidate carries its own observation.
         proposal = auto_tickets.stage_rebuild_evaluation(picks, state, target, _now_local(), collection)
         proposal["collection_outcomes"] = collection["outcomes"]
         print("Guarded rebuild funnel:", json.dumps(proposal["diagnostics"], sort_keys=True))
+        update(stage="local_publication", ticket_generation="completed", ticket_funnel=proposal["diagnostics"])
     result = auto_tickets.publish_staged_rebuild_local(LOCALDATA, target, proposal,
         expected_card_digest=card_digest, expected_state_digest=state_digest, run_id=run_id)
+    update(stage="awaiting_git_publication", status="staged", ticket_generation="completed")
     print(f"Guarded rebuild staged locally: {result}; tickets={len(proposal['accas'])}. Awaiting atomic Git publication.")
 
 
@@ -991,7 +1154,7 @@ def run_once(args: argparse.Namespace) -> None:
     # Britain leaves BST). If it has moved, every kickoff is read an hour
     # early and kickoff_guard would stake matches already in progress.
     run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/kickoff_tz_audit.py --date {target} --days 7", "kickoff_tz_audit (BetClan offset)", env=child_env)
-    run_soft(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets.py --date {target}", "auto_tickets (generate/freeze)", env=child_env)
+    run(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets.py --date {target}", "auto_tickets (generate/freeze)", env=child_env)
     run_critical_grade(f"{env_prefix} PYTHONPATH=src python3 scripts/auto_tickets_grade.py", env=child_env, run_as_of=run_as_of)
     # Read-only forensics over the settled ledger: pool/ranking/calibration/
     # staking plus the search-winner null test. Reports, never tunes.

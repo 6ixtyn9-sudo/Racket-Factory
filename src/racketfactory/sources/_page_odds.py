@@ -77,6 +77,7 @@ def fetch_page_html(url: str, source_label: str, *, timeout: int = 30,
     """
     order = (_plain_fetch, _curl_fetch) if prefer_plain else (_curl_fetch, _plain_fetch)
     is_oddsportal = source_label.lower() == "oddsportal"
+    is_betexplorer = source_label.lower() == "betexplorer"
     host = urlsplit(url).netloc.lower()
     if is_oddsportal:
         from racketfactory.quota_guard import cooldown_status, record_cooldown
@@ -84,7 +85,25 @@ def fetch_page_html(url: str, source_label: str, *, timeout: int = 30,
             failure = cooldown_status("oddsportal", scope)
             if failure:
                 raise PageFetchError(failure["kind"], f"{source_label} cooldown active")
+    if is_betexplorer:
+        from racketfactory.quota_guard import cooldown_status
+        if cooldown_status("betexplorer", "host:" + host):
+            raise PageFetchError("rate_limit", "BetExplorer cooldown active")
     html, status, retry_after = _run_order(order, url, source_label, timeout=timeout)
+    if is_betexplorer and status == 429:
+        from racketfactory.quota_guard import record_cooldown
+        try:
+            record_cooldown("betexplorer", "host:" + host, "rate_limit", max(1, retry_after or 900))
+        except OSError:
+            logger.warning("BetExplorer cooldown could not be persisted")
+        raise PageFetchError("rate_limit", "BetExplorer HTTP 429")
+    if is_betexplorer and status in (401, 403):
+        raise PageFetchError("challenge", f"BetExplorer HTTP {status}")
+    if is_betexplorer and html and any(marker in html[:6000].lower() for marker in ("cf-chl", "just a moment", "attention required", "verify you are human")):
+        raise PageFetchError("challenge", "BetExplorer verification page")
+    if is_betexplorer and not html:
+        kind = "transport" if status is None else "http" if status != 200 else "parser"
+        raise PageFetchError(kind, f"BetExplorer HTTP {status} or empty response")
     if is_oddsportal and status in (404, 429):
         scope = "host:" + host if status == 429 else "route:" + url
         kind = "rate_limit" if status == 429 else "route_invalid"

@@ -383,6 +383,10 @@ def selected_quote_problem(pick: dict, *, require_provenance: bool = False) -> s
     if line is not None and str(line).strip().lower() not in {"", "none", "nan"}:
         return "selected quote line mismatch"
     if require_provenance:
+        from racketfactory.execution import rebuild_quote_execution_problem
+        execution_problem = rebuild_quote_execution_problem(quote)
+        if execution_problem:
+            return execution_problem
         if not str(quote.get("source") or "").strip() or not str(quote.get("bookmaker") or "").strip():
             return "selected quote source or bookmaker missing"
         home, away = quote.get("provider_home"), quote.get("provider_away")

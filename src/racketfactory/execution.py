@@ -228,3 +228,22 @@ def sanitise_acca_for_replay(acca: Mapping[str, Any]) -> dict:
         # the paper bank is supposed to be accounted against.
         out["stake_pct"] = 0.0
     return out
+
+
+def rebuild_quote_execution_problem(quote: Mapping[str, Any]) -> str:
+    """Require a concrete bookmaker and settlement rules compatible with grading.
+
+    A consensus or best-across-books statistic is not itself an executable
+    bookmaker quote. Provider rule evidence must be supplied, not inferred.
+    """
+    if quote.get("price_type") != "bookmaker":
+        return "price is not a verified single-bookmaker quote"
+    bookmaker = str(quote.get("bookmaker") or "").strip()
+    if not bookmaker or any(word in bookmaker.lower() for word in ("consensus", "best odds", "average")):
+        return "concrete bookmaker missing"
+    rules = quote.get("settlement_rules")
+    if not isinstance(rules, dict) or any(rules.get(k) != v for k, v in {
+        "retirement": "advancer", "walkover": "void", "cancelled": "void"
+    }.items()):
+        return "bookmaker settlement rules unknown or incompatible"
+    return ""
