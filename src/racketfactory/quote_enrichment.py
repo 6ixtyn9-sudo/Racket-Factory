@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 
 
 def _collection_now():
@@ -189,9 +190,9 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
 def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[dict]:
     """Use the guarded detail path during normal warehouse collection too.
 
-    The same-run cache stores the *status* along with offers: a failed or
-    partial collection is not turned into a successful empty response. Quote
-    timestamps remain the original provider observation times.
+    Identified-run attempts are bounded independently of the positive-result
+    cache: failures remain failures, and later builds do not recrawl the source.
+    Quote timestamps remain the original provider observation times.
     """
     import hashlib
     import json
@@ -212,37 +213,146 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
 
     def collect():
         metrics = {}
-        try:
-            if os.getenv(betexplorer.DISABLE_ENV, '').strip().lower() in {'1','true','yes','on'}:
-                return [{'status': 'disabled', 'counts': {}, 'offers': []}]
-            fixtures, status = betexplorer._fetch_live(target_date, with_status=True, metrics=metrics)
-            offers, counts, partial = collect_prediction_comparisons(target_date, predictions, fixtures, status)
-            if predictions and not fixtures:
-                partial = True
-            return [{'status': 'partial' if partial else status, 'listing_rows': len(fixtures),
-                     'listing_counts': metrics, 'counts': counts, 'offers': offers}]
-        except Exception as exc:
-            return [{'status': 'failed', 'error_type': type(exc).__name__,
-                     'failure_kind': getattr(exc, 'kind', 'unexpected'), 'offers': []}]
+        if os.getenv(betexplorer.DISABLE_ENV, '').strip().lower() in {'1','true','yes','on'}:
+            return [{'status': 'disabled', 'counts': {}, 'offers': []}]
+        fixtures, status = betexplorer._fetch_live(target_date, with_status=True, metrics=metrics)
+        offers, counts, partial = collect_prediction_comparisons(target_date, predictions, fixtures, status)
+        if predictions and not fixtures:
+            partial = True
+        return [{'status': 'partial' if partial else status, 'listing_rows': len(fixtures),
+                 'listing_counts': metrics, 'counts': counts, 'offers': offers}]
 
-    # Cache only within the identified run, and never relabel old observations.
+    # The run-scoped attempt marker is not a positive-result cache or a
+    # provider quota authority. It prevents retries by later processes in this
+    # job even if a fetch, cache write or process crashes. It cannot coordinate
+    # separate runners. Old positive-cache failures remain failures without a
+    # re-fetch; no cache or cooldown is deleted.
     collected_live = False
-    def collect_for_run():
-        nonlocal collected_live
-        collected_live = True
-        result = collect()
-        result[0]['prediction_fingerprint'] = fingerprint
+    def failure(exc):
+        kind = getattr(exc, 'kind', 'unexpected')
+        if not isinstance(kind, str) or kind not in {'transport', 'http', 'auth', 'challenge', 'rate_limit', 'parser'}:
+            kind = 'unexpected'
+        result = {'status': 'failed', 'error_type': type(exc).__name__,
+                  'failure_kind': kind, 'offers': [], 'prediction_fingerprint': fingerprint}
+        if kind == 'rate_limit':
+            from racketfactory.quota_guard import cooldown_status
+            cooldown = cooldown_status('betexplorer', 'host:www.betexplorer.com')
+            if cooldown and cooldown.get('kind') == 'rate_limit':
+                result['cooldown_state'] = 'active_in_current_runner'
+                result['cooldown_until'] = cooldown.get('until')
+            else:
+                result['cooldown_state'] = 'not_established_in_current_runner'
         return result
-    result = (cached_fetch('targeted_quotes_' + key, collect_for_run, fetch_day=target_date,
-                           ttl_minutes=24 * 60)
-              if run else collect_for_run())[0]
+
+    if run:
+        import fcntl
+        import tempfile
+        from racketfactory.fetch_cache import cache_path
+        marker_path = cache_path('targeted_attempt_' + key, fetch_day=target_date)
+        lock_path = marker_path.with_suffix('.lock')
+        def write_marker(payload):
+            tmp = None
+            try:
+                with tempfile.NamedTemporaryFile('w', dir=marker_path.parent, delete=False, encoding='utf-8') as stream:
+                    tmp = Path(stream.name)
+                    json.dump(payload, stream, sort_keys=True)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(tmp, marker_path)
+                fd = os.open(marker_path.parent, os.O_RDONLY)
+                try:
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+            finally:
+                if tmp:
+                    tmp.unlink(missing_ok=True)
+        try:
+            marker_path.parent.mkdir(parents=True, exist_ok=True)
+            with lock_path.open('a') as lock:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                marker = None
+                if marker_path.exists():
+                    marker = json.loads(marker_path.read_text(encoding='utf-8'))
+                    if (not isinstance(marker, dict) or marker.get('version') != 1
+                            or marker.get('key') != key or marker.get('state') not in {'started', 'failed', 'completed'}
+                            or not isinstance(marker.get('prediction_fingerprint'), str)
+                            or not re.fullmatch(r'[0-9a-f]{64}', marker['prediction_fingerprint'])
+                            or (marker.get('state') == 'failed' and
+                                (marker.get('failure_kind') not in {'transport', 'http', 'auth', 'challenge', 'rate_limit', 'parser', 'unexpected'}
+                                 or not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,79}', str(marker.get('error_type') or ''))))):
+                        raise ValueError('invalid attempt marker')
+                if marker and marker['state'] in {'started', 'failed'}:
+                    result = {'status': 'failed',
+                              'error_type': marker['error_type'] if marker['state'] == 'failed' else 'PriorAttemptIncomplete',
+                              'failure_kind': marker['failure_kind'] if marker['state'] == 'failed' else 'attempt_incomplete', 'offers': [],
+                              'prediction_fingerprint': marker['prediction_fingerprint'],
+                              'attempt_guard': 'previous_attempt'}
+                    if result['failure_kind'] == 'rate_limit':
+                        from racketfactory.quota_guard import cooldown_status
+                        cooldown = cooldown_status('betexplorer', 'host:www.betexplorer.com')
+                        if cooldown and cooldown.get('kind') == 'rate_limit':
+                            result['cooldown_state'] = 'active_in_current_runner'
+                            result['cooldown_until'] = cooldown.get('until')
+                        else:
+                            result['cooldown_state'] = 'not_established_in_current_runner'
+                else:
+                    def collect_for_run():
+                        nonlocal collected_live
+                        # A prior completed attempt with a missing/corrupt cache
+                        # must not create a second request sequence either.
+                        if marker:
+                            raise RuntimeError('prior attempt result unavailable')
+                        write_marker({'version': 1, 'key': key, 'state': 'started',
+                                      'prediction_fingerprint': fingerprint})
+                        collected_live = True
+                        rows = collect()  # exceptions never reach the positive cache
+                        rows[0]['prediction_fingerprint'] = fingerprint
+                        return rows
+                    try:
+                        cached = cached_fetch('targeted_quotes_' + key, collect_for_run,
+                                              fetch_day=target_date, ttl_minutes=24 * 60)
+                        if (not isinstance(cached, list) or len(cached) != 1 or not isinstance(cached[0], dict)
+                                or cached[0].get('status') not in {'complete', 'partial', 'failed', 'disabled', 'unknown'}
+                                or not isinstance(cached[0].get('offers'), list)):
+                            raise ValueError('invalid targeted collection cache')
+                        result = cached[0]
+                        if collected_live:
+                            write_marker({'version': 1, 'key': key, 'state': 'completed',
+                                          'prediction_fingerprint': fingerprint})
+                    except Exception as exc:
+                        result = failure(exc)
+                        # The started marker already blocks retry if this write fails.
+                        if collected_live:
+                            write_marker({'version': 1, 'key': key, 'state': 'failed',
+                                          'prediction_fingerprint': fingerprint,
+                                          'error_type': result['error_type'], 'failure_kind': result['failure_kind']})
+                        elif marker:
+                            result['failure_kind'] = 'prior_result_unavailable'
+                            result['prediction_fingerprint'] = marker['prediction_fingerprint']
+                        else:
+                            result['failure_kind'] = 'attempt_guard_unavailable'
+        except (OSError, ValueError, TypeError, KeyError, IndexError) as exc:
+            # Missing/unwritable/corrupt local attempt state is not permission
+            # to run the request sequence again.
+            result = failure(exc)
+            result['failure_kind'] = 'attempt_guard_unavailable'
+    else:
+        # Without a run identity there is no safe cross-process same-run key.
+        try:
+            collected_live = True
+            result = collect()[0]
+            result['prediction_fingerprint'] = fingerprint
+        except Exception as exc:
+            result = failure(exc)
     # Cached results lack independently verifiable schedule proof. Quarantine
     # them without recollection. A fresh result is governed by _fetch_live and
     # comparison completeness rather than being discarded merely for existing.
     cached_without_proof = not collected_live and bool(result.get('offers') or result.get('listing_rows'))
     incomplete_with_offers = result.get('status') != 'complete' and bool(result.get('offers'))
     if cached_without_proof or incomplete_with_offers:
-        result['status'] = 'partial'
+        if result.get('status') not in {'failed', 'disabled'}:
+            result['status'] = 'partial'
         result['listing_schedule_status'] = 'unverified'
         result['schedule_guard_reason'] = ('cached_schedule_evidence_unavailable' if cached_without_proof
                                            else 'incomplete_collection')
@@ -250,7 +360,8 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
     if result.get('prediction_fingerprint') != fingerprint:
         # Do not silently treat a different fixture set as covered or exceed
         # the per-run detail request budget by recrawling it.
-        result['status'] = 'partial'
+        if result.get('status') == 'complete':
+            result['status'] = 'partial'
         result['fixture_set_changed'] = True
     betclan_status = betclan.current_run_status(run)
     result['betclan_status'] = betclan_status
