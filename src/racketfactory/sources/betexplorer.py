@@ -267,9 +267,53 @@ def _finished_score_link_row(tr: Tag, *, rejection_reasons: list[str] | None = N
     participant_anchor, score_anchor = participant_cell[1], score_cell[0]
     participant_reasons: list[str] = []
     if _structured_participants([participant_anchor], rejection_reasons=participant_reasons) is None:
-        if rejection_reasons is not None:
-            rejection_reasons.extend(x for x in participant_reasons if x not in rejection_reasons)
-        return reject('terminal_participant_structure_unverified')
+        # A terminal exclusion does not need to publish participant identities.
+        # When the strict identity lexer rejects only the visible name format,
+        # accept the row for exclusion if the two ordered participant spans
+        # remain explicit, visible, bounded, and unambiguous. This deliberately
+        # does not relax the identity parser used for actionable rows.
+        def bounded_explicit_participant_spans(anchor: Tag) -> bool:
+            from racketfactory.settlement import players_match
+
+            children = children_without_whitespace(anchor)
+            if (len(children) != 2 or not all(isinstance(node, Tag) and node.name == 'span'
+                                               for node in children)):
+                return False
+            texts = []
+            for span in children:
+                nodes = [span, *span.find_all(True)]
+                if (span.find(string=lambda value: isinstance(value, Comment))
+                        or any(node.name not in {'span', 'b', 'strong', 'i', 'em'}
+                               or any(key in node.attrs for key in ('hidden', 'style', 'aria-hidden'))
+                               or any(re.search(r'(?i)(?:score|odds|status|ranking|seed|winner)', cls)
+                                      for cls in node.get('class', []))
+                               for node in nodes)):
+                    return False
+                text = span.get_text(' ', strip=True)
+                if (not text or len(text) > 100 or any(char.isdigit() for char in text)
+                        or any(not (char.isalpha() or char.isspace() or char in ".'’-/")
+                               for char in text)
+                        or re.search(r'(?i)\b(?:winner|finished|retired|walkover|cancelled|canceled|live|scheduled|postponed|odds|result)\b', text)):
+                    return False
+                teams = [value.strip() for value in text.split('/')]
+                if len(teams) not in (1, 2) or any(not value for value in teams):
+                    return False
+                for team in teams:
+                    words = team.split()
+                    if not 2 <= len(words) <= 8 or not any(char.isalpha() for char in team):
+                        return False
+                texts.append(text)
+            if texts[0].casefold() == texts[1].casefold() or texts[0].count('/') != texts[1].count('/'):
+                return False
+            members = [member.strip() for text in texts for member in text.split('/')]
+            return not any(players_match(left, right)[0]
+                           for index, left in enumerate(members) for right in members[index + 1:])
+
+        if (participant_reasons != ['participant_name_format']
+                or not bounded_explicit_participant_spans(participant_anchor)):
+            if rejection_reasons is not None:
+                rejection_reasons.extend(x for x in participant_reasons if x not in rejection_reasons)
+            return reject('terminal_participant_structure_unverified')
 
     first = _url(str(participant_anchor.get('href') or ''), '')
     second = _url(str(score_anchor.get('href') or ''), '')
