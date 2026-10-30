@@ -14,6 +14,25 @@ from racketfactory.sources import betexplorer
 from racketfactory.sources._page_odds import PageFetchError
 
 
+def _diagnostic_candidates(evidence: EvidenceCapture | None) -> tuple[list[dict], bool]:
+    """Expose bounded same-listing cues and whether the combined list was clipped."""
+    if evidence is None:
+        return [], False
+    candidates = []
+    for response in evidence.data.get('responses', []):
+        if response.get('stage') != 'listing' or response.get('http_status') != 200:
+            continue
+        for candidate in response.get('diagnostic_event_candidates', []):
+            row = dict(candidate)
+            row['listing_response_id'] = response.get('response_id')
+            row['listing_requested_url'] = response.get('requested_url')
+            row['listing_final_url'] = response.get('final_url')
+            candidates.append(row)
+    truncated = len(candidates) > 1000 or any(
+        row.get('candidate_scan_truncated') is True for row in candidates)
+    return candidates[:1000], truncated
+
+
 def capture(target: str, *, browser_observer: bool = False, event_id: str | None = None) -> dict:
     out = {"target_date": target, "purpose": "evidence_only", "publication_attempted": False,
            "listing_attempted": False, "fixtures_attempted": 0, "stage_counts": {}, "failures": [],
@@ -35,6 +54,12 @@ def capture(target: str, *, browser_observer: bool = False, event_id: str | None
         listing_kwargs = ({"response_observer": evidence.observe} if evidence is not None else {})
         rows, status = betexplorer._fetch_live(target, with_status=True, **listing_kwargs)
         out["listing_status"] = status
+        (out['diagnostic_event_candidates'],
+         out['diagnostic_event_candidates_truncated']) = _diagnostic_candidates(evidence)
+        out['diagnostic_event_candidate_count'] = len(out['diagnostic_event_candidates'])
+        out['diagnostic_event_candidate_notice'] = (
+            'Candidate path/participant cues from retained listing response only; schedule, listing completeness, '
+            'provider timezone, quote eligibility, and ticket eligibility are not established.')
         from racketfactory.betexplorer_evidence import _identity
         from racketfactory.warehouse import names_match
         if event_id is not None:
@@ -44,16 +69,51 @@ def capture(target: str, *, browser_observer: bool = False, event_id: str | None
             if status not in {"complete", "partial"}:
                 return out
             matching = [row for row in rows if str(row.get('event_id') or '') == event_id]
-            if len(matching) != 1:
+            if len(matching) > 1:
                 out['capture_status'] = 'selected_event_not_unique'
                 return out
-            fixture = matching[0]
-            identity = _identity(fixture)
-            if (not identity or str(fixture.get('listing_date') or '')[:10] != target
-                    or names_match(identity['player_home'], identity['player_away'])):
-                out['capture_status'] = 'selected_event_identity_unverified'
-                return out
-            out['selection'] = 'explicit_listing_event_schedule_unknown'
+            if len(matching) == 1:
+                fixture = matching[0]
+                identity = _identity(fixture)
+                if (not identity or str(fixture.get('listing_date') or '')[:10] != target
+                        or names_match(identity['player_home'], identity['player_away'])):
+                    out['capture_status'] = 'selected_event_identity_unverified'
+                    return out
+                out['selection'] = 'explicit_listing_event_schedule_unknown'
+            else:
+                all_candidates = [candidate for candidate in out['diagnostic_event_candidates']
+                                  if candidate.get('event_id') == event_id]
+                candidates = [candidate for candidate in all_candidates
+                              if candidate.get('safe_for_explicit_diagnostic_detail') is True]
+                if len(candidates) != 1:
+                    out['capture_status'] = (
+                        'selected_event_candidate_not_unique' if len(candidates) > 1 else
+                        'selected_event_diagnostic_link_unverified' if all_candidates else
+                        'selected_event_unrecognized_by_parser')
+                    return out
+                candidate = candidates[0]
+                if (candidate.get('listing_response_date_context') != 'requested_target_date_results_page'
+                        or candidate.get('participant_identity_status') != 'explicit_same_event_spans'
+                        or not candidate.get('unique_in_listing')
+                        or not candidate.get('match_path', '').rstrip('/').endswith('/' + event_id)):
+                    out['capture_status'] = 'selected_event_identity_unverified'
+                    return out
+                fixture = {'event_id': event_id, 'match_url': candidate['match_path'],
+                           'match_date': '', 'match_time': '', 'listing_date': target,
+                           'listing_data_dt_components': candidate.get('listing_data_dt_components'),
+                           'listing_schedule_status': 'unverified',
+                           'listing_component_status': candidate.get('listing_data_dt_component_status'),
+                           'listing_status_state': candidate.get('listing_row_status_state'),
+                           'listing_status_signals': candidate.get('listing_status_signals', []),
+                           'player_home': candidate['player_home'], 'player_away': candidate['player_away']}
+                identity = _identity(fixture)
+                if not identity or names_match(identity['player_home'], identity['player_away']):
+                    out['capture_status'] = 'selected_event_identity_unverified'
+                    return out
+                out['selection'] = 'explicit_diagnostic_listing_candidate_schedule_unknown'
+                out['selected_event_listing_row_number'] = candidate['listing_row_number']
+                out['selected_event_listing_status_state'] = candidate['listing_row_status_state']
+                out['selected_event_linkage'] = candidate['listing_response_id']
         else:
             if status != "complete":
                 out['capture_status'] = 'explicit_event_id_required'
