@@ -306,6 +306,20 @@ def capture_replay(html: str, kind: str, fixture: dict, *, observed_at: str,
                   'omission_categories': sorted(omissions),
                   'redaction_policy': 'Only allowlisted DOM attributes, public same-host paths with selected query keys, and simple initializer calls with public arguments. All other page text, headers, cookies, form data, scripts and arguments omitted.',
                   'notice': 'Allowlisted evidence only; unretained DOM/scripts may be essential. Never execute this HTML.'}
+    if kind == 'detail' and fixture.get('listing_schedule_status') == 'unverified':
+        # Persist only strictly matched, bounded public fields. A failure
+        # is deliberately not described as absence of JSON-LD or proof that
+        # the fixture is started; unallowlisted raw scripts are never saved.
+        from racketfactory.sources.betexplorer import _detail_scheduled_start
+        schedule = _detail_scheduled_start(html, fixture, observed_at=observed_at)
+        schedule_record = {'status': 'not_verified', 'listing_coverage': 'not_established'}
+        if schedule:
+            schedule_record.update(status='candidate_offset_sportsevent', normalised_fields=True,
+                                   start_date=schedule[2], match_date_sast=schedule[0],
+                                   match_time_sast=schedule[1], event_url=identity['match_url'],
+                                   player_home=identity['player_home'], player_away=identity['player_away'],
+                                   event_status='https://schema.org/EventScheduled', sport='Tennis')
+        data[kind]['schedule_evidence'] = schedule_record
     file.write_text(json.dumps(data, indent=2, ensure_ascii=True), encoding='utf-8')
     return CaptureResult(file_written=True, discovery_material_retained=material_count > 0,
                          material_sufficiency=data[kind]['material_sufficiency'])

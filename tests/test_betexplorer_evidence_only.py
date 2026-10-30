@@ -248,3 +248,33 @@ def test_parser_replay_mismatch_marks_evidence_insufficient(tmp_path, monkeypatc
     assert detail['material_sufficiency'] == 'insufficient'
     assert 'current_parser_replay_mismatch' in detail['omission_categories']
     assert counts['replay_discovery_mismatch'] == 1 and counts['replay_detail_insufficient'] >= 1
+
+
+def test_explicit_partial_listing_selection_is_diagnostic_not_upcoming(monkeypatch):
+    row = {'event_id': 'abc', 'match_url': '/tennis/atp/test/alice-beth/abc/',
+           'listing_date': '2026-10-29', 'listing_schedule_status': 'unverified',
+           'match_date': '', 'match_time': '', 'player_home': 'Alice Adams', 'player_away': 'Beth Brown'}
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', lambda *a, **kw: ([row], 'partial'))
+    calls = []
+    def fetch(fixture, **kwargs):
+        calls.append(fixture)
+        raise PageFetchError('parser', 'unknown schedule')
+    monkeypatch.setattr(probe.betexplorer, 'fetch_fixture_comparison', fetch)
+    assert probe.capture('2026-10-29')['fixtures_attempted'] == 0
+    result = probe.capture('2026-10-29', event_id='abc')
+    assert len(calls) == 1 and calls[0]['match_date'] == ''
+    assert result['selection'] == 'explicit_listing_event_schedule_unknown'
+    assert result['listing_status'] == 'partial' and result['publication_attempted'] is False
+    assert result['quote_eligibility'] == 'not_evaluated' and 'upcoming_candidates' not in result
+
+
+def test_explicit_selection_rejects_wrong_duplicate_or_unbound_identity(monkeypatch):
+    row = {'event_id': 'abc', 'match_url': '/tennis/atp/test/alice-beth/abc/',
+           'listing_date': '2026-10-29', 'listing_schedule_status': 'unverified',
+           'player_home': 'Alice Adams', 'player_away': 'Beth Brown'}
+    monkeypatch.setattr(probe.betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: (_ for _ in ()).throw(AssertionError('must not fetch')))
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', lambda *a, **kw: ([row, row], 'partial'))
+    assert probe.capture('2026-10-29', event_id='abc')['capture_status'] == 'selected_event_not_unique'
+    assert probe.capture('2026-10-29', event_id='other')['fixtures_attempted'] == 0
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', lambda *a, **kw: ([dict(row, match_url='/tennis/atp/test/alice-beth/other/')], 'partial'))
+    assert probe.capture('2026-10-29', event_id='abc')['capture_status'] == 'selected_event_identity_unverified'

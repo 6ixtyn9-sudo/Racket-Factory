@@ -12,7 +12,7 @@ from racketfactory.sources import betexplorer
 from racketfactory.sources._page_odds import PageFetchError
 
 
-def capture(target: str, *, browser_observer: bool = False) -> dict:
+def capture(target: str, *, browser_observer: bool = False, event_id: str | None = None) -> dict:
     out = {"target_date": target, "purpose": "evidence_only", "publication_attempted": False,
            "listing_attempted": False, "fixtures_attempted": 0, "stage_counts": {}, "failures": [],
            "capture_status": "not_attempted", "parser_status": "not_attempted", "quote_eligibility": "not_evaluated",
@@ -23,41 +23,60 @@ def capture(target: str, *, browser_observer: bool = False) -> dict:
         out["listing_attempted"] = True
         rows, status = betexplorer._fetch_live(target, with_status=True)
         out["listing_status"] = status
-        if status != "complete":
-            return out
         from racketfactory.betexplorer_evidence import _identity
         from racketfactory.warehouse import names_match
-        now = datetime.now(SAST)
-        candidates = []
-        for row in rows:
-            if str(row.get('match_date') or '')[:10] != target or not _identity(row):
-                continue
-            if names_match(str(row.get('player_home') or ''), str(row.get('player_away') or '')):
-                continue
-            try:
-                stamp = str(row.get('match_time') or '')
-                if stamp == '00:00':
+        if event_id is not None:
+            # An explicitly selected listing event is diagnostic only. The
+            # listing day is not its scheduled date and its status is unknown.
+            # Never select an arbitrary URL or auto-crawl a partial listing.
+            if status not in {"complete", "partial"}:
+                return out
+            matching = [row for row in rows if str(row.get('event_id') or '') == event_id]
+            if len(matching) != 1:
+                out['capture_status'] = 'selected_event_not_unique'
+                return out
+            fixture = matching[0]
+            identity = _identity(fixture)
+            if (not identity or str(fixture.get('listing_date') or '')[:10] != target
+                    or names_match(identity['player_home'], identity['player_away'])):
+                out['capture_status'] = 'selected_event_identity_unverified'
+                return out
+            out['selection'] = 'explicit_listing_event_schedule_unknown'
+        else:
+            if status != "complete":
+                return out
+            now = datetime.now(SAST)
+            candidates = []
+            for row in rows:
+                if str(row.get('match_date') or '')[:10] != target or not _identity(row):
                     continue
-                kickoff = datetime.strptime(f'{target} {stamp}', '%Y-%m-%d %H:%M').replace(tzinfo=SAST)
-                if kickoff <= now:
+                if names_match(str(row.get('player_home') or ''), str(row.get('player_away') or '')):
                     continue
-            except (ValueError, TypeError):
-                continue
-            candidates.append((kickoff, str(row['event_id']), row))
-        # Conflicting IDs or duplicate player pairs cannot establish a unique
-        # fixture; do not arbitrarily select the first listing row.
-        from collections import Counter
-        ids = Counter(item[1] for item in candidates)
-        pairs = Counter(tuple(sorted((str(item[2]['player_home']).casefold(),
-                                      str(item[2]['player_away']).casefold()))) for item in candidates)
-        candidates = [item for item in candidates if ids[item[1]] == 1 and
-                      pairs[tuple(sorted((str(item[2]['player_home']).casefold(),
-                                          str(item[2]['player_away']).casefold())))] == 1]
-        out['upcoming_candidates'] = len(candidates)
-        if not candidates:
-            out['capture_status'] = 'no_eligible_fixture'
-            return out
-        _, _, fixture = min(candidates, key=lambda x: (x[0], x[1]))
+                try:
+                    stamp = str(row.get('match_time') or '')
+                    if stamp == '00:00':
+                        continue
+                    kickoff = datetime.strptime(f'{target} {stamp}', '%Y-%m-%d %H:%M').replace(tzinfo=SAST)
+                    if kickoff <= now:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+                candidates.append((kickoff, str(row['event_id']), row))
+            # Conflicting IDs or duplicate player pairs cannot establish a unique
+            # fixture; do not arbitrarily select the first listing row.
+            from collections import Counter
+            ids = Counter(item[1] for item in candidates)
+            pairs = Counter(tuple(sorted((str(item[2]['player_home']).casefold(),
+                                          str(item[2]['player_away']).casefold()))) for item in candidates)
+            candidates = [item for item in candidates if ids[item[1]] == 1 and
+                          pairs[tuple(sorted((str(item[2]['player_home']).casefold(),
+                                              str(item[2]['player_away']).casefold())))] == 1]
+            out['upcoming_candidates'] = len(candidates)
+            if not candidates:
+                out['capture_status'] = 'no_eligible_fixture'
+                return out
+            _, _, fixture = min(candidates, key=lambda x: (x[0], x[1]))
+            out['selection'] = 'upcoming_from_complete_listing'
         out['fixtures_attempted'] = 1
         if browser_observer:
             from racketfactory.betexplorer_evidence import observe_in_browser
@@ -119,12 +138,13 @@ def main(argv=()) -> int:
     parser = argparse.ArgumentParser(description='Bounded evidence-only BetExplorer capture')
     parser.add_argument('--browser-observer', action='store_true',
                         help='replace direct detail/comparison fetches with a bounded browser observation')
+    parser.add_argument('--event-id', help='select one event ID present in the requested listing; schedule remains unknown')
     args = parser.parse_args(argv)
     path = directory()
     if path is None:
         raise RuntimeError("RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR must be set")
     path.mkdir(parents=True, exist_ok=True)
-    result = capture(datetime.now(SAST).date().isoformat(), browser_observer=args.browser_observer)
+    result = capture(datetime.now(SAST).date().isoformat(), browser_observer=args.browser_observer, event_id=args.event_id)
     (path / "evidence_collection.json").write_text(json.dumps(result, indent=2, sort_keys=True))
     # Capture can succeed even if the production parser fails. It is not a bet.
     return 0 if result['capture_status'] in {'detail_saved', 'browser_comparison_saved'} else 1

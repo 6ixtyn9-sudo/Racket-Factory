@@ -105,14 +105,17 @@ def test_normal_targeted_detail_budget_and_changed_fixture_set_fail_closed(monke
              'market': 'h2h', 'period': 'match', 'observed_at': datetime.now(tickets.TZ).isoformat()}
     monkeypatch.setattr(qe, 'collect_prediction_comparisons', lambda *a: ([offer], {'matched_fixtures': 1}, False))
     monkeypatch.setattr(oddsportal_upcoming, 'fetch_oddsportal_upcoming_rows', lambda _: [])
-    # A legacy complete-looking cache has no authoritative listing schedule.
-    # It must be reused without re-crawling, but its offers cannot be used.
-    assert not qe.targeted_comparison_rows(DAY, [fixture])
+    # Synthetic complete-source contract exercises live plumbing only. The
+    # real source cannot produce complete while schedules are unverified.
+    assert qe.targeted_comparison_rows(DAY, [fixture])
+    # Reused cache has no independently verifiable schedule evidence; block
+    # it without repeating provider collection or relabeling observations.
     assert not qe.targeted_comparison_rows(DAY, [fixture])
     assert calls == ['listing']
     status = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())
     assert status['status'] == 'partial'
     assert status['listing_schedule_status'] == 'unverified'
+    assert status['schedule_guard_reason'] == 'cached_schedule_evidence_unavailable'
     other = dict(fixture, player_home='Carol Clark')
     qe.targeted_comparison_rows(DAY, [other])
     status = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())
@@ -275,3 +278,26 @@ def test_started_during_previous_fetch_is_excluded_from_verified_denominator(mon
     assert calls == ['first'] and not partial
     assert counts['excluded_started_fixtures'] == 1 and counts['relevant_upcoming_fixtures'] == 1
     assert counts['fresh_settlement_compatible_fixtures'] == 1
+
+
+def test_legacy_cached_offer_is_quarantined_even_if_labeled_verified(monkeypatch, tmp_path):
+    from racketfactory import quote_enrichment as qe
+    from racketfactory import fetch_cache
+    from racketfactory.sources import betclan, oddsportal_upcoming
+    (tmp_path / 'localdata').mkdir()
+    monkeypatch.setattr(qe, '__file__', str(tmp_path / 'src/racketfactory/quote_enrichment.py'))
+    monkeypatch.setenv('RACKET_FACTORY_RUN_AS_OF', DAY + 'T10:00:00+02:00')
+    monkeypatch.setattr(betclan, 'current_run_status', lambda _: 'complete')
+    monkeypatch.setattr(oddsportal_upcoming, 'fetch_oddsportal_upcoming_rows', lambda _: [])
+    monkeypatch.setattr(fetch_cache, 'cached_fetch', lambda *a, **kw: [{
+        'status': 'complete', 'listing_rows': 1, 'offers': [{'event_id': 'abc'}],
+        'listing_schedule_status': 'verified',  # untrusted label, not proof
+    }])
+    def no_recollection(*args, **kwargs):
+        raise AssertionError('unexpected recollection')
+    monkeypatch.setattr(betexplorer, '_fetch_live', no_recollection)
+    fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
+    assert qe.targeted_comparison_rows(DAY, [fixture]) == []
+    status = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())
+    assert status['status'] == 'partial'
+    assert status['schedule_guard_reason'] == 'cached_schedule_evidence_unavailable'
