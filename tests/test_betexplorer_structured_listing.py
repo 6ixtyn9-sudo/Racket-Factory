@@ -90,12 +90,16 @@ def test_existing_cached_listing_cannot_bypass_schedule_guard(monkeypatch):
         be.fetch_betexplorer_rows('2026-10-31')
 
 
-def test_finished_listing_is_still_partial_when_schedule_unknown(monkeypatch):
+def test_finished_listing_row_accounting_does_not_claim_target_date_coverage(monkeypatch):
     html = listing('<span>van Wyk K.</span><span>Marmousez L.</span>')
     html = html.replace('<td></td><td><a', '<td>Finished</td><td><a', 1)
     monkeypatch.setattr(be, 'fetch_page_html', lambda *a, **kw: html)
-    rows, status = be._fetch_live('2026-10-31', with_status=True)
+    metrics = {}
+    rows, status = be._fetch_live('2026-10-31', with_status=True, metrics=metrics)
     assert rows == [] and status == 'partial'
+    assert metrics['listing_recognition_status'] == 'complete'
+    assert metrics['listing_coverage_status'] == 'not_established'
+    assert metrics['schedule_verification_status'] == 'not_required_for_excluded_rows'
 
 
 def test_generic_fallback_does_not_assign_listing_date_or_crawl_details(monkeypatch):
@@ -208,7 +212,8 @@ def test_finished_status_is_counted_only_after_unambiguous_name_extraction(monke
     metrics = {}
     rows, status = be._fetch_live('2026-10-30', with_status=True, metrics=metrics)
     assert not rows and metrics['finished_rows'] == 1 and metrics['unrecognized_rows'] == 0
-    assert status == 'partial'  # the finished label does not establish date/zone semantics
+    assert status == 'partial'  # row recognition is not requested-day coverage
+    assert metrics['actionable_schedule_unverified_rows'] == 0
 
 
 def test_reduced_capture_replay_reaches_partial_collection_and_blocks_staging(monkeypatch, tmp_path):

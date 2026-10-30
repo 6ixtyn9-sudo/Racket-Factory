@@ -1,5 +1,5 @@
 """Focused offline tests for the fixture -> price -> existing ticket path."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 
 import pandas as pd
@@ -299,9 +299,13 @@ def test_original_market_observation_flows_from_matching_to_builder(monkeypatch)
                   "player_home": "Alice Adams", "player_away": "Beth Brown",
                   "tournament": "ATP Shanghai", "predicted_winner": "2", "prob_home": 30, "prob_away": 70}
     observed = datetime.now(timezone.utc).isoformat()
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     market = {"match_date": DAY, "player_home": "Beth Brown", "player_away": "Alice Adams",
               "odds_home": 1.55, "odds_away": 2.60, "source": "TheOddsAPI", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"},
               "period": "match", "event_id": "original-event", "bookmaker": "book", "observed_at": observed}
+    attach_synthetic_settlement_evidence(market)
     monkeypatch.setattr(warehouse, "cached_fetch", lambda key, fn: [prediction] if key == "betclan" else [])
     monkeypatch.setattr(warehouse, "fetch_the_odds_api_rows", lambda d: [market])
     monkeypatch.setattr(warehouse, "fetch_comparison_rows", lambda d: [])
@@ -339,11 +343,15 @@ def test_rebuild_staging_is_pure_and_requires_complete_fresh_evidence(tmp_path, 
     now = datetime.fromisoformat(day + "T08:00:00+02:00")
     monkeypatch.setattr(tickets, "now_local", lambda: now)
     evidence = {"status": "complete", "date": day, "observed_at": now.isoformat()}
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     state = {"bank": 100.0, "paper_bank": 100.0, "open_slips": [], "history": []}
     def pick(name, other, odds):
         quote = {"odds": odds, "source": "TheOddsAPI", "bookmaker": "book", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "period": "match",
                  "selection": name, "provider_home": name, "provider_away": other, "provider_side": "1",
                  "event_id": name + "-fixture", "fixture_date": day, "observed_at": now.isoformat()}
+        attach_synthetic_settlement_evidence(quote)
         return {"date": day, "match": name + " vs " + other, "kickoff": "12:00", "selected_player": name,
                 "odds": odds, "odds_source": "TheOddsAPI", "odds_bookmaker": "book", "bucket": "WATCHLIST",
                 "confidence": 75, "prediction_prob": .75, "selected_quote": quote}
@@ -369,9 +377,13 @@ def test_rebuild_staging_is_pure_and_requires_complete_fresh_evidence(tmp_path, 
 def test_rebuild_strict_selected_quote_rejects_opponent_and_missing_identity(monkeypatch):
     now = tickets.now_local()
     day = now.date().isoformat()
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     q = {"odds": 1.55, "source": "TheOddsAPI", "bookmaker": "book", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "period": "match",
          "selection": "Alice Adams", "provider_home": "Beth Brown", "provider_away": "Alice Adams",
          "provider_side": "2", "event_id": "event", "fixture_date": day, "observed_at": now.isoformat()}
+    attach_synthetic_settlement_evidence(q)
     pick = {"odds": 1.55, "odds_source": "TheOddsAPI", "odds_bookmaker": "book",
             "selected_player": "Alice Adams", "date": day, "selected_quote": q}
     assert tickets.selected_quote_problem(pick, require_provenance=True) == ""
@@ -380,6 +392,9 @@ def test_rebuild_strict_selected_quote_rejects_opponent_and_missing_identity(mon
 
 
 def _local_rebuild_case(tmp_path, monkeypatch, *, picks=True):
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     monkeypatch.setattr(tickets, "_ML_AVAILABLE", False)
     now = tickets.now_local().replace(hour=8, minute=0, second=0, microsecond=0)
     monkeypatch.setattr(tickets, "now_local", lambda: now)
@@ -394,6 +409,7 @@ def _local_rebuild_case(tmp_path, monkeypatch, *, picks=True):
         q = {"odds": price, "source": "TheOddsAPI", "bookmaker": "book", "market": "h2h", "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}, "period": "match",
              "selection": name, "provider_home": name, "provider_away": other, "provider_side": "1",
              "event_id": name, "fixture_date": day, "observed_at": now.isoformat()}
+        attach_synthetic_settlement_evidence(q)
         return {"date": day, "match": name + " vs " + other, "kickoff": "12:00", "selected_player": name,
                 "odds": price, "odds_source": "TheOddsAPI", "odds_bookmaker": "book", "bucket": "WATCHLIST",
                 "confidence": 75, "prediction_prob": .75, "selected_quote": q}
@@ -558,6 +574,10 @@ def test_guarded_runner_state_change_during_staging_aborts(tmp_path, monkeypatch
 def test_staged_miner_uses_only_supplied_fresh_sources(tmp_path, monkeypatch):
     import os
     import subprocess
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_schedule_evidence,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     from scripts import daily
     day = tickets.now_local().date().isoformat()
     obs = datetime.now(timezone.utc).isoformat()
@@ -578,12 +598,15 @@ def test_staged_miner_uses_only_supplied_fresh_sources(tmp_path, monkeypatch):
                "match_url": "/tennis/atp/test/alice-beth/fake-fixture/", "market_id": "synthetic",
                "raw_market": "match winner", "raw_period": "match", "retrieved_at": obs,
                "provider_price_updated_at": ["100", "101"], "response_sha256": "a" * 64,
-               "bookmaker_id": "synthetic-book", "match_time": "12:00"}]
+               "bookmaker_id": "synthetic-book", "match_time": "12:00",
+               "commence_time": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()}]
+    attach_synthetic_settlement_evidence(quotes[0])
+    attach_synthetic_schedule_evidence(quotes[0])
     # In addition to empty credentials, block Python sockets and native HTTP
     # clients in the subprocess before its imports; no external provider calls.
     isolation = tmp_path / "isolation"
     isolation.mkdir()
-    (isolation / "sitecustomize.py").write_text('''import socket, os\nfrom pathlib import Path\ndef deny(*a, **k): raise RuntimeError("offline subprocess")\nsocket.socket.connect = deny\nsocket.socket.connect_ex = deny\ntry:\n import requests\n requests.sessions.Session.request = deny\n from curl_cffi import requests as curl_requests\n curl_requests.Session.request = deny\nexcept ImportError:\n pass\nfrom racketfactory import ml\nml.LOCALDATA = Path(os.environ["RACKET_TEST_ML_DATA"])\n''')
+    (isolation / "sitecustomize.py").write_text('''import socket, os\nfrom pathlib import Path\ndef deny(*a, **k): raise RuntimeError("offline subprocess")\nsocket.socket.connect = deny\nsocket.socket.connect_ex = deny\ntry:\n import requests\n requests.sessions.Session.request = deny\n from curl_cffi import requests as curl_requests\n curl_requests.Session.request = deny\nexcept ImportError:\n pass\nfrom racketfactory import ml, execution\nml.LOCALDATA = Path(os.environ["RACKET_TEST_ML_DATA"])\n_orig_settle = execution.settlement_evidence_problem\n_orig_schedule = execution.betexplorer_schedule_evidence_problem\nexecution.settlement_evidence_problem = lambda q, *a, **k: "" if (q.get("settlement_evidence") or {}).get("test_only") else _orig_settle(q, *a, **k)\nexecution.betexplorer_schedule_evidence_problem = lambda q, *a, **k: "" if (q.get("schedule_evidence") or {}).get("test_only") else _orig_schedule(q, *a, **k)\n''')
     real_run = subprocess.run
     def run(*args, **kwargs):
         env = dict(kwargs["env"])
@@ -620,10 +643,14 @@ def test_guarded_staging_does_not_let_unproven_primary_hide_valid_optional(tmp_p
     monkeypatch.setattr(daily, "LOCALDATA", local)
     pd.DataFrame([{"match_date": "2025-01-01", "winner": "Alice", "_is_live": False},
                   {"match_date": day, "winner": "Stale result", "_is_live": False}]).to_csv(local / "warehouse.csv.gz", index=False)
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     common = {"match_date": day, "player_home": "Alice Adams", "player_away": "Beth Brown",
               "odds_home": 1.5, "odds_away": 2.5, "observed_at": observed, "bookmaker": "book"}
     unproven = dict(common, source="BetExplorer")
     valid = dict(common, source="OddsPortal", market="h2h", period="match", price_type="bookmaker", settlement_rules={"retirement": "advancer", "walkover": "void", "cancelled": "void"})
+    attach_synthetic_settlement_evidence(valid)
     used = []
     def build(**kwargs):
         used.extend(kwargs["supplied_comparisons"])
@@ -667,3 +694,179 @@ def test_guarded_runner_committed_retry_is_a_noop(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=1, stdout=b""))
     with pytest.raises(RuntimeError, match="uncommitted rebuild archive"):
         daily.run_guarded_empty_rebuild(day)
+
+
+def test_offline_required_source_to_two_leg_ticket_doctor_and_blocked_states(tmp_path, monkeypatch):
+    """Synthetic end-to-end plumbing; it does not authenticate BetExplorer or bookmaker terms."""
+    import os
+    import pytest
+    import subprocess
+    from pathlib import Path
+    from racketfactory import doctor, execution
+    from racketfactory.kickoff import SAST
+    from racketfactory.sources import betclan, betexplorer, oddsportal_upcoming, predixsport
+    from scripts import daily
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_schedule_evidence,
+                                           attach_synthetic_settlement_evidence)
+
+    day = tickets.now_local().date().isoformat()
+    now = tickets.now_local()
+    observation = datetime.now(timezone.utc).isoformat()
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
+    monkeypatch.setattr(tickets, "_ML_AVAILABLE", False)
+    monkeypatch.setattr(daily, "LOCALDATA", tmp_path / "localdata")
+    daily.LOCALDATA.mkdir()
+    monkeypatch.setattr(doctor, "LOCALDATA", tmp_path / "localdata")
+    monkeypatch.setenv("RACKET_FACTORY_RUN_AS_OF", observation)
+    monkeypatch.delenv(betexplorer.DISABLE_ENV, raising=False)
+    monkeypatch.setenv(oddsportal_upcoming.DISABLE_ENV, "1")
+
+    identities = [
+        ("Alice Adams", "Beth Brown", "fixture-1", "ATP Shanghai"),
+        ("Clara Clark", "Diana Davies", "fixture-2", "WTA Beijing"),
+    ]
+    predictions = [{"match_date": day, "match_time": "23:30", "player_home": home,
+                    "player_away": away, "tournament": event, "surface": "Hard",
+                    "predicted_winner": "1", "prob_home": 72, "prob_away": 28}
+                   for home, away, _, event in identities]
+
+    class Clan:
+        last_collection_status = "complete"
+        def fetch_daily(self): return predictions
+    class Predix:
+        def fetch_daily(self): return []
+    monkeypatch.setattr(betclan, "BetClanPredictor", Clan)
+    monkeypatch.setattr(predixsport, "PredixSportPredictor", Predix)
+
+    listing = []
+    quote_by_event = {}
+    for home, away, event_id, event in identities:
+        commence = datetime.combine(datetime.fromisoformat(day).date(), datetime.strptime("23:30", "%H:%M").time(), SAST)
+        fixture = {"match_date": day, "match_time": "23:30", "commence_time": commence.isoformat(),
+                   "listing_date": day, "listing_schedule_status": "verified",
+                   "player_home": home, "player_away": away, "event_id": event_id,
+                   "match_url": f"/tennis/atp/{event.lower().replace(' ', '-')}/{home.split()[0].lower()}-{away.split()[0].lower()}/{event_id}/",
+                   "odds_home": 1.55, "odds_away": 2.60, "tournament": event}
+        listing.append(fixture)
+        quote = {**fixture, "source": "BetExplorer", "market": "h2h", "period": "match",
+                 "price_type": "bookmaker", "bookmaker": "Synthetic Book", "bookmaker_id": "synthetic-book",
+                 "operator_jurisdiction": "TEST", "observed_at": observation,
+                 "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"},
+                 "raw_market": "match winner", "raw_period": "match",
+                 "response_sha256": "a" * 64}
+        attach_synthetic_settlement_evidence(quote)
+        attach_synthetic_schedule_evidence(quote)
+        quote_by_event[event_id] = quote
+
+    def fetch_listing(target, *, with_status=False, metrics=None):
+        if isinstance(metrics, dict):
+            metrics.update({"data_dt_rows": 2, "row_accounting_total": 2, "row_accounting_complete": True,
+                            "listing_recognition_status": "complete", "listing_coverage_status": "complete",
+                            "schedule_verification_status": "verified", "actionable_schedule_unverified_rows": 0})
+        return listing, "complete"
+    monkeypatch.setattr(betexplorer, "_fetch_live", fetch_listing)
+    monkeypatch.setattr(betexplorer, "fetch_fixture_comparison",
+                        lambda fixture, **kwargs: [quote_by_event[fixture["event_id"]]])
+
+    # Each actual provider row is synthetic, tagged test_only, and accepted only
+    # at the mocked authentication boundary; all existing pipeline functions run.
+    collection = daily.collect_rebuild_sources(day)
+    assert collection["status"] == "complete"
+    assert collection["required_source_readiness"] == {
+        "status": "ready", "sources": {"betclan": "complete", "betexplorer": "complete"}, "blockers": []}
+    assert collection["prediction_set"]["status"] == "captured_snapshot"
+    assert collection["prediction_set"]["unique_fixture_keys"] == 2
+    assert len(collection["prediction_set"]["sha256"]) == 64
+    assert collection["outcomes"]["betexplorer"]["parser_counts"]["row_accounting_complete"] is True
+    assert collection["outcomes"]["betexplorer"]["detail_counts"]["stage_statuses"]["required_source_readiness"] == "ready"
+    assert len(collection["raw_quotes"]["betexplorer"]) == 2
+    assert all(row["settlement_evidence"]["test_only"] and row["schedule_evidence"]["test_only"]
+               for row in collection["raw_quotes"]["betexplorer"])
+
+    # Offline subprocess uses the real miner against the staged warehouse.
+    hist = [{"match_date": "2025-10-01", "player_a": "Historical Alice", "player_b": "Historical Beth",
+             "tour": "ATP", "tournament": "ATP Shanghai", "_series": "ATP", "_surface": "Hard",
+             "winner": "Historical Alice", "odds_a": 1.5, "odds_b": 2.5, "_is_live": False,
+             "predicted_winner_live": "player_a", "prediction_prob_live": 70, "rank_a": 5, "rank_b": 20}]
+    pd.DataFrame(hist).to_csv(daily.LOCALDATA / "warehouse.csv.gz", index=False, compression="gzip")
+    isolation = tmp_path / "isolation"
+    isolation.mkdir()
+    (isolation / "sitecustomize.py").write_text('''import socket, os\nfrom pathlib import Path\ndef deny(*a, **k): raise RuntimeError("offline subprocess")\nsocket.socket.connect = deny\nsocket.socket.connect_ex = deny\ntry:\n import requests\n requests.sessions.Session.request = deny\n from curl_cffi import requests as cr\n cr.Session.request = deny\nexcept ImportError:\n pass\nfrom racketfactory import ml, execution\nml.LOCALDATA = Path(os.environ["RACKET_TEST_ML_DATA"])\n_s = execution.settlement_evidence_problem\n_e = execution.betexplorer_schedule_evidence_problem\nexecution.settlement_evidence_problem = lambda q, *a, **k: "" if (q.get("settlement_evidence") or {}).get("test_only") else _s(q, *a, **k)\nexecution.betexplorer_schedule_evidence_problem = lambda q, *a, **k: "" if (q.get("schedule_evidence") or {}).get("test_only") else _e(q, *a, **k)\n''')
+    real_run = subprocess.run
+    def offline_run(*args, **kwargs):
+        env = dict(kwargs["env"])
+        env["PYTHONPATH"] = str(isolation) + os.pathsep + env["PYTHONPATH"]
+        env["RACKET_TEST_ML_DATA"] = str(daily.LOCALDATA)
+        kwargs["env"] = env
+        return real_run(*args, **kwargs)
+    monkeypatch.setattr(daily.subprocess, "run", offline_run)
+
+    picks = daily.stage_fresh_rebuild_picks(day, collection, tmp_path / "stage")
+    assert len(picks) == 2
+    assert all(float(pick["odds"]) >= 1.30 for pick in picks)
+    state = {"bank": 100.0, "paper_bank": 100.0, "open_slips": [], "history": []}
+    original = json.dumps((picks, state), sort_keys=True)
+    evaluation = tickets.stage_rebuild_evaluation(
+        picks, state, day, now,
+        {"status": "complete", "date": day, "observed_at": collection["observed_at"]})
+    assert evaluation["status"] == "PROPOSED" and len(evaluation["accas"]) == 1
+    assert len(evaluation["accas"][0]["legs"]) == 2
+    assert json.dumps((picks, state), sort_keys=True) == original  # no card/state mutation
+
+    no_bet = tickets.stage_rebuild_evaluation(
+        [], state, day, now,
+        {"status": "complete", "date": day, "observed_at": collection["observed_at"]})
+    assert no_bet["status"] == "NO BET" and no_bet["accas"] == []
+    unproven = json.loads(json.dumps(picks))
+    unproven[0]["selected_quote"].pop("settlement_evidence", None)
+    blocked = tickets.stage_rebuild_evaluation(
+        [unproven[0]], state, day, now,
+        {"status": "complete", "date": day, "observed_at": collection["observed_at"]})
+    assert blocked["status"] == "NO BET" and not blocked["accas"]
+    assert blocked["diagnostics"]["admission_rejections"]["bookmaker settlement rules evidence missing"] == 1
+    with pytest.raises(ValueError, match="fresh collection"):
+        tickets.stage_rebuild_evaluation(picks, state, day, now,
+            {"status": "partial", "date": day, "observed_at": collection["observed_at"]})
+
+    # Doctor consumes only a temporary current-run evaluation record.
+    ticket_file = daily.LOCALDATA / f"auto_tickets_{day}.json"
+    ticket_file.write_text(json.dumps({"date": day, "generated_at": now.isoformat(),
+                                      "diagnostics": evaluation["diagnostics"], "accas": evaluation["accas"]}))
+    evaluation_file = daily.LOCALDATA / f"auto_tickets_evaluation_{day}.json"
+    evaluation_file.write_text(json.dumps({"date": day, "run_as_of": observation,
+                                           "evaluated_at": now.isoformat(), "collection_status": "complete",
+                                           "publication": "staged_only", "diagnostics": evaluation["diagnostics"]}))
+    doctor_checks = doctor.run_health_checks(as_of=day)
+    assert doctor_checks["tickets:current_evaluation"]["status"] == "OK"
+    # Unproven/incomplete evaluation cannot be presented as Doctor-ready.
+    evaluation_file.write_text(json.dumps({"date": day, "run_as_of": observation,
+                                           "evaluated_at": now.isoformat(), "collection_status": "partial",
+                                           "publication": "retained_previous_card", "diagnostics": {}}))
+    doctor_checks = doctor.run_health_checks(as_of=day)
+    assert doctor_checks["tickets:current_evaluation"]["status"] == "CRITICAL"
+
+    # Distinct incomplete/unproven required-source states remain blocked.
+    class PartialClan(Clan):
+        last_collection_status = "partial"
+    monkeypatch.setattr(betclan, "BetClanPredictor", PartialClan)
+    partial_betclan = daily.collect_rebuild_sources(day)
+    assert partial_betclan["status"] == "insufficient"
+    assert partial_betclan["required_source_readiness"]["status"] == "blocked"
+    assert partial_betclan["required_source_readiness"]["sources"]["betclan"] == "partial"
+
+    monkeypatch.setattr(betclan, "BetClanPredictor", Clan)
+    monkeypatch.setattr(betexplorer, "_fetch_live", lambda *a, **kw: (listing, "partial"))
+    skipped_listing = daily.collect_rebuild_sources(day)
+    assert skipped_listing["status"] == "insufficient"
+    assert skipped_listing["outcomes"]["betexplorer"]["detail_counts"]["attempted"] == 0
+    assert skipped_listing["outcomes"]["betexplorer"]["detail_counts"]["unexamined_fixtures"] == 2
+
+    monkeypatch.setattr(betexplorer, "_fetch_live", fetch_listing)
+    quote_by_event = {key: dict(value) for key, value in quote_by_event.items()}
+    for quote in quote_by_event.values():
+        quote.pop("settlement_evidence", None)
+    unproven_quotes = daily.collect_rebuild_sources(day)
+    assert unproven_quotes["status"] == "insufficient"
+    assert unproven_quotes["required_source_readiness"]["status"] == "blocked"
+    assert unproven_quotes["outcomes"]["betexplorer"]["detail_counts"]["stage_statuses"]["quote_resolution"] == "partial"

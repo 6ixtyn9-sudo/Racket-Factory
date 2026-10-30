@@ -47,7 +47,6 @@ def test_reduced_retained_fin_and_same_event_score_are_terminal_only(home, away,
 @pytest.mark.parametrize('kwargs', [
     {'status': 'LIVE'},
     {'status': 'Fin'},
-    {'status': 'FINISHED'},
     {'status_extra': '<!-- unknown status -->'},
     {'status_extra': '<span>LIVE</span>'},
     {'score_path': OTHER},
@@ -66,9 +65,6 @@ def test_reduced_retained_fin_and_same_event_score_are_terminal_only(home, away,
     {'extra': '<span></span>'},
     {'away': 'Vacherot V.'},
     {'home': 'Vacherot Valentin'},
-    # A retained sample contains this hyphenated initial form; the existing
-    # participant parser does not yet establish it, so do not guess.
-    {'home': 'Djokovic N.', 'away': 'Struff J-L.', 'score': '1:2', 'winner_away': True},
 ])
 def test_ambiguous_or_conflicting_shape_remains_unrecognized(kwargs):
     metrics = {}
@@ -78,6 +74,25 @@ def test_ambiguous_or_conflicting_shape_remains_unrecognized(kwargs):
     assert metrics['finished_rows'] == 0
     assert metrics['unrecognized_rows'] == 1
     assert metrics['unverified_schedule_rows'] == 1
+
+
+def test_hyphenated_initial_is_one_participant_token_and_terminal_row_is_excluded():
+    html = listing(home='Djokovic N.', away='Struff J-L.', score='1:2', winner_away=True)
+    metrics = {}
+    rows = be.parse_results_page(html, '2026-10-30', metrics=metrics, include_unpriced=True)
+    assert rows == []
+    assert metrics['finished_rows'] == 1
+    assert metrics['unrecognized_rows'] == 0
+    assert metrics['row_accounting_complete'] is True
+
+
+
+def test_explicit_finished_label_is_terminal_without_treating_case_variant_as_fin():
+    metrics = {}
+    rows = be.parse_results_page(listing(status='FINISHED'), '2026-10-30',
+                                 metrics=metrics, include_unpriced=True)
+    assert rows == [] and metrics['finished_rows'] == 1
+    assert metrics['unrecognized_rows'] == 0
 
 
 @pytest.mark.parametrize('intrusion', ['LIVE', '<!-- unknown -->'])
@@ -95,14 +110,17 @@ def test_terminal_shape_never_makes_listing_complete_or_starts_comparison(monkey
     rows, status = be._fetch_live('2026-10-30', with_status=True, metrics=metrics)
     assert rows == [] and status == 'partial'
     assert metrics['finished_rows'] == 1 and metrics['unverified_schedule_rows'] == 1
-    with pytest.raises(be.PageFetchError, match='schedule is unverified'):
+    assert metrics['actionable_schedule_unverified_rows'] == 0
+    assert metrics['listing_recognition_status'] == 'complete'
+    with pytest.raises(be.PageFetchError, match='requested-day listing coverage'):
         be._fetch_live('2026-10-30')
     monkeypatch.setattr(be, 'fetch_fixture_comparison',
                         lambda *args, **kwargs: pytest.fail('unexpected detail request'))
     offers, counts, _ = quote_enrichment.collect_prediction_comparisons(
         '2026-10-30', [{'match_date': '2026-10-30'}], rows, status)
     assert offers == [] and counts['attempted'] == 0
-    assert counts['matching_skipped_reason'] == 'listing_not_complete'
+    assert counts['unmatched_or_ambiguous'] == 1
+    assert counts['attempted'] == 0
 
 
 def test_fin_row_does_not_mask_another_unrecognized_row(monkeypatch):

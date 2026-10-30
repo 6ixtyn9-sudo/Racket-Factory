@@ -71,6 +71,24 @@ def test_ambiguous_or_stale_evidence_is_rejected():
     assert be._detail_scheduled_start(page(event()), FIXTURE, observed_at='2034-01-01T12:00:00') is None
 
 
+def test_schedule_candidate_records_canonical_rejection_reasons():
+    stale = (datetime.now(timezone.utc) - timedelta(minutes=31)).isoformat()
+    reasons = []
+    assert be._detail_scheduled_start(page(event()), FIXTURE, observed_at=stale,
+                                     rejection_reasons=reasons) is None
+    assert reasons == ["schedule_observation_invalid_or_stale"]
+    reasons = []
+    conflicting = page(event()) + '<div data-status="LIVE">In play</div>'
+    assert be._detail_scheduled_start(conflicting, FIXTURE, observed_at=now(),
+                                     rejection_reasons=reasons) is None
+    assert reasons == ["schedule_conflicting_status_signal"]
+    reasons = []
+    components = dict(FIXTURE, listing_data_dt_components=[1, 1, 2035, 12, 0])
+    assert be._detail_scheduled_start(page(event()), components, observed_at=now(),
+                                     rejection_reasons=reasons) is None
+    assert reasons == ["schedule_listing_components_conflict_with_request_date"]
+
+
 def test_existing_detail_request_validates_schedule_before_comparison(monkeypatch):
     calls = []
     def document(url, referer=None):

@@ -155,12 +155,14 @@ def test_mixed_recognized_and_unrecognized_dated_rows_remain_partial(monkeypatch
     assert rows[0]['_collection_partial'] is True
 
 
-def test_existing_verified_empty_marker_without_unrecognized_rows_stays_complete(monkeypatch):
+def test_generic_empty_marker_without_rows_stays_unverified(monkeypatch):
     monkeypatch.setattr(betexplorer, 'fetch_page_html', lambda *a, **k: '<html>No matches</html>')
     monkeypatch.setattr(betexplorer, 'parse_listing_page', lambda *a, **k: [])
     metrics = {}
     rows, status = betexplorer._fetch_live('2026-10-31', with_status=True, metrics=metrics)
-    assert rows == [] and status == 'complete' and metrics['unrecognized_rows'] == 0
+    assert rows == [] and status == 'partial' and metrics['unrecognized_rows'] == 0
+    assert metrics['empty_board_marker_contract'] == 'unverified'
+    assert metrics['listing_coverage_status'] == 'not_established'
 
 
 def test_credential_canaries_scripts_and_arbitrary_attributes_not_retained(monkeypatch, tmp_path):

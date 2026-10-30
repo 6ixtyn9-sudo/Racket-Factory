@@ -167,7 +167,17 @@ def test_same_run_concurrent_builds_do_not_duplicate_collection(setup_targeted, 
 
 def test_proven_empty_synthetic_success_is_still_cached(setup_targeted, monkeypatch):
     calls = []
-    monkeypatch.setattr(betexplorer, '_fetch_live', lambda *a, **kw: (calls.append(1) or [], 'complete'))
+    def fetch_empty(*a, **kw):
+        calls.append(1)
+        metrics = kw.get('metrics')
+        if isinstance(metrics, dict):
+            metrics.update({"data_dt_rows": 0, "row_accounting_total": 0,
+                            "row_accounting_complete": True, "listing_recognition_status": "complete",
+                            "listing_coverage_status": "complete",
+                            "schedule_verification_status": "not_required_for_excluded_rows",
+                            "actionable_schedule_unverified_rows": 0})
+        return [], 'complete'
+    monkeypatch.setattr(betexplorer, '_fetch_live', fetch_empty)
     assert qe.targeted_comparison_rows(DAY, []) == []
     assert status(setup_targeted)['status'] == 'complete'
     assert fetch_cache.cache_path(keys()[0], DAY).exists()

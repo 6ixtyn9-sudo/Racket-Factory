@@ -311,13 +311,19 @@ def capture_replay(html: str, kind: str, fixture: dict, *, observed_at: str,
         # is deliberately not described as absence of JSON-LD or proof that
         # the fixture is started; unallowlisted raw scripts are never saved.
         from racketfactory.sources.betexplorer import _detail_scheduled_start
-        schedule = _detail_scheduled_start(html, fixture, observed_at=observed_at)
-        schedule_record = {'status': 'not_verified', 'listing_coverage': 'not_established'}
+        schedule_reasons = []
+        schedule = _detail_scheduled_start(html, fixture, observed_at=observed_at,
+                                           rejection_reasons=schedule_reasons)
+        schedule_record = {'status': 'not_verified', 'listing_coverage': 'not_established',
+                           'rejection_reasons': schedule_reasons[:12]}
         if schedule:
             schedule_record.update(status='candidate_offset_sportsevent', normalised_fields=True,
-                                   start_date=schedule[2], match_date_sast=schedule[0],
-                                   match_time_sast=schedule[1], event_url=identity['match_url'],
-                                   player_home=identity['player_home'], player_away=identity['player_away'],
+                                   contract_validation='not_authenticated',
+                                   response_sha256=hashlib.sha256(html.encode()).hexdigest(),
+                                   observed_at=observed_at, start_date=schedule[2],
+                                   match_date_sast=schedule[0], match_time_sast=schedule[1],
+                                   event_url=identity['match_url'], player_home=identity['player_home'],
+                                   player_away=identity['player_away'],
                                    event_status='https://schema.org/EventScheduled', sport='Tennis')
         data[kind]['schedule_evidence'] = schedule_record
     file.write_text(json.dumps(data, indent=2, ensure_ascii=True), encoding='utf-8')

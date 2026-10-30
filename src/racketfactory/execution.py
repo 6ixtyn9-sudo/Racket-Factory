@@ -230,20 +230,160 @@ def sanitise_acca_for_replay(acca: Mapping[str, Any]) -> dict:
     return out
 
 
-def rebuild_quote_execution_problem(quote: Mapping[str, Any]) -> str:
-    """Require a concrete bookmaker and settlement rules compatible with grading.
+def settlement_evidence_problem(quote: Mapping[str, Any]) -> str:
+    """Validate the binding of bookmaker terms evidence to one quote.
 
-    A consensus or best-across-books statistic is not itself an executable
-    bookmaker quote. Provider rule evidence must be supplied, not inferred.
+    This is a structural/provenance check, not authentication of an external
+    legal document. Live acceptance still requires the retained official terms
+    document to be reviewed and its jurisdiction/effective scope established.
+    """
+    from datetime import date, datetime
+    from urllib.parse import urlsplit
+    import re
+
+    evidence = quote.get("settlement_evidence")
+    if not isinstance(evidence, Mapping):
+        return "bookmaker settlement rules evidence missing"
+    if evidence.get("test_only") is True:
+        return "synthetic settlement evidence is not provider proof"
+    bookmaker = str(quote.get("bookmaker") or "").strip()
+    bookmaker_id = str(quote.get("bookmaker_id") or "").strip()
+    if not bookmaker or str(evidence.get("bookmaker") or "").strip().casefold() != bookmaker.casefold():
+        return "settlement evidence bookmaker mismatch"
+    evidence_id = str(evidence.get("bookmaker_id") or "").strip()
+    if bookmaker_id and evidence_id != bookmaker_id:
+        return "settlement evidence bookmaker id mismatch"
+    if not bookmaker_id and not evidence_id:
+        return "settlement evidence bookmaker id missing"
+    if str(evidence.get("document_kind") or "") != "official_bookmaker_terms":
+        return "settlement evidence source is not official bookmaker terms"
+    if evidence.get("evidence_status") != "verified_official_terms":
+        return "official bookmaker settlement terms have not been authenticated"
+    if not str(evidence.get("reviewed_by") or "").strip():
+        return "bookmaker settlement terms review provenance missing"
+    url = str(evidence.get("document_url") or "")
+    official_domain = str(evidence.get("official_domain") or "").strip().casefold().lstrip(".")
+    try:
+        parsed_url = urlsplit(url)
+        host = (parsed_url.hostname or "").casefold().rstrip(".")
+        domain_valid = bool(re.fullmatch(r"(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", official_domain))
+        if (parsed_url.scheme != "https" or not host or parsed_url.username or parsed_url.password
+                or host.endswith(".invalid") or not domain_valid
+                or not (host == official_domain or host.endswith("." + official_domain))):
+            return "settlement evidence document URL or official domain binding invalid"
+    except ValueError:
+        return "settlement evidence document URL invalid"
+    if not re.fullmatch(r"[0-9a-f]{64}", str(evidence.get("document_sha256") or "")):
+        return "settlement evidence document digest missing"
+    jurisdiction = str(evidence.get("jurisdiction") or "").strip().casefold()
+    operator_jurisdiction = str(quote.get("operator_jurisdiction") or "").strip().casefold()
+    if not jurisdiction or not operator_jurisdiction or jurisdiction != operator_jurisdiction:
+        return "settlement evidence jurisdiction unknown or mismatched"
+    if str(evidence.get("market_scope") or "") != "tennis_match_winner":
+        return "settlement evidence market scope mismatch"
+    market = str(quote.get("market") or "").strip().casefold()
+    period = str(quote.get("period") or "").strip().casefold()
+    if market not in {"h2h", "1x2", "match_winner", "match winner"}:
+        return "settlement evidence quote market is missing or incompatible"
+    if period not in {"match", "full", "full_match", "full match", "0"}:
+        return "settlement evidence quote period is missing or incompatible"
+    if quote.get("line") is not None and str(quote.get("line")).strip():
+        return "settlement evidence quote has an incompatible line"
+    try:
+        retrieved = datetime.fromisoformat(str(evidence.get("retrieved_at") or "").replace("Z", "+00:00"))
+        if retrieved.tzinfo is None or retrieved.utcoffset() is None:
+            return "settlement evidence retrieval timezone unknown"
+        effective_from = date.fromisoformat(str(evidence.get("effective_from") or ""))
+        effective_until_raw = str(evidence.get("effective_until") or "").strip()
+        effective_until = date.fromisoformat(effective_until_raw) if effective_until_raw else None
+        reviewed = datetime.fromisoformat(str(evidence.get("reviewed_at") or "").replace("Z", "+00:00"))
+        if reviewed.tzinfo is None or reviewed.utcoffset() is None:
+            return "settlement evidence review timezone unknown"
+        observed = datetime.fromisoformat(str(quote.get("observed_at") or "").replace("Z", "+00:00"))
+        if observed.tzinfo is None or observed.utcoffset() is None:
+            return "settlement evidence quote observation timezone unknown"
+        observed_date = observed.date()
+        if effective_from > observed_date or (effective_until and observed_date > effective_until):
+            return "settlement evidence not effective at quote observation"
+        if retrieved.astimezone(observed.tzinfo) > observed:
+            return "settlement evidence retrieved after quote"
+        if reviewed.astimezone(observed.tzinfo) > observed or reviewed.astimezone(retrieved.tzinfo) < retrieved:
+            return "settlement evidence review timestamp is out of order"
+    except (TypeError, ValueError, OverflowError):
+        return "settlement evidence dates invalid"
+    rules = evidence.get("rules")
+    expected = {"retirement": "advancer", "walkover": "void", "cancelled": "void"}
+    if not isinstance(rules, Mapping) or any(rules.get(key) != value for key, value in expected.items()):
+        return "bookmaker settlement rules unknown or incompatible"
+    quote_rules = quote.get("settlement_rules")
+    if not isinstance(quote_rules, Mapping) or dict(quote_rules) != dict(rules):
+        return "settlement evidence rules not bound to quote"
+    return ""
+
+
+
+def betexplorer_schedule_evidence_problem(quote: Mapping[str, Any], *, now=None) -> str:
+    """Require schedule evidence bound to a quote; parser candidates are not proof."""
+    from datetime import datetime, timezone
+    import re
+    from racketfactory.kickoff import SAST
+
+    evidence = quote.get("schedule_evidence")
+    if not isinstance(evidence, Mapping) or evidence.get("status") != "provider_verified":
+        return "BetExplorer schedule evidence is candidate-only or missing"
+    if evidence.get("test_only") is True:
+        return "synthetic BetExplorer schedule evidence is not provider proof"
+    if (evidence.get("provider") != "BetExplorer" or evidence.get("sport") != "Tennis"
+            or evidence.get("event_status") not in {"EventScheduled", "https://schema.org/EventScheduled"}):
+        return "BetExplorer schedule evidence event state mismatch"
+    if evidence.get("event_id") != quote.get("event_id") or evidence.get("match_url") != quote.get("match_url"):
+        return "BetExplorer schedule evidence event identity mismatch"
+    for key in ("player_home", "player_away"):
+        if str(evidence.get(key) or "").strip() != str(quote.get(key) or "").strip():
+            return "BetExplorer schedule evidence participant mismatch"
+    if evidence.get("contradictory_signals") != []:
+        return "BetExplorer schedule evidence has conflicting or unexamined status signals"
+    if not re.fullmatch(r"[0-9a-f]{64}", str(evidence.get("response_sha256") or "")):
+        return "BetExplorer schedule evidence response digest missing"
+    try:
+        observed = datetime.fromisoformat(str(evidence.get("observed_at") or "").replace("Z", "+00:00"))
+        quote_observed = datetime.fromisoformat(str(quote.get("observed_at") or "").replace("Z", "+00:00"))
+        start = datetime.fromisoformat(str(evidence.get("commence_time") or "").replace("Z", "+00:00"))
+        quote_start = datetime.fromisoformat(str(quote.get("commence_time") or "").replace("Z", "+00:00"))
+        if any(value.tzinfo is None or value.utcoffset() is None for value in (observed, quote_observed, start, quote_start)):
+            return "BetExplorer schedule evidence timezone unknown"
+        if start.astimezone(timezone.utc) != quote_start.astimezone(timezone.utc):
+            return "BetExplorer schedule evidence kickoff does not match quote"
+        clock = now or datetime.now(timezone.utc)
+        if clock.tzinfo is None:
+            return "BetExplorer schedule evidence validation clock is naive"
+        if not 0 <= (clock.astimezone(timezone.utc) - observed.astimezone(timezone.utc)).total_seconds() <= 30 * 60:
+            return "BetExplorer schedule evidence stale or future"
+        if observed.astimezone(timezone.utc) > quote_observed.astimezone(timezone.utc):
+            return "BetExplorer schedule evidence postdates quote"
+        if start.astimezone(timezone.utc) <= clock.astimezone(timezone.utc):
+            return "BetExplorer event has started"
+        if start.astimezone(SAST).date().isoformat() != str(quote.get("match_date") or "")[:10]:
+            return "BetExplorer schedule evidence date mismatch"
+    except (TypeError, ValueError, OverflowError):
+        return "BetExplorer schedule evidence timestamps invalid"
+    return ""
+
+def rebuild_quote_execution_problem(quote: Mapping[str, Any]) -> str:
+    """Require a concrete bookmaker and bound, scoped settlement evidence.
+
+    A consensus or best-across-books statistic is not an executable
+    bookmaker quote. Operator grading policy and synthetic rule fixtures are
+    not evidence of the bookmaker's terms.
     """
     if quote.get("price_type") != "bookmaker":
         return "price is not a verified single-bookmaker quote"
     bookmaker = str(quote.get("bookmaker") or "").strip()
     if not bookmaker or any(word in bookmaker.lower() for word in ("consensus", "best odds", "average")):
         return "concrete bookmaker missing"
-    rules = quote.get("settlement_rules")
-    if not isinstance(rules, dict) or any(rules.get(k) != v for k, v in {
-        "retirement": "advancer", "walkover": "void", "cancelled": "void"
-    }.items()):
-        return "bookmaker settlement rules unknown or incompatible"
+    settlement_problem = settlement_evidence_problem(quote)
+    if settlement_problem:
+        return settlement_problem
+    if str(quote.get("source") or "").strip().casefold() == "betexplorer":
+        return betexplorer_schedule_evidence_problem(quote)
     return ""

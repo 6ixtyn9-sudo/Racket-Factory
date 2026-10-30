@@ -188,7 +188,7 @@ def _listing_row_evidence(row) -> dict:
     from racketfactory.betexplorer_evidence import _SECRET, _url
     from racketfactory.sources.betexplorer import _is_match_link
 
-    statuses = {'finished', 'live', 'scheduled', 'cancelled', 'canceled',
+    statuses = {'fin', 'finished', 'live', 'scheduled', 'cancelled', 'canceled',
                 'postponed', 'abandoned', 'retired', 'ret.', 'walkover', 'w/o'}
     blocked = {'script', 'style', 'noscript', 'template', 'form', 'input',
                'textarea', 'select', 'button', 'iframe', 'svg'}
@@ -244,6 +244,15 @@ def _listing_row_evidence(row) -> dict:
         classes = sorted(set(node.get('class') or []) & allowed_classes)
         if classes:
             item['classes'] = classes
+        relevant_attrs = {'hidden', 'style', 'aria-hidden', 'aria-label', 'title',
+                          'data-status', 'data-state', 'data-live'}
+        present = sorted(name for name in node.attrs if name in relevant_attrs)
+        if present:
+            item['status_attribute_names_present'] = present
+        status_classes = sorted({match.group(0).upper() for value in (node.get('class') or [])
+                                 for match in re.finditer(r'(?i)(?<![a-z0-9])(?:live|scheduled|postponed|cancelled|canceled|retired|walkover|finished|fin)(?![a-z0-9])', value.replace('-', ' ').replace('_', ' '))})
+        if status_classes:
+            item['status_class_tokens'] = status_classes[:8]
         if node.name == 'a':
             href = _url(str(node.get('href') or ''), '')
             if href and _is_match_link(href):
@@ -280,7 +289,7 @@ def _listing_row_evidence(row) -> dict:
             'interpretation': 'Unverified row evidence; participant identity, status and schedule not established.'}
 
 
-def capture_unrecognized_listing_row(row, target_date: str) -> None:
+def capture_unrecognized_listing_row(row, target_date: str, *, rejection_reasons: list[str] | None = None) -> None:
     """Retain bounded public row evidence without classifying unknown markup.
 
     Only name-like visible text in a validated match-link cell, exact status
@@ -313,9 +322,36 @@ def capture_unrecognized_listing_row(row, target_date: str) -> None:
         cells.append({'tag': cell.name, 'text_label': _safe_label(cell.get_text(' ', strip=True)),
                       'link_count': len(cell.find_all('a', href=True, limit=21)),
                       'attribute_names': sorted(k for k in cell.attrs if k in {'class', 'data-dt', 'colspan', 'rowspan'})})
+    allowed_reasons = {'participant_anchor_count', 'participant_link_invalid',
+        'participant_anchor_hidden_signal', 'participant_anchor_event_conflict',
+        'participant_sibling_anchors_not_co_located', 'participant_container_hidden_signal',
+        'participant_container_comment', 'participant_container_unexpected_text',
+        'participant_container_extra_element', 'participant_anchor_comment',
+        'participant_anchor_text_outside_span', 'participant_anchor_child_tag',
+        'participant_span_count', 'participant_name_format', 'participant_pair_ambiguous',
+        'participant_pair_identity_conflict', 'terminal_cell_count_or_type',
+        'terminal_participant_cell_class', 'terminal_conflicting_or_unreviewed_status_attribute',
+        'terminal_row_extra_children', 'terminal_visible_structure_mismatch',
+        'terminal_participant_structure_unverified', 'terminal_event_links_not_same',
+        'terminal_score_markup_unsupported', 'terminal_score_comment',
+        'terminal_score_format', 'terminal_score_not_completed_set_shape',
+        'contradictory_or_unknown_status_signal', 'terminal_hidden_markup',
+        'terminal_status_not_unambiguous', 'terminal_status_missing',
+        'terminal_match_link_count', 'terminal_hidden_markup'}
+    reasons = [reason for reason in (rejection_reasons or []) if reason in allowed_reasons][:12]
+    row_classes = sorted(cls for cls in (row.get('class') or [])
+                         if re.fullmatch(r'(?:match|event|table|live|scheduled|postponed|cancelled|canceled|retired|walkover)(?:[-_][a-z0-9]+){0,4}', cls, re.I))[:12]
+    row_attribute_names = sorted(name for name in row.attrs
+                                 if name in {'class', 'data-dt', 'data-status', 'data-state', 'data-live',
+                                             'hidden', 'style', 'aria-hidden', 'aria-label', 'title'})
+    direct_child_tags = [child.name for child in row.children if getattr(child, 'name', None)][:12]
     data.append({'target_date': target_date if re.fullmatch(r'\d{4}-\d{2}-\d{2}', target_date) else '',
                  'classification': 'unresolved', 'row_sha256': hashlib.sha256(raw.encode()).hexdigest(),
                  'cells': cells, 'links': links, 'sample_limited': len(raw) > 64000,
+                 'parser_rejection_reasons': reasons,
+                 'structural_facts': {'row_classes': row_classes,
+                                      'row_attribute_names': row_attribute_names,
+                                      'direct_child_tags': direct_child_tags},
                  'row_evidence': _listing_row_evidence(row),
                  'notice': 'Redacted structural sample; omitted markup may be necessary to classify this row.'})
     file.write_text(json.dumps(data, indent=2), encoding='utf-8')

@@ -623,7 +623,8 @@ def collect_rebuild_sources(target_date: str, *, progress=None) -> dict[str, Any
     notify("betexplorer_details", "starting")
     from racketfactory.quote_enrichment import collect_prediction_comparisons
     detail_offers, detail_counts, partial = collect_prediction_comparisons(
-        target_date, result["predictions"], be_rows, outcomes.get("betexplorer", {}).get("status", "unknown"))
+        target_date, result["predictions"], be_rows, outcomes.get("betexplorer", {}).get("status", "unknown"),
+        listing_metrics=be_metrics)
     if partial:
         outcomes["betexplorer"]["status"] = "partial"
     outcomes["betexplorer"]["detail_counts"] = detail_counts
@@ -657,8 +658,31 @@ def collect_rebuild_sources(target_date: str, *, progress=None) -> dict[str, Any
     result["raw_quotes"] = {"betexplorer": detail_offers or be_rows, "oddsportal": op_rows}
     for name in ("theoddsapi", "bzzoiro"):
         outcomes[name] = {"status": "not_attempted", "reason": "durable quota authority not established for rebuild"}
-    result["status"] = ("complete" if all(outcomes.get(name, {}).get("status") == "complete"
-                                           for name in REBUILD_REQUIRED_SOURCES) else "insufficient")
+    target_predictions = [row for row in result["predictions"]
+                          if str(row.get("match_date") or "")[:10] == target_date]
+    prediction_keys = sorted((str(row.get("match_date") or "")[:10],
+                              str(row.get("player_home") or "").strip().casefold(),
+                              str(row.get("player_away") or "").strip().casefold())
+                             for row in target_predictions)
+    import hashlib
+    result["prediction_set"] = {
+        "status": "captured_snapshot",
+        "input_rows": len(target_predictions),
+        "unique_fixture_keys": len(set(prediction_keys)),
+        "duplicate_rows": len(prediction_keys) - len(set(prediction_keys)),
+        "sha256": hashlib.sha256(json.dumps(prediction_keys, separators=(",", ":")).encode()).hexdigest(),
+        "change_detection": "single collection snapshot; cross-run changes are handled by targeted quote fingerprint guard",
+    }
+    required_statuses = {name: outcomes.get(name, {}).get("status", "unknown")
+                         for name in REBUILD_REQUIRED_SOURCES}
+    required_blockers = [name + ":" + status for name, status in required_statuses.items()
+                         if status != "complete"]
+    result["required_source_readiness"] = {
+        "status": "ready" if not required_blockers else "blocked",
+        "sources": required_statuses,
+        "blockers": required_blockers,
+    }
+    result["status"] = "complete" if not required_blockers else "insufficient"
     return result
 
 
