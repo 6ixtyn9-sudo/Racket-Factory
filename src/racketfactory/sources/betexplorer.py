@@ -152,6 +152,66 @@ def _structured_participants(anchors: list[Tag]) -> tuple[str, str] | None:
     return home, away
 
 
+def _finished_score_link_row(tr: Tag) -> bool:
+    """Recognize a narrow FIN/score shape from retained tennis row evidence.
+
+    This only excludes an explicitly terminal-looking row from quote discovery;
+    it does not establish its date, timezone, result, or listing completeness.
+    The retained samples omit markup, so anything outside this shape remains
+    unrecognized rather than being inferred from a slug or a score alone.
+    """
+    from racketfactory.betexplorer_evidence import _url
+
+    cells = tr.find_all(['td', 'th'], recursive=False)
+    if len(cells) != 3 or any(cell.name != 'td' for cell in cells):
+        return False
+    if 'table-main__tt' not in (cells[0].get('class') or []):
+        return False
+
+    def safe(node: Tag) -> bool:
+        if any(key in node.attrs for key in ('hidden', 'style', 'aria-hidden',
+                                              'aria-label', 'title', 'data-status',
+                                              'data-state', 'data-live')):
+            return False
+        return not any(re.search(r'(?i)(?:^|[-_])(?:live|scheduled|postponed|cancelled|canceled|retired|walkover)(?:$|[-_])', cls)
+                       for cls in node.get('class', []))
+
+    if not all(safe(node) for node in [tr, *tr.find_all(True)]):
+        return False
+
+    def children_without_whitespace(node: Tag):
+        return [child for child in node.children
+                if not isinstance(child, NavigableString) or isinstance(child, Comment) or str(child).strip()]
+
+    if children_without_whitespace(tr) != cells:
+        return False
+    names = children_without_whitespace(cells[0])
+    score = children_without_whitespace(cells[1])
+    if (len(names) != 2 or not all(isinstance(node, Tag) for node in names)
+            or names[0].name != 'span' or names[0].find(True)
+            or names[0].find(string=lambda value: isinstance(value, Comment))
+            or names[0].get_text(strip=True) != 'FIN' or names[1].name != 'a'
+            or len(score) != 1 or not isinstance(score[0], Tag) or score[0].name != 'a'
+            or children_without_whitespace(cells[2])):
+        return False
+    if len(tr.find_all('a')) != 2 or _structured_participants([names[1]]) is None:
+        return False
+    first = _url(str(names[1].get('href') or ''), '')
+    second = _url(str(score[0].get('href') or ''), '')
+    if (not first or first != second or '?' in first or not _is_match_link(first)
+            or not re.fullmatch(r'[A-Za-z0-9]{1,32}', first.rstrip('/').split('/')[-1])):
+        return False
+    if any(node.name not in {'strong', 'b', 'span', 'em', 'i'} for node in score[0].find_all(True)):
+        return False
+    if score[0].find(string=lambda value: isinstance(value, Comment)):
+        return False
+    match = re.fullmatch(r'([0-3]):([0-3])', score[0].get_text(' ', strip=True))
+    if not match:
+        return False
+    a, b = (int(value) for value in match.groups())
+    return max(a, b) in {2, 3} and min(a, b) < max(a, b)
+
+
 def _listing_dt_components(raw: object) -> tuple[list[int] | None, str]:
     """Check observed D,M,YYYY,H,MM shape only; never infer timezone/date.
 
@@ -334,6 +394,12 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
                     chosen_href = href1 or href2
 
         if chosen is None:
+            # Retained tennis evidence shows a FIN marker next to a participant
+            # link plus a separate same-event score link. Classify only this
+            # narrow shape, without treating the score link as a second player.
+            if _finished_score_link_row(tr):
+                n_finished += 1
+                continue
             n_bad += 1
             # Capture only a bounded redacted description of the actual row;
             # unknown markup remains incomplete, never a verified non-fixture.
