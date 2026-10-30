@@ -67,7 +67,9 @@ def test_reduced_retained_fin_and_same_event_score_are_terminal_only(home, away,
     {'extra': 'Postponed'},
     {'extra': '<span></span>'},
     {'away': 'Vacherot V.'},
-    {'home': 'Vacherot Valentin'},
+    {'home': 'Vacherot V. / Jodar R.'},
+    {'home': 'Player 123'},
+    {'home': 'Winner V.'},
 ])
 def test_ambiguous_or_conflicting_shape_remains_unrecognized(kwargs):
     metrics = {}
@@ -146,11 +148,20 @@ def test_retained_authentic_rows_cover_score_anchors_set_scores_retirement_and_w
     html = AUTHENTIC_TERMINAL_ROWS.read_text()
     soup = BeautifulSoup(html, 'html.parser')
     rows = soup.find_all('tr', attrs={'data-dt': True})
-    assert len(rows) == 6
+    assert len(rows) == 7
 
     terminal = [row for row in rows if be._listing_status_state(row)[0] == 'terminal']
-    assert len(terminal) == 5
+    assert len(terminal) == 6
     assert all(be._finished_score_link_row(row) for row in terminal)
+
+    # This authentic row was previously rejected only by the strict participant
+    # name lexer. Its explicit two-span structure is sufficient for terminal
+    # exclusion, but the participant identity is still not emitted.
+    lexical_reasons = []
+    assert be._structured_participants(
+        [terminal[-1].find('td', class_='table-main__tt').find('a', href=True)],
+        rejection_reasons=lexical_reasons) is None
+    assert lexical_reasons == ['participant_name_format']
 
     first = terminal[0].find('td', class_='table-main__tt').find('a', href=True)
     second = terminal[1].find('td', class_='table-main__tt').find('a', href=True)
@@ -178,8 +189,8 @@ def test_authentic_excerpt_stays_partial_and_cannot_create_actionable_rows():
     html = AUTHENTIC_TERMINAL_ROWS.read_text()
     metrics = {}
     assert be.parse_results_page(html, AUTHENTIC_DAY, metrics=metrics, include_unpriced=True) == []
-    assert metrics['data_dt_rows'] == 6
-    assert metrics['finished_rows'] == 5
+    assert metrics['data_dt_rows'] == 7
+    assert metrics['finished_rows'] == 6
     assert metrics['unrecognized_rows'] == 1
     assert metrics['conflicting_status_rows'] == 1
     assert metrics['recognized_actionable_rows'] == 0
@@ -236,7 +247,7 @@ def test_authentic_terminal_excerpt_through_source_and_quote_gates(monkeypatch):
     listing_metrics = {}
     rows, status = be._fetch_live(AUTHENTIC_DAY, with_status=True, metrics=listing_metrics)
     assert rows == [] and status == 'partial'
-    assert listing_metrics['finished_rows'] == 5
+    assert listing_metrics['finished_rows'] == 6
     assert listing_metrics['conflicting_status_rows'] == 1
     assert listing_metrics['listing_coverage_status'] == 'not_established'
     assert listing_metrics['schedule_verification_status'] == 'not_required_for_excluded_rows'
