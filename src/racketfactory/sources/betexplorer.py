@@ -50,32 +50,60 @@ def _is_match_link(href: str) -> dict[str, Any] | None:
     return {"tour_hint": segs[1].replace("-", " "), "tournament": segs[2].replace("-", " ")}
 
 
-def _structured_participants(anchor: Tag) -> tuple[str, str] | None:
-    """Extract only two explicit participant spans, never a whitespace boundary.
+def _structured_participants(anchors: list[Tag]) -> tuple[str, str] | None:
+    """Extract explicit participant spans without inferring name boundaries.
 
-    The retained evidence showed one match link containing two ordered spans.
-    The original response was not retained, so additional markup or content is
-    not assumed to be a participant. An ambiguous structure fails closed.
+    One anchor with two spans is supported by the reduced provider capture;
+    same-event sibling anchors are synthetic compatibility controls. Neither
+    establishes the omitted parts of the original provider response.
     """
     from racketfactory.betexplorer_evidence import _url
-    href = str(anchor.get('href') or '')
-    if not _url(href, '') or not _is_match_link(href):
+    from racketfactory.settlement import players_match
+
+    if len(anchors) not in (1, 2):
         return None
-    if any(key in anchor.attrs for key in ('hidden', 'style', 'aria-hidden')):
-        return None
-    children = []
-    for child in anchor.children:
-        if isinstance(child, Comment):
+    paths = []
+    for anchor in anchors:
+        href = str(anchor.get('href') or '')
+        path = _url(href, '')
+        if not path or not _is_match_link(href):
             return None
-        if isinstance(child, NavigableString):
-            if str(child).strip():
+        if any(key in anchor.attrs for key in ('hidden', 'style', 'aria-hidden')):
+            return None
+        paths.append(path)
+    if len(set(paths)) != 1:
+        return None
+    if len(anchors) == 2:
+        parent = anchors[0].parent
+        if parent is not anchors[1].parent or not isinstance(parent, Tag) or parent.name not in {'td', 'div'}:
+            return None
+        if any(key in parent.attrs for key in ('hidden', 'style', 'aria-hidden')):
+            return None
+        for child in parent.children:
+            if isinstance(child, Comment):
                 return None
-        elif isinstance(child, Tag) and child.name == 'span':
-            children.append(child)
-        else:
+            if isinstance(child, NavigableString):
+                if str(child).strip().casefold() not in {'', '-', '–', '—', 'vs', 'vs.'}:
+                    return None
+            elif not isinstance(child, Tag) or not any(child is anchor for anchor in anchors):
+                return None
+
+    spans = []
+    for anchor in anchors:
+        direct = []
+        for child in anchor.children:
+            if isinstance(child, Comment):
+                return None
+            if isinstance(child, NavigableString):
+                if str(child).strip():
+                    return None
+            elif isinstance(child, Tag) and child.name == 'span':
+                direct.append(child)
+            else:
+                return None
+        if len(direct) != (2 if len(anchors) == 1 else 1):
             return None
-    if len(children) != 2:
-        return None
+        spans.extend(direct)
 
     def participant(span: Tag) -> str | None:
         for node in [span, *span.find_all(True)]:
@@ -86,7 +114,7 @@ def _structured_participants(anchor: Tag) -> tuple[str, str] | None:
             if any(re.search(r'(?i)(?:score|odds|status|ranking|seed|winner)', cls)
                    for cls in node.get('class', [])):
                 return None
-        if span.find(string=lambda s: isinstance(s, Comment)):
+        if span.find(string=lambda value: isinstance(value, Comment)):
             return None
         text = span.get_text(' ', strip=True)
         if not text or len(text) > 100 or any(c.isdigit() for c in text):
@@ -98,31 +126,48 @@ def _structured_participants(anchor: Tag) -> tuple[str, str] | None:
             return None
         for player in teams:
             words = player.split()
-            # Evidence supports surname plus an initial. Do not guess full-name
-            # boundaries or treat score/status text as a participant.
-            if not 2 <= len(words) <= 6:
+            # Multiple trailing initials are supported; an earlier dot cannot
+            # be used to guess a boundary inside one participant span.
+            if not 2 <= len(words) <= 8:
                 return None
-            initial = words[-1]
-            if len(initial) != 2 or initial[1] != '.' or not initial[0].isupper():
+            end = len(words)
+            while end and len(words[end - 1]) == 2 and words[end - 1][1] == '.' and words[end - 1][0].isupper():
+                end -= 1
+            if end == 0 or end == len(words):
                 return None
-            if any(not any(c.isalpha() for c in word) or '.' in word for word in words[:-1]):
+            if any(not any(c.isalpha() for c in word) or '.' in word for word in words[:end]):
                 return None
             if any(word.casefold() in {'winner', 'finished', 'retired', 'walkover', 'cancelled', 'live', 'set'}
-                   for word in words[:-1]):
+                   for word in words[:end]):
                 return None
         return text
 
-    home, away = (participant(span) for span in children)
+    home, away = (participant(span) for span in spans)
     if (not home or not away or home.casefold() == away.casefold()
             or len(home.split('/')) != len(away.split('/'))):
         return None
-    # Neither team may contain repeated/overlapping participants. Existing
-    # identity checks remain authoritative for later cross-source matching.
-    from racketfactory.settlement import players_match
     members = [part.strip() for team in (home, away) for part in team.split('/')]
     if any(players_match(a, b)[0] for i, a in enumerate(members) for b in members[i + 1:]):
         return None
     return home, away
+
+
+def _listing_dt_components(raw: object) -> tuple[list[int] | None, str]:
+    """Check observed D,M,YYYY,H,MM shape only; never infer timezone/date.
+
+    Historic provider material and a third-party client support this component
+    order, but do not establish the live response's timezone or date-selection
+    and rescheduling semantics. Even syntactically valid values remain unverified.
+    """
+    text = str(raw or '')
+    if not re.fullmatch(r'\d{1,2},\d{1,2},\d{4},\d{1,2},\d{1,2}', text):
+        return None, 'invalid'
+    day, month, year, hour, minute = (int(part) for part in text.split(','))
+    try:
+        datetime(year, month, day, hour, minute)
+    except ValueError:
+        return None, 'invalid'
+    return [day, month, year, hour, minute], 'valid_unverified'
 
 
 def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None, include_unpriced: bool = False) -> list[dict[str, Any]]:
@@ -178,43 +223,59 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
                       if a.find('span')]
         structure_ambiguous = False
         if structured:
-            if len(candidates) != 1 or len(match_anchors) != 1:
+            if len(candidates) != len(match_anchors) or len(match_anchors) not in (1, 2):
                 structure_ambiguous = True
             else:
-                a, txt, ctx, href = candidates[0]
-                pair = _structured_participants(a)
+                pair = _structured_participants(match_anchors)
                 if pair is None:
                     structure_ambiguous = True
                 else:
+                    a, txt, ctx, href = candidates[0]
                     chosen, (chosen_home, chosen_away), chosen_ctx, chosen_href = a, pair, ctx, href
 
-        # 1) Legacy single-anchor parsing for rows without direct spans only.
-        for a, txt, ctx, href in ([] if structured else candidates):
-            h, aw = po.split_match_names(txt)
-            if h and aw:
-                chosen = a
-                chosen_home, chosen_away = h, aw
-                chosen_ctx = ctx
-                chosen_href = href
-                break
-            row_tmp = tr.get_text(" ", strip=True)
-            h2, aw2 = po.split_match_names(row_tmp)
-            if h2 and aw2:
-                chosen = a
-                chosen_home, chosen_away = h2, aw2
-                chosen_ctx = ctx
-                chosen_href = href
-                break
+        # A plain-text match link needs one explicit separator. The shared
+        # fused-name heuristic also guesses whitespace-only full-name splits;
+        # those are not participant boundaries. Never split the whole row.
+        if not structured and len(match_anchors) == len(candidates) == 1:
+            from racketfactory.betexplorer_evidence import _url
+            a, txt, ctx, href = candidates[0]
+            if (_url(href, '') and len(po._NAME_SEP_RE.findall(txt)) == 1 and not a.find(True)
+                    and not any(key in a.attrs for key in ('hidden', 'style', 'aria-hidden'))):
+                h, aw = po.split_match_names(txt)
+                from racketfactory.settlement import players_match
+                members = [part.strip() for team in (h, aw) for part in team.split('/')]
+                if (h and aw and not any(re.search(r'\d', v) or po._FINISHED_RE.search(v) for v in (h, aw))
+                        and len(h.split('/')) == len(aw.split('/'))
+                        and not any(players_match(x, y)[0] for i, x in enumerate(members) for y in members[i + 1:])):
+                    chosen, chosen_home, chosen_away, chosen_ctx, chosen_href = a, h, aw, ctx, href
 
         # 2) Fallback: two separate anchors, each a single player / doubles team
         # Handles <a>Borisiouk M.</a> vs <a>Kim D. J.</a> or <a>Collins K.</a> vs <a>Yashina E.</a>
         # 2026-09-17: extended to full names without initials (e.g. Alcaraz Carlos) and loose check
-        if chosen is None and not structure_ambiguous and len(candidates) >= 2:
+        if chosen is None and not structure_ambiguous and not structured and len(match_anchors) == len(candidates) == 2:
+            from racketfactory.betexplorer_evidence import _url
+            a, b = match_anchors
+            parent = a.parent
+            public = [_url(str(link.get('href') or ''), '') for link in match_anchors]
+            safe_pair = (all(public) and public[0] == public[1] and parent is b.parent
+                         and isinstance(parent, Tag) and parent.name in {'td', 'div'}
+                         and not any(key in parent.attrs for key in ('hidden', 'style', 'aria-hidden'))
+                         and not any(any(key in link.attrs for key in ('hidden', 'style', 'aria-hidden'))
+                                     or link.find(True) for link in match_anchors))
+            if safe_pair:
+                for child in parent.children:
+                    if isinstance(child, Comment):
+                        safe_pair = False
+                    elif isinstance(child, NavigableString):
+                        if str(child).strip().casefold() not in {'', '-', '–', '—', 'vs', 'vs.'}:
+                            safe_pair = False
+                    elif not isinstance(child, Tag) or not any(child is link for link in match_anchors):
+                        safe_pair = False
             def _looks_like_player_or_team(t: str) -> bool:
                 tt = t.strip()
-                if not tt or len(tt) < 2:
+                if not tt or len(tt) < 2 or re.search(r'\d', tt) or po._FINISHED_RE.search(tt):
                     return False
-                if re.fullmatch(r"\d+:\d+", tt):
+                if any(not (c.isalpha() or c.isspace() or c in ".'’-/") for c in tt):
                     return False
                 if tt.lower() in {"winner", "odds", "result", "finished", "live"}:
                     return False
@@ -256,10 +317,13 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
                     seen_txt.add(txt.lower())
                     uniq_cands.append(cand)
             player_cands = uniq_cands
-            if len(player_cands) >= 2:
+            if safe_pair and len(player_cands) == 2:
                 a1, txt1, ctx1, href1 = player_cands[0]
                 a2, txt2, ctx2, href2 = player_cands[1]
-                if txt1 != txt2 and len(txt1) >= 2 and len(txt2) >= 2 and href1 == href2:
+                from racketfactory.settlement import players_match
+                members = [part.strip() for team in (txt1, txt2) for part in team.split('/')]
+                distinct = not any(players_match(x, y)[0] for i, x in enumerate(members) for y in members[i + 1:])
+                if distinct and txt1 != txt2 and len(txt1) >= 2 and len(txt2) >= 2 and len(txt1.split('/')) == len(txt2.split('/')):
                     # Clean trailing odds if present
                     txt1_clean = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", txt1).strip()
                     txt2_clean = re.sub(r"\s+\d{1,2}\.\d{1,2}(?:\s+\d{1,2}\.\d{1,2})?\s*$", "", txt2).strip()
@@ -303,15 +367,14 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
         if key in seen:
             continue
         seen.add(key)
-        raw_dt = str(dt_raw)
-        # Record only bounded numeric components for investigation. They are
-        # not an authoritative timestamp, timezone, or verified fixture date.
-        components = [int(x) for x in raw_dt.split(',')] if re.fullmatch(r'\d{1,4}(?:,\d{1,4}){4}', raw_dt) else None
+        # Components are a format check, not a schedule, timezone or status.
+        components, component_status = _listing_dt_components(dt_raw)
         rows.append({
             "match_date": "",
             "match_time": "",
             "listing_date": page_date,
             "listing_data_dt_components": components,
+            "listing_component_status": component_status,
             "listing_schedule_status": "unverified",
             "player_home": chosen_home,
             "player_away": chosen_away,
@@ -597,12 +660,18 @@ def fetch_betexplorer_rows(target_date: str) -> list[dict[str, Any]]:
             return []
     except Exception:
         return []
-    rows = cached_fetch(f"betexplorer_v6_{target}", lambda: _fetch_live(target))
-    # Older cache entries predate schedule validation; do not let a cache hit
-    # bypass the same fail-closed rule applied to live listing rows.
-    if rows:
-        raise PageFetchError("parser", "BetExplorer listing schedule is unverified")
-    return []
+    fetched_live = False
+    def fetch_live_rows():
+        nonlocal fetched_live
+        fetched_live = True
+        return _fetch_live(target)
+
+    rows = cached_fetch(f"betexplorer_v6_{target}", fetch_live_rows)
+    # Old cached entries cannot establish independently verified schedules.
+    # Quarantine without deleting, refreshing, or making additional requests.
+    if rows and not fetched_live:
+        raise PageFetchError("parser", "BetExplorer cached schedule evidence is unverified")
+    return [dict(row) for row in rows]
 
 
 def _comparison_endpoint_candidates(html: str, event_id: str, *, metrics: dict | None = None) -> list[dict]:
@@ -861,10 +930,97 @@ def _fetch_comparison_document(url: str, referer: str | None = None) -> tuple[st
     return body, when
 
 
+def _detail_scheduled_start(page: str, fixture: dict, *, observed_at: str) -> tuple[str, str, str] | None:
+    """Extract a strictly matched offset-bearing SportsEvent candidate.
+
+    The schema is observed only on a saved football page. Listing component
+    and other page-status conflicts are unresolved, so this is diagnostic
+    evidence, not a verified executable kickoff or complete listing.
+    """
+    import json
+    from racketfactory.betexplorer_evidence import _url
+    from racketfactory.kickoff import SAST
+    from racketfactory.warehouse import strict_quote_team_match
+
+    try:
+        observed = datetime.fromisoformat(str(observed_at).replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        if observed.tzinfo is None or not 0 <= (now - observed.astimezone(timezone.utc)).total_seconds() <= 1800:
+            return None
+        target = date.fromisoformat(str(fixture.get('listing_date') or ''))
+    except (TypeError, ValueError, OverflowError):
+        return None
+    path = _url(str(fixture.get('match_url') or ''), '')
+    eid = str(fixture.get('event_id') or '')
+    if (not path or not path.startswith('/tennis/') or '?' in path
+            or path.rstrip('/').split('/')[-1] != eid or not _is_match_link(path)):
+        return None
+    soup = BeautifulSoup(page[:2_000_000], 'html.parser')
+    scripts = soup.find_all('script', attrs={'type': 'application/ld+json'}, limit=21)
+    if len(scripts) > 20 or len(page) > 2_000_000:
+        return None
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('duplicate JSON key')
+            result[key] = value
+        return result
+
+    candidates = []
+    for script in scripts:
+        try:
+            obj = json.loads(script.string or '', object_pairs_hook=unique_object)
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(obj, dict) or obj.get('@type') != 'SportsEvent':
+            continue
+        candidates.append(obj)
+    if len(candidates) != 1:
+        return None
+    event = candidates[0]
+    if (str(event.get('sport') or '').casefold() != 'tennis'
+            or _url(str(event.get('url') or ''), '') != path
+            or event.get('eventStatus') not in ('EventScheduled', 'https://schema.org/EventScheduled')):
+        return None
+    home = event.get('homeTeam')
+    away = event.get('awayTeam')
+    if not isinstance(home, dict) or not isinstance(away, dict):
+        return None
+    fh, fa = str(fixture.get('player_home') or ''), str(fixture.get('player_away') or '')
+    ph, pa = str(home.get('name') or ''), str(away.get('name') or '')
+    direct = strict_quote_team_match(fh, ph) and strict_quote_team_match(fa, pa)
+    reverse = strict_quote_team_match(fh, pa) and strict_quote_team_match(fa, ph)
+    if not direct or reverse:
+        return None
+    try:
+        raw_start = str(event.get('startDate') or '')
+        # RFC 3339 uses -00:00 for an unknown offset, not known UTC.
+        if raw_start.endswith('-00:00'):
+            return None
+        start = datetime.fromisoformat(raw_start.replace('Z', '+00:00'))
+        if (start.tzinfo is None or start.utcoffset() is None
+                or abs(start.utcoffset().total_seconds()) > 14 * 3600):
+            return None
+        if start.astimezone(timezone.utc) <= datetime.now(timezone.utc):
+            return None
+        local = start.astimezone(SAST)
+        if local.date() != target:
+            return None
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return local.date().isoformat(), local.strftime('%H:%M'), start.isoformat()
+
+
 def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, stage_counts: dict | None = None,
                              capture_replay: bool = False) -> list[dict]:
     """Fetch and cache one prediction-matched fixture, retaining timestamps."""
     from racketfactory.rebuild_diagnostics import capture_betexplorer_fragment
+    fixture = dict(fixture)
+    evidence_fixture = dict(fixture)
+    needs_schedule = fixture.get('listing_schedule_status') == 'unverified'
+    if needs_schedule and not capture_replay:
+        raise PageFetchError('parser', 'unverified listing schedule is diagnostic only')
     event_id = str(fixture.get("event_id") or "")
     href = str(fixture.get("match_url") or "")
     if (not re.fullmatch(r"[A-Za-z0-9]{1,32}", event_id) or not href.startswith("/tennis/")
@@ -892,13 +1048,22 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
         capture_betexplorer_fragment(page, "detail", event_id=event_id, observed_at=page_at, status=200)
         if capture_replay:
             from racketfactory.betexplorer_evidence import capture_replay as save_replay
-            capture_result = save_replay(page, "detail", fixture, observed_at=page_at, request_url=match_url)
+            capture_result = save_replay(page, "detail", evidence_fixture, observed_at=page_at, request_url=match_url)
             if capture_result["file_written"]:
                 count("replay_detail_file_written")
             if capture_result["discovery_material_retained"]:
                 count("replay_detail_material_retained")
             if capture_result["material_sufficiency"] == "insufficient":
                 count("replay_detail_insufficient")
+        if needs_schedule:
+            schedule = _detail_scheduled_start(page, fixture, observed_at=page_at)
+            if schedule is None:
+                count('schedule_unverified')
+                error = PageFetchError('parser', 'match page schedule or fixture identity unverified')
+                error.stage = 'match_schedule'
+                raise error
+            fixture['match_date'], fixture['match_time'], fixture['commence_time'] = schedule
+            count('schedule_candidate_from_match_page')
         discovery_metrics = {}
         endpoints = _comparison_endpoint_candidates(page, event_id, metrics=discovery_metrics)
         if capture_replay and stage_counts is not None and stage_counts.get("replay_detail_file_written"):
@@ -963,7 +1128,7 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
         capture_betexplorer_fragment(html or "<div></div>", "comparison", event_id=event_id, observed_at=observed_at, status=200, response_body=payload)
         if capture_replay:
             from racketfactory.betexplorer_evidence import capture_replay as save_replay
-            result = save_replay(html, "comparison", fixture, observed_at=observed_at,
+            result = save_replay(html, "comparison", evidence_fixture, observed_at=observed_at,
                                  response_body=payload, request_url=endpoints[0]["url"])
             if result["file_written"]:
                 count("replay_comparison_file_written")
@@ -991,10 +1156,22 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
             error = PageFetchError("parser", "no uniquely oriented named-bookmaker quotes")
             error.stage = "bookmaker_rows"
             raise error
+        if needs_schedule:
+            # The comparison response was captured for review only. A single
+            # SportsEvent cannot establish listing coverage or rule out all
+            # conflicting schedule/status signals, so never cache or return
+            # its quotes as a result of this unverified listing.
+            error = PageFetchError('parser', 'listing schedule and coverage remain unverified')
+            error.stage = 'listing_coverage'
+            raise error
         return rows
     rows = cached_fetch("betexplorer_detail_" + event_id, fetch, fetch_day=str(fixture.get("match_date") or "")[:10], ttl_minutes=0 if refresh_evidence else 30)
     if not fetched:
         count("detail_cache_hits")
+        if needs_schedule:
+            # Cached offers do not retain independently re-verifiable match
+            # page schedule evidence. Never relabel or refetch them here.
+            raise PageFetchError('parser', 'cached match schedule evidence unverified')
     from racketfactory.warehouse import strict_quote_team_match
     if any(str(row.get("event_id") or "") != event_id or row.get("match_url") != href
            or not strict_quote_team_match(str(row.get("player_home") or ""), str(fixture.get("player_home") or ""))

@@ -226,19 +226,26 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
                      'failure_kind': getattr(exc, 'kind', 'unexpected'), 'offers': []}]
 
     # Cache only within the identified run, and never relabel old observations.
+    collected_live = False
     def collect_for_run():
+        nonlocal collected_live
+        collected_live = True
         result = collect()
         result[0]['prediction_fingerprint'] = fingerprint
         return result
     result = (cached_fetch('targeted_quotes_' + key, collect_for_run, fetch_day=target_date,
                            ttl_minutes=24 * 60)
               if run else collect_for_run())[0]
-    # A same-run cache can contain results from code that assigned the
-    # requested listing date to unverified BetExplorer fixtures. Do not allow
-    # those offers or a complete status to bypass the listing schedule guard.
-    if result.get('offers') or result.get('listing_rows'):
+    # Cached results lack independently verifiable schedule proof. Quarantine
+    # them without recollection. A fresh result is governed by _fetch_live and
+    # comparison completeness rather than being discarded merely for existing.
+    cached_without_proof = not collected_live and bool(result.get('offers') or result.get('listing_rows'))
+    incomplete_with_offers = result.get('status') != 'complete' and bool(result.get('offers'))
+    if cached_without_proof or incomplete_with_offers:
         result['status'] = 'partial'
         result['listing_schedule_status'] = 'unverified'
+        result['schedule_guard_reason'] = ('cached_schedule_evidence_unavailable' if cached_without_proof
+                                           else 'incomplete_collection')
         result['offers'] = []
     if result.get('prediction_fingerprint') != fingerprint:
         # Do not silently treat a different fixture set as covered or exceed

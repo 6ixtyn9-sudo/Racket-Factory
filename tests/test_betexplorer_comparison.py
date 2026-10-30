@@ -218,3 +218,45 @@ def test_same_endpoint_conflicting_rejected_before_market_period_filter():
     unrelated = PAGE.replace('/a1B2/', '/other/').replace('data-period="match"', 'data-period="set1"')
     assert len(be._comparison_endpoint_candidates(PAGE + unrelated, 'a1B2')) == 1
     assert len(be._comparison_endpoint_candidates(PAGE + PAGE.replace('Match Winner', 'h2h').replace('data-period="match"', 'data-period="full match"'), 'a1B2')) == 1
+
+
+def test_synthetic_complete_source_plumbing_still_blocks_unknown_settlement(monkeypatch, tmp_path):
+    """Mocked complete listing is plumbing only, not proof of a live schedule."""
+    from racketfactory.sources import betclan, predixsport, oddsportal_upcoming
+    from racketfactory import quote_enrichment
+    from racketfactory.kickoff import SAST
+    from scripts import daily
+
+    monkeypatch.setattr(quote_enrichment, '_collection_now', lambda: datetime(2026, 10, 29, 10, 0, tzinfo=SAST))
+    prediction = dict(FIXTURE, player_home='Beth Brown', player_away='Alice Adams')
+    class Clan:
+        last_collection_status = 'complete'
+        def fetch_daily(self): return [prediction]
+    class Predix:
+        def fetch_daily(self): return []
+    monkeypatch.setattr(betclan, 'BetClanPredictor', Clan)
+    monkeypatch.setattr(predixsport, 'PredixSportPredictor', Predix)
+    monkeypatch.delenv(be.DISABLE_ENV, raising=False)
+    monkeypatch.setenv(oddsportal_upcoming.DISABLE_ENV, '1')
+    # The mock supplies a complete schedule; no production verifier exists.
+    monkeypatch.setattr(be, '_fetch_live', lambda *a, **kw: ([dict(FIXTURE)], 'complete'))
+    calls = []
+    observed = datetime.now(timezone.utc).isoformat()
+    def document(url, referer=None):
+        calls.append((url, referer))
+        return (json.dumps({'odds': HTML}) if referer else PAGE, observed)
+    monkeypatch.setattr(be, '_fetch_comparison_document', document)
+    collection = daily.collect_rebuild_sources(DAY)
+    counts = collection['outcomes']['betexplorer']['detail_counts']
+    assert counts['matched_fixtures'] == counts['attempted'] == 1
+    assert len(calls) == 2  # one match page and its discovered comparison
+    assert len(collection['raw_quotes']['betexplorer']) == 2
+    assert all(rebuild_quote_execution_problem(row) == 'bookmaker settlement rules unknown or incompatible'
+               for row in collection['raw_quotes']['betexplorer'])
+    assert collection['outcomes']['betexplorer']['status'] == 'partial'
+    assert collection['status'] == 'insufficient'
+    card = tmp_path / 'card.json'
+    card.write_text('{"previous": true}')
+    with pytest.raises(RuntimeError, match='required fresh collection is incomplete'):
+        daily.stage_fresh_rebuild_picks(DAY, collection, tmp_path / 'stage')
+    assert card.read_text() == '{"previous": true}'

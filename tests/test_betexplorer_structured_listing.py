@@ -86,7 +86,7 @@ def test_unverified_or_conflicting_date_blocks_detail_and_legacy_prices(monkeypa
 def test_existing_cached_listing_cannot_bypass_schedule_guard(monkeypatch):
     monkeypatch.delenv(be.DISABLE_ENV, raising=False)
     monkeypatch.setattr(be, 'cached_fetch', lambda *a, **kw: [{'match_date': '2026-10-31', 'odds_home': 1.5}])
-    with pytest.raises(be.PageFetchError, match='schedule is unverified'):
+    with pytest.raises(be.PageFetchError, match='cached schedule evidence is unverified'):
         be.fetch_betexplorer_rows('2026-10-31')
 
 
@@ -119,3 +119,130 @@ def test_extra_empty_match_anchor_keeps_the_structure_ambiguous():
     metrics = {}
     rows = be.parse_results_page(html, '2026-10-30', metrics=metrics, include_unpriced=True)
     assert rows == [] and metrics['unrecognized_rows'] == 1
+
+
+@pytest.mark.parametrize(('first', 'second'), [
+    ('Kim D. J.', 'Borisiouk M.'),
+    ('Borisiouk M.', 'Kim D. J.'),
+    ('van Wyk K. A.', 'Marmousez L.'),
+    ('Kim D. J. / de la Cruz A.', "O'Neil B. / Švec I."),
+])
+def test_explicit_spans_preserve_multiple_initials(first, second):
+    metrics = {}
+    rows = be.parse_results_page(listing(f'<span>{first}</span><span>{second}</span>'),
+                                 '2026-10-30', metrics=metrics, include_unpriced=True)
+    assert [(row['player_home'], row['player_away']) for row in rows] == [(first, second)]
+    assert metrics['unrecognized_rows'] == 0
+    assert rows[0]['match_date'] == rows[0]['match_time'] == ''
+
+
+def _two_anchors(first, second, *, path2=PATH, separator=' vs '):
+    return (f'<table><tr data-dt="30,10,2026,11,0"><td><a href="{PATH}">{first}</a>'
+            f'{separator}<a href="{path2}">{second}</a></td><td>-</td><td>-</td></tr></table>')
+
+
+@pytest.mark.parametrize(('first', 'second', 'home', 'away'), [
+    ('<span><b>Kim</b> D. J.</span>', '<span>Borisiouk M.</span>', 'Kim D. J.', 'Borisiouk M.'),
+    ('<span>Borisiouk M.</span>', '<span><em>Kim</em> D. J.</span>', 'Borisiouk M.', 'Kim D. J.'),
+    ('<span>Kim D. J. / van Wyk K.</span>', '<span>Borisiouk M. / de la Cruz A.</span>',
+     'Kim D. J. / van Wyk K.', 'Borisiouk M. / de la Cruz A.'),
+])
+def test_same_event_anchors_with_nested_spans_preserve_order(first, second, home, away):
+    metrics = {}
+    rows = be.parse_results_page(_two_anchors(first, second), '2026-10-30', metrics=metrics, include_unpriced=True)
+    assert [(row['player_home'], row['player_away']) for row in rows] == [(home, away)]
+    assert metrics['unrecognized_rows'] == 0
+    assert rows[0]['match_date'] == rows[0]['match_time'] == ''
+
+
+@pytest.mark.parametrize('html', [
+    _two_anchors('<span>Kim D. J.</span>', '<span>Borisiouk M.</span>', path2='/tennis/atp/tour/other/xyz123/'),
+    _two_anchors('<span>Kim D. J.</span>', '<span>Borisiouk M.</span>', path2='https://evil.example' + PATH),
+    _two_anchors('<span>Kim D. J.</span><span>Alpha A.</span>', '<span>Borisiouk M.</span>'),
+    _two_anchors('<span>Kim D. J.</span>', '<span>Borisiouk M.</span>', separator=' unknown '),
+    _two_anchors('<span>Kim D. J.</span>', '<span aria-hidden="true">Borisiouk M.</span>'),
+    _two_anchors('<span>Kim D. J. Borisiouk M.</span>', '<span>Alpha A.</span>'),
+    _two_anchors('<span>Kim D. J.</span>', '<span>Kim D. J.</span>'),
+    _two_anchors('Kim D. J.', 'Borisiouk M.', path2='/tennis/atp/tour/other/xyz123/'),
+    _two_anchors('Kim D. J.', 'Borisiouk M.', separator=' unknown '),
+])
+def test_ambiguous_anchor_structures_remain_unrecognized(html):
+    metrics = {}
+    assert be.parse_results_page(html, '2026-10-30', metrics=metrics, include_unpriced=True) == []
+    assert metrics['unrecognized_rows'] == 1
+
+
+def test_plain_undelimited_full_names_are_not_split_by_whitespace():
+    metrics = {}
+    assert be.parse_results_page(listing('Van Wyk Kris De La Cruz Ana'), '2026-10-30',
+                                 metrics=metrics, include_unpriced=True) == []
+    assert metrics['unrecognized_rows'] == 1
+
+
+@pytest.mark.parametrize(('raw', 'expected', 'status'), [
+    ('30,10,2026,11,0', [30, 10, 2026, 11, 0], 'valid_unverified'),
+    ('31,10,2026,23,59', [31, 10, 2026, 23, 59], 'valid_unverified'),
+    ('1,11,2026,0,1', [1, 11, 2026, 0, 1], 'valid_unverified'),
+    ('29,2,2024,0,0', [29, 2, 2024, 0, 0], 'valid_unverified'),
+    ('29,2,2026,0,0', None, 'invalid'),
+    ('31,10,2026,24,0', None, 'invalid'),
+    ('31,10,2026,23,60', None, 'invalid'),
+    ('2026,10,31,11,0', None, 'invalid'),
+    ('bad-date', None, 'invalid'),
+])
+def test_component_shape_does_not_verify_timezone_or_schedule(raw, expected, status):
+    assert be._listing_dt_components(raw) == (expected, status)
+    metrics = {}
+    rows = be.parse_results_page(listing('<span>van Wyk K.</span><span>Marmousez L.</span>', dt=raw),
+                                 '2026-10-31', metrics=metrics, include_unpriced=True)
+    assert len(rows) == 1
+    assert rows[0]['listing_data_dt_components'] == expected
+    assert rows[0]['listing_component_status'] == status
+    assert rows[0]['listing_schedule_status'] == 'unverified'
+    assert rows[0]['match_date'] == rows[0]['match_time'] == ''
+
+
+def test_finished_status_is_counted_only_after_unambiguous_name_extraction(monkeypatch):
+    html = listing('<span>Kim D. J.</span><span>Borisiouk M.</span>').replace('<td></td><td><a', '<td>Finished</td><td><a', 1)
+    monkeypatch.setattr(be, 'fetch_page_html', lambda *a, **kw: html)
+    metrics = {}
+    rows, status = be._fetch_live('2026-10-30', with_status=True, metrics=metrics)
+    assert not rows and metrics['finished_rows'] == 1 and metrics['unrecognized_rows'] == 0
+    assert status == 'partial'  # the finished label does not establish date/zone semantics
+
+
+def test_reduced_capture_replay_reaches_partial_collection_and_blocks_staging(monkeypatch, tmp_path):
+    """Reduced event markup plus synthetic other providers; not a full live replay."""
+    from racketfactory.sources import betclan, predixsport, oddsportal_upcoming
+    from scripts import daily
+
+    html = listing('<span>van Wyk K.</span><span>Marmousez L.</span>')
+    calls = []
+    monkeypatch.delenv(be.DISABLE_ENV, raising=False)
+    monkeypatch.setenv(oddsportal_upcoming.DISABLE_ENV, '1')
+    monkeypatch.setattr(be, 'fetch_page_html', lambda *a, **kw: calls.append('listing') or html)
+    monkeypatch.setattr(be, 'fetch_fixture_comparison', lambda *a, **kw: calls.append('detail'))
+    class Clan:
+        last_collection_status = 'complete'
+        def fetch_daily(self):
+            return [{'match_date': '2026-10-30', 'match_time': '12:00',
+                     'player_home': 'Marmousez L.', 'player_away': 'van Wyk K.'}]
+    class Predix:
+        def fetch_daily(self): return []
+    monkeypatch.setattr(betclan, 'BetClanPredictor', Clan)
+    monkeypatch.setattr(predixsport, 'PredixSportPredictor', Predix)
+    card = tmp_path / 'auto_tickets.json'
+    card.write_text('{"accas": [{"fixture": "preserve"}]}')
+    before = card.read_bytes()
+    result = daily.collect_rebuild_sources('2026-10-30')
+    assert calls == ['listing']
+    assert result['status'] == 'insufficient'
+    assert result['outcomes']['betclan']['status'] == 'complete'
+    assert result['outcomes']['betexplorer']['status'] == 'partial'
+    counts = result['outcomes']['betexplorer']['detail_counts']
+    assert counts['matching_skipped_reason'] == 'listing_not_complete' and counts['attempted'] == 0
+    assert len(result['raw_quotes']['betexplorer']) == 1
+    assert result['raw_quotes']['betexplorer'][0]['match_date'] == ''
+    with pytest.raises(RuntimeError, match='required fresh collection is incomplete'):
+        daily.stage_fresh_rebuild_picks('2026-10-30', result, tmp_path / 'stage')
+    assert card.read_bytes() == before
