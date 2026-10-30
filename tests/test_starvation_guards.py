@@ -742,6 +742,8 @@ def test_expected_iso_for_day():
 def test_fetch_daily_backfills_page_day_for_dateless_rows(monkeypatch):
     from datetime import date, timedelta
 
+    # The fetch is mocked below; preserve this parser test under CI's disabled flag.
+    monkeypatch.delenv("RACKET_FACTORY_DISABLE_FOREBET", raising=False)
     exp = (date.today() + timedelta(days=1)).isoformat()
     md = """\
 Tennis predictions for tomorrow
