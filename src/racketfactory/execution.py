@@ -230,6 +230,49 @@ def sanitise_acca_for_replay(acca: Mapping[str, Any]) -> dict:
     return out
 
 
+def settlement_rules_problem(rules: object) -> str:
+    """Validate the narrow rule grammar consumed by new-ticket grading.
+
+    This checks structure only. It does not authenticate the terms or bind
+    them to a bookmaker, product, jurisdiction, market or quote.
+    """
+    if not isinstance(rules, Mapping):
+        return "bookmaker settlement rules unknown or incompatible"
+    required_rules = {"retirement", "disqualification", "walkover", "cancelled"}
+    if set(rules) != required_rules:
+        return "bookmaker settlement rules incomplete or contain unknown statuses"
+
+    def valid_rule(status: str, rule: object) -> bool:
+        if not isinstance(rule, Mapping):
+            return False
+        value = dict(rule)
+        if status == "walkover":
+            return value == {"action": "void"}
+        if status == "cancelled":
+            return value == {"action": "void"} or (
+                set(value) == {"action", "hours", "otherwise"}
+                and value.get("action") == "void_after_scheduled_hours"
+                and type(value.get("hours")) is int
+                and 1 <= value["hours"] <= 168
+                and value.get("otherwise") == "pending"
+            )
+        if value == {"action": "void"}:
+            return True
+        if value == {"action": "settle_winner"}:
+            return True
+        return (
+            set(value) == {"action", "minimum_completed_sets", "otherwise"}
+            and value.get("action") == "settle_winner_if_completed_sets"
+            and type(value.get("minimum_completed_sets")) is int
+            and 1 <= value["minimum_completed_sets"] <= 5
+            and value.get("otherwise") == "void"
+        )
+
+    if any(not valid_rule(status, rules.get(status)) for status in required_rules):
+        return "bookmaker settlement rules unknown or incompatible"
+    return ""
+
+
 def settlement_evidence_problem(quote: Mapping[str, Any]) -> str:
     """Validate the binding of bookmaker terms evidence to one quote.
 
@@ -312,9 +355,16 @@ def settlement_evidence_problem(quote: Mapping[str, Any]) -> str:
     except (TypeError, ValueError, OverflowError):
         return "settlement evidence dates invalid"
     rules = evidence.get("rules")
-    expected = {"retirement": "advancer", "walkover": "void", "cancelled": "void"}
-    if not isinstance(rules, Mapping) or any(rules.get(key) != value for key, value in expected.items()):
-        return "bookmaker settlement rules unknown or incompatible"
+    rules_problem = settlement_rules_problem(rules)
+    if rules_problem:
+        return rules_problem
+    if rules["cancelled"].get("action") == "void_after_scheduled_hours":
+        try:
+            scheduled = datetime.fromisoformat(str(quote.get("commence_time") or "").replace("Z", "+00:00"))
+            if scheduled.tzinfo is None or scheduled.utcoffset() is None:
+                return "cancellation settlement timeout requires an offset-bearing scheduled start"
+        except (TypeError, ValueError, OverflowError):
+            return "cancellation settlement timeout scheduled start invalid"
     quote_rules = quote.get("settlement_rules")
     if not isinstance(quote_rules, Mapping) or dict(quote_rules) != dict(rules):
         return "settlement evidence rules not bound to quote"

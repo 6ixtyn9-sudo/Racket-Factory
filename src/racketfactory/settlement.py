@@ -18,14 +18,16 @@ Design notes (from Sept-11/12 2026 evidence):
   * Result rows are validated for finality before they may settle anything:
     incomplete final sets (``5-4``), live markers and winner/score incoherence
     force PENDING, never a loss.
-  * Walkovers (winner but no sets played) are VOID (stake returned), never
-    wins. Retirements settle to the advancer and are flagged RETIRED.
+  * Legacy slips retain their historical settlement: walkovers (winner but
+    no sets played) are VOID; retirements settle to the recorded advancer.
+    New terms-bearing tickets may use an evidence-bound conditional policy.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Any
 
 from racketfactory.entities import player_key
@@ -34,6 +36,12 @@ _WS_SPLIT = re.compile(r"\s+")
 _SEED_STRIP = re.compile(r"\s*\(\d+\)\s*")
 _STATUS_RET = re.compile(r"\b(ret\.?|retired|retirement|abd\.?|abandoned|def\.?|defaulted)\b", re.IGNORECASE)
 _STATUS_WO = re.compile(r"\b(w\.?o\.?|walkover)\b", re.IGNORECASE)
+_STATUS_DQ = re.compile(r"\b(disqualified|disqualification|disq\.?|dq)\b", re.IGNORECASE)
+_STATUS_CANCEL = re.compile(r"\b(cancelled|canceled)\b", re.IGNORECASE)
+_STATUS_ABANDON = re.compile(r"\b(abandoned|abd\.?)\b", re.IGNORECASE)
+_STATUS_DEFAULT = re.compile(r"\b(def\.?|default(?:ed)?)\b", re.IGNORECASE)
+_STATUS_FORFEIT = re.compile(r"\b(forfeit(?:ed)?|forfeiture)\b", re.IGNORECASE)
+_STATUS_RETIREMENT = re.compile(r"\b(ret\.?|retired|retirement)\b", re.IGNORECASE)
 _LIVE_MARKERS = (
     " live", "live:", "s1", "s2", "s3", "s4", "s5",
     "in progress", "in-play", "inplay", " to finish", "suspended",
@@ -465,16 +473,109 @@ def sets_only_pair(row: dict[str, Any]) -> tuple[int, int] | None:
         return None
 
 
+def termination_kind(row: dict[str, Any]) -> str:
+    """Return an explicit match-termination class without conflating labels.
+
+    This is separate from legacy ``row_finality`` because old slips continue to
+    use their existing grader semantics. New, evidence-bearing tickets call
+    this classifier only after validating the bookmaker's bound terms.
+    """
+    blob = " ".join(clean_str(row.get(key)) for key in
+                    ("score", "_comment", "_result_status", "status", "match_status"))
+    kinds = []
+    if _STATUS_CANCEL.search(blob):
+        kinds.append("cancelled")
+    if _STATUS_ABANDON.search(blob):
+        kinds.append("abandoned")
+    if _STATUS_DQ.search(blob):
+        kinds.append("disqualification")
+    if _STATUS_WO.search(blob):
+        kinds.append("walkover")
+    if _STATUS_RETIREMENT.search(blob):
+        kinds.append("retirement")
+    if _STATUS_DEFAULT.search(blob):
+        kinds.append("defaulted")
+    if _STATUS_FORFEIT.search(blob):
+        kinds.append("forfeit")
+    unique = set(kinds)
+    if len(unique) > 1:
+        return "ambiguous"
+    return next(iter(unique), "")
+
+
+def completed_sets_from_row(row: dict[str, Any]) -> int | None:
+    """Count only confidently completed set scores for conditional rules.
+
+    A partial last set is not counted. Missing or malformed evidence returns
+    None, which callers must treat as pending rather than as zero sets.
+    """
+    def count_tokens(tokens: list[str]) -> int | None:
+        if not tokens:
+            return None
+        completed = 0
+        for index, token in enumerate(tokens):
+            parsed = _SET_TOKEN.match(token.strip().rstrip(",;"))
+            if not parsed:
+                return None
+            g1, g2 = int(parsed.group(1)), int(parsed.group(2))
+            if g2 >= 60 and g1 in (6, 7):
+                g2, _ = _split_fused(g2, g1)
+            elif g1 >= 60 and g2 in (6, 7):
+                g1, _ = _split_fused(g1, g2)
+            if _set_games_ok(g1, g2, deciding=True):
+                completed += 1
+            elif index == len(tokens) - 1:
+                return completed
+            else:
+                return None
+        return completed
+
+    score = clean_str(row.get("score"))
+    if score:
+        # Status tokens are commonly appended to the score cell (e.g. "6:1
+        # 3:0 RET."). Strip only the explicit termination vocabulary before
+        # parsing set tokens; unknown annotations remain a conservative error.
+        for marker in (_STATUS_CANCEL, _STATUS_ABANDON, _STATUS_DQ, _STATUS_WO,
+                       _STATUS_RETIREMENT, _STATUS_DEFAULT, _STATUS_FORFEIT):
+            score = marker.sub(" ", score)
+        score = score.strip()
+        # BetExplorer's rendered retirement score can show a match set count
+        # followed by individual scores in parentheses, e.g. "1:0 RET.
+        # (6:1, 3:0)". Count only that explicit score list, never infer from
+        # the leading summary.
+        parenthesized = re.findall(r"\(([^()]*)\)", score)
+        if len(parenthesized) == 1:
+            inside = parenthesized[0]
+            token_pattern = r"\d+\s*[-:]\s*\d+(?:\(\d+\))?"
+            tokens = re.findall(token_pattern, inside)
+            if tokens and not re.sub(token_pattern, "", inside).strip(" ,;\t"):
+                return count_tokens(tokens)
+        score = re.sub(r"\s+[.,;:]+$", "", score).strip()
+        rest = score
+        match = _SET_PREFIX.match(score)
+        if match and int(match.group(1)) <= 3 and int(match.group(2)) <= 3:
+            rest = match.group(3).strip()
+        return count_tokens(rest.split())
+    pair = sets_only_pair(row)
+    if pair is not None and min(pair) >= 0:
+        return sum(pair)
+    return None
+
+
 @dataclass
 class Finality:
     final: bool
     reason: str
-    status: str = ""  # "", RETIRED, WALKOVER, ABANDONED
+    status: str = ""  # legacy class label; policy-bound results also record subtype
 
 
-def row_finality(row: dict[str, Any]) -> Finality:
-    """Decide whether a result row is safe to settle from. Never settle live,
-    incomplete, or incoherent rows."""
+def row_finality(row: dict[str, Any], settlement_rules: dict[str, Any] | None = None) -> Finality:
+    """Decide whether a result row is safe to settle from.
+
+    Optional terms affect only callers grading a new ticket that carries
+    validated bookmaker evidence. With no terms, legacy rows retain the exact
+    prior finality and settlement behavior.
+    """
     winner = clean_str(row.get("winner"))
     score = clean_str(row.get("score"))
     blob = " ".join(clean_str(row.get(k)) for k in
@@ -484,6 +585,28 @@ def row_finality(row: dict[str, Any]) -> Finality:
         return Finality(True, "match abandoned/cancelled", status="CANCELLED")
     if any(mark in blob for mark in _LIVE_MARKERS):
         return Finality(False, "live/in-progress markers present")
+    termination = termination_kind(row)
+    if settlement_rules is not None and termination in {
+            "retirement", "disqualification", "walkover"}:
+        rule = settlement_rules.get(termination)
+        if not isinstance(rule, dict):
+            return Finality(False, f"{termination} rule missing")
+        action = rule.get("action")
+        count = completed_sets_from_row(row)
+        if action == "settle_winner_if_completed_sets" and count is None:
+            return Finality(False, f"completed-set evidence missing for {termination} rule")
+        if action == "void" or (action == "settle_winner_if_completed_sets"
+                                and count < int(rule.get("minimum_completed_sets", 1))):
+            status = {"retirement": "RETIRED", "disqualification": "DISQUALIFIED",
+                      "walkover": "WALKOVER"}[termination]
+            return Finality(True, f"{termination}: bookmaker rule voids market", status=status)
+        if action == "settle_winner" or action == "settle_winner_if_completed_sets":
+            if not winner:
+                return Finality(False, f"{termination} winner missing")
+            status = {"retirement": "RETIRED", "disqualification": "DISQUALIFIED",
+                      "walkover": "WALKOVER"}[termination]
+            return Finality(True, f"{termination}: bookmaker rule has action", status=status)
+        return Finality(False, f"{termination} rule unsupported")
     if not winner:
         return Finality(False, "no winner recorded")
     if _STATUS_WO.search(blob):
@@ -543,7 +666,8 @@ def _same_winner_side(w1: str, w2: str) -> bool:
     return players_match(w1, w2)[0]
 
 
-def rank_candidates(rows: list[dict[str, Any]], target_date: str) -> list[tuple[int, dict[str, Any], Finality]]:
+def rank_candidates(rows: list[dict[str, Any]], target_date: str,
+                    settlement_rules: dict[str, Any] | None = None) -> list[tuple[int, dict[str, Any], Finality]]:
     """Rank candidate result rows. Higher score first.
 
     Exact date beats adjacent; rows with ids/tournaments/scores beat weak
@@ -551,7 +675,7 @@ def rank_candidates(rows: list[dict[str, Any]], target_date: str) -> list[tuple[
     """
     ranked: list[tuple[int, dict[str, Any], Finality]] = []
     for row in rows:
-        fin = row_finality(row)
+        fin = row_finality(row, settlement_rules=settlement_rules)
         score = 0
         if _row_date(row) == target_date:
             score += 4
@@ -578,12 +702,19 @@ class Settlement:
 
 def settle_selection(pick_match: object, selection: object,
                      candidates: list[dict[str, Any]],
-                     target_date: str) -> Settlement:
+                     target_date: str,
+                     settlement_rules: dict[str, Any] | None = None,
+                     settlement_context: dict[str, Any] | None = None) -> Settlement:
     """Settle one selection against candidate result rows.
 
     ``candidates`` may be unfiltered (typically all result rows within ±1 day
     of the pick); team matching is applied here so callers cannot skip it.
-    Handles date ranking, finality gating and cross-row conflicts.
+    Handles date ranking, finality gating and cross-row conflicts. Optional
+    ``settlement_rules`` is supplied only for a new ticket whose stored
+    bookmaker evidence has passed the quote validator; omission preserves the
+    legacy result policy exactly. A policy requiring an elapsed-time check also
+    needs its offset-bearing scheduled start and grading timestamp in
+    ``settlement_context``; missing context remains pending.
     """
     matched: list[dict[str, Any]] = []
     bare_used = False
@@ -596,13 +727,18 @@ def settle_selection(pick_match: object, selection: object,
     if not matched:
         return Settlement("PENDING", "no matching result rows found")
     candidates = matched
-    ranked = rank_candidates(candidates, target_date)
+    ranked = rank_candidates(candidates, target_date, settlement_rules=settlement_rules)
     finals = [(s, r) for (s, r, f) in ranked if f.final]
     if not finals:
         (_, _, weak) = ranked[0]
         return Settlement("PENDING", f"result not final: {weak.reason}",
                           basis={"match_date": _row_date(ranked[0][1]),
                                  "score": clean_str(ranked[0][1].get("score"))})
+    if settlement_rules is not None:
+        termination_classes = {termination_kind(row) for _, row in finals}
+        if "ambiguous" in termination_classes or (
+                len(termination_classes) > 1 and any(termination_classes)):
+            return Settlement("CONFLICT", "conflicting match-termination evidence")
     # Conflict: final rows naming winners that are not the same side.
     # Spelling variants ("Ben Shelton" vs "Shelton B.") cluster together.
     groups: list[dict[str, Any]] = []
@@ -624,7 +760,9 @@ def settle_selection(pick_match: object, selection: object,
     best = finals[0][1]
     won = selection_won(selection, best.get("player_a"), best.get("player_b"),
                         best.get("winner"))
-    fin = row_finality(best)
+    fin = row_finality(best, settlement_rules=settlement_rules)
+    event_termination = termination_kind(best)
+    completed_sets = completed_sets_from_row(best)
     basis = {
         "source": clean_str(best.get("source")),
         "match_date": _row_date(best),
@@ -633,8 +771,51 @@ def settle_selection(pick_match: object, selection: object,
         "result_id": clean_str(best.get("_te_id")) or clean_str(best.get("_result_id")),
         "tournament": clean_str(best.get("tournament")),
         "status": fin.status,
+        "termination": event_termination,
+        "completed_sets": completed_sets,
     }
-    if fin.status in ("WALKOVER", "CANCELLED", "ABANDONED"):
+    if settlement_rules is not None:
+        if event_termination in {"defaulted", "forfeit", "abandoned", "ambiguous"}:
+            return Settlement("PENDING", f"unsupported or ambiguous match termination: {event_termination}",
+                              basis=basis, bare_surname=bare_used)
+        if event_termination:
+            rule = settlement_rules.get(event_termination)
+            if not isinstance(rule, dict):
+                return Settlement("PENDING", f"bookmaker rule missing for {event_termination}",
+                                  basis=basis, bare_surname=bare_used)
+            action = rule.get("action")
+            if action == "void_after_scheduled_hours":
+                try:
+                    scheduled = datetime.fromisoformat(
+                        str((settlement_context or {}).get("commence_time") or "").replace("Z", "+00:00"))
+                    graded_at = datetime.fromisoformat(
+                        str((settlement_context or {}).get("graded_at") or "").replace("Z", "+00:00"))
+                    if (scheduled.tzinfo is None or scheduled.utcoffset() is None
+                            or graded_at.tzinfo is None or graded_at.utcoffset() is None):
+                        raise ValueError("timezone missing")
+                    deadline = scheduled + timedelta(hours=int(rule["hours"]))
+                    if graded_at < deadline:
+                        return Settlement("PENDING", "scheduled no-start timeout has not elapsed",
+                                          basis=basis, bare_surname=bare_used)
+                except (KeyError, TypeError, ValueError, OverflowError):
+                    return Settlement("PENDING", "scheduled no-start timeout evidence missing or invalid",
+                                      basis=basis, bare_surname=bare_used)
+                return Settlement("VOID", "bookmaker rule: no-start timeout elapsed", basis=basis,
+                                  bare_surname=bare_used)
+            if action == "void":
+                return Settlement("VOID", f"bookmaker rule: {event_termination} void", basis=basis,
+                                  bare_surname=bare_used)
+            if action == "settle_winner_if_completed_sets":
+                if completed_sets is None:
+                    return Settlement("PENDING", "completed-set evidence missing for bookmaker rule",
+                                      basis=basis, bare_surname=bare_used)
+                if completed_sets < int(rule.get("minimum_completed_sets", 1)):
+                    return Settlement("VOID", f"bookmaker rule: {event_termination} before set threshold",
+                                      basis=basis, bare_surname=bare_used)
+            elif action != "settle_winner":
+                return Settlement("PENDING", "unsupported bookmaker settlement action",
+                                  basis=basis, bare_surname=bare_used)
+    elif fin.status in ("WALKOVER", "CANCELLED", "ABANDONED"):
         return Settlement("VOID", f"{fin.status.lower()}: stake returned", basis=basis,
                           bare_surname=bare_used)
     if won is True:

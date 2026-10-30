@@ -14,7 +14,7 @@ import re
 import sys
 import tempfile
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 import pandas as pd
@@ -27,6 +27,7 @@ from racketfactory.execution import (  # noqa: E402
     acca_block_reasons,
     acca_execution_safe,
     leg_settlement_safe,
+    settlement_evidence_problem,
 )
 LOCALDATA = ROOT / "localdata"
 STATE_FILE = LOCALDATA / "auto_tickets_state.json"
@@ -158,7 +159,42 @@ def settle_leg(leg, df, additional_df=None, target_date: str | None = None):
                                for k, v in row.items()})
     if not target_date:
         target_date = clean_str(leg.get("date"))
-    result = settle_selection(match_text, selected, candidates, target_date or "")
+
+    # New tickets carry the exact terms that qualified their quote. Recheck
+    # that binding before grading; malformed evidence holds the leg open and
+    # must never fall back to the legacy unconditional-retirement policy.
+    # Historical tickets without settlement metadata keep their old behavior.
+    settlement_rules = None
+    quote = leg.get("selected_quote")
+    if isinstance(quote, dict) and "settlement_evidence" in quote:
+        evidence_problem = settlement_evidence_problem(quote)
+        if evidence_problem:
+            leg["_settle_outcome"] = "PENDING"
+            leg["_settle_reason"] = f"bookmaker settlement evidence invalid: {evidence_problem}"
+            leg["_settle_basis"] = {}
+            return "PENDING"
+        evidence = quote["settlement_evidence"]
+        settlement_rules = dict(evidence["rules"])
+
+    settlement_context = None
+    if settlement_rules is not None:
+        settlement_context = {
+            "commence_time": quote.get("commence_time"),
+            "graded_at": datetime.now(timezone.utc).isoformat(),
+        }
+    result = settle_selection(match_text, selected, candidates, target_date or "",
+                              settlement_rules=settlement_rules,
+                              settlement_context=settlement_context)
+    if settlement_rules is not None:
+        evidence = quote["settlement_evidence"]
+        result.basis["settlement_terms"] = {
+            "bookmaker": quote.get("bookmaker"),
+            "bookmaker_id": quote.get("bookmaker_id"),
+            "jurisdiction": evidence.get("jurisdiction"),
+            "document_url": evidence.get("document_url"),
+            "document_sha256": evidence.get("document_sha256"),
+            "rule_for": result.basis.get("termination") or "completed_match",
+        }
     leg["_settle_outcome"] = result.outcome
     leg["_settle_reason"] = result.reason
     leg["_settle_basis"] = result.basis
