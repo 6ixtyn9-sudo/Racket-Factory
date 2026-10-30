@@ -176,11 +176,116 @@ def capture_betexplorer_failure(event_id: str, stage: str, kind: str, *, status:
         file.write_text(json.dumps(items, indent=2), encoding="utf-8")
 
 
-def capture_unrecognized_listing_row(row, target_date: str) -> None:
-    """Retain a bounded structural sample, never classify unknown markup as safe.
+def _listing_row_evidence(row) -> dict:
+    """Describe a row without serializing its HTML or arbitrary attributes.
 
-    Link values are restricted to the existing public same-host URL policy;
-    all other text, attributes, scripts and query parameters are omitted.
+    Name-like text is retained only in a cell containing a validated match
+    link. It is unverified page text, not a participant identity or an
+    orientation. Other cells contribute only exact allowlisted status text.
+    The ordered tree and omission counters make lost material visible.
+    """
+    from bs4 import NavigableString, Tag, Comment
+    from racketfactory.betexplorer_evidence import _SECRET, _url
+    from racketfactory.sources.betexplorer import _is_match_link
+
+    statuses = {'finished', 'live', 'scheduled', 'cancelled', 'canceled',
+                'postponed', 'abandoned', 'retired', 'ret.', 'walkover', 'w/o'}
+    blocked = {'script', 'style', 'noscript', 'template', 'form', 'input',
+               'textarea', 'select', 'button', 'iframe', 'svg'}
+    allowed_tags = {'td', 'th', 'a', 'span', 'div', 'b', 'strong', 'i', 'em', 'br'}
+    allowed_classes = {'table-main__tt'}
+    remaining = 80
+    omissions = {'text': 0, 'elements': 0, 'bounded': False}
+
+    def public_name_text(value: str) -> str | None:
+        value = ' '.join(value.split())
+        if not value or len(value) > 100 or _SECRET.search(value):
+            return None
+        # Separators must survive as separate DOM text nodes for offline replay.
+        if value in {'-', '–', '—', '/', 'vs', 'vs.'}:
+            return value
+        if not any(c.isalpha() for c in value):
+            return None
+        if any(not (c.isalpha() or c.isspace() or c in ".'’-/&–—") for c in value):
+            return None
+        words = re.findall(r'[^\W\d_]+', value, re.UNICODE)
+        if not words or len(words) > 12 or any(len(w) > 22 or (len(w) > 5 and w.isupper()) for w in words):
+            return None
+        return value
+
+    def tree(node, name_cell: bool, depth: int):
+        nonlocal remaining
+        if remaining <= 0 or depth > 6:
+            omissions['bounded'] = True
+            return None
+        remaining -= 1
+        if isinstance(node, Comment):
+            omissions['elements'] += 1
+            return None
+        if isinstance(node, NavigableString):
+            raw_text = str(node)
+            if len(raw_text) > 200:
+                omissions['text'] += 1
+                return None
+            text = ' '.join(raw_text.split())
+            if not text:
+                return None
+            if text.casefold() in statuses:
+                return {'status_text': text}
+            safe = public_name_text(text) if name_cell else None
+            if safe is not None:
+                return {'name_like_text': safe}
+            omissions['text'] += 1
+            return None
+        if not isinstance(node, Tag) or node.name not in allowed_tags or node.name in blocked:
+            omissions['elements'] += 1
+            return None
+        item = {'tag': node.name}
+        classes = sorted(set(node.get('class') or []) & allowed_classes)
+        if classes:
+            item['classes'] = classes
+        if node.name == 'a':
+            href = _url(str(node.get('href') or ''), '')
+            if href and _is_match_link(href):
+                item['public_match_path'] = href.split('?', 1)[0]
+        children = []
+        for child in node.children:
+            if remaining <= 0:
+                omissions['bounded'] = True
+                break
+            entry = tree(child, name_cell, depth + 1)
+            if entry is not None:
+                children.append(entry)
+        if children:
+            item['children'] = children
+        return item
+
+    cells = []
+    for cell in row.find_all(['td', 'th'], recursive=False, limit=13):
+        if len(cells) == 12:
+            omissions['bounded'] = True
+            break
+        name_cell = False
+        for anchor in cell.find_all('a', href=True, limit=20):
+            href = _url(str(anchor.get('href') or ''), '')
+            if href and _is_match_link(href):
+                name_cell = True
+                break
+        cells.append(tree(cell, name_cell, 0))
+    dt = str(row.get('data-dt') or '')
+    # Preserve only the exact five numeric components, without interpreting
+    # their ordering, timezone, or relationship to the listing date.
+    dt_components = [int(x) for x in dt.split(',')] if re.fullmatch(r'\d{1,4}(?:,\d{1,4}){4}', dt) else None
+    return {'data_dt_components': dt_components, 'cells': cells, 'omissions': omissions,
+            'interpretation': 'Unverified row evidence; participant identity, status and schedule not established.'}
+
+
+def capture_unrecognized_listing_row(row, target_date: str) -> None:
+    """Retain bounded public row evidence without classifying unknown markup.
+
+    Only name-like visible text in a validated match-link cell, exact status
+    labels, numeric date components, a restricted tag tree and public paths
+    are retained. Other attributes, scripts, forms and arbitrary text are not.
     """
     import hashlib
     from racketfactory.betexplorer_evidence import _url
@@ -201,7 +306,8 @@ def capture_unrecognized_listing_row(row, target_date: str) -> None:
     links = []
     for a in row.find_all('a', href=True, limit=20):
         safe = _url(str(a.get('href') or ''), '')
-        links.append({'public_path': safe, 'text_label': _safe_label(a.get_text(' ', strip=True))})
+        links.append({'public_path': safe.split('?', 1)[0] if safe else None,
+                      'text_label': _safe_label(a.get_text(' ', strip=True))})
     cells = []
     for cell in row.find_all(['td', 'th'], recursive=False, limit=12):
         cells.append({'tag': cell.name, 'text_label': _safe_label(cell.get_text(' ', strip=True)),
@@ -210,5 +316,6 @@ def capture_unrecognized_listing_row(row, target_date: str) -> None:
     data.append({'target_date': target_date if re.fullmatch(r'\d{4}-\d{2}-\d{2}', target_date) else '',
                  'classification': 'unresolved', 'row_sha256': hashlib.sha256(raw.encode()).hexdigest(),
                  'cells': cells, 'links': links, 'sample_limited': len(raw) > 64000,
+                 'row_evidence': _listing_row_evidence(row),
                  'notice': 'Redacted structural sample; omitted markup may be necessary to classify this row.'})
     file.write_text(json.dumps(data, indent=2), encoding='utf-8')

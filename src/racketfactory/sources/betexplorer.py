@@ -380,6 +380,14 @@ def _fetch_live(target: str, *, with_status: bool = False, metrics: dict | None 
             row["_collection_partial"] = partial
         return done(_finalize(rows), "partial" if partial else "complete")
 
+    # An unrecognized dated row remains unresolved even when no other rows
+    # parsed. Neither a generic fallback nor an empty-board marker can prove
+    # that this row is non-actionable or make the dated listing complete.
+    if parse_metrics.get("unrecognized_rows"):
+        if with_status:
+            return done([], "partial")
+        raise PageFetchError("parser", "BetExplorer dated listing contains unrecognized rows")
+
     # 2) For any date, if results page missed, try to collect links without odds
     #    and price via match pages (new fallback for JS-rendered listings)
     link_rows: list[dict[str, Any]] = []
