@@ -25,6 +25,17 @@ on:
           - 'true'
           - 'false'
 
+      betexplorer_event_id:
+        description: 'Evidence-only: optional event ID from the fetched tennis listing'
+        required: false
+        default: ''
+        type: string
+      betexplorer_browser_observer:
+        description: 'Evidence-only: observe the selected page in a bounded browser'
+        required: false
+        default: false
+        type: boolean
+
 permissions:
   contents: write
   actions: write
@@ -160,8 +171,24 @@ jobs:
         if: ${{ github.event.inputs.mode == 'evidence_only' }}
         env:
           RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR: ${{ runner.temp }}/racket-rebuild-diagnostics
+          BETEXPLORER_EVENT_ID: ${{ github.event.inputs.betexplorer_event_id }}
+          BETEXPLORER_BROWSER_OBSERVER: ${{ github.event.inputs.betexplorer_browser_observer }}
         run: |
-          PYTHONPATH=src python scripts/capture_betexplorer_evidence.py
+          set -e
+          args=()
+          if [ -n "$BETEXPLORER_EVENT_ID" ]; then
+            if [[ ! "$BETEXPLORER_EVENT_ID" =~ ^[A-Za-z0-9]{1,32}$ ]]; then
+              echo 'Invalid BetExplorer event ID' >&2
+              exit 1
+            fi
+            args+=(--event-id "$BETEXPLORER_EVENT_ID")
+          fi
+          case "$BETEXPLORER_BROWSER_OBSERVER" in
+            true) args+=(--browser-observer) ;;
+            ''|false) ;;
+            *) echo 'Invalid BetExplorer browser observer option' >&2; exit 1 ;;
+          esac
+          PYTHONPATH=src python scripts/capture_betexplorer_evidence.py "${args[@]}"
 
       - name: Restore localdata state (cache)
         id: cache_restore
