@@ -298,3 +298,48 @@ def test_429_cooldown_write_failure_never_claims_active_marker_or_retries(setup_
     assert status(setup_targeted)['cooldown_state'] == 'not_established_in_current_runner'
     assert qe.targeted_comparison_rows(DAY, PREDICTIONS) == []
     assert calls == [1]
+
+
+def test_oddsportal_empty_scan_is_attempt_cached_across_repeated_consumers(tmp_path, monkeypatch):
+    monkeypatch.delenv(oddsportal_upcoming.DISABLE_ENV, raising=False)
+    monkeypatch.delenv('RACKET_FACTORY_DISABLE_ODDSPORTAL', raising=False)
+    monkeypatch.setenv('RACKET_FACTORY_RUN_AS_OF', RUN)
+    calls = []
+    monkeypatch.setattr(fetch_cache, 'DEFAULT_CACHE_DIR', tmp_path / 'fetch_cache')
+    page_calls = []
+    monkeypatch.setattr(oddsportal_upcoming, '_page_for_target',
+                        lambda _: page_calls.append(1) or ('/tennis/', 'unused-key'))
+    monkeypatch.setattr(oddsportal_upcoming, '_fetch_live',
+                        lambda *args, **kwargs: calls.append(1) or [])
+
+    assert oddsportal_upcoming.fetch_oddsportal_upcoming_rows(DAY) == []
+    assert oddsportal_upcoming.fetch_oddsportal_upcoming_rows(DAY) == []
+    assert page_calls == [1, 1]
+    assert calls == [1]
+
+
+def test_oddsportal_invalid_route_is_reported_without_repeating_scan(tmp_path, monkeypatch):
+    monkeypatch.delenv(oddsportal_upcoming.DISABLE_ENV, raising=False)
+    monkeypatch.delenv('RACKET_FACTORY_DISABLE_ODDSPORTAL', raising=False)
+    monkeypatch.setenv('RACKET_FACTORY_RUN_AS_OF', RUN)
+    monkeypatch.setattr(fetch_cache, 'DEFAULT_CACHE_DIR', tmp_path / 'fetch_cache')
+    monkeypatch.setattr(oddsportal_upcoming, '_page_for_target', lambda _: ('/tennis/', 'unused-key'))
+    calls = []
+    def fail(*args, **kwargs):
+        calls.append(1)
+        raise po.PageFetchError('route_invalid', 'synthetic 404')
+    monkeypatch.setattr(oddsportal_upcoming, '_fetch_live', fail)
+
+    for _ in range(2):
+        with pytest.raises(po.PageFetchError) as exc:
+            oddsportal_upcoming.fetch_oddsportal_upcoming_rows(DAY)
+        assert exc.value.kind == 'route_invalid'
+    assert calls == [1]
+
+
+def test_oddsportal_explicit_disable_switches_short_circuit_upcoming_scan(monkeypatch):
+    monkeypatch.delenv(oddsportal_upcoming.DISABLE_ENV, raising=False)
+    monkeypatch.setenv('RACKET_FACTORY_DISABLE_ODDSPORTAL', '1')
+    monkeypatch.setattr(oddsportal_upcoming, '_fetch_live',
+                        lambda *args, **kwargs: pytest.fail('disabled source must not scan'))
+    assert oddsportal_upcoming.fetch_oddsportal_upcoming_rows(DAY) == []
