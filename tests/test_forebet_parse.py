@@ -65,7 +65,9 @@ def test_probabilities_never_become_odds():
     assert _forebet_prices_from_text("79 21") == []
 
 
-def test_calendar_day_accepted():
+def test_calendar_day_accepted(monkeypatch):
+    # Exercise URL construction with a fake fetch even when CI disables live Forebet.
+    monkeypatch.delenv("RACKET_FACTORY_DISABLE_FOREBET", raising=False)
     predictor = ForebetPredictor()
     seen = {}
 
@@ -79,9 +81,10 @@ def test_calendar_day_accepted():
     assert seen["url"].endswith("/tennis/predictions/2026-09-12")
 
 
-def test_day_labels_resolve_to_dated_urls():
+def test_day_labels_resolve_to_dated_urls(monkeypatch):
     from datetime import date, timedelta
 
+    monkeypatch.delenv("RACKET_FACTORY_DISABLE_FOREBET", raising=False)
     predictor = ForebetPredictor()
     seen = {}
 
