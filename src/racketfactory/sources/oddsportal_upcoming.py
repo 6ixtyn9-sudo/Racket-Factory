@@ -557,8 +557,17 @@ def _get_oddsportal_ttl_minutes() -> float:
 
 
 def fetch_oddsportal_upcoming_rows(target_date: str) -> list[dict[str, Any]]:
-    """Priced upcoming rows for target_date (today/tomorrow), TheOddsAPI-shaped."""
-    if os.getenv(DISABLE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}:
+    """Priced upcoming rows for target_date (today/tomorrow), TheOddsAPI-shaped.
+
+    Within a pinned daily run, memoize the first bounded scan's outcome,
+    including empty and failed outcomes. Warehouse rebuilds and the miner can
+    call this optional source more than once; a transient/invalid route must
+    not turn those consumers into repeated page scans. The run-scoped record
+    is attempt state only, never evidence that the board was complete or empty.
+    """
+    disabled = {"1", "true", "yes", "on"}
+    if (os.getenv(DISABLE_ENV, "").strip().lower() in disabled
+            or os.getenv("RACKET_FACTORY_DISABLE_ODDSPORTAL", "").strip().lower() in disabled):
         return []
     target = str(target_date)[:10]
     page = _page_for_target(target)
@@ -569,5 +578,39 @@ def fetch_oddsportal_upcoming_rows(target_date: str) -> list[dict[str, Any]]:
     today = date.today().isoformat()
     extra = TODAY_EXTRA_PATHS if target == today else TOMORROW_EXTRA_PATHS if target == (date.today() + timedelta(days=1)).isoformat() else []
     ttl = _get_oddsportal_ttl_minutes()
-    rows = cached_fetch(cache_key, lambda: _fetch_live(p_path, target, extra_paths=extra), ttl_minutes=ttl)
-    return [dict(r) for r in rows] if rows else []
+    run = os.getenv("RACKET_FACTORY_RUN_AS_OF", "").strip()
+    if not run:
+        rows = cached_fetch(cache_key, lambda: _fetch_live(p_path, target, extra_paths=extra), ttl_minutes=ttl)
+        return [dict(r) for r in rows] if rows else []
+
+    import hashlib
+    import json
+    attempt_key = "oddsportal_upcoming_attempt_" + hashlib.sha256(
+        json.dumps([run, target], separators=(",", ":")).encode()).hexdigest()[:24]
+
+    def attempt() -> list[dict[str, Any]]:
+        try:
+            rows = _fetch_live(p_path, target, extra_paths=extra)
+            if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+                raise PageFetchError("parser", "OddsPortal returned an invalid row collection")
+            return [{"attempt_status": "observed", "rows": rows}]
+        except PageFetchError as exc:
+            kind = exc.kind if exc.kind in {"transport", "http", "auth", "challenge", "rate_limit", "parser", "route_invalid"} else "unexpected"
+            return [{"attempt_status": "failed", "failure_kind": kind}]
+        except Exception:
+            return [{"attempt_status": "failed", "failure_kind": "unexpected"}]
+
+    snapshot = cached_fetch(attempt_key, attempt, fetch_day=target, ttl_minutes=24 * 60)
+    if (not isinstance(snapshot, list) or len(snapshot) != 1 or not isinstance(snapshot[0], dict)
+            or snapshot[0].get("attempt_status") not in {"observed", "failed"}):
+        raise PageFetchError("parser", "OddsPortal run attempt record is invalid; refusing another scan")
+    record = snapshot[0]
+    if record["attempt_status"] == "failed":
+        kind = record.get("failure_kind")
+        if kind not in {"transport", "http", "auth", "challenge", "rate_limit", "parser", "route_invalid", "unexpected"}:
+            kind = "unexpected"
+        raise PageFetchError(kind, "OddsPortal scan already failed in this run; not retrying")
+    rows = record.get("rows")
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise PageFetchError("parser", "OddsPortal run rows are invalid; refusing another scan")
+    return [dict(row) for row in rows]
