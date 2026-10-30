@@ -857,8 +857,16 @@ def test_staged_miner_uses_only_supplied_fresh_sources(tmp_path, monkeypatch):
                                            attach_synthetic_settlement_evidence)
     allow_synthetic_evidence_in_pipeline(monkeypatch)
     from scripts import daily
-    day = tickets.now_local().date().isoformat()
-    obs = datetime.now(timezone.utc).isoformat()
+    from racketfactory.kickoff import SAST
+    observed_at = datetime.now(timezone.utc)
+    # Anchor the synthetic event to one observed instant and construct its
+    # kickoff in the provider's local schedule zone. Using UTC + two hours
+    # while retaining today's SAST date can cross midnight and make the test
+    # fixture internally inconsistent, correctly causing quote matching to
+    # reject it.
+    kickoff = observed_at.astimezone(SAST).replace(second=0, microsecond=0) + timedelta(hours=2)
+    day = kickoff.date().isoformat()
+    obs = observed_at.isoformat()
     local = tmp_path / "localdata"
     local.mkdir()
     monkeypatch.setattr(daily, "LOCALDATA", local)
@@ -867,7 +875,7 @@ def test_staged_miner_uses_only_supplied_fresh_sources(tmp_path, monkeypatch):
              "winner": "Historical Alice", "odds_a": 1.5, "odds_b": 2.5, "_is_live": False,
              "predicted_winner_live": "player_a", "prediction_prob_live": 70, "rank_a": 5, "rank_b": 20}]
     pd.DataFrame(hist).to_csv(local / "warehouse.csv.gz", index=False, compression="gzip")
-    preds = [{"match_date": day, "match_time": "12:00", "player_home": "Alice Adams", "player_away": "Beth Brown",
+    preds = [{"match_date": day, "match_time": kickoff.strftime("%H:%M"), "player_home": "Alice Adams", "player_away": "Beth Brown",
               "tournament": "ATP Shanghai", "surface": "Hard", "predicted_winner": "1", "prob_home": 70,
               "prob_away": 30, "source": "BetClan"}]
     quotes = [{"match_date": day, "player_home": "Alice Adams", "player_away": "Beth Brown", "odds_home": 1.5,
@@ -876,10 +884,15 @@ def test_staged_miner_uses_only_supplied_fresh_sources(tmp_path, monkeypatch):
                "match_url": "/tennis/atp/test/alice-beth/fake-fixture/", "market_id": "synthetic",
                "raw_market": "match winner", "raw_period": "match", "retrieved_at": obs,
                "provider_price_updated_at": ["100", "101"], "response_sha256": "a" * 64,
-               "bookmaker_id": "synthetic-book", "match_time": "12:00",
-               "commence_time": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()}]
+               "bookmaker_id": "synthetic-book", "match_time": kickoff.strftime("%H:%M"),
+               "commence_time": kickoff.isoformat()}]
     attach_synthetic_settlement_evidence(quotes[0])
     attach_synthetic_schedule_evidence(quotes[0])
+    # The same identity and price with a kickoff shifted onto the next SAST
+    # date must remain unmatched; do not make inconsistent schedule evidence
+    # pass merely to exercise the selected-quote plumbing below.
+    mismatched_date_quote = dict(quotes[0], commence_time=(kickoff + timedelta(days=1)).isoformat())
+    assert warehouse._match_api_odds_row(pd.Series(preds[0]), [mismatched_date_quote])[0] is None
     # In addition to empty credentials, block Python sockets and native HTTP
     # clients in the subprocess before its imports; no external provider calls.
     isolation = tmp_path / "isolation"

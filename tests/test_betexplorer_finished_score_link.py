@@ -109,6 +109,25 @@ def test_extra_row_level_content_is_unrecognized(intrusion):
     assert metrics['unverified_schedule_rows'] == 1
 
 
+@pytest.mark.parametrize('kwargs', [
+    {'status': ''},
+    {'status': 'LIVE'},
+    {'row_attr': 'data-live="opaque"'},
+])
+def test_terminal_fallback_rejects_unmarked_live_and_unknown_status_rows(kwargs):
+    html = listing(**kwargs)
+    row = BeautifulSoup(html, 'html.parser').find('tr')
+    assert not be._finished_score_link_row(row)
+
+    metrics = {}
+    rows = be.parse_results_page(html, AUTHENTIC_DAY, metrics=metrics, include_unpriced=True)
+    assert metrics['finished_rows'] == 0
+    assert metrics['discovered_rows'] == 0
+    assert metrics['unrecognized_rows'] == 1
+    assert metrics['row_accounting_complete'] is True
+    assert all(candidate.get('odds_home') is None for candidate in rows)
+
+
 def test_terminal_shape_never_makes_listing_complete_or_starts_comparison(monkeypatch):
     monkeypatch.setattr(be, 'fetch_page_html', lambda *args, **kwargs: listing())
     metrics = {}
