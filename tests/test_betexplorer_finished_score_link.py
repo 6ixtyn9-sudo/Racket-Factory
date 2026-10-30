@@ -1,9 +1,12 @@
-"""Reduced retained-row reconstructions and synthetic adversarial controls.
+"""Retained BetExplorer row excerpts and synthetic adversarial controls.
 
-The run-41016336262 samples omit text, elements and attributes. These tests do
-not replay the original response or establish tennis schedule semantics.
+The earlier reduced samples and the selected parser-replay excerpts omit parts
+of their source responses; none are original raw HTML or schedule proof.
 """
+from pathlib import Path
+
 import pytest
+from bs4 import BeautifulSoup
 
 from racketfactory import quote_enrichment
 from racketfactory.sources import betexplorer as be
@@ -131,3 +134,123 @@ def test_fin_row_does_not_mask_another_unrecognized_row(monkeypatch):
     assert rows == [] and status == 'partial'
     assert metrics['finished_rows'] == 1 and metrics['unrecognized_rows'] == 1
     assert metrics['unverified_schedule_rows'] == 2
+
+
+AUTHENTIC_TERMINAL_ROWS = Path(__file__).parent / 'fixtures' / 'betexplorer_terminal_rows.html'
+AUTHENTIC_DAY = '2026-10-30'
+
+
+def test_retained_authentic_rows_cover_score_anchors_set_scores_retirement_and_walkover():
+    # These are selected row excerpts from the supplied retained parser replay,
+    # not raw response HTML; see the fixture header for its partial-retention SHA.
+    html = AUTHENTIC_TERMINAL_ROWS.read_text()
+    soup = BeautifulSoup(html, 'html.parser')
+    rows = soup.find_all('tr', attrs={'data-dt': True})
+    assert len(rows) == 6
+
+    terminal = [row for row in rows if be._listing_status_state(row)[0] == 'terminal']
+    assert len(terminal) == 5
+    assert all(be._finished_score_link_row(row) for row in terminal)
+
+    first = terminal[0].find('td', class_='table-main__tt').find('a', href=True)
+    second = terminal[1].find('td', class_='table-main__tt').find('a', href=True)
+    doubles = terminal[2].find('td', class_='table-main__tt').find('a', href=True)
+    same_event_links = [a for a in terminal[0].find_all('a', href=True)
+                        if be._is_match_link(a.get('href', ''))]
+    reasons = []
+    assert be._structured_participants(same_event_links, rejection_reasons=reasons) is None
+    assert 'participant_sibling_anchors_not_co_located' in reasons
+    # The fixed terminal path isolates only the two-span participant anchor.
+    assert be._structured_participants([first]) == ('Vacherot V.', 'Jodar R.')
+    assert be._structured_participants([second]) == ('Michelsen A.', 'Fils A.')
+    assert be._structured_participants([doubles]) == (
+        'Harrison C. / Hewitt D.', 'Sobolieva A. / Yaneva E.')
+
+    # The fourth terminal excerpt is a retained retirement with a partial set;
+    # the fifth is the observed walkover shape with an empty third cell.
+    assert 'RET.' in terminal[3].find_all('td', recursive=False)[1].get_text(' ', strip=True)
+    assert terminal[3].find_all('td', recursive=False)[2].get_text(' ', strip=True) == '(6:2, 2:0)'
+    assert terminal[4].find_all('td', recursive=False)[1].get_text(' ', strip=True) == 'WO.'
+    assert not terminal[4].find_all('td', recursive=False)[2].get_text(' ', strip=True)
+
+
+def test_authentic_excerpt_stays_partial_and_cannot_create_actionable_rows():
+    html = AUTHENTIC_TERMINAL_ROWS.read_text()
+    metrics = {}
+    assert be.parse_results_page(html, AUTHENTIC_DAY, metrics=metrics, include_unpriced=True) == []
+    assert metrics['data_dt_rows'] == 6
+    assert metrics['finished_rows'] == 5
+    assert metrics['unrecognized_rows'] == 1
+    assert metrics['conflicting_status_rows'] == 1
+    assert metrics['recognized_actionable_rows'] == 0
+    assert metrics['row_accounting_complete'] is True
+    assert metrics['listing_recognition_status'] == 'partial'
+    assert metrics['listing_coverage_status'] == 'not_established'
+
+    unknown = next(row for row in BeautifulSoup(html, 'html.parser').find_all('tr')
+                   if row.has_attr('data-live'))
+    state, signals = be._listing_status_state(unknown)
+    assert state == 'conflicting_or_unknown'
+    assert 'UNRECOGNIZED_STATUS_ATTRIBUTE' in signals
+    match_ids = [a.get('href', '').rstrip('/').split('/')[-1]
+                 for a in unknown.find_all('a', href=True) if be._is_match_link(a.get('href', ''))]
+    assert unknown['data-live'] in match_ids  # value resemblance does not decode its semantics
+
+
+def test_terminal_parser_rejects_mismatched_or_ambiguous_score_markup():
+    cases = [
+        listing(score_path=OTHER),
+        listing(extra='(7:6, malformed)'),
+        listing(extra='(7:6, 15:6)'),
+        listing(extra='<span>(7:6, 2:6)</span>'),
+        listing(extra='(7:6, 2:6)<!-- unexplained -->'),
+        listing(extra='<a href="/tennis/atp-singles/basel/extra-match/AbCd1234/">extra</a>'),
+        listing(status_extra='<span>LIVE</span>'),
+        listing(row_attr='data-status="POSTPONED"'),
+        listing(name_attr='style="display:none"'),
+        listing(score_attr='aria-hidden="true"'),
+        listing(score='1:0', extra=''),
+        listing(score='2:2', extra=''),
+    ]
+    extra_participant = listing().replace(
+        '</span></a></td>', '</span><span>Extra C.</span></a></td>', 1)
+    cases.append(extra_participant)
+    for html in cases:
+        metrics = {}
+        assert be.parse_results_page(html, AUTHENTIC_DAY, metrics=metrics, include_unpriced=True) == []
+        assert metrics['actionable_schedule_unverified_rows'] == 0
+        assert metrics['discovered_rows'] == 0
+        assert metrics['row_accounting_complete'] is True
+
+
+def test_authentic_terminal_excerpt_through_source_and_quote_gates(monkeypatch):
+    html = AUTHENTIC_TERMINAL_ROWS.read_text()
+    monkeypatch.delenv(be.DISABLE_ENV, raising=False)
+    monkeypatch.delenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', raising=False)
+    monkeypatch.setattr(be, 'fetch_page_html', lambda *args, **kwargs: html)
+    # Exercise the normal source producer without writing its shared disk cache.
+    monkeypatch.setattr(be, 'cached_fetch', lambda _key, callback: callback())
+    with pytest.raises(be.PageFetchError, match='dated listing contains unrecognized rows'):
+        be.fetch_betexplorer_rows(AUTHENTIC_DAY)
+
+    listing_metrics = {}
+    rows, status = be._fetch_live(AUTHENTIC_DAY, with_status=True, metrics=listing_metrics)
+    assert rows == [] and status == 'partial'
+    assert listing_metrics['finished_rows'] == 5
+    assert listing_metrics['conflicting_status_rows'] == 1
+    assert listing_metrics['listing_coverage_status'] == 'not_established'
+    assert listing_metrics['schedule_verification_status'] == 'not_required_for_excluded_rows'
+
+    detail_calls = []
+    monkeypatch.setattr(be, 'fetch_fixture_comparison',
+                        lambda *args, **kwargs: detail_calls.append(args))
+    prediction = {'match_date': AUTHENTIC_DAY, 'player_home': 'Alice Adams',
+                  'player_away': 'Beth Brown'}
+    offers, counts, partial = quote_enrichment.collect_prediction_comparisons(
+        AUTHENTIC_DAY, [prediction], rows, status, listing_metrics=listing_metrics)
+    assert offers == [] and partial is True and detail_calls == []
+    assert counts['attempted'] == counts['comparison_attempts'] == 0
+    assert counts['stage_statuses']['listing_coverage'] == 'not_established'
+    assert counts['stage_statuses']['detail_discovery'] == 'not_attempted'
+    assert counts['stage_statuses']['quote_availability'] == 'not_attempted'
+    assert counts['stage_statuses']['required_source_readiness'] == 'blocked'

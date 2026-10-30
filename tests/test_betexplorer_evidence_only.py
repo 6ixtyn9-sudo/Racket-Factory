@@ -318,13 +318,19 @@ def test_invalid_event_id_is_rejected_before_listing_or_detail_fetch(monkeypatch
         assert not result['listing_attempted'] and result['fixtures_attempted'] == 0
 
 
-def test_partial_listing_without_explicit_event_never_falls_back_to_detail(monkeypatch):
+def test_partial_listing_without_explicit_event_never_reaches_enabled_browser_or_detail(monkeypatch):
     import pytest
+    import racketfactory.betexplorer_evidence as evidence
     monkeypatch.setattr(probe.betexplorer, '_fetch_live', lambda *a, **kw: ([], 'partial'))
-    monkeypatch.setattr(probe.betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: pytest.fail('unexpected detail request'))
-    result = probe.capture('2026-10-29')
+    monkeypatch.setattr(probe.betexplorer, 'fetch_fixture_comparison',
+                        lambda *a, **kw: pytest.fail('unexpected detail request'))
+    monkeypatch.setattr(evidence, 'observe_in_browser',
+                        lambda *a, **kw: pytest.fail('browser observer must remain unreachable'))
+    result = probe.capture('2026-10-29', browser_observer=True)
     assert result['capture_status'] == 'explicit_event_id_required'
     assert result['fixtures_attempted'] == 0 and not result['publication_attempted']
+    assert result['detail_response_fetched'] is False
+    assert result['comparison_request'] == 'not_attempted'
 
 
 def test_capture_bundle_retains_redacted_replay_metadata_coverage_and_linkage(tmp_path, monkeypatch):
