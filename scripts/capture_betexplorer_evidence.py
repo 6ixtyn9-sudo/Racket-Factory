@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime
 
@@ -19,6 +20,11 @@ def capture(target: str, *, browser_observer: bool = False, event_id: str | None
            "detail_response_fetched": False, "evidence_file_written": False,
            "discovery_material_retained": False, "material_sufficiency": "not_evaluated",
            "current_parser_replay_agreement": "not_compared", "comparison_request": "not_attempted"}
+    # Reject malformed selectors before any provider request. An ID is never
+    # interpreted as a URL, shell fragment, or authority to skip the listing.
+    if event_id is not None and not re.fullmatch(r'[A-Za-z0-9]{1,32}', event_id):
+        out['capture_status'] = 'invalid_event_id'
+        return out
     try:
         out["listing_attempted"] = True
         rows, status = betexplorer._fetch_live(target, with_status=True)
@@ -44,6 +50,7 @@ def capture(target: str, *, browser_observer: bool = False, event_id: str | None
             out['selection'] = 'explicit_listing_event_schedule_unknown'
         else:
             if status != "complete":
+                out['capture_status'] = 'explicit_event_id_required'
                 return out
             now = datetime.now(SAST)
             candidates = []

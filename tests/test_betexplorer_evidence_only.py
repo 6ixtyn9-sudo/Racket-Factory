@@ -278,3 +278,50 @@ def test_explicit_selection_rejects_wrong_duplicate_or_unbound_identity(monkeypa
     assert probe.capture('2026-10-29', event_id='other')['fixtures_attempted'] == 0
     monkeypatch.setattr(probe.betexplorer, '_fetch_live', lambda *a, **kw: ([dict(row, match_url='/tennis/atp/test/alice-beth/other/')], 'partial'))
     assert probe.capture('2026-10-29', event_id='abc')['capture_status'] == 'selected_event_identity_unverified'
+
+
+def test_explicit_event_cli_reaches_partial_listing_detail_without_publication(tmp_path, monkeypatch):
+    row = {'event_id': 'abc123', 'match_url': '/tennis/atp/test/alice-beth/abc123/',
+           'listing_date': '2026-10-29', 'listing_schedule_status': 'unverified',
+           'match_date': '', 'match_time': '', 'player_home': 'Alice Adams', 'player_away': 'Beth Brown'}
+    from datetime import datetime
+    from racketfactory.kickoff import SAST
+    class FakeDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None): return cls(2026, 10, 29, 10, 0, tzinfo=SAST)
+    monkeypatch.setattr(probe, 'datetime', FakeDateTime)
+    monkeypatch.setenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', str(tmp_path))
+    calls = []
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', lambda target, **kw: (calls.append(('listing', target)) or [row], 'partial'))
+    def detail(fixture, **kwargs):
+        calls.append(('detail', fixture['event_id']))
+        assert kwargs['refresh_evidence'] and kwargs['capture_replay']
+        kwargs['stage_counts'].update(match_page_success=1, replay_detail_file_written=1,
+                                      replay_detail_material_retained=1)
+        raise PageFetchError('parser', 'synthetic')
+    monkeypatch.setattr(probe.betexplorer, 'fetch_fixture_comparison', detail)
+    assert probe.main(['--event-id', 'abc123']) == 0
+    assert calls == [('listing', '2026-10-29'), ('detail', 'abc123')]
+    result = json.loads((tmp_path / 'evidence_collection.json').read_text())
+    assert result['selection'] == 'explicit_listing_event_schedule_unknown'
+    assert result['listing_status'] == 'partial' and not result['publication_attempted']
+    assert result['quote_eligibility'] == 'not_evaluated'
+
+
+def test_invalid_event_id_is_rejected_before_listing_or_detail_fetch(monkeypatch):
+    import pytest
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', lambda *a, **kw: pytest.fail('unexpected listing request'))
+    monkeypatch.setattr(probe.betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: pytest.fail('unexpected detail request'))
+    for event_id in ('', '-x', 'abc/def', 'abc;touch file', 'a' * 33):
+        result = probe.capture('2026-10-29', event_id=event_id)
+        assert result['capture_status'] == 'invalid_event_id'
+        assert not result['listing_attempted'] and result['fixtures_attempted'] == 0
+
+
+def test_partial_listing_without_explicit_event_never_falls_back_to_detail(monkeypatch):
+    import pytest
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', lambda *a, **kw: ([], 'partial'))
+    monkeypatch.setattr(probe.betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: pytest.fail('unexpected detail request'))
+    result = probe.capture('2026-10-29')
+    assert result['capture_status'] == 'explicit_event_id_required'
+    assert result['fixtures_attempted'] == 0 and not result['publication_attempted']
