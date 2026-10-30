@@ -1323,19 +1323,82 @@ def should_write_ticket_files(existing: dict | None, new_acca_count: int,
     return True
 
 
-def rebuild_replacement_problem(existing: dict, state: dict, target_date: str) -> str:
-    """Check the existing accounting record without modifying or releasing it.
+def _rebuild_state_problem(state: object, target_date: str) -> str:
+    """Validate the persisted accounting ledger and rule out target-day activity.
 
-    This can prove a same-day empty card is unexposed when the authoritative
-    state is readable. Nonempty tickets have no authoritative placement
-    record in this repository, so they remain ambiguous and cannot be replaced.
-    This predicate does not provide locking or publication by itself.
+    The card's absence is never considered proof of a clean day. The only
+    available authoritative record here is the persisted ticket state: open
+    slips, settled history, and financial events. Any malformed/undated row
+    makes that record insufficient rather than being ignored.
+    """
+    if not isinstance(state, dict):
+        return "authoritative financial state unavailable"
+    for key in ("bank", "paper_bank"):
+        try:
+            value = float(state[key])
+            if not math.isfinite(value) or value < 0:
+                return f"authoritative financial state has invalid {key}"
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return f"authoritative financial state missing or invalid {key}"
+    for key in ("open_slips", "history"):
+        records = state.get(key)
+        if not isinstance(records, list):
+            return f"authoritative financial state missing or invalid {key} ledger"
+        for index, record in enumerate(records):
+            if not isinstance(record, dict):
+                return f"authoritative {key}[{index}] record malformed"
+            record_date = record.get("date")
+            try:
+                if not isinstance(record_date, str) or date.fromisoformat(record_date).isoformat() != record_date:
+                    raise ValueError
+            except ValueError:
+                return f"authoritative {key}[{index}] record date ambiguous: {record_date!r}"
+            if not isinstance(record.get("accas"), list):
+                return f"authoritative {key}[{index}] ticket list ambiguous"
+            if key == "open_slips":
+                try:
+                    stake = float(record["staked_pct"])
+                    if not math.isfinite(stake) or stake < 0:
+                        raise ValueError
+                except (KeyError, TypeError, ValueError, OverflowError):
+                    return f"authoritative open_slips[{index}] stake ambiguous"
+            if key == "history" and "pending_accas" in record:
+                pending = record["pending_accas"]
+                if isinstance(pending, bool) or not isinstance(pending, int) or pending < 0:
+                    return f"authoritative history[{index}] pending ticket count ambiguous"
+            if record_date == target_date:
+                return f"target-day {key}[{index}] activity exists"
+    if "events" in state:
+        events = state["events"]
+        if not isinstance(events, list):
+            return "authoritative financial events ledger malformed"
+        for index, event in enumerate(events):
+            if not isinstance(event, dict):
+                return f"authoritative events[{index}] record malformed"
+            raw_at = event.get("at")
+            try:
+                parsed = datetime.fromisoformat(str(raw_at).replace("Z", "+00:00"))
+                if parsed.tzinfo is None:
+                    raise ValueError
+            except (TypeError, ValueError):
+                return f"authoritative events[{index}] timestamp ambiguous: {raw_at!r}"
+            if parsed.astimezone(TZ).date().isoformat() == target_date:
+                return f"target-day financial event exists in events[{index}]"
+    return ""
+
+
+def rebuild_replacement_problem(existing: dict, state: dict, target_date: str) -> str:
+    """Check an existing card and its authoritative accounting record.
+
+    Nonempty tickets have no authoritative placed/unplaced receipt in this
+    repository, so they remain ambiguous and cannot be replaced. This
+    predicate does not provide locking or publication by itself.
     """
     if not isinstance(existing, dict) or existing.get("date") != target_date:
-        return "current card missing, malformed, or for another day"
+        return "existing dated card is malformed or for another day"
     accas = existing.get("accas")
     if not isinstance(accas, list):
-        return "current card tickets are ambiguous"
+        return "existing card tickets are ambiguous"
     if accas:
         return "nonempty card lacks authoritative unplaced status"
     try:
@@ -1366,8 +1429,158 @@ def rebuild_replacement_problem(existing: dict, state: dict, target_date: str) -
     return ""
 
 
+def capture_rebuild_preconditions(directory: Path, target_date: str) -> tuple[dict, dict]:
+    """Read and prove a safe replacement/first-creation predecessor.
+
+    Return the authoritative state and byte-level preconditions that must be
+    rechecked by local publication. Missing dated cards are accepted only when
+    the existing full ledger is valid and has no target-day activity.
+    """
+    import base64
+    directory = Path(directory)
+    state_path = directory / "auto_tickets_state.json"
+    try:
+        state_raw = state_path.read_bytes()
+    except OSError as exc:
+        raise RuntimeError("authoritative financial state is missing or unreadable") from exc
+    try:
+        state = json.loads(state_raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError("authoritative financial state is malformed") from exc
+    state_problem = _rebuild_state_problem(state, target_date)
+    if state_problem:
+        raise RuntimeError(state_problem)
+
+    card_name = f"auto_tickets_{target_date}.json"
+    card_path = directory / card_name
+    card_existed = card_path.exists()
+    card_raw = None
+    if card_existed:
+        if not card_path.is_file():
+            raise RuntimeError("existing dated card is not a readable regular file")
+        try:
+            card_raw = card_path.read_bytes()
+            card = json.loads(card_raw)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise RuntimeError("existing dated card is malformed or unreadable; refusing to treat it as absent") from exc
+        problem = rebuild_replacement_problem(card, state, target_date)
+        if problem:
+            raise RuntimeError(problem)
+    else:
+        # A dangling symlink or directory at the destination is not absence.
+        if card_path.is_symlink() or card_path.exists():
+            raise RuntimeError("dated card destination is ambiguous, not safely absent")
+        # A pre-existing latest-card alias for this day means that a dated
+        # transaction record has gone missing. Older aliases are safe to
+        # supersede only when they exactly refer to a retained dated card.
+        alias_path = directory / "auto_tickets_today.json"
+        alias_date = None
+        if alias_path.exists() or alias_path.is_symlink():
+            try:
+                alias_raw = alias_path.read_bytes()
+                alias = json.loads(alias_raw)
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise RuntimeError("latest-card alias is malformed or unreadable") from exc
+            if not isinstance(alias, dict) or not isinstance(alias.get("date"), str):
+                raise RuntimeError("latest-card alias date is ambiguous")
+            try:
+                alias_date = date.fromisoformat(alias["date"]).isoformat()
+            except ValueError as exc:
+                raise RuntimeError("latest-card alias date is ambiguous") from exc
+            if alias_date == target_date:
+                raise RuntimeError("target-day latest-card alias exists while dated card is absent")
+            retained = directory / f"auto_tickets_{alias_date}.json"
+            try:
+                retained_raw = retained.read_bytes()
+                retained_card = json.loads(retained_raw)
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise RuntimeError(f"latest-card alias has no readable retained predecessor: {retained.name}") from exc
+            if (not isinstance(retained_card, dict) or retained_card.get("date") != alias_date
+                    or _rebuild_digest(retained_raw) != _rebuild_digest(alias_raw)):
+                raise RuntimeError("latest-card alias conflicts with its retained dated predecessor")
+        latest_text = directory / "auto_tickets_today.txt"
+        if latest_text.exists() or latest_text.is_symlink():
+            try:
+                first_line = latest_text.read_text(encoding="utf-8").splitlines()[0]
+            except (OSError, UnicodeDecodeError, IndexError) as exc:
+                raise RuntimeError("latest-card text alias is malformed or unreadable") from exc
+            match = re.fullmatch(r"Racket Factory Auto Tickets — (\d{4}-\d{2}-\d{2})", first_line)
+            if not match:
+                raise RuntimeError("latest-card text alias date is ambiguous")
+            text_date = match.group(1)
+            try:
+                text_date = date.fromisoformat(text_date).isoformat()
+            except ValueError as exc:
+                raise RuntimeError("latest-card text alias date is ambiguous") from exc
+            if text_date == target_date:
+                raise RuntimeError("target-day latest-card text exists while dated card is absent")
+            if alias_date is None or text_date != alias_date:
+                raise RuntimeError("latest-card JSON and text aliases conflict")
+        target_text = directory / f"auto_tickets_{target_date}.txt"
+        if target_text.exists() or target_text.is_symlink():
+            raise RuntimeError("target-day ticket text exists without its dated card; predecessor is ambiguous")
+        txn_dir = directory / ".auto_tickets_rebuild"
+        prior = sorted(txn_dir.glob(f"archive_{target_date}_*.json")) if txn_dir.exists() else []
+        if prior:
+            raise RuntimeError(f"target-day rebuild archive already exists: {prior[0].name}")
+
+    # These are every file the existing local publisher will replace. Snapshot
+    # all of them so a card/alias/state appearing or changing during collection
+    # cannot be silently overwritten.
+    output_names = [card_name, "auto_tickets_today.json", f"auto_tickets_{target_date}.txt",
+                    "auto_tickets_today.txt", "auto_tickets_state.json"]
+    fingerprints = {}
+    for name in output_names:
+        path = directory / name
+        try:
+            if path.is_symlink():
+                raise RuntimeError(f"publication predecessor is a symlink: {name}")
+            raw = path.read_bytes() if path.exists() else None
+        except OSError as exc:
+            raise RuntimeError(f"publication predecessor is unreadable: {name}") from exc
+        fingerprints[name] = _rebuild_digest(raw) if raw is not None else None
+    archive_fingerprints = {}
+    txn_dir = directory / ".auto_tickets_rebuild"
+    if txn_dir.exists():
+        for path in sorted(txn_dir.glob(f"archive_{target_date}_*.json")):
+            if path.is_symlink() or not path.is_file():
+                raise RuntimeError(f"target-day rebuild archive is ambiguous: {path.name}")
+            try:
+                raw = path.read_bytes()
+                record = json.loads(raw)
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise RuntimeError(f"target-day rebuild archive is malformed: {path.name}") from exc
+            if (not isinstance(record, dict) or record.get("actionable") is not False
+                    or not isinstance(record.get("transaction_id"), str)):
+                raise RuntimeError(f"target-day rebuild archive is invalid: {path.name}")
+            if record.get("version") == 2:
+                if (record.get("target_date") != target_date
+                        or path.name != f"archive_{target_date}_{record['transaction_id']}.json"):
+                    raise RuntimeError(f"target-day rebuild archive identity conflicts: {path.name}")
+                existed = record.get("card_preexisted")
+                if existed is False:
+                    if record.get("original_card_sha256") is not None or record.get("original_card_base64") is not None:
+                        raise RuntimeError(f"first-creation archive falsely claims a predecessor: {path.name}")
+                elif existed is True:
+                    try:
+                        prior = base64.b64decode(record.get("original_card_base64"), validate=True)
+                    except (TypeError, ValueError) as exc:
+                        raise RuntimeError(f"target-day rebuild archive predecessor malformed: {path.name}") from exc
+                    if _rebuild_digest(prior) != record.get("original_card_sha256"):
+                        raise RuntimeError(f"target-day rebuild archive predecessor digest mismatch: {path.name}")
+                else:
+                    raise RuntimeError(f"target-day rebuild archive predecessor status ambiguous: {path.name}")
+            archive_fingerprints[path.name] = _rebuild_digest(raw)
+    preconditions = {"target_date": target_date, "destination_existed": card_existed,
+                     "card_digest": _rebuild_digest(card_raw) if card_raw is not None else None,
+                     "state_digest": _rebuild_digest(state_raw), "output_fingerprints": fingerprints,
+                     "archive_fingerprints": archive_fingerprints}
+    return state, preconditions
+
+
 def stage_rebuild_evaluation(picks: list[dict], state: dict, target_date: str,
-                             now: datetime, collection: dict) -> dict:
+                             now: datetime, collection: dict,
+                             preconditions: dict | None = None) -> dict:
     """Evaluate a rebuild in memory only; this does not publish or book slips.
 
     The eventual collector must establish a complete fresh run independently.
@@ -1404,7 +1617,7 @@ def stage_rebuild_evaluation(picks: list[dict], state: dict, target_date: str,
         quote_problem = selected_quote_problem(pick, require_provenance=True)
         if quote_problem:
             rejected[quote_problem] = rejected.get(quote_problem, 0) + 1
-            continue
+            raise ValueError("candidate quote provenance is missing or invalid: " + quote_problem)
         admitted = {}
         if is_playable(pick, rejections=rejected, admitted=admitted):
             playable.append(admitted)
@@ -1426,13 +1639,34 @@ def stage_rebuild_evaluation(picks: list[dict], state: dict, target_date: str,
             accas.append({"legs": acca.get("legs", []), "odds": acca.get("odds"),
                           "type": acca.get("type", ""), "stake_pct": stake, "paper": is_paper})
     booked_real = round(sum(real_stakes), 4)
-    return {"date": target_date, "generated_at": now.isoformat(), "collection_observed_at": collected.isoformat(),
+    if preconditions is not None:
+        names = {f"auto_tickets_{target_date}.json", "auto_tickets_today.json",
+                 f"auto_tickets_{target_date}.txt", "auto_tickets_today.txt", "auto_tickets_state.json"}
+        fingerprints = preconditions.get("output_fingerprints") if isinstance(preconditions, dict) else None
+        archive_fingerprints = preconditions.get("archive_fingerprints") if isinstance(preconditions, dict) else None
+        if (not isinstance(preconditions, dict) or preconditions.get("target_date") != target_date
+                or not isinstance(preconditions.get("destination_existed"), bool)
+                or not isinstance(fingerprints, dict) or set(fingerprints) != names
+                or not isinstance(archive_fingerprints, dict)
+                or any(not re.fullmatch(r"archive_" + re.escape(target_date) + r"_[A-Za-z0-9_-]{1,80}\.json", name)
+                       or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest)
+                       for name, digest in archive_fingerprints.items())
+                or preconditions.get("state_digest") != fingerprints.get("auto_tickets_state.json")
+                or preconditions.get("card_digest") != fingerprints.get(f"auto_tickets_{target_date}.json")
+                or preconditions.get("destination_existed") != (preconditions.get("card_digest") is not None)
+                or not isinstance(preconditions.get("state_digest"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", preconditions["state_digest"])):
+            raise ValueError("invalid rebuild publication preconditions")
+    result = {"date": target_date, "generated_at": now.isoformat(), "collection_observed_at": collected.isoformat(),
             "status": "PROPOSED" if accas else "NO BET", "bank_pct": bank, "free_bank_pct": stakeable,
             "committed_pct": round(bank - stakeable, 4), "day_cap_pct": day_cap, "stake_frac": STAKE_FRAC,
             "stake_per_acca_pct": round(booked_real / len(priced), 4) if priced else 0,
             "staked_pct": booked_real, "paper_staked_pct": round(sum(paper_stakes), 4),
             "accas": accas, "skipped": skipped, "diagnostics": diagnostics,
             "frozen": now.astimezone(TZ).hour >= FREEZE_HOUR or now.astimezone(TZ).hour < GENERATE_HOUR_START}
+    if preconditions is not None:
+        result["publication_preconditions"] = copy.deepcopy(preconditions)
+    return result
 
 
 def _rebuild_digest(data: bytes) -> str:
@@ -1479,9 +1713,14 @@ def _recover_rebuild_journal(directory: Path) -> None:
     if not isinstance(entries, dict):
         raise RuntimeError("rebuild journal is malformed; manual recovery required")
     for name, value in entries.items():
-        if Path(name).name != name:
+        relative = Path(name)
+        safe = (not relative.is_absolute() and ".." not in relative.parts
+                and (len(relative.parts) == 1
+                     or (len(relative.parts) == 2 and relative.parts[0] == ".auto_tickets_rebuild"
+                         and relative.name.startswith("archive_") and relative.suffix == ".json")))
+        if not safe:
             raise RuntimeError("rebuild journal contains unsafe filename")
-        path = directory / name
+        path = directory / relative
         if value is None:
             path.unlink(missing_ok=True)
         else:
@@ -1491,13 +1730,15 @@ def _recover_rebuild_journal(directory: Path) -> None:
 
 
 def publish_staged_rebuild_local(directory: Path, target_date: str, proposal: dict,
-                                 *, expected_card_digest: str, expected_state_digest: str,
-                                 run_id: str) -> str:
-    """Publish a staged empty-card rebuild within one shared local filesystem.
+                                 *, expected_card_existed: bool,
+                                 expected_card_digest: str | None,
+                                 expected_state_digest: str, run_id: str) -> str:
+    """Publish a guarded first card or eligible replacement under the existing lock.
 
-    This internal primitive is *not* a multi-runner lock or the workflow entry
-    point. It journals previous bytes before writing; interruption recovery rolls
-    back while holding the same lock. No notification or settlement is run.
+    The staged destination-existence bit and byte digests are rechecked under
+    the local publication lock. Missing predecessors are recorded as absent,
+    never represented by fabricated card bytes. The journal includes the
+    transaction archive so interruption rollback leaves no partial authority.
     """
     import base64
     import copy
@@ -1520,6 +1761,13 @@ def publish_staged_rebuild_local(directory: Path, target_date: str, proposal: di
         raise ValueError("invalid staged proposal")
     if (proposal["status"] == "NO BET") != (not proposal["accas"]):
         raise ValueError("proposal status disagrees with tickets")
+    preconditions = proposal.get("publication_preconditions")
+    if (not isinstance(preconditions, dict) or preconditions.get("target_date") != target_date
+            or preconditions.get("destination_existed") is not expected_card_existed
+            or preconditions.get("card_digest") != expected_card_digest
+            or preconditions.get("state_digest") != expected_state_digest
+            or (expected_card_existed != (expected_card_digest is not None))):
+        raise ValueError("staged publication preconditions do not match caller")
     for acca in proposal["accas"]:
         if not isinstance(acca, dict) or len(acca.get("legs") or []) < 2:
             raise ValueError("staged ticket is invalid")
@@ -1545,16 +1793,46 @@ def publish_staged_rebuild_local(directory: Path, target_date: str, proposal: di
                 if prev.get("proposal_digest") != proposal_digest:
                     raise RuntimeError("rebuild transaction id reused for a different proposal")
                 return "already_committed"
+
+        # Byte-level compare first so a malformed replacement file is reported
+        # as a race, not reinterpreted as absence or as a new predecessor.
+        fingerprints = preconditions.get("output_fingerprints", {})
+        for name, expected_digest in fingerprints.items():
+            path = directory / name
+            if path.is_symlink():
+                raise RuntimeError(f"publication predecessor changed during staging: {name}")
+            try:
+                current_raw = path.read_bytes() if path.exists() else None
+            except OSError as exc:
+                raise RuntimeError(f"publication predecessor changed during staging: {name}") from exc
+            current_digest = _rebuild_digest(current_raw) if current_raw is not None else None
+            if current_digest != expected_digest:
+                raise RuntimeError(f"card, financial state, exposure ledger, or output changed during staging: {name}")
+        # Re-run semantic proof after the byte-level compare. This catches a
+        # pre-existing malformed ledger and revalidates first-creation safety.
+        fresh_state, fresh_preconditions = capture_rebuild_preconditions(directory, target_date)
+        if fresh_preconditions != preconditions:
+            raise RuntimeError("card, financial state, exposure ledger, or output changed during staging")
         card_name = f"auto_tickets_{target_date}.json"
         state_name = "auto_tickets_state.json"
         card_path, state_path = directory / card_name, directory / state_name
-        card_raw, state_raw = card_path.read_bytes(), state_path.read_bytes()
-        if _rebuild_digest(card_raw) != expected_card_digest or _rebuild_digest(state_raw) != expected_state_digest:
+        card_raw = card_path.read_bytes() if expected_card_existed else None
+        state_raw = state_path.read_bytes()
+        if (expected_card_existed != (card_raw is not None)
+                or (card_raw is not None and _rebuild_digest(card_raw) != expected_card_digest)
+                or _rebuild_digest(state_raw) != expected_state_digest):
             raise RuntimeError("current card or financial state changed during staging")
-        existing, state = json.loads(card_raw), json.loads(state_raw)
-        problem = rebuild_replacement_problem(existing, state, target_date)
-        if problem:
-            raise RuntimeError(problem)
+        state = json.loads(state_raw)
+        if _rebuild_state_problem(state, target_date):
+            raise RuntimeError(_rebuild_state_problem(state, target_date))
+        if expected_card_existed:
+            existing = json.loads(card_raw)
+            problem = rebuild_replacement_problem(existing, state, target_date)
+            if problem:
+                raise RuntimeError(problem)
+        elif fresh_state != state:
+            raise RuntimeError("authoritative financial state changed during staging")
+
         try:
             total = sum(float(a.get("stake_pct", 0)) for a in proposal["accas"] if not a.get("paper"))
             cap = round(free_bank(state) * STAKE_FRAC, 4)
@@ -1574,35 +1852,54 @@ def publish_staged_rebuild_local(directory: Path, target_date: str, proposal: di
                 "stake_per_acca_pct": replacement["stake_per_acca_pct"], "_exec_regime": EXECUTION_REGIME_ID})
         text = format_tickets_txt(target_date, replacement["accas"], new_state,
                                   replacement.get("skipped", []), replacement.get("diagnostics"))
+        archive_name = f"archive_{target_date}_{run_id}.json"
+        archive_rel = f".auto_tickets_rebuild/{archive_name}"
+        archive_path = directory / archive_rel
+        if archive_path.exists() or archive_path.is_symlink():
+            raise RuntimeError("rebuild transaction archive already exists without a committed retry")
+        archive = {"version": 2,
+                   "reason": "guarded replacement" if expected_card_existed else "guarded first creation",
+                   "transaction_id": run_id, "target_date": target_date,
+                   "card_preexisted": expected_card_existed,
+                   "original_card_sha256": expected_card_digest,
+                   "original_card_base64": base64.b64encode(card_raw).decode() if card_raw is not None else None,
+                   "actionable": False}
+        replacement["rebuild_archive"] = archive_rel
+        if expected_card_existed:
+            replacement["prior_archive"] = archive_rel
         encoded = json.dumps(replacement, indent=2).encode()
+        state_encoded = (json.dumps(new_state, indent=2).encode() if new_state != state else state_raw)
         files = {card_name: encoded, "auto_tickets_today.json": encoded,
                  f"auto_tickets_{target_date}.txt": text.encode(), "auto_tickets_today.txt": text.encode(),
-                 state_name: json.dumps(new_state, indent=2).encode()}
-        before = {name: base64.b64encode((directory / name).read_bytes()).decode()
-                  if (directory / name).exists() else None for name in files}
-        archive_name = f"archive_{target_date}_{run_id}.json"
-        archive = {"reason": "guarded empty-card replacement", "transaction_id": run_id,
-                   "original_card_sha256": _rebuild_digest(card_raw), "original_card_base64": base64.b64encode(card_raw).decode(),
-                   "actionable": False}
-        _rebuild_atomic_bytes(txn_dir / archive_name, json.dumps(archive, sort_keys=True).encode())
-        replacement["prior_archive"] = f".auto_tickets_rebuild/{archive_name}"
-        encoded = json.dumps(replacement, indent=2).encode()
-        files[card_name] = files["auto_tickets_today.json"] = encoded
-        journal = {"version": 1, "run_id": run_id, "proposal_digest": proposal_digest,
-                   "date": target_date, "status": "applying", "before": before}
+                 state_name: state_encoded,
+                 archive_rel: json.dumps(archive, sort_keys=True).encode()}
+        before = {}
+        for name in files:
+            path = directory / name
+            if path.is_symlink():
+                raise RuntimeError(f"publication predecessor is a symlink: {name}")
+            try:
+                previous = path.read_bytes() if path.exists() else None
+            except OSError as exc:
+                raise RuntimeError(f"publication predecessor is unreadable: {name}") from exc
+            if name == archive_rel and previous is not None:
+                raise RuntimeError("rebuild transaction archive appeared during staging")
+            before[name] = base64.b64encode(previous).decode() if previous is not None else None
         problem = fresh_ticket_problem(proposal["accas"], target_date, now_local())
         if problem:
             raise ValueError("staged ticket is no longer executable: " + problem)
+        journal = {"version": 2, "run_id": run_id, "proposal_digest": proposal_digest,
+                   "date": target_date, "destination_preexisted": expected_card_existed,
+                   "card_digest": expected_card_digest, "state_digest": expected_state_digest,
+                   "status": "applying", "before": before}
         _rebuild_atomic_bytes(journal_path, json.dumps(journal, sort_keys=True).encode())
-        # Mark both aliases explicitly non-actionable before changing either to
-        # the new card. A crash is rolled back from the durable journal.
         pending = json.dumps({"date": target_date, "status": "PUBLICATION_IN_PROGRESS", "accas": [],
                               "actionable": False, "rebuild_id": run_id}).encode()
         try:
             for name in (card_name, "auto_tickets_today.json"):
                 _rebuild_atomic_bytes(directory / name, pending)
             for name in (f"auto_tickets_{target_date}.txt", "auto_tickets_today.txt"):
-                _rebuild_atomic_bytes(directory / name, b"PUBLICATION IN PROGRESS - NOT ACTIONABLE\n")
+                _rebuild_atomic_bytes(directory / name, b"PUBLICATION IN PROGRESS - NOT ACTIONABLE\\n")
             for name, data in files.items():
                 _rebuild_atomic_bytes(directory / name, data)
             journal["status"] = "committed"
@@ -1611,7 +1908,6 @@ def publish_staged_rebuild_local(directory: Path, target_date: str, proposal: di
             _recover_rebuild_journal(directory)
             raise
         return "committed"
-
 
 def main():
     ap = argparse.ArgumentParser()

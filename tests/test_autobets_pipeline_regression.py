@@ -1,8 +1,11 @@
 """Focused offline tests for the fixture -> price -> existing ticket path."""
 from datetime import datetime, timedelta, timezone
 import json
+import os
+import sys
 
 import pandas as pd
+import pytest
 
 from racketfactory import warehouse
 from racketfactory.odds_compare import merge_comparison_rows
@@ -363,9 +366,8 @@ def test_rebuild_staging_is_pure_and_requires_complete_fresh_evidence(tmp_path, 
     assert (picks, state) == originals and not list(tmp_path.iterdir())
     bad = copy.deepcopy(picks)
     bad[0]["selected_quote"]["observed_at"] = None
-    empty = tickets.stage_rebuild_evaluation(bad, state, day, now, evidence)
-    assert empty["status"] == "NO BET" and not empty["accas"]
-    assert empty["diagnostics"]["admission_rejections"]["selected quote timestamp invalid"] == 1
+    with pytest.raises(ValueError, match="candidate quote provenance is missing or invalid"):
+        tickets.stage_rebuild_evaluation(bad, state, day, now, evidence)
     assert not list(tmp_path.iterdir())
     for outcome in ("failed", "partial", "unknown"):
         with pytest.raises(ValueError, match="fresh collection"):
@@ -414,14 +416,289 @@ def _local_rebuild_case(tmp_path, monkeypatch, *, picks=True):
                 "odds": price, "odds_source": "TheOddsAPI", "odds_bookmaker": "book", "bucket": "WATCHLIST",
                 "confidence": 75, "prediction_prob": .75, "selected_quote": q}
     rows = [item("Alice Adams", "Beth Brown", 1.55), item("Clara Clark", "Diana Davies", 1.6)] if picks else []
+    state_snapshot, preconditions = tickets.capture_rebuild_preconditions(tmp_path, day)
+    assert state_snapshot == state
     proposal = tickets.stage_rebuild_evaluation(rows, state, day, now,
-                    {"status": "complete", "date": day, "observed_at": now.isoformat()})
-    return day, card, sp, proposal, tickets._rebuild_digest(card.read_bytes()), tickets._rebuild_digest(sp.read_bytes())
+                    {"status": "complete", "date": day, "observed_at": now.isoformat()},
+                    preconditions=preconditions)
+    return day, card, sp, proposal, preconditions["card_digest"], preconditions["state_digest"]
+
+
+def _missing_card_rebuild_case(tmp_path, monkeypatch, *, picks=False):
+    import datetime as dt
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
+    monkeypatch.setattr(tickets, "_ML_AVAILABLE", False)
+    now = tickets.now_local().replace(hour=8, minute=0, second=0, microsecond=0)
+    monkeypatch.setattr(tickets, "now_local", lambda: now)
+    day = now.date().isoformat()
+    previous_day = (now.date() - dt.timedelta(days=1)).isoformat()
+    state = {"bank": 100.0, "paper_bank": 100.0, "open_slips": [],
+             "history": [{"date": previous_day, "accas": [], "partial": True,
+                          "pending_accas": 0, "staked_pct": 0.0}], "events": []}
+    state_path = tmp_path / "auto_tickets_state.json"
+    state_raw = json.dumps(state, indent=2).encode()
+    state_path.write_bytes(state_raw)
+    previous = {"date": previous_day, "status": "NO BET", "accas": [],
+                "staked_pct": 0, "paper_staked_pct": 0}
+    previous_raw = json.dumps(previous, indent=2).encode()
+    (tmp_path / f"auto_tickets_{previous_day}.json").write_bytes(previous_raw)
+    (tmp_path / "auto_tickets_today.json").write_bytes(previous_raw)
+    pre_state, preconditions = tickets.capture_rebuild_preconditions(tmp_path, day)
+    assert pre_state == state and preconditions["destination_existed"] is False
+    if picks:
+        def item(name, other, price):
+            quote = {"odds": price, "source": "TheOddsAPI", "bookmaker": "book",
+                     "market": "h2h", "price_type": "bookmaker",
+                     "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"},
+                     "period": "match", "selection": name, "provider_home": name,
+                     "provider_away": other, "provider_side": "1", "event_id": name + "-fixture",
+                     "fixture_date": day, "observed_at": now.isoformat()}
+            attach_synthetic_settlement_evidence(quote)
+            return {"date": day, "match": name + " vs " + other, "kickoff": "12:00",
+                    "selected_player": name, "odds": price, "odds_source": "TheOddsAPI",
+                    "odds_bookmaker": "book", "bucket": "WATCHLIST", "confidence": 75,
+                    "prediction_prob": .75, "selected_quote": quote}
+        rows = [item("Alice Adams", "Beth Brown", 1.55), item("Clara Clark", "Diana Davies", 1.6)]
+    else:
+        rows = []
+    proposal = tickets.stage_rebuild_evaluation(rows, state, day, now,
+        {"status": "complete", "date": day, "observed_at": now.isoformat()}, preconditions=preconditions)
+    return day, now, state_path, state_raw, preconditions, proposal, rows
+
+
+def test_guarded_cli_missing_card_with_clean_state_reaches_collection_without_placeholder(tmp_path, monkeypatch):
+    import pytest
+    from scripts import daily
+    day, now, state_path, state_raw, preconditions, _, _ = _missing_card_rebuild_case(tmp_path, monkeypatch)
+    monkeypatch.setattr(daily, "LOCALDATA", tmp_path)
+    monkeypatch.setattr(daily, "_now_local", lambda: now)
+    monkeypatch.setenv("RACKET_FACTORY_REBUILD_SERIALIZED", "1")
+    monkeypatch.setenv("GITHUB_RUN_ID", "81001")
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "1")
+    calls = []
+    def collect(target, **kwargs):
+        calls.append((target, os.getenv("RACKET_FACTORY_REBUILD_SERIALIZED"),
+                      os.getenv("GITHUB_RUN_ID"), os.getenv("GITHUB_RUN_ATTEMPT")))
+        return {"status": "partial", "date": target, "observed_at": now.isoformat(), "outcomes": {}}
+    monkeypatch.setattr(daily, "collect_rebuild_sources", collect)
+    monkeypatch.setattr(sys, "argv", ["daily.py", "--date", day, "--guarded-rebuild"])
+    with pytest.raises(SystemExit, match="required source collection incomplete"):
+        daily.main()
+    assert calls == [(day, "1", "81001", "1")]
+    assert preconditions["destination_existed"] is False
+    assert not (tmp_path / f"auto_tickets_{day}.json").exists()
+    assert not (tmp_path / f"auto_tickets_{day}.txt").exists()
+    assert not list((tmp_path / ".auto_tickets_rebuild").glob("archive_*.json"))
+    assert state_path.read_bytes() == state_raw
+    status = json.loads((tmp_path / ".rebuild_diagnostics/rebuild_status.json").read_text())
+    assert status["status"] == "failed" and status["ticket_generation"] == "not_completed"
+    assert status["authoritative_publication"] == "not_started"
+
+
+def test_missing_card_with_target_day_exposure_refuses_before_collection(tmp_path, monkeypatch):
+    import pytest
+    from scripts import daily
+    day, now, state_path, _, _, _, _ = _missing_card_rebuild_case(tmp_path, monkeypatch)
+    state = json.loads(state_path.read_text())
+    state["open_slips"].append({"date": day, "generated_at": now.isoformat(), "accas": [],
+                                 "staked_pct": 0.0, "stake_per_acca_pct": 0.0})
+    state_path.write_text(json.dumps(state))
+    monkeypatch.setattr(daily, "LOCALDATA", tmp_path)
+    monkeypatch.setattr(daily, "_now_local", lambda: now)
+    monkeypatch.setenv("RACKET_FACTORY_REBUILD_SERIALIZED", "1")
+    monkeypatch.setenv("GITHUB_RUN_ID", "81002")
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "1")
+    monkeypatch.setattr(sys, "argv", ["daily.py", "--date", day, "--guarded-rebuild"])
+    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda *a, **k: (_ for _ in ()).throw(AssertionError("must refuse before collection")))
+    with pytest.raises(SystemExit, match="target-day open_slips\\[0\\] activity exists"):
+        daily.main()
+    assert not (tmp_path / f"auto_tickets_{day}.json").exists()
+    assert json.loads(state_path.read_text())["open_slips"][0]["date"] == day
+
+
+@pytest.mark.parametrize("ledger, reason", [
+    ("settled", "target-day history"),
+    ("event", "target-day financial event exists"),
+    ("ambiguous", "record date ambiguous"),
+])
+def test_missing_card_refuses_settled_committed_or_ambiguous_records(tmp_path, monkeypatch, ledger, reason):
+    import pytest
+    day, now, state_path, _, _, _, _ = _missing_card_rebuild_case(tmp_path, monkeypatch)
+    state = json.loads(state_path.read_text())
+    if ledger == "settled":
+        state["history"].append({"date": day, "accas": [{"result": "settled"}], "staked_pct": 1.0})
+    elif ledger == "event":
+        state["events"].append({"event": "financial_adjustment", "at": now.isoformat()})
+    else:
+        state["history"].append({"accas": []})
+    state_path.write_text(json.dumps(state))
+    before = state_path.read_bytes()
+    with pytest.raises(RuntimeError, match=reason):
+        tickets.capture_rebuild_preconditions(tmp_path, day)
+    assert state_path.read_bytes() == before
+    assert not (tmp_path / f"auto_tickets_{day}.json").exists()
+
+
+def test_missing_or_malformed_authority_and_malformed_existing_card_fail_closed(tmp_path, monkeypatch):
+    import pytest
+    day, _, state_path, _, _, _, _ = _missing_card_rebuild_case(tmp_path, monkeypatch)
+    state_path.unlink()
+    with pytest.raises(RuntimeError, match="authoritative financial state is missing"):
+        tickets.capture_rebuild_preconditions(tmp_path, day)
+    state_path.write_text("{")
+    with pytest.raises(RuntimeError, match="authoritative financial state is malformed"):
+        tickets.capture_rebuild_preconditions(tmp_path, day)
+    state_path.write_text(json.dumps({"bank": 100, "paper_bank": 100, "open_slips": [], "history": [], "events": []}))
+    card = tmp_path / f"auto_tickets_{day}.json"
+    card.write_bytes(b"{")
+    before = card.read_bytes()
+    with pytest.raises(RuntimeError, match="existing dated card is malformed or unreadable"):
+        tickets.capture_rebuild_preconditions(tmp_path, day)
+    assert card.read_bytes() == before
+    card.unlink()
+    card.mkdir()
+    with pytest.raises(RuntimeError, match="not a readable regular file"):
+        tickets.capture_rebuild_preconditions(tmp_path, day)
+    assert card.is_dir()
+
+
+def test_first_creation_publication_and_retry_are_atomic_truthful_and_doctor_ready(tmp_path, monkeypatch):
+    import os
+    import pytest
+    from types import SimpleNamespace
+    from scripts import daily
+    from racketfactory import doctor
+    day, now, state_path, state_raw, preconditions, proposal, rows = _missing_card_rebuild_case(tmp_path, monkeypatch, picks=True)
+    previous_card = (tmp_path / f"auto_tickets_{(now.date() - timedelta(days=1)).isoformat()}.json").read_bytes()
+    monkeypatch.setattr(daily, "LOCALDATA", tmp_path)
+    monkeypatch.setattr(daily, "_now_local", lambda: now)
+    monkeypatch.setattr(doctor, "LOCALDATA", tmp_path)
+    monkeypatch.setenv("RACKET_FACTORY_REBUILD_SERIALIZED", "1")
+    monkeypatch.setenv("GITHUB_RUN_ID", "81003")
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "1")
+    collection_calls = []
+    collection = {"status": "complete", "date": day, "observed_at": now.isoformat(),
+                  "outcomes": {"betclan": {"status": "complete"}, "betexplorer": {"status": "complete"}}}
+    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda target, **kwargs: (collection_calls.append(target) or collection))
+    monkeypatch.setattr(daily, "stage_fresh_rebuild_picks", lambda target, *args: rows)
+    monkeypatch.setattr(sys, "argv", ["daily.py", "--date", day, "--guarded-rebuild"])
+    daily.main()
+    card_path = tmp_path / f"auto_tickets_{day}.json"
+    card = json.loads(card_path.read_text())
+    state = json.loads(state_path.read_text())
+    archive_path = tmp_path / card["rebuild_archive"]
+    archive = json.loads(archive_path.read_text())
+    assert card["status"] == "CURRENT" and len(card["accas"]) == 1
+    assert len(state["open_slips"]) == 1 and state["bank"] == 100 and state["paper_bank"] == 100
+    assert state["history"] == json.loads(state_raw)["history"] and state["events"] == []
+    assert previous_card == (tmp_path / f"auto_tickets_{(now.date() - timedelta(days=1)).isoformat()}.json").read_bytes()
+    assert archive["card_preexisted"] is False
+    assert archive["original_card_sha256"] is None and archive["original_card_base64"] is None
+    assert archive["actionable"] is False and archive["reason"] == "guarded first creation"
+    assert card["publication_preconditions"]["destination_existed"] is False
+    status = json.loads((tmp_path / ".rebuild_diagnostics/rebuild_status.json").read_text())
+    assert status["status"] == "staged" and status["ticket_generation"] == "completed"
+    assert status["authoritative_publication"] == "not_started"
+    health = doctor.run_health_checks(as_of=day, expect_rebuild=True)
+    assert health["rebuild:current"]["status"] == "OK"
+
+    card_hash, state_hash = tickets._rebuild_digest(card_path.read_bytes()), tickets._rebuild_digest(state_path.read_bytes())
+    archive_bytes = archive_path.read_bytes()
+    monkeypatch.setattr(daily.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0, stdout=archive_bytes))
+    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda *a, **k: (_ for _ in ()).throw(AssertionError("published retry must not recollect")))
+    daily.main()
+    assert collection_calls == [day]
+    assert tickets._rebuild_digest(card_path.read_bytes()) == card_hash
+    assert tickets._rebuild_digest(state_path.read_bytes()) == state_hash
+    assert archive_path.read_bytes() == archive_bytes
+
+
+def test_first_creation_refuses_destination_and_state_races(tmp_path, monkeypatch):
+    import pytest
+    day, _, state_path, _, _, proposal, _ = _missing_card_rebuild_case(tmp_path, monkeypatch, picks=False)
+    card = tmp_path / f"auto_tickets_{day}.json"
+    card_bytes = json.dumps({"date": day, "status": "protected", "accas": []}).encode()
+    card.write_bytes(card_bytes)
+    with pytest.raises(RuntimeError, match="changed during staging"):
+        tickets.publish_staged_rebuild_local(tmp_path, day, proposal,
+            expected_card_existed=False, expected_card_digest=None,
+            expected_state_digest=proposal["publication_preconditions"]["state_digest"], run_id="appeared")
+    assert card.read_bytes() == card_bytes
+    card.unlink()
+    state_before = state_path.read_bytes()
+    changed = json.loads(state_before); changed["bank"] = 99
+    state_path.write_text(json.dumps(changed))
+    with pytest.raises(RuntimeError, match="changed during staging"):
+        tickets.publish_staged_rebuild_local(tmp_path, day, proposal,
+            expected_card_existed=False, expected_card_digest=None,
+            expected_state_digest=proposal["publication_preconditions"]["state_digest"], run_id="state-race")
+    assert not card.exists() and state_path.read_text() != state_before.decode()
+
+
+def test_first_creation_no_bet_is_truthful_and_keeps_financial_bytes_unchanged(tmp_path, monkeypatch):
+    from scripts import daily
+    day, now, state_path, state_raw, _, _, _ = _missing_card_rebuild_case(tmp_path, monkeypatch, picks=False)
+    monkeypatch.setattr(daily, "LOCALDATA", tmp_path)
+    monkeypatch.setattr(daily, "_now_local", lambda: now)
+    monkeypatch.setenv("RACKET_FACTORY_REBUILD_SERIALIZED", "1")
+    monkeypatch.setenv("GITHUB_RUN_ID", "81004")
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "1")
+    collection = {"status": "complete", "date": day, "observed_at": now.isoformat(), "outcomes": {}}
+    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda *a, **k: collection)
+    monkeypatch.setattr(daily, "stage_fresh_rebuild_picks", lambda *a, **k: [])
+    monkeypatch.setattr(sys, "argv", ["daily.py", "--date", day, "--guarded-rebuild"])
+    daily.main()
+    card = json.loads((tmp_path / f"auto_tickets_{day}.json").read_text())
+    assert card["status"] == "NO BET" and card["accas"] == []
+    assert state_path.read_bytes() == state_raw
+    archive = json.loads((tmp_path / card["rebuild_archive"]).read_text())
+    assert archive["card_preexisted"] is False and archive["original_card_base64"] is None
+
+
+@pytest.mark.parametrize("fault", ["missing", "stale"])
+def test_invalid_quote_provenance_blocks_publication_not_a_no_bet_card(tmp_path, monkeypatch, fault):
+    import pytest
+    from scripts import daily
+    day, now, state_path, state_raw, _, _, rows = _missing_card_rebuild_case(tmp_path, monkeypatch, picks=True)
+    if fault == "missing":
+        rows[0]["selected_quote"].pop("settlement_evidence", None)
+    else:
+        rows[0]["selected_quote"]["observed_at"] = (now - timedelta(minutes=31)).isoformat()
+    monkeypatch.setattr(daily, "LOCALDATA", tmp_path)
+    monkeypatch.setattr(daily, "_now_local", lambda: now)
+    monkeypatch.setenv("RACKET_FACTORY_REBUILD_SERIALIZED", "1")
+    monkeypatch.setenv("GITHUB_RUN_ID", "81005")
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "1")
+    collection = {"status": "complete", "date": day, "observed_at": now.isoformat(), "outcomes": {}}
+    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda *a, **k: collection)
+    monkeypatch.setattr(daily, "stage_fresh_rebuild_picks", lambda *a, **k: rows)
+    monkeypatch.setattr(sys, "argv", ["daily.py", "--date", day, "--guarded-rebuild"])
+    with pytest.raises(SystemExit, match="candidate quote provenance is missing or invalid"):
+        daily.main()
+    assert not (tmp_path / f"auto_tickets_{day}.json").exists()
+    assert not list((tmp_path / ".auto_tickets_rebuild").glob("archive_*.json"))
+    assert state_path.read_bytes() == state_raw
+
+
+def test_existing_destination_change_during_staging_refuses_without_overwrite(tmp_path, monkeypatch):
+    import pytest
+    day, card, state_path, proposal, card_sha, state_sha = _local_rebuild_case(tmp_path, monkeypatch)
+    staged_predecessor = card.read_bytes()
+    changed = json.dumps({"date": day, "status": "protected", "accas": [], "staked_pct": 0}).encode()
+    card.write_bytes(changed)
+    with pytest.raises(RuntimeError, match="changed during staging"):
+        tickets.publish_staged_rebuild_local(tmp_path, day, proposal,
+            expected_card_existed=True, expected_card_digest=card_sha,
+            expected_state_digest=state_sha, run_id="changed-existing")
+    assert staged_predecessor != card.read_bytes()
+    assert card.read_bytes() == changed and state_path.exists()
 
 
 def test_local_empty_rebuild_and_retry_book_only_once(tmp_path, monkeypatch):
     day, card, state_path, proposal, card_sha, state_sha = _local_rebuild_case(tmp_path, monkeypatch)
-    kwargs = {"expected_card_digest": card_sha, "expected_state_digest": state_sha, "run_id": "synthetic-1"}
+    kwargs = {"expected_card_existed": True, "expected_card_digest": card_sha, "expected_state_digest": state_sha, "run_id": "synthetic-1"}
     assert tickets.publish_staged_rebuild_local(tmp_path, day, proposal, **kwargs) == "committed"
     result = json.loads(card.read_text())
     state = json.loads(state_path.read_text())
@@ -438,11 +715,13 @@ def test_local_empty_no_bet_published_and_other_date_untouched(tmp_path, monkeyp
     day, card, state_path, proposal, card_sha, state_sha = _local_rebuild_case(tmp_path, monkeypatch, picks=False)
     unrelated = tmp_path / "auto_tickets_2026-09-25.json"
     unrelated.write_bytes(b"unchanged")
-    before_state = json.loads(state_path.read_text())
-    assert tickets.publish_staged_rebuild_local(tmp_path, day, proposal, expected_card_digest=card_sha,
+    before_state_bytes = state_path.read_bytes()
+    before_state = json.loads(before_state_bytes)
+    assert tickets.publish_staged_rebuild_local(tmp_path, day, proposal, expected_card_existed=True, expected_card_digest=card_sha,
                       expected_state_digest=state_sha, run_id="empty") == "committed"
     assert json.loads(card.read_text())["status"] == "NO BET"
-    assert json.loads(state_path.read_text()) == before_state and unrelated.read_bytes() == b"unchanged"
+    assert json.loads(state_path.read_text()) == before_state and state_path.read_bytes() == before_state_bytes
+    assert unrelated.read_bytes() == b"unchanged"
 
 
 def test_local_rebuild_aborts_when_state_changes_or_lock_is_held(tmp_path, monkeypatch):
@@ -451,7 +730,7 @@ def test_local_rebuild_aborts_when_state_changes_or_lock_is_held(tmp_path, monke
     day, card, state_path, proposal, card_sha, state_sha = _local_rebuild_case(tmp_path, monkeypatch)
     state_path.write_text(json.dumps({"bank": 90, "open_slips": [], "history": []}))
     before = card.read_bytes()
-    kwargs = {"expected_card_digest": card_sha, "expected_state_digest": state_sha, "run_id": "race"}
+    kwargs = {"expected_card_existed": True, "expected_card_digest": card_sha, "expected_state_digest": state_sha, "run_id": "race"}
     with pytest.raises(RuntimeError, match="changed during staging"):
         tickets.publish_staged_rebuild_local(tmp_path, day, proposal, **kwargs)
     assert card.read_bytes() == before
@@ -475,7 +754,7 @@ def test_local_interrupted_rebuild_rolls_back_then_retries(tmp_path, monkeypatch
             if len(writes) == 2:
                 raise SystemExit("synthetic hard interruption")
     monkeypatch.setattr(tickets, "_rebuild_atomic_bytes", interrupted)
-    kwargs = {"expected_card_digest": card_sha, "expected_state_digest": state_sha, "run_id": "interrupted"}
+    kwargs = {"expected_card_existed": True, "expected_card_digest": card_sha, "expected_state_digest": state_sha, "run_id": "interrupted"}
     with pytest.raises(SystemExit, match="synthetic hard interruption"):
         tickets.publish_staged_rebuild_local(tmp_path, day, proposal, **kwargs)
     assert json.loads((tmp_path / ".auto_tickets_rebuild/journal.json").read_text())["status"] == "applying"
@@ -488,14 +767,13 @@ def test_local_interrupted_rebuild_rolls_back_then_retries(tmp_path, monkeypatch
 
 def test_local_rebuild_preserves_exposed_and_ambiguous_records(tmp_path, monkeypatch):
     import pytest
-    day, card, state_path, proposal, _, _ = _local_rebuild_case(tmp_path, monkeypatch)
+    day, card, state_path, _, _, _ = _local_rebuild_case(tmp_path, monkeypatch)
     old = json.loads(card.read_text())
     old["accas"] = [{"legs": [{"selected_player": "Already recorded"}]}]
     card.write_text(json.dumps(old))
     before_card, before_state = card.read_bytes(), state_path.read_bytes()
-    with pytest.raises(RuntimeError, match="authoritative unplaced"):
-        tickets.publish_staged_rebuild_local(tmp_path, day, proposal, run_id="ambiguous",
-            expected_card_digest=tickets._rebuild_digest(before_card), expected_state_digest=tickets._rebuild_digest(before_state))
+    with pytest.raises(RuntimeError, match="nonempty card lacks authoritative unplaced status"):
+        tickets.capture_rebuild_preconditions(tmp_path, day)
     assert card.read_bytes() == before_card and state_path.read_bytes() == before_state
     old["accas"] = []
     card.write_text(json.dumps(old))
@@ -503,16 +781,15 @@ def test_local_rebuild_preserves_exposed_and_ambiguous_records(tmp_path, monkeyp
     state["open_slips"].append({"date": day, "staked_pct": 1, "accas": []})
     state_path.write_text(json.dumps(state))
     before_card, before_state = card.read_bytes(), state_path.read_bytes()
-    with pytest.raises(RuntimeError, match="same-day open or settled"):
-        tickets.publish_staged_rebuild_local(tmp_path, day, proposal, run_id="exposed",
-            expected_card_digest=tickets._rebuild_digest(before_card), expected_state_digest=tickets._rebuild_digest(before_state))
+    with pytest.raises(RuntimeError, match="target-day open_slips"):
+        tickets.capture_rebuild_preconditions(tmp_path, day)
     assert card.read_bytes() == before_card and state_path.read_bytes() == before_state
 
 
 def test_local_rebuild_reused_transaction_id_cannot_change_proposal(tmp_path, monkeypatch):
     import pytest
     day, card, state, proposal, card_sha, state_sha = _local_rebuild_case(tmp_path, monkeypatch, picks=False)
-    kwargs = {"expected_card_digest": card_sha, "expected_state_digest": state_sha, "run_id": "same-id"}
+    kwargs = {"expected_card_existed": True, "expected_card_digest": card_sha, "expected_state_digest": state_sha, "run_id": "same-id"}
     assert tickets.publish_staged_rebuild_local(tmp_path, day, proposal, **kwargs) == "committed"
     changed = dict(proposal, diagnostics={"tampered": True})
     with pytest.raises(RuntimeError, match="different proposal"):
@@ -535,7 +812,8 @@ def test_guarded_runner_empty_card_success_and_failures_are_isolated(tmp_path, m
     monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d, **kwargs: copy.deepcopy(collection))
     monkeypatch.setattr(daily, "stage_fresh_rebuild_picks", lambda *a: [])
     before_state = state_path.read_bytes()
-    daily.run_guarded_empty_rebuild(day)
+    monkeypatch.setattr(sys, "argv", ["daily.py", "--date", day, "--guarded-rebuild"])
+    daily.main()
     assert json.loads(card.read_text())["status"] == "NO BET"
     assert json.loads(state_path.read_bytes()) == json.loads(before_state)
     # A distinct run with required-source failure must not publish or alter the old card.
@@ -544,8 +822,8 @@ def test_guarded_runner_empty_card_success_and_failures_are_isolated(tmp_path, m
     card.write_text(json.dumps(old))
     before_card = card.read_bytes()
     monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d, **kwargs: dict(collection, status="insufficient"))
-    with pytest.raises(RuntimeError, match="required source collection incomplete"):
-        daily.run_guarded_empty_rebuild(day)
+    with pytest.raises(SystemExit, match="required source collection incomplete"):
+        daily.main()
     assert card.read_bytes() == before_card and json.loads(state_path.read_bytes()) == json.loads(before_state)
 
 
@@ -820,11 +1098,10 @@ def test_offline_required_source_to_two_leg_ticket_doctor_and_blocked_states(tmp
     assert no_bet["status"] == "NO BET" and no_bet["accas"] == []
     unproven = json.loads(json.dumps(picks))
     unproven[0]["selected_quote"].pop("settlement_evidence", None)
-    blocked = tickets.stage_rebuild_evaluation(
-        [unproven[0]], state, day, now,
-        {"status": "complete", "date": day, "observed_at": collection["observed_at"]})
-    assert blocked["status"] == "NO BET" and not blocked["accas"]
-    assert blocked["diagnostics"]["admission_rejections"]["bookmaker settlement rules evidence missing"] == 1
+    with pytest.raises(ValueError, match="candidate quote provenance is missing or invalid"):
+        tickets.stage_rebuild_evaluation(
+            [unproven[0]], state, day, now,
+            {"status": "complete", "date": day, "observed_at": collection["observed_at"]})
     with pytest.raises(ValueError, match="fresh collection"):
         tickets.stage_rebuild_evaluation(picks, state, day, now,
             {"status": "partial", "date": day, "observed_at": collection["observed_at"]})
