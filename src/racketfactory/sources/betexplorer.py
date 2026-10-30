@@ -217,12 +217,12 @@ def _listing_status_state(tr: Tag) -> tuple[str, list[str]]:
 
 
 def _finished_score_link_row(tr: Tag, *, rejection_reasons: list[str] | None = None) -> bool:
-    """Recognize explicit terminal status plus participant and same-event score links.
+    """Recognize the retained terminal row shape without interpreting outcome.
 
-    The numeric score is not interpreted: retained evidence omits it in some
-    samples, while the explicit terminal status and same-event links establish
-    the exclusion. Conflicting live/scheduled/postponed signals still fail
-    closed, and omitted markup is never assumed absent by this live parser.
+    The participant anchor contains two explicit spans; a separate same-event
+    anchor carries the match score. The optional third cell must be empty or a
+    bounded, parenthesized sequence of one to three numeric set scores. These
+    are exclusion cues only—not schedule or settlement evidence.
     """
     from racketfactory.betexplorer_evidence import _url
 
@@ -238,17 +238,14 @@ def _finished_score_link_row(tr: Tag, *, rejection_reasons: list[str] | None = N
         return reject('terminal_participant_cell_class')
 
     def safe(node: Tag) -> bool:
-        if any(key in node.attrs for key in ('hidden', 'style', 'aria-hidden')):
-            return False
-        return True
+        return not any(key in node.attrs for key in ('hidden', 'style', 'aria-hidden'))
 
-    if not all(safe(node) for node in [tr, *tr.find_all(True)]):
+    if (not all(safe(node) for node in [tr, *tr.find_all(True)])
+            or any(isinstance(node, Comment) for node in tr.descendants)):
         return reject('terminal_hidden_markup')
     status, signals = _listing_status_state(tr)
-    if status != 'terminal':
+    if status != 'terminal' or not (set(signals) & _TERMINAL_STATUS):
         return reject('terminal_status_not_unambiguous')
-    if not (set(signals) & _TERMINAL_STATUS):
-        return reject('terminal_status_missing')
 
     def children_without_whitespace(node: Tag):
         return [child for child in node.children
@@ -256,39 +253,63 @@ def _finished_score_link_row(tr: Tag, *, rejection_reasons: list[str] | None = N
 
     if children_without_whitespace(tr) != cells:
         return reject('terminal_row_extra_children')
-    names = children_without_whitespace(cells[0])
-    score = children_without_whitespace(cells[1])
-    if (len(names) != 2 or not all(isinstance(node, Tag) for node in names)
-            or names[0].name != 'span' or names[0].find(True)
-            or names[0].find(string=lambda value: isinstance(value, Comment))
-            or str(names[0].get_text(' ', strip=True)) not in {'FIN', 'FINISHED', 'RET', 'RET.', 'RETIRED', 'W/O', 'W.O.', 'WALKOVER', 'AWARDED', 'CANCELLED', 'CANCELED'}
-            or names[1].name != 'a'
-            or len(score) != 1 or not isinstance(score[0], Tag) or score[0].name != 'a'
-            or children_without_whitespace(cells[2])):
+    participant_cell = children_without_whitespace(cells[0])
+    score_cell = children_without_whitespace(cells[1])
+    if (len(participant_cell) != 2 or not all(isinstance(node, Tag) for node in participant_cell)
+            or participant_cell[0].name != 'span' or participant_cell[0].find(True)
+            or str(participant_cell[0].get_text(' ', strip=True)) not in {
+                'FIN', 'FINISHED', 'RET', 'RET.', 'RETIRED', 'W/O', 'W.O.',
+                'WALKOVER', 'AWARDED', 'CANCELLED', 'CANCELED'}
+            or participant_cell[1].name != 'a'
+            or len(score_cell) != 1 or not isinstance(score_cell[0], Tag) or score_cell[0].name != 'a'):
         return reject('terminal_visible_structure_mismatch')
+
+    participant_anchor, score_anchor = participant_cell[1], score_cell[0]
     participant_reasons: list[str] = []
-    if _structured_participants([names[1]], rejection_reasons=participant_reasons) is None:
+    if _structured_participants([participant_anchor], rejection_reasons=participant_reasons) is None:
         if rejection_reasons is not None:
             rejection_reasons.extend(x for x in participant_reasons if x not in rejection_reasons)
         return reject('terminal_participant_structure_unverified')
-    first = _url(str(names[1].get('href') or ''), '')
-    second = _url(str(score[0].get('href') or ''), '')
+
+    first = _url(str(participant_anchor.get('href') or ''), '')
+    second = _url(str(score_anchor.get('href') or ''), '')
+    match_links = [a for a in tr.find_all('a', href=True)
+                   if _is_match_link(str(a.get('href') or ''))]
     if (not first or first != second or '?' in first or not _is_match_link(first)
-            or not re.fullmatch(r'[A-Za-z0-9]{1,32}', first.rstrip('/').split('/')[-1])):
+            or not re.fullmatch(r'[A-Za-z0-9]{1,32}', first.rstrip('/').split('/')[-1])
+            or len(match_links) != 2 or match_links != [participant_anchor, score_anchor]):
         return reject('terminal_event_links_not_same')
-    score_links = [a for a in tr.find_all('a', href=True) if _is_match_link(str(a.get('href') or ''))]
-    if len(score_links) != 2 or score_links[0] is not names[1] or score_links[1] is not score[0]:
-        return reject('terminal_match_link_count')
-    if any(node.name not in {'strong', 'b', 'span', 'em', 'i'} for node in score[0].find_all(True)):
+
+    if any(node.name not in {'strong', 'b', 'span', 'em', 'i'}
+           for node in score_anchor.find_all(True)):
         return reject('terminal_score_markup_unsupported')
-    if score[0].find(string=lambda value: isinstance(value, Comment)):
+    if score_anchor.find(string=lambda value: isinstance(value, Comment)):
         return reject('terminal_score_comment')
-    match = re.fullmatch(r'([0-3]):([0-3])', score[0].get_text(' ', strip=True))
-    if not match:
+    score_label = score_anchor.get_text(' ', strip=True)
+    complete_score = re.fullmatch(r'(?:0:2|2:0|1:2|2:1)', score_label)
+    interrupted_score = re.fullmatch(r'(?:0:0|1:0|0:1)\s+(?:RET\.?|INT\.?)',
+                                     score_label, re.IGNORECASE)
+    walkover_score = re.fullmatch(r'WO\.', score_label, re.IGNORECASE)
+    if not (complete_score or interrupted_score or walkover_score):
         return reject('terminal_score_format')
-    a, b = (int(value) for value in match.groups())
-    if not (max(a, b) in {2, 3} and min(a, b) < max(a, b)):
-        return reject('terminal_score_not_completed_set_shape')
+
+    # BetExplorer's retained third-cell shape is either whitespace-only or
+    # literal text such as "(7:6, 2:6, 7:6)". Do not accept arbitrary content,
+    # nested markup, commentary, or unbounded score strings as a set-score cell.
+    set_nodes = children_without_whitespace(cells[2])
+    if set_nodes:
+        if (len(set_nodes) != 1 or not isinstance(set_nodes[0], NavigableString)
+                or isinstance(set_nodes[0], Comment)):
+            return reject('terminal_score_format')
+        set_text = str(set_nodes[0]).strip()
+        set_match = re.fullmatch(
+            r'\(\s*\d{1,2}\s*:\s*\d{1,2}'
+            r'(?:\s*,\s*\d{1,2}\s*:\s*\d{1,2}){0,2}\s*\)', set_text)
+        if not set_match:
+            return reject('terminal_score_format')
+        set_values = [int(value) for value in re.findall(r'\d{1,2}', set_text)]
+        if len(set_values) not in {2, 4, 6} or any(value > 14 for value in set_values):
+            return reject('terminal_score_format')
     return True
 
 
@@ -348,6 +369,16 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
             except (OSError, ValueError, TypeError):
                 logger.warning("Could not retain unrecognized BetExplorer row evidence")
             continue
+        # Check the retained FIN + participant-link + same-event score-link
+        # shape before treating the score anchor as a second participant. The
+        # helper validates its optional set-score cell and records exclusion
+        # only; terminal rows never enter the actionable quote path.
+        if status_state == 'terminal':
+            terminal_reasons: list[str] = []
+            if _finished_score_link_row(tr, rejection_reasons=terminal_reasons):
+                n_finished += 1
+                continue
+
         # Collect all match-link anchors in this row
         candidates: list[tuple] = []
         match_anchors: list[Tag] = []
