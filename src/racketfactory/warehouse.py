@@ -1629,7 +1629,8 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str, *,
         meta = {key: odds_row.get(key) for key in (
             "event_id", "observed_at", "market", "period", "line", "player_home", "player_away",
             "match_date", "match_time", "commence_time", "bookmaker", "odds_home_bookmaker", "odds_away_bookmaker",
-            "price_type", "settlement_rules", "match_url", "market_id", "raw_market", "raw_period",
+            "price_type", "settlement_rules", "settlement_evidence", "operator_jurisdiction",
+            "schedule_evidence", "match_url", "market_id", "raw_market", "raw_period",
             "retrieved_at", "provider_price_updated_at", "provider_positions", "response_sha256", "bookmaker_id", "tournament", "tour_hint")}
         meta["source"] = src_label
         meta["reversed"] = reversed_order

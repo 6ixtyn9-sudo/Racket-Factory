@@ -160,7 +160,11 @@ def test_guarded_collection_required_and_optional_outcomes(monkeypatch):
     monkeypatch.setattr(betexplorer, "fetch_fixture_comparison", lambda f, **kwargs: [quote])
     monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False, metrics=None: ([quote], "complete"))
     collection = daily.collect_rebuild_sources("2026-10-29")
-    assert collection["status"] == "complete"
+    # A mocked listing plus policy-shaped rules is not authenticated schedule
+    # or bookmaker evidence, so required-source readiness stays blocked.
+    assert collection["status"] == "insufficient"
+    assert collection["required_source_readiness"]["status"] == "blocked"
+    assert collection["required_source_readiness"]["sources"]["betexplorer"] == "partial"
     assert collection["outcomes"]["predixsport"]["status"] == "failed"
     assert collection["outcomes"]["oddsportal"]["status"] == "disabled"
     assert collection["outcomes"]["theoddsapi"]["status"] == "not_attempted"

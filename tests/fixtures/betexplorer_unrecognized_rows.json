@@ -1,0 +1,607 @@
+[
+  {
+    "target_date": "2026-10-30",
+    "classification": "unresolved",
+    "row_sha256": "8f39fa22c9421de13b6a492f4dad9ecdc4ce437bef607d22ee3ade1e14428098",
+    "cells": [
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": "2:1",
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 0,
+        "attribute_names": [
+          "class",
+          "colspan"
+        ]
+      }
+    ],
+    "links": [
+      {
+        "public_path": "/tennis/atp-singles/basel/vacherot-valentin-jodar-rafael/zui4APmJ/",
+        "text_label": null
+      },
+      {
+        "public_path": "/tennis/atp-singles/basel/vacherot-valentin-jodar-rafael/zui4APmJ/",
+        "text_label": "2:1"
+      }
+    ],
+    "sample_limited": false,
+    "row_evidence": {
+      "data_dt_components": [
+        29,
+        10,
+        2026,
+        12,
+        10
+      ],
+      "cells": [
+        {
+          "tag": "td",
+          "classes": [
+            "table-main__tt"
+          ],
+          "children": [
+            {
+              "tag": "span",
+              "children": [
+                {
+                  "name_like_text": "FIN"
+                }
+              ]
+            },
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/vacherot-valentin-jodar-rafael/zui4APmJ/",
+              "children": [
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "tag": "strong",
+                      "children": [
+                        {
+                          "name_like_text": "Vacherot V."
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "name_like_text": "Jodar R."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td",
+          "children": [
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/vacherot-valentin-jodar-rafael/zui4APmJ/",
+              "children": [
+                {
+                  "tag": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td"
+        }
+      ],
+      "omissions": {
+        "text": 4,
+        "elements": 2,
+        "bounded": false
+      },
+      "interpretation": "Unverified row evidence; participant identity, status and schedule not established."
+    },
+    "notice": "Redacted structural sample; omitted markup may be necessary to classify this row."
+  },
+  {
+    "target_date": "2026-10-30",
+    "classification": "unresolved",
+    "row_sha256": "d11cd5dab0c7ca6522f60f35644fc516486c5551e8d2fcfaddd343c69a4dbb89",
+    "cells": [
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": "1:2",
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 0,
+        "attribute_names": [
+          "class",
+          "colspan"
+        ]
+      }
+    ],
+    "links": [
+      {
+        "public_path": "/tennis/atp-singles/basel/michelsen-alex-arthur-fils/Sdd0CkDT/",
+        "text_label": null
+      },
+      {
+        "public_path": "/tennis/atp-singles/basel/michelsen-alex-arthur-fils/Sdd0CkDT/",
+        "text_label": "1:2"
+      }
+    ],
+    "sample_limited": false,
+    "row_evidence": {
+      "data_dt_components": [
+        29,
+        10,
+        2026,
+        15,
+        0
+      ],
+      "cells": [
+        {
+          "tag": "td",
+          "classes": [
+            "table-main__tt"
+          ],
+          "children": [
+            {
+              "tag": "span",
+              "children": [
+                {
+                  "name_like_text": "FIN"
+                }
+              ]
+            },
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/michelsen-alex-arthur-fils/Sdd0CkDT/",
+              "children": [
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "name_like_text": "Michelsen A."
+                    }
+                  ]
+                },
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "tag": "strong",
+                      "children": [
+                        {
+                          "name_like_text": "Fils A."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td",
+          "children": [
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/michelsen-alex-arthur-fils/Sdd0CkDT/",
+              "children": [
+                {
+                  "tag": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td"
+        }
+      ],
+      "omissions": {
+        "text": 3,
+        "elements": 1,
+        "bounded": false
+      },
+      "interpretation": "Unverified row evidence; participant identity, status and schedule not established."
+    },
+    "notice": "Redacted structural sample; omitted markup may be necessary to classify this row."
+  },
+  {
+    "target_date": "2026-10-30",
+    "classification": "unresolved",
+    "row_sha256": "896aa82e0f51027736708ba6e032c5e3f1f0b5564e14eb968965ad85b1625141",
+    "cells": [
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 0,
+        "attribute_names": [
+          "class",
+          "colspan"
+        ]
+      }
+    ],
+    "links": [
+      {
+        "public_path": "/tennis/atp-singles/basel/altmaier-daniel-lehecka-jiri/Cj3niUYb/",
+        "text_label": null
+      },
+      {
+        "public_path": "/tennis/atp-singles/basel/altmaier-daniel-lehecka-jiri/Cj3niUYb/",
+        "text_label": null
+      }
+    ],
+    "sample_limited": false,
+    "row_evidence": {
+      "data_dt_components": [
+        29,
+        10,
+        2026,
+        17,
+        15
+      ],
+      "cells": [
+        {
+          "tag": "td",
+          "classes": [
+            "table-main__tt"
+          ],
+          "children": [
+            {
+              "tag": "span",
+              "children": [
+                {
+                  "name_like_text": "FIN"
+                }
+              ]
+            },
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/altmaier-daniel-lehecka-jiri/Cj3niUYb/",
+              "children": [
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "name_like_text": "Altmaier D."
+                    }
+                  ]
+                },
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "tag": "strong",
+                      "children": [
+                        {
+                          "name_like_text": "Lehecka J."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td",
+          "children": [
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/altmaier-daniel-lehecka-jiri/Cj3niUYb/",
+              "children": [
+                {
+                  "tag": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td"
+        }
+      ],
+      "omissions": {
+        "text": 2,
+        "elements": 0,
+        "bounded": false
+      },
+      "interpretation": "Unverified row evidence; participant identity, status and schedule not established."
+    },
+    "notice": "Redacted structural sample; omitted markup may be necessary to classify this row."
+  },
+  {
+    "target_date": "2026-10-30",
+    "classification": "unresolved",
+    "row_sha256": "33d5e3c097668a27db3f26935e89a58899c0fb98c410f5ebe779f95a2c2928d3",
+    "cells": [
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 0,
+        "attribute_names": [
+          "class",
+          "colspan"
+        ]
+      }
+    ],
+    "links": [
+      {
+        "public_path": "/tennis/atp-singles/basel/fritz-taylor-shapovalov-denis/MRP0cu2S/",
+        "text_label": null
+      },
+      {
+        "public_path": "/tennis/atp-singles/basel/fritz-taylor-shapovalov-denis/MRP0cu2S/",
+        "text_label": null
+      }
+    ],
+    "sample_limited": false,
+    "row_evidence": {
+      "data_dt_components": [
+        29,
+        10,
+        2026,
+        17,
+        40
+      ],
+      "cells": [
+        {
+          "tag": "td",
+          "classes": [
+            "table-main__tt"
+          ],
+          "children": [
+            {
+              "tag": "span",
+              "children": [
+                {
+                  "name_like_text": "FIN"
+                }
+              ]
+            },
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/fritz-taylor-shapovalov-denis/MRP0cu2S/",
+              "children": [
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "tag": "strong",
+                      "children": [
+                        {
+                          "name_like_text": "Fritz T."
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "name_like_text": "Shapovalov D."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td",
+          "children": [
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/fritz-taylor-shapovalov-denis/MRP0cu2S/",
+              "children": [
+                {
+                  "tag": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td"
+        }
+      ],
+      "omissions": {
+        "text": 2,
+        "elements": 0,
+        "bounded": false
+      },
+      "interpretation": "Unverified row evidence; participant identity, status and schedule not established."
+    },
+    "notice": "Redacted structural sample; omitted markup may be necessary to classify this row."
+  },
+  {
+    "target_date": "2026-10-30",
+    "classification": "unresolved",
+    "row_sha256": "276f0d40b0d58aaef318aa24d826e755588ba5ff5a03504606c61aa3d3f74bf6",
+    "cells": [
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": "1:2",
+        "link_count": 1,
+        "attribute_names": [
+          "class"
+        ]
+      },
+      {
+        "tag": "td",
+        "text_label": null,
+        "link_count": 0,
+        "attribute_names": [
+          "class",
+          "colspan"
+        ]
+      }
+    ],
+    "links": [
+      {
+        "public_path": "/tennis/atp-singles/basel/djokovic-novak-struff-jan-lennard/MqJeOPTI/",
+        "text_label": null
+      },
+      {
+        "public_path": "/tennis/atp-singles/basel/djokovic-novak-struff-jan-lennard/MqJeOPTI/",
+        "text_label": "1:2"
+      }
+    ],
+    "sample_limited": false,
+    "row_evidence": {
+      "data_dt_components": [
+        29,
+        10,
+        2026,
+        19,
+        20
+      ],
+      "cells": [
+        {
+          "tag": "td",
+          "classes": [
+            "table-main__tt"
+          ],
+          "children": [
+            {
+              "tag": "span",
+              "children": [
+                {
+                  "name_like_text": "FIN"
+                }
+              ]
+            },
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/djokovic-novak-struff-jan-lennard/MqJeOPTI/",
+              "children": [
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "name_like_text": "Djokovic N."
+                    }
+                  ]
+                },
+                {
+                  "tag": "span",
+                  "children": [
+                    {
+                      "tag": "strong",
+                      "children": [
+                        {
+                          "name_like_text": "Struff J-L."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td",
+          "children": [
+            {
+              "tag": "a",
+              "public_match_path": "/tennis/atp-singles/basel/djokovic-novak-struff-jan-lennard/MqJeOPTI/",
+              "children": [
+                {
+                  "tag": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "td"
+        }
+      ],
+      "omissions": {
+        "text": 4,
+        "elements": 2,
+        "bounded": false
+      },
+      "interpretation": "Unverified row evidence; participant identity, status and schedule not established."
+    },
+    "notice": "Redacted structural sample; omitted markup may be necessary to classify this row."
+  }
+]

@@ -104,7 +104,12 @@ def test_incomplete_listing_reports_skipped_matching_without_detail_requests(mon
     fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
     offers, counts, _ = collect_prediction_comparisons(DAY, [fixture], [fixture], status)
     assert not calls and not offers
-    assert counts['predictions'] == 0
+    assert counts['predictions'] == counts['unmatched_or_ambiguous'] == 1
+    assert counts['unexamined_fixtures'] == 1
+    assert counts['stage_statuses']['identity_matching'] == 'unresolved_listing'
+    assert counts['stage_statuses']['unexamined_fixtures'] == 'present'
+    assert counts['stage_statuses']['required_source_readiness'] == 'blocked'
+    assert counts['prediction_set_input_rows'] == 1
     assert counts['matching_skipped_reason'] == 'listing_not_complete'
     assert counts['listing_status'] == status
     assert counts['input_predictions'] == counts['target_date_input_predictions'] == 1
@@ -128,5 +133,6 @@ def test_partial_listing_diagnostic_is_persisted_without_becoming_complete(monke
     result = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())
     assert result['status'] == result['betclan_status'] == 'partial'
     assert result['oldest_offer_observed_at'] is None
-    assert result['counts']['predictions'] == 0
+    assert result['counts']['predictions'] == result['counts']['unmatched_or_ambiguous'] == 1
+    assert result['counts']['unexamined_fixtures'] == 1
     assert result['counts']['matching_skipped_reason'] == 'listing_not_complete'

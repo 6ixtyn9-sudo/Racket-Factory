@@ -41,7 +41,7 @@ def test_comparison_reversed_columns_hidden_dedupe_bad_and_unknown_rules():
     assert metrics["average_prices"] == [[1.45, 2.4]]
     assert rows[0]["provider_price_updated_at"] == ["101", "100"]
     assert rows[0]["observed_at"] == OBS and len(rows[0]["response_sha256"]) == 64
-    assert rebuild_quote_execution_problem(rows[0]) == "bookmaker settlement rules unknown or incompatible"
+    assert rebuild_quote_execution_problem(rows[0]) == "bookmaker settlement rules evidence missing"
 
 
 def test_bad_columns_and_doubles_do_not_assume_order():
@@ -251,7 +251,7 @@ def test_synthetic_complete_source_plumbing_still_blocks_unknown_settlement(monk
     assert counts['matched_fixtures'] == counts['attempted'] == 1
     assert len(calls) == 2  # one match page and its discovered comparison
     assert len(collection['raw_quotes']['betexplorer']) == 2
-    assert all(rebuild_quote_execution_problem(row) == 'bookmaker settlement rules unknown or incompatible'
+    assert all(rebuild_quote_execution_problem(row) == 'bookmaker settlement rules evidence missing'
                for row in collection['raw_quotes']['betexplorer'])
     assert collection['outcomes']['betexplorer']['status'] == 'partial'
     assert collection['status'] == 'insufficient'

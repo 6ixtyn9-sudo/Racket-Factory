@@ -65,11 +65,18 @@ def test_independent_price_classes_overlap_with_quote_failures(monkeypatch):
 
 def test_publication_rechecks_time_and_never_revalidates_retained_card(monkeypatch):
     start = datetime.fromisoformat(DAY + 'T10:00:00+02:00')
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_schedule_evidence,
+                                           attach_synthetic_settlement_evidence)
     quote = {'odds': 1.5, 'selection': 'Alice Adams', 'source': 'BetExplorer', 'bookmaker': 'Book One',
              'market': 'h2h', 'period': 'match', 'price_type': 'bookmaker',
              'settlement_rules': {'retirement': 'advancer', 'walkover': 'void', 'cancelled': 'void'},
              'observed_at': start.isoformat(), 'provider_home': 'Alice Adams', 'provider_away': 'Beth Brown',
-             'provider_side': '1', 'event_id': 'abc', 'fixture_date': DAY}
+             'provider_side': '1', 'event_id': 'abc', 'match_url': '/tennis/atp/event/abc/',
+             'match_date': DAY, 'commence_time': (start + timedelta(minutes=15)).isoformat(), 'fixture_date': DAY}
+    attach_synthetic_settlement_evidence(quote)
+    attach_synthetic_schedule_evidence(quote)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     leg = {'odds': 1.5, 'selected_player': 'Alice Adams', 'odds_source': 'BetExplorer',
            'odds_bookmaker': 'Book One', 'date': DAY, 'kickoff': '10:15', 'selected_quote': quote}
     card = json.dumps({'date': DAY, 'collection_observed_at': start.isoformat(), 'accas': [{'legs': [leg, leg]}]}).encode()
@@ -100,13 +107,20 @@ def test_normal_targeted_detail_budget_and_changed_fixture_set_fail_closed(monke
     fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
     calls = []
     monkeypatch.setattr(betexplorer, '_fetch_live', lambda *a, **kw: (calls.append('listing') or [fixture], 'complete'))
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_schedule_evidence,
+                                           attach_synthetic_settlement_evidence)
     offer = {**fixture, 'odds_home': 1.5, 'odds_away': 2.5, 'source': 'BetExplorer', 'bookmaker': 'Book One',
              'price_type': 'bookmaker', 'settlement_rules': {'retirement': 'advancer', 'walkover': 'void', 'cancelled': 'void'},
-             'market': 'h2h', 'period': 'match', 'observed_at': datetime.now(tickets.TZ).isoformat()}
-    monkeypatch.setattr(qe, 'collect_prediction_comparisons', lambda *a: ([offer], {'matched_fixtures': 1}, False))
+             'market': 'h2h', 'period': 'match', 'observed_at': datetime.now(tickets.TZ).isoformat(),
+             'match_url': '/tennis/atp/event/abc/', 'commence_time': datetime.now(tickets.TZ).isoformat()}
+    attach_synthetic_settlement_evidence(offer)
+    attach_synthetic_schedule_evidence(offer)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
+    monkeypatch.setattr(qe, 'collect_prediction_comparisons', lambda *a, **kw: ([offer], {'matched_fixtures': 1}, False))
     monkeypatch.setattr(oddsportal_upcoming, 'fetch_oddsportal_upcoming_rows', lambda _: [])
-    # Synthetic complete-source contract exercises live plumbing only. The
-    # real source cannot produce complete while schedules are unverified.
+    # The test-only authentication boundary is explicitly opened to exercise
+    # first-pass in-memory plumbing; this does not prove a provider schedule.
     assert qe.targeted_comparison_rows(DAY, [fixture])
     # Reused cache has no independently verifiable schedule evidence; block
     # it without repeating provider collection or relabeling observations.
@@ -212,10 +226,17 @@ def test_coverage_excludes_started_only_and_still_requires_all_relevant(monkeypa
         {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'future', 'match_time': '11:00'},
         {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'started', 'match_time': '09:00'},
     ]
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_schedule_evidence,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     def quote(f, **kwargs):
-        return [dict(f, odds_home=1.5, odds_away=2.5, market='match_winner', period='match',
-                     observed_at=datetime.now(timezone.utc).isoformat(), price_type='bookmaker', bookmaker='Synthetic Book',
-                     settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})]
+        row = dict(f, odds_home=1.5, odds_away=2.5, market='match_winner', period='match',
+                   observed_at=datetime.now(timezone.utc).isoformat(), price_type='bookmaker', bookmaker='Synthetic Book',
+                   source='BetExplorer', settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})
+        attach_synthetic_settlement_evidence(row)
+        attach_synthetic_schedule_evidence(row)
+        return [row]
     monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', quote)
     _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures, fixtures, 'complete')
     assert not partial
@@ -229,10 +250,16 @@ def test_coverage_excludes_started_only_and_still_requires_all_relevant(monkeypa
 def test_unknown_kickoff_is_unresolved_even_with_a_compatible_quote(monkeypatch):
     from datetime import timezone
     from racketfactory import quote_enrichment as qe
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_schedule_evidence,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'future', 'match_time': '00:00'}
     row = dict(fixture, odds_home=1.5, odds_away=2.5, market='match_winner', period='match',
                observed_at=datetime.now(timezone.utc).isoformat(), price_type='bookmaker', bookmaker='Synthetic Book',
-               settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})
+               source='BetExplorer', settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})
+    attach_synthetic_settlement_evidence(row)
+    attach_synthetic_schedule_evidence(row)
     monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: [row])
     _, counts, partial = qe.collect_prediction_comparisons(DAY, [fixture], [fixture], 'complete')
     assert partial and counts['unknown_or_conflicting_kickoff_fixtures'] == 1
@@ -267,12 +294,19 @@ def test_started_during_previous_fetch_is_excluded_from_verified_denominator(mon
         {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'first', 'match_time': '10:30'},
         {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'later', 'match_time': '10:35'},
     ]
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_schedule_evidence,
+                                           attach_synthetic_settlement_evidence)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     calls = []
     def quote(f, **kwargs):
         calls.append(f['event_id'])
-        return [dict(f, odds_home=1.5, odds_away=2.5, market='h2h', period='match',
-                     observed_at=datetime.now(timezone.utc).isoformat(), price_type='bookmaker', bookmaker='Synthetic Book',
-                     settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})]
+        row = dict(f, odds_home=1.5, odds_away=2.5, market='h2h', period='match',
+                   observed_at=datetime.now(timezone.utc).isoformat(), price_type='bookmaker', bookmaker='Synthetic Book',
+                   source='BetExplorer', settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})
+        attach_synthetic_settlement_evidence(row)
+        attach_synthetic_schedule_evidence(row)
+        return [row]
     monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', quote)
     _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures, fixtures, 'complete')
     assert calls == ['first'] and not partial

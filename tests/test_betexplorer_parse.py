@@ -129,13 +129,16 @@ def test_original_observation_is_preserved_by_cache(tmp_path, monkeypatch):
     assert "market" not in first[0]  # Parser has not established market identity.
 
 
-def test_guarded_collection_distinguishes_verified_empty_day(monkeypatch):
+def test_guarded_collection_keeps_generic_empty_marker_unverified(monkeypatch):
     from datetime import date
     day = date.today().isoformat()
     responses = iter(["<html>unknown shape</html>", "<html>No matches</html>"])
     monkeypatch.setattr(be, "fetch_page_html", lambda *a, **k: next(responses))
     rows, status = be._fetch_live(day, with_status=True)
-    assert rows == [] and status == "complete"
+    assert rows == [] and status == "partial"
+    monkeypatch.setattr(be, "fetch_page_html", lambda *a, **k: "<html>No matches</html>")
+    with pytest.raises(be.PageFetchError, match="empty-board marker is not authenticated"):
+        be._fetch_live(day)
 
 
 def test_guarded_results_shape_discovers_unpriced_fixtures(monkeypatch):
@@ -149,5 +152,10 @@ def test_guarded_results_shape_discovers_unpriced_fixtures(monkeypatch):
     assert len(rows) == 2 and status == "partial"
     assert rows[1]["odds_home"] is None
     assert all(row['match_date'] == row['match_time'] == '' for row in rows)
-    assert metrics == {"data_dt_rows": 3, "parsed_priced_rows": 1, "discovered_rows": 2, "finished_rows": 1,
-                       "no_odds_rows": 1, "unrecognized_rows": 0, "unverified_schedule_rows": 3}
+    assert metrics['data_dt_rows'] == 3
+    assert metrics['parsed_priced_rows'] == 1 and metrics['discovered_rows'] == 2
+    assert metrics['finished_rows'] == 1 and metrics['no_odds_rows'] == 1
+    assert metrics['unrecognized_rows'] == 0 and metrics['unverified_schedule_rows'] == 3
+    assert metrics['listing_recognition_status'] == 'complete'
+    assert metrics['actionable_schedule_unverified_rows'] == 2
+    assert metrics['schedule_verification_status'] == 'unverified'

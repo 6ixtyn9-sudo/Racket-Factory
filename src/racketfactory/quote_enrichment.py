@@ -11,7 +11,8 @@ def _collection_now():
     return datetime.now(SAST)
 
 
-def collect_prediction_comparisons(target_date: str, predictions: list[dict], be_rows: list[dict], listing_status: str) -> tuple[list[dict], dict, bool]:
+def collect_prediction_comparisons(target_date: str, predictions: list[dict], be_rows: list[dict], listing_status: str,
+                                   listing_metrics: dict | None = None) -> tuple[list[dict], dict, bool]:
     """Target detail requests to uniquely identified prediction fixtures.
 
     Discovery rows are not bookmaker offers. Return partial explicitly so
@@ -29,19 +30,71 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                      "skipped_started_fixtures": 0, "skipped_conflicting_kickoff_fixtures": 0,
                      "excluded_started_fixtures": 0, "relevant_upcoming_fixtures": 0,
                      "unknown_or_conflicting_kickoff_fixtures": 0, "unexamined_fixtures": 0,
-                     "unresolved_fixtures": 0, "fresh_settlement_compatible_fixtures": 0}
+                     "unresolved_fixtures": 0, "fresh_settlement_compatible_fixtures": 0,
+                     "stage_statuses": {"listing_recognition": "unknown", "listing_row_accounting": "unknown",
+                                        "listing_coverage": "unknown", "listing_schedule_verification": "unknown",
+                                        "identity_matching": "not_attempted",
+                                        "schedule_verification": "not_attempted", "detail_discovery": "not_attempted",
+                                        "quote_availability": "not_attempted", "quote_resolution": "not_attempted",
+                                        "unexamined_fixtures": "unknown", "prediction_set": "not_compared",
+                                        "required_source_readiness": "blocked"},
+                     "readiness_blockers": []}
+    target_prediction_keys = sorted((str(p.get("match_date") or "")[:10],
+                                      str(p.get("player_home") or "").strip().casefold(),
+                                      str(p.get("player_away") or "").strip().casefold())
+                                     for p in predictions if str(p.get("match_date") or "")[:10] == target_date)
+    import hashlib
+    import json
+    detail_counts["prediction_set_fingerprint"] = hashlib.sha256(
+        json.dumps(target_prediction_keys, separators=(",", ":")).encode()).hexdigest()
+    detail_counts["prediction_set_input_rows"] = len(target_prediction_keys)
+    detail_counts["stage_statuses"]["prediction_set"] = "captured_snapshot"
+    if isinstance(listing_metrics, dict):
+        recognition = listing_metrics.get("listing_recognition_status")
+        if recognition in {"complete", "partial"}:
+            detail_counts["stage_statuses"]["listing_recognition"] = recognition
+        covered = listing_metrics.get("row_accounting_complete") is True
+        detail_counts["stage_statuses"]["listing_row_accounting"] = "complete" if covered else "incomplete"
+        coverage = listing_metrics.get("listing_coverage_status")
+        if coverage in {"complete", "not_established", "partial"}:
+            detail_counts["stage_statuses"]["listing_coverage"] = coverage
+        schedule = listing_metrics.get("schedule_verification_status")
+        if schedule in {"unverified", "verified", "not_required_for_excluded_rows"}:
+            detail_counts["stage_statuses"]["listing_schedule_verification"] = schedule
     # A zero prediction count here means none were evaluated, not an empty card.
     if listing_status != "complete":
+        detail_counts["stage_statuses"]["listing_recognition"] = (
+            detail_counts["stage_statuses"]["listing_recognition"] if listing_metrics else listing_status)
+        detail_counts["readiness_blockers"].append("listing_not_complete")
         detail_counts["matching_skipped_reason"] = "listing_not_complete"
         detail_counts["listing_status"] = listing_status
         detail_counts["input_predictions"] = len(predictions)
         detail_counts["target_date_input_predictions"] = sum(
             str(p.get("match_date") or "")[:10] == target_date for p in predictions)
+        detail_counts["predictions"] = detail_counts["target_date_input_predictions"]
+        detail_counts["unmatched_or_ambiguous"] = detail_counts["predictions"]
+        detail_counts["stage_statuses"]["identity_matching"] = (
+            "not_attempted" if not detail_counts["predictions"] else "unresolved_listing")
+        detail_counts["unexamined_fixtures"] = detail_counts["predictions"]
+        detail_counts["stage_statuses"]["unexamined_fixtures"] = (
+            "none" if not detail_counts["predictions"] else "present")
     if listing_status == "complete" and not be_rows:
         detail_counts["predictions"] = sum(str(p.get("match_date") or "")[:10] == target_date for p in predictions)
         detail_counts["unmatched_or_ambiguous"] = detail_counts["predictions"]
+        detail_counts["stage_statuses"]["identity_matching"] = "complete" if not detail_counts["predictions"] else "partial"
+        detail_counts["stage_statuses"]["schedule_verification"] = "not_required_for_excluded_rows" if not detail_counts["predictions"] else "unresolved"
+        detail_counts["stage_statuses"]["listing_schedule_verification"] = (
+            detail_counts["stage_statuses"]["listing_schedule_verification"]
+            if listing_metrics else "unknown")
+        detail_counts["stage_statuses"]["detail_discovery"] = "not_required" if not detail_counts["predictions"] else "not_attempted"
+        detail_counts["stage_statuses"]["quote_availability"] = "not_required" if not detail_counts["predictions"] else "not_attempted"
+        detail_counts["stage_statuses"]["quote_resolution"] = "not_required" if not detail_counts["predictions"] else "not_attempted"
         partial = bool(detail_counts["predictions"])
+        if detail_counts["predictions"]:
+            detail_counts["readiness_blockers"].append("predictions_unmatched_to_listing")
     if listing_status == "complete" and be_rows:
+        if detail_counts["stage_statuses"]["listing_recognition"] == "unknown":
+            detail_counts["stage_statuses"]["listing_recognition"] = "complete"
         import pandas as pd
         from racketfactory.warehouse import _match_api_odds_row, names_match, strict_quote_team_match
         from racketfactory.sources._page_odds import PageFetchError
@@ -94,6 +147,8 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                 priority = (1, "")
             priorities[eid] = min(priorities.get(eid, priority), priority)
         detail_counts["matched_fixtures"] = len(matched)
+        detail_counts["stage_statuses"]["identity_matching"] = (
+            "complete" if detail_counts["unmatched_or_ambiguous"] == 0 and not identity_conflicts else "partial")
         # A started fixture cannot yield an executable prematch quote. If
         # duplicate predictions disagree across kickoff, fail closed rather
         # than letting the earlier priority choose a purported future time.
@@ -182,8 +237,51 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                               "unexamined_fixtures": len(unexamined),
                               "unresolved_fixtures": len(unresolved),
                               "fresh_settlement_compatible_fixtures": len(verified_relevant)})
+        schedule_proven_ids = set()
+        from racketfactory.execution import betexplorer_schedule_evidence_problem
+        for row in detail_offers:
+            if not betexplorer_schedule_evidence_problem(row):
+                schedule_proven_ids.add(str(row.get("event_id") or ""))
+        schedule_complete = not relevant or relevant <= schedule_proven_ids
+        detail_complete = not unexamined and not detail_counts["failures"]
+        quotes_complete = not relevant or relevant <= verified_relevant
+        detail_counts["stage_statuses"]["schedule_verification"] = (
+            "complete" if schedule_complete else "unverified")
+        detail_counts["stage_statuses"]["unexamined_fixtures"] = "none" if not unexamined else "present"
+        detail_counts["stage_statuses"]["detail_discovery"] = (
+            "complete" if detail_complete else "partial")
+        detail_counts["stage_statuses"]["quote_availability"] = (
+            "offers_observed" if detail_offers else "no_offers_observed")
+        detail_counts["stage_statuses"]["quote_resolution"] = (
+            "complete" if quotes_complete else "partial")
+        if detail_counts["unmatched_or_ambiguous"]:
+            detail_counts["stage_statuses"]["prediction_set"] = "unmatched_or_ambiguous"
+        if detail_counts["stage_statuses"]["identity_matching"] != "complete":
+            detail_counts["readiness_blockers"].append("identity_matching_incomplete")
+        if not schedule_complete:
+            detail_counts["readiness_blockers"].append("schedule_unverified")
+        if not detail_complete:
+            detail_counts["readiness_blockers"].append("detail_discovery_incomplete")
+        if not quotes_complete:
+            detail_counts["readiness_blockers"].append("quote_resolution_incomplete")
         if (detail_counts["failures"] or detail_counts["unmatched_or_ambiguous"] or unresolved or unexamined):
             partial = True
+    source_ready = (
+        listing_status == "complete"
+        and detail_counts["stage_statuses"]["listing_recognition"] in {"complete", "unknown"}
+        and detail_counts["stage_statuses"]["listing_row_accounting"] in {"complete", "unknown"}
+        and detail_counts["stage_statuses"]["listing_coverage"] in {"complete", "unknown"}
+        and detail_counts["stage_statuses"]["listing_schedule_verification"] in {"verified", "not_required_for_excluded_rows", "unknown"}
+        and detail_counts["stage_statuses"]["identity_matching"] in {"complete", "not_applicable"}
+        and detail_counts["stage_statuses"]["schedule_verification"] in {"complete", "not_required_for_excluded_rows"}
+        and detail_counts["stage_statuses"]["detail_discovery"] in {"complete", "not_required"}
+        and detail_counts["stage_statuses"]["quote_resolution"] in {"complete", "not_required"}
+        and not detail_counts["readiness_blockers"]
+        and (detail_counts["stage_statuses"]["unexamined_fixtures"] in {"none", "unknown"})
+    )
+    detail_counts["stage_statuses"]["required_source_readiness"] = "ready" if source_ready else "blocked"
+    if not source_ready:
+        partial = True
     return detail_offers, detail_counts, partial
 
 
@@ -216,7 +314,8 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
         if os.getenv(betexplorer.DISABLE_ENV, '').strip().lower() in {'1','true','yes','on'}:
             return [{'status': 'disabled', 'counts': {}, 'offers': []}]
         fixtures, status = betexplorer._fetch_live(target_date, with_status=True, metrics=metrics)
-        offers, counts, partial = collect_prediction_comparisons(target_date, predictions, fixtures, status)
+        offers, counts, partial = collect_prediction_comparisons(target_date, predictions, fixtures, status,
+                                                                    listing_metrics=metrics)
         if predictions and not fixtures:
             partial = True
         return [{'status': 'partial' if partial else status, 'listing_rows': len(fixtures),
@@ -357,6 +456,8 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
         result['schedule_guard_reason'] = ('cached_schedule_evidence_unavailable' if cached_without_proof
                                            else 'incomplete_collection')
         result['offers'] = []
+    result['prediction_set_status'] = ('changed' if result.get('prediction_fingerprint') != fingerprint
+                                       else 'captured' if collected_live else 'unchanged')
     if result.get('prediction_fingerprint') != fingerprint:
         # Do not silently treat a different fixture set as covered or exceed
         # the per-run detail request budget by recrawling it.

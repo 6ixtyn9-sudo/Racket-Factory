@@ -1,6 +1,6 @@
 """Synthetic offline diagnostics tests; not a recorded provider fixture."""
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -87,10 +87,38 @@ def test_rebuild_quote_execution_rejects_consensus_and_mismatched_rules():
     from racketfactory.execution import rebuild_quote_execution_problem
     q = {"bookmaker": "example", "price_type": "bookmaker", "settlement_rules":
          {"retirement": "advancer", "walkover": "void", "cancelled": "void"}}
-    assert not rebuild_quote_execution_problem(q)
+    assert rebuild_quote_execution_problem(q) == "bookmaker settlement rules evidence missing"
     assert rebuild_quote_execution_problem(dict(q, bookmaker="BetExplorer consensus"))
     assert rebuild_quote_execution_problem(dict(q, settlement_rules={"retirement": "void", "walkover": "void", "cancelled": "void"}))
     assert rebuild_quote_execution_problem(dict(q, settlement_rules=None))
+
+
+def test_synthetic_rule_and_schedule_fixtures_never_become_production_proof():
+    from tests._synthetic_evidence import (attach_synthetic_schedule_evidence,
+                                           attach_synthetic_settlement_evidence)
+    from racketfactory.execution import (betexplorer_schedule_evidence_problem,
+                                         rebuild_quote_execution_problem,
+                                         settlement_evidence_problem)
+    now = datetime.now(timezone.utc)
+    quote = {"source": "BetExplorer", "price_type": "bookmaker", "bookmaker": "Synthetic Book",
+             "bookmaker_id": "synthetic-id", "operator_jurisdiction": "TEST",
+             "match_date": (now.date()).isoformat(), "commence_time": (now + timedelta(hours=2)).isoformat(),
+             "observed_at": now.isoformat(), "event_id": "synthetic-event",
+             "match_url": "/tennis/atp/event/synthetic-event/", "player_home": "Alice Adams",
+             "player_away": "Beth Brown", "market": "h2h", "period": "match",
+             "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}}
+    attach_synthetic_settlement_evidence(quote)
+    attach_synthetic_schedule_evidence(quote)
+    assert settlement_evidence_problem(quote) == "synthetic settlement evidence is not provider proof"
+    assert betexplorer_schedule_evidence_problem(quote) == "synthetic BetExplorer schedule evidence is not provider proof"
+    assert "synthetic settlement evidence" in rebuild_quote_execution_problem(quote)
+    # Candidate JSON-LD, incomplete contradictory-signal accounting, stale
+    # timestamps, and started events are independently non-authorizing.
+    schedule = dict(quote["schedule_evidence"], test_only=False,
+                    status="candidate_unverified_contract")
+    assert "candidate-only" in betexplorer_schedule_evidence_problem(dict(quote, schedule_evidence=schedule))
+    schedule.update(status="provider_verified", contradictory_signals=None)
+    assert "conflicting or unexamined" in betexplorer_schedule_evidence_problem(dict(quote, schedule_evidence=schedule))
 
 
 def test_optional_failure_does_not_hide_verified_primary_quotes(tmp_path, monkeypatch):
@@ -99,10 +127,18 @@ def test_optional_failure_does_not_hide_verified_primary_quotes(tmp_path, monkey
     import pandas as pd
     from racketfactory import warehouse
     day = datetime.now(timezone.utc).date().isoformat()
+    from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
+                                           attach_synthetic_schedule_evidence,
+                                           attach_synthetic_settlement_evidence)
     row = {"match_date": day, "player_home": "Alice", "player_away": "Beth", "source": "BetExplorer",
            "bookmaker": "actual-book", "odds_home": 1.5, "odds_away": 2.5,
            "observed_at": datetime.now(timezone.utc).isoformat(), "market": "h2h", "period": "match",
-           "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}}
+           "price_type": "bookmaker", "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"},
+           "event_id": "synthetic-event", "match_url": "/tennis/atp/synthetic-event/",
+           "commence_time": datetime.now(timezone.utc).isoformat()}
+    attach_synthetic_settlement_evidence(row)
+    attach_synthetic_schedule_evidence(row)
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
     local = tmp_path / "data"; local.mkdir()
     pd.DataFrame([{"match_date": "2025-01-01", "winner": "Alice"}]).to_csv(local / "warehouse.csv.gz", index=False)
     monkeypatch.setattr(daily, "LOCALDATA", local)
@@ -133,7 +169,7 @@ def test_incompatible_market_period_and_settlement_are_counted(tmp_path):
         daily.stage_fresh_rebuild_picks(day, collection, tmp_path / "stage")
     reasons = collection["quote_diagnostics"]["sources"]["betexplorer"]["rejection_reasons"]
     assert reasons["market_incompatible"] == reasons["period_incompatible"] == 1
-    assert reasons["execution:bookmaker settlement rules unknown or incompatible"] == 1
+    assert reasons["execution:bookmaker settlement rules evidence missing"] == 1
 
 
 def test_failed_rebuild_writes_run_status_and_leaves_card_unchanged(tmp_path, monkeypatch):
