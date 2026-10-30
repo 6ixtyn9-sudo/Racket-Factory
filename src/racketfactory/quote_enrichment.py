@@ -1,6 +1,7 @@
 """Shared, bounded prediction-targeted comparison discovery."""
 from __future__ import annotations
 
+import math
 import os
 import re
 
@@ -444,10 +445,46 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
             result['prediction_fingerprint'] = fingerprint
         except Exception as exc:
             result = failure(exc)
-    # Cached results lack independently verifiable schedule proof. Quarantine
-    # them without recollection. A fresh result is governed by _fetch_live and
-    # comparison completeness rather than being discarded merely for existing.
-    cached_without_proof = not collected_live and bool(result.get('offers') or result.get('listing_rows'))
+    # Cache reuse is allowed only when the complete cached snapshot carries
+    # independently revalidated, still-fresh quote evidence and exactly the
+    # same prediction set. Never stamp a cached observation as new.
+    def cached_snapshot_is_proven() -> bool:
+        if (not isinstance(result, dict) or result.get('status') != 'complete'
+                or result.get('prediction_fingerprint') != fingerprint
+                or not isinstance(result.get('offers'), list) or not result.get('offers')):
+            return False
+        counts = result.get('counts')
+        stages = counts.get('stage_statuses') if isinstance(counts, dict) else None
+        if (not isinstance(stages, dict) or stages.get('required_source_readiness') != 'ready'
+                or stages.get('listing_recognition') != 'complete'
+                or stages.get('listing_row_accounting') != 'complete'
+                or stages.get('listing_coverage') != 'complete'
+                or stages.get('listing_schedule_verification') != 'verified'
+                or stages.get('identity_matching') != 'complete'
+                or stages.get('schedule_verification') != 'complete'
+                or stages.get('detail_discovery') != 'complete'
+                or stages.get('quote_resolution') != 'complete'
+                or stages.get('unexamined_fixtures') != 'none'
+                or counts.get('readiness_blockers')):
+            return False
+        for offer in result['offers']:
+            if not isinstance(offer, dict) or rebuild_quote_execution_problem(offer):
+                return False
+            try:
+                observed = datetime.fromisoformat(str(offer.get('observed_at') or '').replace('Z', '+00:00'))
+                age = (datetime.now(timezone.utc) - observed).total_seconds()
+                prices = [float(offer.get(key)) for key in ('odds_home', 'odds_away')]
+                if (observed.tzinfo is None or observed.utcoffset() is None or not 0 <= age <= 30 * 60
+                        or str(offer.get('match_date') or '')[:10] != target_date
+                        or not all(math.isfinite(price) and price > 1 for price in prices)
+                        or not offer.get('event_id') or not offer.get('player_home') or not offer.get('player_away')):
+                    return False
+            except (TypeError, ValueError, OverflowError):
+                return False
+        return True
+
+    cached_without_proof = (not collected_live and bool(result.get('offers') or result.get('listing_rows'))
+                            and not cached_snapshot_is_proven())
     incomplete_with_offers = result.get('status') != 'complete' and bool(result.get('offers'))
     if cached_without_proof or incomplete_with_offers:
         if result.get('status') not in {'failed', 'disabled'}:

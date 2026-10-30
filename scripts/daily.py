@@ -882,27 +882,44 @@ def _run_guarded_empty_rebuild(target_date: str | None, update) -> None:
         if committed.returncode != 0 or committed.stdout != archive.read_bytes():
             raise RuntimeError("uncommitted rebuild archive exists; refusing retry")
         record = json.loads(committed.stdout)
-        original = base64.b64decode(record.get("original_card_base64", ""), validate=True)
-        if (record.get("transaction_id") != run_id or record.get("actionable") is not False
-                or auto_tickets._rebuild_digest(original) != record.get("original_card_sha256")):
+        if (not isinstance(record, dict) or record.get("transaction_id") != run_id
+                or record.get("actionable") is not False):
             raise RuntimeError("committed rebuild archive is invalid")
+        if record.get("version") == 2:
+            existed = record.get("card_preexisted")
+            original_b64 = record.get("original_card_base64")
+            original_sha = record.get("original_card_sha256")
+            if existed is True:
+                try:
+                    original = base64.b64decode(original_b64, validate=True)
+                except (TypeError, ValueError) as exc:
+                    raise RuntimeError("committed rebuild archive is invalid") from exc
+                if auto_tickets._rebuild_digest(original) != original_sha:
+                    raise RuntimeError("committed rebuild archive is invalid")
+            elif existed is not False or original_b64 is not None or original_sha is not None:
+                raise RuntimeError("committed first-creation archive falsely claims a predecessor")
+            if record.get("target_date") != target:
+                raise RuntimeError("this workflow run already published on a different betting day")
+        else:
+            # Read-only compatibility for transactions committed by the prior
+            # archive format, which always contained real predecessor bytes.
+            try:
+                original = base64.b64decode(record.get("original_card_base64", ""), validate=True)
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError("committed rebuild archive is invalid") from exc
+            if auto_tickets._rebuild_digest(original) != record.get("original_card_sha256"):
+                raise RuntimeError("committed rebuild archive is invalid")
         if archive.name != f"archive_{target}_{run_id}.json":
             raise RuntimeError("this workflow run already published on a different betting day")
         print(f"Guarded rebuild {run_id} was already published; no changes")
         update(stage="already_published", status="already_published", ticket_generation="previously_completed", authoritative_publication="previously_published")
         return
-    card_path = LOCALDATA / f"auto_tickets_{target}.json"
-    state_path = LOCALDATA / "auto_tickets_state.json"
-    try:
-        card_raw, state_raw = card_path.read_bytes(), state_path.read_bytes()
-        card, state = json.loads(card_raw), json.loads(state_raw)
-    except (OSError, ValueError) as exc:
-        raise RuntimeError("authoritative card or state is unavailable") from exc
-    problem = auto_tickets.rebuild_replacement_problem(card, state, target)
-    if problem:
-        raise RuntimeError(problem)
-    card_digest, state_digest = auto_tickets._rebuild_digest(card_raw), auto_tickets._rebuild_digest(state_raw)
-    update(stage="collecting")
+    state, preconditions = auto_tickets.capture_rebuild_preconditions(LOCALDATA, target)
+    card_digest = preconditions["card_digest"]
+    state_digest = preconditions["state_digest"]
+    card_existed = preconditions["destination_existed"]
+    update(stage="collecting", predecessor_card_existed=card_existed,
+           predecessor_card_sha256=card_digest, authoritative_state_sha256=state_digest)
     collection = collect_rebuild_sources(target, progress=lambda provider, phase, outcomes:
         update(stage="collecting_" + provider, provider_phase=phase, source_outcomes=outcomes))
     update(stage="collection_complete", source_outcomes=collection["outcomes"], collection_status=collection["status"])
@@ -919,12 +936,14 @@ def _run_guarded_empty_rebuild(target_date: str | None, update) -> None:
         update(stage="ticket_generation")
         # The run's real start time is retained. Old cached quotes are never
         # stamped with that time; each candidate carries its own observation.
-        proposal = auto_tickets.stage_rebuild_evaluation(picks, state, target, _now_local(), collection)
+        proposal = auto_tickets.stage_rebuild_evaluation(picks, state, target, _now_local(), collection,
+                                                         preconditions=preconditions)
         proposal["collection_outcomes"] = collection["outcomes"]
         print("Guarded rebuild funnel:", json.dumps(proposal["diagnostics"], sort_keys=True))
         update(stage="local_publication", ticket_generation="completed", ticket_funnel=proposal["diagnostics"])
     result = auto_tickets.publish_staged_rebuild_local(LOCALDATA, target, proposal,
-        expected_card_digest=card_digest, expected_state_digest=state_digest, run_id=run_id)
+        expected_card_existed=card_existed, expected_card_digest=card_digest,
+        expected_state_digest=state_digest, run_id=run_id)
     update(stage="awaiting_git_publication", status="staged", ticket_generation="completed")
     print(f"Guarded rebuild staged locally: {result}; tickets={len(proposal['accas'])}. Awaiting atomic Git publication.")
 
@@ -1198,7 +1217,7 @@ def main() -> None:
             raise SystemExit("guarded rebuild conflicts with intraday-only")
         try:
             run_guarded_empty_rebuild(args.date)
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             raise SystemExit(f"Guarded rebuild failed: {exc}") from exc
         return
 

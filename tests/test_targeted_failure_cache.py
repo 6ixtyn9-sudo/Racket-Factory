@@ -2,6 +2,7 @@
 import hashlib
 import json
 import threading
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -229,6 +230,63 @@ def test_same_timestamp_with_new_workflow_id_fails_closed_without_recrawl(setup_
     # timestamp collision must never imply a new budget or a proven reset.
     qe.targeted_comparison_rows(DAY, PREDICTIONS)
     assert calls == [1] and status(setup_targeted)['status'] == 'failed'
+
+
+def _proven_cache_payload(observed=None):
+    observed = observed or datetime.now(timezone.utc).isoformat()
+    from tests._synthetic_evidence import attach_synthetic_schedule_evidence, attach_synthetic_settlement_evidence
+    offer = {"match_date": DAY, "player_home": "Alice Adams", "player_away": "Beth Brown",
+             "event_id": "fixture-1", "match_url": "/tennis/atp/test/alice-beth/fixture-1/",
+             "commence_time": DAY + "T12:00:00+02:00", "odds_home": 1.55, "odds_away": 2.40,
+             "bookmaker": "Synthetic Book", "bookmaker_id": "synthetic-book-id",
+             "source": "BetExplorer", "market": "match_winner", "period": "match",
+             "price_type": "bookmaker", "line": None, "observed_at": observed,
+             "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}}
+    attach_synthetic_settlement_evidence(offer)
+    attach_synthetic_schedule_evidence(offer, observed_at=observed)
+    stages = {"required_source_readiness": "ready", "listing_recognition": "complete",
+              "listing_row_accounting": "complete", "listing_coverage": "complete",
+              "listing_schedule_verification": "verified", "identity_matching": "complete",
+              "schedule_verification": "complete", "detail_discovery": "complete",
+              "quote_resolution": "complete", "unexamined_fixtures": "none"}
+    return [{"status": "complete", "listing_rows": 1, "offers": [offer],
+             "prediction_fingerprint": hashlib.sha256(json.dumps([(DAY, 'Alice Adams', 'Beth Brown')]).encode()).hexdigest(),
+             "counts": {"stage_statuses": stages, "readiness_blockers": []}}]
+
+
+def test_cached_complete_quote_survives_only_when_all_evidence_is_revalidated(setup_targeted, monkeypatch):
+    from tests._synthetic_evidence import allow_synthetic_evidence_in_pipeline
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
+    positive, _ = keys()
+    observed = datetime.now(timezone.utc).isoformat()
+    fetch_cache.write_cached_rows(positive, _proven_cache_payload(observed), DAY)
+    monkeypatch.setattr(betexplorer, "_fetch_live", lambda *a, **k: pytest.fail("cache reuse must not recollect"))
+    rows = qe.targeted_comparison_rows(DAY, PREDICTIONS)
+    result = status(setup_targeted)
+    assert len(rows) == 1 and rows[0]["observed_at"] == observed
+    assert rows[0]["settlement_evidence"]["test_only"] is True
+    assert rows[0]["schedule_evidence"]["test_only"] is True
+    assert result["status"] == "complete" and result["prediction_set_status"] == "unchanged"
+    assert rows[0]["observed_at"] == observed  # original time is retained, never refreshed
+
+
+@pytest.mark.parametrize("fault", ["stale", "incomplete_readiness", "changed_prediction_set"])
+def test_cached_quote_without_fresh_complete_matching_proof_stays_blocked(setup_targeted, monkeypatch, fault):
+    from tests._synthetic_evidence import allow_synthetic_evidence_in_pipeline
+    allow_synthetic_evidence_in_pipeline(monkeypatch)
+    positive, _ = keys()
+    stale = (datetime.now(timezone.utc) - timedelta(minutes=31)).isoformat()
+    payload = _proven_cache_payload(observed=stale if fault == "stale" else datetime.now(timezone.utc).isoformat())
+    if fault == "incomplete_readiness":
+        payload[0]["counts"]["stage_statuses"]["listing_coverage"] = "not_established"
+    if fault == "changed_prediction_set":
+        payload[0]["prediction_fingerprint"] = "0" * 64
+    fetch_cache.write_cached_rows(positive, payload, DAY)
+    monkeypatch.setattr(betexplorer, "_fetch_live", lambda *a, **k: pytest.fail("blocked cache must not recollect"))
+    rows = qe.targeted_comparison_rows(DAY, PREDICTIONS)
+    result = status(setup_targeted)
+    assert rows == [] and result["status"] == "partial"
+    assert result["schedule_guard_reason"] == "cached_schedule_evidence_unavailable"
 
 
 def test_429_cooldown_write_failure_never_claims_active_marker_or_retries(setup_targeted, monkeypatch):
