@@ -468,3 +468,119 @@ def test_capture_linkage_does_not_claim_selected_event_absent_from_listing(tmp_p
     assert bundle['linkage']['detail_event_id'] is None
     assert bundle['linkage']['listing_event_status'] == 'listing_path_not_observed'
     assert bundle['linkage']['detail_event_status'] == 'listing_event_link_unverified'
+
+
+def test_partial_listing_exposes_event_candidate_without_schedule_or_quote_claim(tmp_path, monkeypatch):
+    from datetime import datetime
+    from racketfactory.kickoff import SAST
+    class FakeDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None): return cls(2026, 10, 29, 10, 0, tzinfo=SAST)
+    monkeypatch.setattr(probe, 'datetime', FakeDateTime)
+    monkeypatch.setenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', str(tmp_path))
+    path = '/tennis/itf-men-singles/m15-monastir-37/van-wyk-kris-marmousez-lilian/E7omKkv8/'
+    html = f'''<table><tr data-dt="29,10,2026,11,0"><td><span>FIN</span><span>LIVE</span></td>
+      <td><a href="{path}"><span>van Wyk K.</span><span>Marmousez L.</span></a></td><td>1:0</td></tr></table>'''
+    now = '2026-10-29T10:00:00+00:00'
+    url = 'https://www.betexplorer.com/tennis/results/?year=2026&month=10&day=29'
+    raw = html.encode()
+    metadata = {'requested_url': url, 'final_url': url, 'request_started_at': now,
+                'response_received_at': now, 'http_status': 200, 'headers': {
+                    'Content-Type': 'text/html; charset=utf-8', 'Content-Length': str(len(raw))},
+                'body_bytes': raw, 'body_text': html, 'transport': 'requests'}
+    def listing(target, *, with_status=False, response_observer=None, **kwargs):
+        response_observer('listing', metadata)
+        return ([], 'partial') if with_status else []
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', listing)
+    result = probe.capture('2026-10-29')
+    assert result['capture_status'] == 'explicit_event_id_required'
+    assert result['fixtures_attempted'] == 0
+    assert result['quote_eligibility'] == 'not_evaluated'
+    assert result['diagnostic_event_candidate_count'] == 1
+    candidate = result['diagnostic_event_candidates'][0]
+    assert candidate['event_id'] == 'E7omKkv8' and candidate['match_path'] == path
+    assert candidate['listing_response_date_context'] == 'requested_target_date_results_page'
+    assert candidate['participant_identity_status'] == 'explicit_same_event_spans'
+    assert candidate['listing_row_status_state'] == 'conflicting_or_unknown'
+    assert candidate['schedule_status'] == 'unverified'
+    assert candidate['quote_eligibility'] == candidate['ticket_eligibility'] == 'not_evaluated'
+    assert candidate['safe_for_explicit_diagnostic_detail']
+    bundle = json.loads(next(tmp_path.glob('betexplorer_capture_*.json')).read_text())
+    assert bundle['selected_event'] is None and bundle['provider_completeness'] == 'not_established'
+    assert bundle['responses'][0]['diagnostic_event_candidates'][0]['event_id'] == 'E7omKkv8'
+
+
+def test_partial_listing_diagnostic_id_selects_one_evidence_fixture_not_a_quote(tmp_path, monkeypatch):
+    from datetime import datetime
+    from racketfactory.kickoff import SAST
+    class FakeDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None): return cls(2026, 10, 29, 10, 0, tzinfo=SAST)
+    monkeypatch.setattr(probe, 'datetime', FakeDateTime)
+    monkeypatch.setenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', str(tmp_path))
+    path = '/tennis/itf-men-singles/m15-monastir-37/van-wyk-kris-marmousez-lilian/E7omKkv8/'
+    html = f'''<table><tr data-dt="29,10,2026,11,0"><td><span>FIN</span><span>LIVE</span></td>
+      <td><a href="{path}"><span>van Wyk K.</span><span>Marmousez L.</span></a></td><td>1:0</td></tr></table>'''
+    now = '2026-10-29T10:00:00+00:00'
+    url = 'https://www.betexplorer.com/tennis/results/?year=2026&month=10&day=29'
+    raw = html.encode()
+    metadata = {'requested_url': url, 'final_url': url, 'request_started_at': now,
+                'response_received_at': now, 'http_status': 200, 'headers': {
+                    'Content-Type': 'text/html; charset=utf-8', 'Content-Length': str(len(raw))},
+                'body_bytes': raw, 'body_text': html, 'transport': 'requests'}
+    def listing(target, *, with_status=False, response_observer=None, **kwargs):
+        response_observer('listing', metadata)
+        return ([], 'partial') if with_status else []
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', listing)
+    observed = {}
+    def detail(fixture, **kwargs):
+        observed['fixture'] = fixture
+        observed['kwargs'] = kwargs
+        kwargs['stage_counts'].update(match_page_success=1, replay_detail_file_written=1,
+                                      replay_detail_material_retained=1)
+        raise PageFetchError('parser', 'synthetic offline stop after selected detail')
+    monkeypatch.setattr(probe.betexplorer, 'fetch_fixture_comparison', detail)
+    result = probe.capture('2026-10-29', event_id='E7omKkv8')
+    assert result['selection'] == 'explicit_diagnostic_listing_candidate_schedule_unknown'
+    assert observed['fixture']['match_url'] == path
+    assert observed['fixture']['listing_schedule_status'] == 'unverified'
+    assert observed['fixture']['match_date'] == observed['fixture']['match_time'] == ''
+    assert observed['kwargs']['capture_replay'] is True
+    assert result['quote_eligibility'] == 'not_evaluated'
+    assert result['linkage']['status'] == 'listing_path_match'
+    assert result['capture_status'] == 'detail_saved'
+
+
+def test_duplicate_listing_candidate_id_is_not_selected_for_detail(tmp_path, monkeypatch):
+    from datetime import datetime
+    from racketfactory.kickoff import SAST
+    class FakeDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None): return cls(2026, 10, 29, 10, 0, tzinfo=SAST)
+    monkeypatch.setattr(probe, 'datetime', FakeDateTime)
+    monkeypatch.setenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', str(tmp_path))
+    path = '/tennis/itf-men-singles/m15-monastir-37/van-wyk-kris-marmousez-lilian/E7omKkv8/'
+    row = lambda hour: (f'<tr data-dt="29,10,2026,{hour},0"><td><span>FIN</span></td>'
+                        f'<td><a href="{path}"><span>van Wyk K.</span><span>Marmousez L.</span>'
+                        '</a></td></tr>')
+    html = '<table>' + row(11) + row(12) + '</table>'
+    now = '2026-10-29T10:00:00+00:00'
+    url = 'https://www.betexplorer.com/tennis/results/?year=2026&month=10&day=29'
+    raw = html.encode()
+    metadata = {'requested_url': url, 'final_url': url, 'request_started_at': now,
+                'response_received_at': now, 'http_status': 200, 'headers': {
+                    'Content-Type': 'text/html; charset=utf-8', 'Content-Length': str(len(raw))},
+                'body_bytes': raw, 'body_text': html, 'transport': 'requests'}
+    def listing(target, *, with_status=False, response_observer=None, **kwargs):
+        response_observer('listing', metadata)
+        return ([], 'partial') if with_status else []
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', listing)
+    detail_calls = []
+    monkeypatch.setattr(probe.betexplorer, 'fetch_fixture_comparison',
+                        lambda *a, **kw: detail_calls.append(a))
+    result = probe.capture('2026-10-29', event_id='E7omKkv8')
+    assert result['capture_status'] == 'selected_event_diagnostic_link_unverified'
+    assert result['fixtures_attempted'] == 0 and not detail_calls
+    assert result['diagnostic_event_candidate_count'] == 2
+    assert all(not candidate['safe_for_explicit_diagnostic_detail']
+               for candidate in result['diagnostic_event_candidates'])

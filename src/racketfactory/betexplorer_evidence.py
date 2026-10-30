@@ -291,6 +291,92 @@ def _listing_coverage_signals(html: str, target_date: str) -> dict:
                                      'provider timezone/day-boundary semantics not stated']}
 
 
+def _diagnostic_event_candidates(html: str, *, target_date: str,
+                                 requested_url: str | None, final_url: str | None) -> list[dict]:
+    """Extract bounded, non-eligibility candidate identities from one listing.
+
+    Candidate IDs remain tied to explicit same-event public match links. Names
+    are included only when the existing strict participant-span parser accepts
+    the row. Status and data-dt are recorded as cues, never schedule proof.
+    """
+    from collections import Counter
+    from racketfactory.sources.betexplorer import (
+        _is_match_link, _listing_dt_components, _listing_status_state,
+        _structured_participants,
+    )
+
+    def dated_results_page(value: str | None) -> bool:
+        try:
+            return bool(value and urlsplit(value).path == '/tennis/results/')
+        except ValueError:
+            return False
+
+    target_request = dated_results_page(requested_url) and dated_results_page(final_url)
+    soup = BeautifulSoup(html[:2_000_000], 'html.parser')
+    found = []
+    data_dt_rows = soup.find_all('tr', attrs={'data-dt': True})[:3000]
+    for row_number, row in enumerate(data_dt_rows, 1):
+        anchors_by_path = {}
+        for anchor in row.find_all('a', href=True):
+            raw = str(anchor.get('href') or '')
+            path = _url(raw, '')
+            if (not path or '?' in path or '#' in path or not _is_match_link(path)
+                    or not path.startswith('/tennis/')):
+                continue
+            event_id = path.rstrip('/').split('/')[-1]
+            if re.fullmatch(r'[A-Za-z0-9]{1,32}', event_id):
+                anchors_by_path.setdefault(path, []).append(anchor)
+        if not anchors_by_path:
+            continue
+        status, signals = _listing_status_state(row)
+        dt_components, dt_status = _listing_dt_components(row.get('data-dt'))
+        for path, anchors in anchors_by_path.items():
+            participant_reasons = []
+            participants = _structured_participants(anchors, rejection_reasons=participant_reasons)
+            event_id = path.rstrip('/').split('/')[-1]
+            found.append({
+                'event_id': event_id,
+                'match_path': path,
+                'listing_row_number': row_number,
+                'request_target_date': target_date,
+                'listing_response_date_context': ('requested_target_date_results_page'
+                                                  if target_request else 'date_semantics_unverified'),
+                'listing_row_status_state': status,
+                'listing_status_signals': signals[:12],
+                'listing_data_dt_components': dt_components,
+                'listing_data_dt_component_status': dt_status,
+                'player_home': participants[0] if participants else None,
+                'player_away': participants[1] if participants else None,
+                'participant_identity_status': ('explicit_same_event_spans'
+                                                if participants else 'not_established'),
+                'participant_rejection_reasons': participant_reasons[:8],
+                'schedule_status': 'unverified',
+                'quote_eligibility': 'not_evaluated',
+                'ticket_eligibility': 'not_evaluated',
+                'candidate_use': 'diagnostic_only',
+            })
+    if len(data_dt_rows) >= 3000:
+        # Make the bound visible without presenting the observed prefix as all candidates.
+        for candidate in found:
+            candidate['listing_candidate_scan_truncated'] = True
+    path_counts = Counter(candidate['match_path'] for candidate in found)
+    id_counts = Counter(candidate['event_id'] for candidate in found)
+    bounded = found[:1000]
+    truncated = len(data_dt_rows) >= 3000 or len(found) > 1000
+    for candidate in bounded:
+        candidate['same_path_row_count'] = path_counts[candidate['match_path']]
+        candidate['same_event_id_row_count'] = id_counts[candidate['event_id']]
+        candidate['unique_in_listing'] = (path_counts[candidate['match_path']] == 1
+                                           and id_counts[candidate['event_id']] == 1)
+        candidate['safe_for_explicit_diagnostic_detail'] = bool(
+            not truncated
+            and candidate['listing_response_date_context'] == 'requested_target_date_results_page'
+            and candidate['unique_in_listing']
+            and candidate['participant_identity_status'] == 'explicit_same_event_spans')
+        candidate['candidate_scan_truncated'] = truncated
+    return bounded
+
+
 class EvidenceCapture:
     """One bounded evidence-only capture; hashes retained replay bodies, not just originals."""
     MAX_RESPONSES = 6  # two listing URLs, one detail, one comparison with existing transport fallback
@@ -403,6 +489,10 @@ class EvidenceCapture:
                     urlsplit(str(a.get('href') or '')).path
                     for tr in BeautifulSoup(body_text[:2_000_000], 'html.parser').find_all('tr', attrs={'data-dt': True})
                     for a in tr.find_all('a', href=True) if _is_public_match_path(str(a.get('href') or ''))})[:1000]
+                record['diagnostic_event_candidates'] = _diagnostic_event_candidates(
+                    body_text, target_date=self.target_date, requested_url=requested, final_url=final)
+                record['diagnostic_event_candidate_count'] = len(record['diagnostic_event_candidates'])
+                record['diagnostic_event_candidate_status'] = 'unselected_diagnostic_only'
                 record['body_omissions'] = facts['omissions']
                 if facts['material_sufficiency'] != 'insufficient':
                     record['parser_replay_body'] = replay
