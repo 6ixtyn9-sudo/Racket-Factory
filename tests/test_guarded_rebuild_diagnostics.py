@@ -40,7 +40,9 @@ def test_betexplorer_observation_evidence_uses_only_bounded_discovered_pages(tmp
         return listing if "results/?" in url else "<h2>Match Winner</h2>"
     monkeypatch.setattr(betexplorer, "fetch_page_html", fetch)
     rows, status = betexplorer._fetch_live("2026-10-29", with_status=True)
-    assert status == "complete" and len(rows) == 1 and len(calls) == 1
+    assert status == "partial" and len(rows) == 1 and len(calls) == 1
+    assert rows[0]["listing_schedule_status"] == "unverified"
+    assert rows[0]["match_date"] == rows[0]["match_time"] == ""
     assert "market" not in rows[0] and "period" not in rows[0]
     captured = json.loads((tmp_path / "betexplorer_fragments.json").read_text())
     assert [f["kind"] for f in captured["fragments"]] == ["listing"]

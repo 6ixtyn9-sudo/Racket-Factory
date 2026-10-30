@@ -105,11 +105,14 @@ def test_normal_targeted_detail_budget_and_changed_fixture_set_fail_closed(monke
              'market': 'h2h', 'period': 'match', 'observed_at': datetime.now(tickets.TZ).isoformat()}
     monkeypatch.setattr(qe, 'collect_prediction_comparisons', lambda *a: ([offer], {'matched_fixtures': 1}, False))
     monkeypatch.setattr(oddsportal_upcoming, 'fetch_oddsportal_upcoming_rows', lambda _: [])
-    assert qe.targeted_comparison_rows(DAY, [fixture])
-    assert qe.targeted_comparison_rows(DAY, [fixture])
+    # A legacy complete-looking cache has no authoritative listing schedule.
+    # It must be reused without re-crawling, but its offers cannot be used.
+    assert not qe.targeted_comparison_rows(DAY, [fixture])
+    assert not qe.targeted_comparison_rows(DAY, [fixture])
     assert calls == ['listing']
     status = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())
-    assert status['status'] == 'complete'
+    assert status['status'] == 'partial'
+    assert status['listing_schedule_status'] == 'unverified'
     other = dict(fixture, player_home='Carol Clark')
     qe.targeted_comparison_rows(DAY, [other])
     status = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())

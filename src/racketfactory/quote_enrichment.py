@@ -233,6 +233,13 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
     result = (cached_fetch('targeted_quotes_' + key, collect_for_run, fetch_day=target_date,
                            ttl_minutes=24 * 60)
               if run else collect_for_run())[0]
+    # A same-run cache can contain results from code that assigned the
+    # requested listing date to unverified BetExplorer fixtures. Do not allow
+    # those offers or a complete status to bypass the listing schedule guard.
+    if result.get('offers') or result.get('listing_rows'):
+        result['status'] = 'partial'
+        result['listing_schedule_status'] = 'unverified'
+        result['offers'] = []
     if result.get('prediction_fingerprint') != fingerprint:
         # Do not silently treat a different fixture set as covered or exceed
         # the per-run detail request budget by recrawling it.
