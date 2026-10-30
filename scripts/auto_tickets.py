@@ -317,6 +317,41 @@ def now_local() -> datetime:
 def today_str() -> str:
     return now_local().date().isoformat()
 
+
+def quote_observation_freshness(collection: dict) -> str:
+    """Report timestamp quality independently of provider completeness."""
+    raw = collection.get("oldest_offer_observed_at")
+    if not raw:
+        return "missing"
+    try:
+        observed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if observed.tzinfo is None:
+            return "timezone_unknown"
+        age = (now_local() - observed).total_seconds()
+        if age < 0:
+            return "future"
+        return "fresh" if age <= 30 * 60 else "stale"
+    except (ValueError, TypeError, AttributeError, OverflowError):
+        return "malformed"
+
+
+def current_quote_collection(target_date: str, run_as_of: str) -> tuple[str, dict, str]:
+    """Read current-run coverage without masking an incomplete status."""
+    try:
+        collection = json.loads((LOCALDATA / f"quote_collection_{target_date}.json").read_text())
+        if not run_as_of or collection.get("run_as_of") != run_as_of:
+            return "unknown", {}, "unknown"
+        status = collection.get("status") or "unknown"
+        if not isinstance(status, str):
+            status = "unknown"
+        freshness = quote_observation_freshness(collection)
+        if status == "complete" and freshness != "fresh":
+            status = "unknown" if freshness in {"missing", "malformed"} else "stale_or_unknown"
+        return status, collection, freshness
+    except (OSError, ValueError, TypeError, AttributeError, OverflowError):
+        return "unknown", {}, "unknown"
+
+
 def load_picks(target_date: str) -> list[dict]:
     run_as_of = os.environ.get("RACKET_FACTORY_RUN_AS_OF", "").strip()
     if run_as_of:
@@ -1676,17 +1711,10 @@ def main():
     )
     run_as_of = os.environ.get("RACKET_FACTORY_RUN_AS_OF", "").strip()
     collection_status = "unknown"
+    collection_freshness = "unknown"
     collection = {}
     if run_as_of:
-        try:
-            collection = json.loads((LOCALDATA / f"quote_collection_{target_date}.json").read_text())
-            if collection.get("run_as_of") == run_as_of:
-                collection_status = collection.get("status", "unknown")
-                observed = datetime.fromisoformat(str(collection.get("oldest_offer_observed_at") or "").replace("Z", "+00:00"))
-                if observed.tzinfo is None or not 0 <= (now_local() - observed).total_seconds() <= 30 * 60:
-                    collection_status = "stale_or_unknown"
-        except (OSError, ValueError, TypeError, AttributeError):
-            collection_status = "unknown"
+        collection_status, collection, collection_freshness = current_quote_collection(target_date, run_as_of)
         if collection_status != "complete":
             allow_write = False
     if run_as_of and collection_status == "complete":
@@ -1700,6 +1728,7 @@ def main():
                   "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
                   "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""),
                   "evaluated_at": now_local().isoformat(), "collection_status": collection_status,
+                  "collection_observation_freshness": collection_freshness,
                   "diagnostics": diagnostics, "priced_tickets": len(priced), "paper_tickets": len(paper),
                   "publication": "local_write" if allow_write else "retained_previous_card"}
     (LOCALDATA / f"auto_tickets_evaluation_{target_date}.json").write_text(json.dumps(evaluation, indent=2))

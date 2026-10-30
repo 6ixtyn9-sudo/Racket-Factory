@@ -177,6 +177,13 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
 
         if chosen is None:
             n_bad += 1
+            # Capture only a bounded redacted description of the actual row;
+            # unknown markup remains incomplete, never a verified non-fixture.
+            try:
+                from racketfactory.rebuild_diagnostics import capture_unrecognized_listing_row
+                capture_unrecognized_listing_row(tr, page_date)
+            except (OSError, ValueError, TypeError):
+                logger.warning("Could not retain unrecognized BetExplorer row evidence")
             continue
         row_text = tr.get_text(" ", strip=True)
         if po._FINISHED_RE.search(row_text):

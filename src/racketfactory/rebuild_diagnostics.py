@@ -174,3 +174,41 @@ def capture_betexplorer_failure(event_id: str, stage: str, kind: str, *, status:
                       "http_status": status if isinstance(status, int) else None,
                       "response_sha256": response_sha256 if re.fullmatch(r"[0-9a-f]{64}", response_sha256) else ""})
         file.write_text(json.dumps(items, indent=2), encoding="utf-8")
+
+
+def capture_unrecognized_listing_row(row, target_date: str) -> None:
+    """Retain a bounded structural sample, never classify unknown markup as safe.
+
+    Link values are restricted to the existing public same-host URL policy;
+    all other text, attributes, scripts and query parameters are omitted.
+    """
+    import hashlib
+    from racketfactory.betexplorer_evidence import _url
+    path = directory()
+    if path is None:
+        return
+    path.mkdir(parents=True, exist_ok=True)
+    file = path / "betexplorer_unrecognized_rows.json"
+    try:
+        data = json.loads(file.read_text()) if file.exists() else []
+        if not isinstance(data, list):
+            data = []
+    except (OSError, ValueError):
+        data = []
+    if len(data) >= 5:
+        return
+    raw = str(row)
+    links = []
+    for a in row.find_all('a', href=True, limit=20):
+        safe = _url(str(a.get('href') or ''), '')
+        links.append({'public_path': safe, 'text_label': _safe_label(a.get_text(' ', strip=True))})
+    cells = []
+    for cell in row.find_all(['td', 'th'], recursive=False, limit=12):
+        cells.append({'tag': cell.name, 'text_label': _safe_label(cell.get_text(' ', strip=True)),
+                      'link_count': len(cell.find_all('a', href=True, limit=21)),
+                      'attribute_names': sorted(k for k in cell.attrs if k in {'class', 'data-dt', 'colspan', 'rowspan'})})
+    data.append({'target_date': target_date if re.fullmatch(r'\d{4}-\d{2}-\d{2}', target_date) else '',
+                 'classification': 'unresolved', 'row_sha256': hashlib.sha256(raw.encode()).hexdigest(),
+                 'cells': cells, 'links': links, 'sample_limited': len(raw) > 64000,
+                 'notice': 'Redacted structural sample; omitted markup may be necessary to classify this row.'})
+    file.write_text(json.dumps(data, indent=2), encoding='utf-8')

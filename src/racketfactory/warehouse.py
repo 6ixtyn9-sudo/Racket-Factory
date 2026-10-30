@@ -2159,7 +2159,7 @@ def build_warehouse(
     if inject_live:
         live_rows = build_live_rows()
         if not live_rows.empty:
-            logger.info("Injecting %d live upcoming rows into warehouse before dedupe...", len(live_rows))
+            logger.info("Injecting %d live-card rows into warehouse before dedupe (kickoff status not implied)...", len(live_rows))
             if "_is_live" not in live_rows.columns:
                 live_rows["_is_live"] = True
             warehouse = pd.concat([warehouse, live_rows], ignore_index=True, sort=False)

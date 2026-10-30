@@ -1,7 +1,9 @@
 """Bounded evidence-only BetExplorer probe; never evaluates or publishes bets."""
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from datetime import datetime
 
 from racketfactory.kickoff import SAST
@@ -10,7 +12,7 @@ from racketfactory.sources import betexplorer
 from racketfactory.sources._page_odds import PageFetchError
 
 
-def capture(target: str) -> dict:
+def capture(target: str, *, browser_observer: bool = False) -> dict:
     out = {"target_date": target, "purpose": "evidence_only", "publication_attempted": False,
            "listing_attempted": False, "fixtures_attempted": 0, "stage_counts": {}, "failures": [],
            "capture_status": "not_attempted", "parser_status": "not_attempted", "quote_eligibility": "not_evaluated",
@@ -57,6 +59,21 @@ def capture(target: str) -> dict:
             return out
         _, _, fixture = min(candidates, key=lambda x: (x[0], x[1]))
         out['fixtures_attempted'] = 1
+        if browser_observer:
+            from racketfactory.betexplorer_evidence import observe_in_browser
+            observed = observe_in_browser(fixture)
+            out['browser_observer'] = observed
+            out['detail_response_fetched'] = any(r.get('resource') == 'document' and r.get('http_status') == 200
+                                                 for r in observed['responses'])
+            out['evidence_file_written'] = observed['detail_file_written']
+            out['discovery_material_retained'] = observed['detail_material_retained']
+            out['material_sufficiency'] = observed['detail_material_sufficiency']
+            out['comparison_request'] = ('response_observed' if any(r.get('resource') in {'xhr', 'fetch'}
+                                                                      for r in observed['responses'])
+                                         else 'not_attempted')
+            out['capture_status'] = ('browser_comparison_saved' if observed['comparison_material_retained']
+                                     else 'browser_observation_inconclusive')
+            return out
         try:
             betexplorer.fetch_fixture_comparison(fixture, refresh_evidence=True, capture_replay=True,
                                                   stage_counts=out['stage_counts'])
@@ -98,16 +115,20 @@ def capture(target: str) -> dict:
     return out
 
 
-def main() -> int:
+def main(argv=()) -> int:
+    parser = argparse.ArgumentParser(description='Bounded evidence-only BetExplorer capture')
+    parser.add_argument('--browser-observer', action='store_true',
+                        help='replace direct detail/comparison fetches with a bounded browser observation')
+    args = parser.parse_args(argv)
     path = directory()
     if path is None:
         raise RuntimeError("RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR must be set")
     path.mkdir(parents=True, exist_ok=True)
-    result = capture(datetime.now(SAST).date().isoformat())
+    result = capture(datetime.now(SAST).date().isoformat(), browser_observer=args.browser_observer)
     (path / "evidence_collection.json").write_text(json.dumps(result, indent=2, sort_keys=True))
     # Capture can succeed even if the production parser fails. It is not a bet.
-    return 0 if result['capture_status'] == 'detail_saved' else 1
+    return 0 if result['capture_status'] in {'detail_saved', 'browser_comparison_saved'} else 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))
