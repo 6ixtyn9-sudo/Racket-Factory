@@ -193,7 +193,7 @@ def test_probe_distinguishes_nonempty_replay_comparison_response_and_not_evaluat
     odds = '<table><thead><tr><th>Bookmaker</th><th>Alice Adams</th><th>Beth Brown</th></tr></thead><tbody><tr data-bookie="4"><td><img title="Book One"></td><td data-odd="1.5"></td><td data-odd="2.5"></td></tr></tbody></table>'
     observed = datetime.now(timezone.utc).isoformat()
     monkeypatch.setattr(probe.betexplorer, '_fetch_comparison_document',
-                        lambda url, referer=None: (json.dumps({'odds': odds}) if referer else page, observed))
+                        lambda url, referer=None, **kwargs: (json.dumps({'odds': odds}) if referer else page, observed))
     monkeypatch.setattr(execution, 'rebuild_quote_execution_problem',
                         lambda *a: (_ for _ in ()).throw(AssertionError('evidence-only must not evaluate eligibility')))
     assert probe.main() == 0
@@ -325,3 +325,146 @@ def test_partial_listing_without_explicit_event_never_falls_back_to_detail(monke
     result = probe.capture('2026-10-29')
     assert result['capture_status'] == 'explicit_event_id_required'
     assert result['fixtures_attempted'] == 0 and not result['publication_attempted']
+
+
+def test_capture_bundle_retains_redacted_replay_metadata_coverage_and_linkage(tmp_path, monkeypatch):
+    import hashlib
+    from datetime import datetime
+    from racketfactory.kickoff import SAST
+    from racketfactory.sources import betexplorer as be
+
+    target = '2026-10-29'
+    class FakeDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None): return cls(2026, 10, 29, 10, 0, tzinfo=SAST)
+    monkeypatch.setattr(probe, 'datetime', FakeDateTime)
+    monkeypatch.setenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', str(tmp_path))
+    fixture = dict(_fixture(), match_time='11:00', listing_date=target,
+                   listing_schedule_status='verified')
+    listing = f'''<table><tr data-dt="29,10,2026,11,0"><td></td><td><a href="{fixture['match_url']}"><span>Alice Adams</span><span>Beth Brown</span></a></td><td>1.55 2.60</td></tr></table>
+    <nav class="pagination"><a rel="next" href="/tennis/results/?year=2026&amp;month=10&amp;day=29&amp;page=2">Next</a></nav>
+    <form><input value="FORM_SECRET_123"></form>'''
+    detail = '<div data-url="/match-odds/abc/T?lang=en" data-market="Match Winner" data-period="match" data-market-id="T"></div><input value="DETAIL_SECRET_123"><script>match_load_tabs("abc", "T", 1); document.cookie="COOKIE_SECRET_123";</script>'
+    odds = '<table><thead><tr><th>Bookmaker</th><th>Alice Adams</th><th>Beth Brown</th></tr></thead><tbody><tr data-bookie="4"><td><img title="Book One"></td><td data-odd="1.5" data-created="100"></td><td data-odd="2.5" data-created="101"></td></tr></tbody></table>'
+    comparison = json.dumps({'odds': odds, 'session': 'JSON_SECRET_123'})
+    now = '2026-10-29T10:00:00+00:00'
+    def metadata(url, body, status=200):
+        raw = body.encode()
+        return {'requested_url': url, 'final_url': url, 'request_started_at': now,
+                'response_received_at': now, 'http_status': status,
+                'headers': {'Content-Type': 'text/html; charset=utf-8',
+                            'Content-Length': str(len(raw)), 'Date': 'Thu, 29 Oct 2026 10:00:00 GMT',
+                            'Set-Cookie': 'session=HEADER_SECRET_123'},
+                'body_bytes': raw, 'body_text': body, 'transport': 'requests'}
+
+    listing_url = 'https://www.betexplorer.com/tennis/results/?year=2026&month=10&day=29'
+    def fetch_listing(requested, *, with_status=False, response_observer=None, **kwargs):
+        if response_observer:
+            response_observer('listing', metadata(listing_url, listing))
+        return ([fixture], 'partial') if with_status else [fixture]
+    monkeypatch.setattr(probe.betexplorer, '_fetch_live', fetch_listing)
+
+    def fetch_document(url, referer=None, *, response_observer=None, **kwargs):
+        if referer:
+            if response_observer:
+                response_observer(metadata('https://www.betexplorer.com/match-odds/abc/T?lang=en', comparison))
+            return comparison, now
+        if response_observer:
+            response_observer(metadata('https://www.betexplorer.com' + fixture['match_url'], detail))
+        return detail, now
+    monkeypatch.setattr(be, '_fetch_comparison_document', fetch_document)
+    result = probe.capture(target, event_id='abc')
+    assert result['capture_status'] == 'detail_saved', result
+
+    paths = list(tmp_path.glob('betexplorer_capture_2026-10-29_*.json'))
+    assert len(paths) == 1
+    bundle = json.loads(paths[0].read_text())
+    assert bundle['schema_version'] == 2
+    assert bundle['target_timezone'] == 'Africa/Johannesburg'
+    assert bundle['provider_completeness'] == 'not_established'
+    assert bundle['linkage']['listing_event_id'] == bundle['linkage']['detail_event_id'] == 'abc'
+    assert bundle['linkage']['comparison_event_id'] == 'abc'
+    assert bundle['linkage']['detail_response_id'] == 'detail-1'
+    assert bundle['linkage']['comparison_response_id'] == 'comparison-1'
+    records = {row['stage']: row for row in bundle['responses']}
+    page = records['listing']
+    assert page['requested_url'] == listing_url
+    assert page['request_started_at'] == page['response_received_at'] == now
+    assert page['safe_response_headers']['content-length'] > 0
+    assert page['sensitive_response_headers_omitted']
+    assert page['coverage_signals']['provider_timezone'] == 'not stated/unknown'
+    assert page['coverage_signals']['coverage_status'] == 'not_established'
+    assert page['coverage_signals']['pagination_controls'][0]['path'].endswith('&page=2')
+    assert 'alice-beth/abc' in page['parser_replay_body']
+    for record in records.values():
+        body = record['parser_replay_body']
+        assert body
+        assert record['retained_body_sha256'] == hashlib.sha256(body.encode()).hexdigest()
+        assert record['retained_body_bytes'] == len(body.encode())
+    detail_replay = records['detail']['parser_replay_body']
+    assert len(be._comparison_endpoint_candidates(detail_replay, 'abc')) == 1
+    replay_rows, _ = be._comparison_response_rows(records['comparison']['parser_replay_body'], fixture,
+        {'raw_market': 'match winner', 'raw_period': 'match', 'market_id': 'T'}, now)
+    assert [(row['bookmaker'], row['odds_home'], row['odds_away']) for row in replay_rows] == [
+        ('Book One', 1.5, 2.5)]
+    serialized = paths[0].read_text()
+    for secret in ('FORM_SECRET_123', 'DETAIL_SECRET_123', 'COOKIE_SECRET_123',
+                   'JSON_SECRET_123', 'HEADER_SECRET_123', 'Set-Cookie'):
+        assert secret not in serialized
+
+
+def test_listing_replay_preserves_event_status_rows_but_not_completion_claim(tmp_path, monkeypatch):
+    import hashlib
+    from datetime import datetime
+    from racketfactory.betexplorer_evidence import EvidenceCapture
+    from racketfactory.kickoff import SAST
+    from racketfactory.sources.betexplorer import parse_results_page
+    class FakeDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None): return cls(2026, 10, 29, 10, 0, tzinfo=SAST)
+    monkeypatch.setattr('racketfactory.betexplorer_evidence.datetime', FakeDateTime)
+    monkeypatch.setenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', str(tmp_path))
+    session = EvidenceCapture('2026-10-29')
+    html = '''<table><tr data-dt="29,10,2026,11,0"><td></td><td><a href="/tennis/itf-men-singles/m15-monastir-37/van-wyk-kris-marmousez-lilian/E7omKkv8/"><span>van Wyk K.</span><span>Marmousez L.</span></a></td><td></td><td></td></tr>
+    <tr data-dt="29,10,2026,12,0"><td>FIN</td><td><a href="/tennis/itf-men-singles/m15-monastir-37/van-wyk-kris-marmousez-lilian/E7omKkv9/"><span>van Wyk K.</span><span>Marmousez L.</span></a></td><td></td><td></td></tr></table>'''
+    raw = html.encode()
+    session.observe('listing', {'requested_url': 'https://www.betexplorer.com/tennis/results/?year=2026&month=10&day=29',
+        'final_url': 'https://www.betexplorer.com/tennis/results/?year=2026&month=10&day=29',
+        'request_started_at': 'start', 'response_received_at': 'end', 'http_status': 200,
+        'headers': {}, 'body_bytes': raw, 'body_text': html, 'transport': 'requests'})
+    bundle = json.loads(session.file.read_text())
+    retained = bundle['responses'][0]['parser_replay_body']
+    assert bundle['responses'][0]['retained_body_sha256'] == hashlib.sha256(retained.encode()).hexdigest()
+    replayed = parse_results_page(retained, '2026-10-29', include_unpriced=True)
+    assert len(replayed) == 1
+    assert (replayed[0]['player_home'], replayed[0]['player_away']) == ('van Wyk K.', 'Marmousez L.')
+    assert bundle['responses'][0]['coverage_signals']['row_status_state_counts']['terminal'] == 1
+    assert bundle['provider_completeness'] == 'not_established'
+
+
+def test_capture_linkage_does_not_claim_selected_event_absent_from_listing(tmp_path, monkeypatch):
+    from datetime import datetime
+    from racketfactory.betexplorer_evidence import EvidenceCapture
+    from racketfactory.kickoff import SAST
+    class FakeDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None): return cls(2026, 10, 29, 10, 0, tzinfo=SAST)
+    monkeypatch.setattr('racketfactory.betexplorer_evidence.datetime', FakeDateTime)
+    monkeypatch.setenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', str(tmp_path))
+    session = EvidenceCapture('2026-10-29')
+    listing_url = 'https://www.betexplorer.com/tennis/results/?year=2026&month=10&day=29'
+    session.observe('listing', {'requested_url': listing_url, 'final_url': listing_url,
+        'request_started_at': 'start', 'response_received_at': 'end', 'http_status': 200,
+        'headers': {}, 'body_bytes': b'<table></table>', 'body_text': '<table></table>',
+        'transport': 'requests'})
+    session.link_fixture(_fixture())
+    session.observe('detail', {'requested_url': 'https://www.betexplorer.com' + _fixture()['match_url'],
+        'final_url': 'https://www.betexplorer.com' + _fixture()['match_url'],
+        'request_started_at': 'start', 'response_received_at': 'end', 'http_status': 200,
+        'headers': {}, 'body_bytes': b'<div></div>', 'body_text': '<div></div>',
+        'transport': 'requests'})
+    bundle = json.loads(session.file.read_text())
+    assert bundle['linkage']['listing_event_id'] is None
+    assert bundle['linkage']['detail_event_id'] is None
+    assert bundle['linkage']['listing_event_status'] == 'listing_path_not_observed'
+    assert bundle['linkage']['detail_event_status'] == 'listing_event_link_unverified'

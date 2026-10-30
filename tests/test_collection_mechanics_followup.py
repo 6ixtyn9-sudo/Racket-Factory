@@ -197,7 +197,7 @@ def test_browser_probe_substitutes_for_direct_capture(monkeypatch):
     result = {'responses': [{'resource': 'document', 'http_status': 200}],
               'detail_file_written': True, 'detail_material_retained': False,
               'detail_material_sufficiency': 'insufficient', 'comparison_material_retained': False}
-    monkeypatch.setattr(evidence, 'observe_in_browser', lambda fixture: result)
+    monkeypatch.setattr(evidence, 'observe_in_browser', lambda fixture, **kwargs: result)
     out = probe.capture('2026-10-29', browser_observer=True)
     assert out['fixtures_attempted'] == 1 and out['capture_status'] == 'browser_observation_inconclusive'
     assert out['detail_response_fetched'] and not out['discovery_material_retained']
