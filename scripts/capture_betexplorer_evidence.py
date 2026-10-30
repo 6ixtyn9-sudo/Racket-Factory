@@ -9,6 +9,7 @@ from datetime import datetime
 
 from racketfactory.kickoff import SAST
 from racketfactory.rebuild_diagnostics import directory
+from racketfactory.betexplorer_evidence import EvidenceCapture
 from racketfactory.sources import betexplorer
 from racketfactory.sources._page_odds import PageFetchError
 
@@ -20,6 +21,10 @@ def capture(target: str, *, browser_observer: bool = False, event_id: str | None
            "detail_response_fetched": False, "evidence_file_written": False,
            "discovery_material_retained": False, "material_sufficiency": "not_evaluated",
            "current_parser_replay_agreement": "not_compared", "comparison_request": "not_attempted"}
+    evidence = EvidenceCapture(target) if directory() is not None else None
+    if evidence is not None:
+        out["capture_bundle"] = str(evidence.file.name)
+        out["capture_id"] = evidence.capture_id
     # Reject malformed selectors before any provider request. An ID is never
     # interpreted as a URL, shell fragment, or authority to skip the listing.
     if event_id is not None and not re.fullmatch(r'[A-Za-z0-9]{1,32}', event_id):
@@ -27,7 +32,8 @@ def capture(target: str, *, browser_observer: bool = False, event_id: str | None
         return out
     try:
         out["listing_attempted"] = True
-        rows, status = betexplorer._fetch_live(target, with_status=True)
+        listing_kwargs = ({"response_observer": evidence.observe} if evidence is not None else {})
+        rows, status = betexplorer._fetch_live(target, with_status=True, **listing_kwargs)
         out["listing_status"] = status
         from racketfactory.betexplorer_evidence import _identity
         from racketfactory.warehouse import names_match
@@ -84,10 +90,12 @@ def capture(target: str, *, browser_observer: bool = False, event_id: str | None
                 return out
             _, _, fixture = min(candidates, key=lambda x: (x[0], x[1]))
             out['selection'] = 'upcoming_from_complete_listing'
+        if evidence is not None:
+            out['linkage'] = evidence.link_fixture(fixture)
         out['fixtures_attempted'] = 1
         if browser_observer:
             from racketfactory.betexplorer_evidence import observe_in_browser
-            observed = observe_in_browser(fixture)
+            observed = observe_in_browser(fixture, evidence_capture=evidence)
             out['browser_observer'] = observed
             out['detail_response_fetched'] = any(r.get('resource') == 'document' and r.get('http_status') == 200
                                                  for r in observed['responses'])
@@ -101,8 +109,9 @@ def capture(target: str, *, browser_observer: bool = False, event_id: str | None
                                      else 'browser_observation_inconclusive')
             return out
         try:
+            comparison_kwargs = ({"response_observer": evidence.observe} if evidence is not None else {})
             betexplorer.fetch_fixture_comparison(fixture, refresh_evidence=True, capture_replay=True,
-                                                  stage_counts=out['stage_counts'])
+                                                  stage_counts=out['stage_counts'], **comparison_kwargs)
             out['parser_status'] = 'parsed'
         except Exception as exc:
             kind = exc.kind if isinstance(exc, PageFetchError) else 'unexpected'

@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+from datetime import datetime, timezone
 from typing import Any, Callable
 from urllib.parse import urlsplit
 
@@ -66,7 +67,7 @@ MAX_DECIMAL_ODDS = 51.0
 
 
 def fetch_page_html(url: str, source_label: str, *, timeout: int = 30,
-                    prefer_plain: bool = False) -> str:
+                    prefer_plain: bool = False, response_observer=None) -> str:
     """GET a listing page; "" on any failure (fail-soft by contract).
 
     Transport order per host: Cloudflare-hard hosts try curl impersonation
@@ -89,7 +90,8 @@ def fetch_page_html(url: str, source_label: str, *, timeout: int = 30,
         from racketfactory.quota_guard import cooldown_status
         if cooldown_status("betexplorer", "host:" + host):
             raise PageFetchError("rate_limit", "BetExplorer cooldown active")
-    html, status, retry_after = _run_order(order, url, source_label, timeout=timeout)
+    html, status, retry_after = _run_order(order, url, source_label, timeout=timeout,
+                                           response_observer=response_observer)
     if is_betexplorer and status == 429:
         from racketfactory.quota_guard import record_cooldown
         try:
@@ -122,22 +124,26 @@ def fetch_page_html(url: str, source_label: str, *, timeout: int = 30,
     wait = max(1, retry_after or 10)
     logger.warning("%s rate-limited (429) for %s; retrying once after %ds", source_label, url, wait)
     time.sleep(wait)
-    html, _, _ = _run_order(order, url, source_label, timeout=timeout)
+    html, _, _ = _run_order(order, url, source_label, timeout=timeout,
+                            response_observer=response_observer)
     return html
 
 
 def _run_order(order, url: str, source_label: str, *,
-               timeout: int) -> tuple[str, int | None, int]:
-    html, status, retry_after = order[0](url, source_label, timeout=timeout)
+               timeout: int, response_observer=None) -> tuple[str, int | None, int]:
+    observed = {"response_observer": response_observer} if response_observer is not None else {}
+    html, status, retry_after = order[0](url, source_label, timeout=timeout, **observed)
     if html or status is not None:
         return html, status, retry_after
     # Only a transport failure can try the alternate client; never bypass an HTTP restriction.
-    html2, status2, retry_after2 = order[1](url, source_label, timeout=timeout)
+    html2, status2, retry_after2 = order[1](url, source_label, timeout=timeout, **observed)
     return html2, status2, max(retry_after, retry_after2)
 
 
-def _curl_fetch(url: str, source_label: str, *, timeout: int) -> tuple[str, int | None, int]:
+def _curl_fetch(url: str, source_label: str, *, timeout: int,
+                response_observer=None) -> tuple[str, int | None, int]:
     _throttle(urlsplit(url).netloc)
+    request_started_at = datetime.now(timezone.utc).isoformat()
     try:
         from curl_cffi import requests as curl_requests
         resp = curl_requests.get(
@@ -147,11 +153,14 @@ def _curl_fetch(url: str, source_label: str, *, timeout: int) -> tuple[str, int 
     except Exception as exc:
         logger.warning("%s curl fetch failed for %s: %s", source_label, url, exc)
         return "", None, 0
-    return _response_text(resp, url, source_label)
+    return _response_text(resp, url, source_label, response_observer=response_observer,
+                          request_started_at=request_started_at, transport="curl_cffi")
 
 
-def _plain_fetch(url: str, source_label: str, *, timeout: int) -> tuple[str, int | None, int]:
+def _plain_fetch(url: str, source_label: str, *, timeout: int,
+                 response_observer=None) -> tuple[str, int | None, int]:
     _throttle(urlsplit(url).netloc)
+    request_started_at = datetime.now(timezone.utc).isoformat()
     try:
         import requests as std_requests
         resp = std_requests.get(
@@ -161,21 +170,44 @@ def _plain_fetch(url: str, source_label: str, *, timeout: int) -> tuple[str, int
     except Exception as exc:
         logger.warning("%s plain fetch failed for %s: %s", source_label, url, exc)
         return "", None, 0
-    return _response_text(resp, url, source_label)
+    return _response_text(resp, url, source_label, response_observer=response_observer,
+                          request_started_at=request_started_at, transport="requests")
 
 
-def _response_text(resp: object, url: str, source_label: str) -> tuple[str, int | None, int]:
+def _response_text(resp: object, url: str, source_label: str, *, response_observer=None,
+                   request_started_at: str = "", transport: str = "") -> tuple[str, int | None, int]:
     try:
         status = resp.status_code  # type: ignore[union-attr]
     except Exception:
         return "", None, 0
+    if status != 200 and response_observer is None:
+        logger.warning("%s fetch %s: HTTP %s", source_label, url, status)
+        return "", status if isinstance(status, int) else None, _retry_after(resp)
+    text = ""
+    try:
+        text = resp.text or ""  # type: ignore[union-attr]
+    except Exception:
+        pass
+    if response_observer is not None:
+        try:
+            body = bytes(getattr(resp, "content", b"") or b"")
+            response_observer({
+                "requested_url": url,
+                "final_url": str(getattr(resp, "url", "") or ""),
+                "request_started_at": request_started_at,
+                "response_received_at": datetime.now(timezone.utc).isoformat(),
+                "http_status": status if isinstance(status, int) else None,
+                "headers": dict(getattr(resp, "headers", {}) or {}),
+                "body_bytes": body,
+                "body_text": text,
+                "transport": transport,
+            })
+        except Exception:
+            logger.warning("%s response evidence callback failed", source_label)
     if status != 200:
         logger.warning("%s fetch %s: HTTP %s", source_label, url, status)
         return "", status if isinstance(status, int) else None, _retry_after(resp)
-    try:
-        return resp.text or "", status, 0  # type: ignore[union-attr]
-    except Exception:
-        return "", status if isinstance(status, int) else None, 0
+    return text, status, 0
 
 
 def _retry_after(resp: object) -> int:

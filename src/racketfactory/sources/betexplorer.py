@@ -709,13 +709,17 @@ def parse_match_page_odds(html: str) -> tuple[float | None, float | None]:
     return avg_home, avg_away
 
 
-def _fetch_live(target: str, *, with_status: bool = False, metrics: dict | None = None):
+def _fetch_live(target: str, *, with_status: bool = False, metrics: dict | None = None,
+                response_observer=None):
     def done(rows, status):
         return (rows, status) if with_status else rows
 
     # 1) Try dated results page with odds (historical shape)
     try:
-        html = fetch_page_html(_results_url(target), SOURCE_NAME, prefer_plain=True)
+        listing_url = _results_url(target)
+        observer_kwargs = ({"response_observer": lambda response: response_observer("listing", response)}
+                           if response_observer is not None else {})
+        html = fetch_page_html(listing_url, SOURCE_NAME, prefer_plain=True, **observer_kwargs)
         observed_at = datetime.now(timezone.utc).isoformat()
     except Exception as exc:
         if isinstance(exc, PageFetchError):
@@ -779,7 +783,7 @@ def _fetch_live(target: str, *, with_status: bool = False, metrics: dict | None 
         # Also try day page for today
         if not link_rows:
             logger.info("%s: dated shape missed for %s; trying day page", SOURCE_NAME, target)
-            day_html = fetch_page_html(TENNIS_URL, SOURCE_NAME, prefer_plain=True)
+            day_html = fetch_page_html(TENNIS_URL, SOURCE_NAME, prefer_plain=True, **observer_kwargs)
             if day_html:
                 link_rows = parse_listing_page(
                     day_html, source_label=SOURCE_NAME, is_match_link=_is_match_link,
@@ -1097,14 +1101,20 @@ def _comparison_response_rows(payload: str, fixture: dict, context: dict, observ
     return offers, metrics
 
 
-def _fetch_comparison_document(url: str, referer: str | None = None) -> tuple[str, str]:
-    """Single throttled request, no alternate route on a restriction."""
+def _fetch_comparison_document(url: str, referer: str | None = None, *,
+                               response_observer=None) -> tuple[str, str]:
+    """Single throttled request, no alternate route on a restriction.
+
+    The optional observer is only supplied by the bounded evidence-only CLI;
+    ordinary collection retains its previous response handling and no body.
+    """
     import requests
     from racketfactory.quota_guard import cooldown_status, record_cooldown
     host = urlsplit(url).netloc.lower()
     if cooldown_status("betexplorer", "host:" + host):
         raise PageFetchError("rate_limit", "BetExplorer cooldown active")
     po._throttle(host)
+    request_started_at = datetime.now(timezone.utc).isoformat()
     headers = {"User-Agent": po.EDGE_SIMPLE_UA, "Accept-Language": "en-US,en;q=0.9"}
     if referer:
         headers["Referer"] = referer
@@ -1113,6 +1123,21 @@ def _fetch_comparison_document(url: str, referer: str | None = None) -> tuple[st
     except requests.RequestException as exc:
         raise PageFetchError("transport", type(exc).__name__) from exc
     when = datetime.now(timezone.utc).isoformat()
+    if response_observer is not None:
+        try:
+            response_observer({
+                "requested_url": url,
+                "final_url": str(getattr(response, "url", "") or ""),
+                "request_started_at": request_started_at,
+                "response_received_at": when,
+                "http_status": response.status_code,
+                "headers": dict(response.headers),
+                "body_bytes": bytes(response.content or b""),
+                "body_text": response.text or "",
+                "transport": "requests",
+            })
+        except Exception:
+            logger.warning("BetExplorer response evidence callback failed")
     if response.status_code == 429:
         from email.utils import parsedate_to_datetime
         raw = str(response.headers.get("Retry-After") or "")
@@ -1260,7 +1285,7 @@ def _detail_scheduled_start(page: str, fixture: dict, *, observed_at: str,
 
 
 def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, stage_counts: dict | None = None,
-                             capture_replay: bool = False) -> list[dict]:
+                             capture_replay: bool = False, response_observer=None) -> list[dict]:
     """Fetch and cache one prediction-matched fixture, retaining timestamps."""
     from racketfactory.rebuild_diagnostics import capture_betexplorer_fragment
     fixture = dict(fixture)
@@ -1285,7 +1310,9 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
         # Per-fixture variables are reset on every invocation, including errors.
         match_url = BASE_URL + href
         try:
-            page, page_at = _fetch_comparison_document(match_url)
+            detail_kwargs = ({"response_observer": lambda response: response_observer("detail", response)}
+                             if response_observer is not None else {})
+            page, page_at = _fetch_comparison_document(match_url, **detail_kwargs)
         except PageFetchError as exc:
             from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
             capture_betexplorer_failure(event_id, "detail", exc.kind, status=getattr(exc, "http_status", None), observed_at=getattr(exc, "observed_at", ""), response_sha256=getattr(exc, "response_sha256", ""))
@@ -1366,7 +1393,10 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
         count("comparison_endpoint_discovered")
         count("comparison_attempts")
         try:
-            payload, observed_at = _fetch_comparison_document(endpoints[0]["url"], referer=match_url)
+            comparison_kwargs = ({"response_observer": lambda response: response_observer("comparison", response)}
+                                 if response_observer is not None else {})
+            payload, observed_at = _fetch_comparison_document(endpoints[0]["url"], referer=match_url,
+                                                               **comparison_kwargs)
         except PageFetchError as exc:
             if getattr(exc, "http_status", None) is not None:
                 count("comparison_http_response_observed")

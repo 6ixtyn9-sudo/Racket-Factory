@@ -12,6 +12,7 @@ import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from urllib.parse import urljoin, urlsplit, parse_qsl, urlencode
 from bs4 import BeautifulSoup, NavigableString
 
@@ -84,6 +85,391 @@ class CaptureResult(dict):
     def __bool__(self) -> bool:
         return bool(self['file_written'] and self['discovery_material_retained'] and
                     self['material_sufficiency'] != 'insufficient')
+
+
+def _safe_capture_url(raw: str, *, stage: str, target_date: str, event_id: str = '') -> str | None:
+    """Return a public same-host request URL with only reviewed query keys."""
+    try:
+        from urllib.parse import parse_qsl
+        parsed = urlsplit(raw)
+        if parsed.scheme != 'https' or parsed.netloc.lower() != _HOST or parsed.username or parsed.password or parsed.fragment:
+            return None
+        pairs = parse_qsl(parsed.query, keep_blank_values=True, strict_parsing=True) if parsed.query else []
+        values = dict(pairs)
+        if len(values) != len(pairs):
+            return None
+        if stage == 'listing':
+            if parsed.path == '/tennis/results/':
+                if not {'year', 'month', 'day'} <= set(values) or set(values) - {'year', 'month', 'day', 'page', 'page_no'}:
+                    return None
+                y, m, d = target_date.split('-')
+                if any(values.get(key) != value for key, value in
+                       {'year': y, 'month': str(int(m)), 'day': str(int(d))}.items()):
+                    return None
+                if any(key in values and not re.fullmatch(r'\d{1,5}', values[key])
+                       for key in ('page', 'page_no')):
+                    return None
+            elif parsed.path != '/tennis/' or values:
+                return None
+            allowed = {'year', 'month', 'day', 'page', 'page_no'}
+        else:
+            safe = _url(raw, event_id)
+            if not safe or not any(token in parsed.path.lower() for token in ('tennis', 'match', 'odds', 'market', 'tab')):
+                return None
+            allowed = {'lang', 'event', 'event_id', 'match', 'match_id', 'tab', 'market', 'period'}
+            if event_id and event_id not in parsed.path.split('/') and event_id not in values.values():
+                return None
+        if any(key not in allowed or not re.fullmatch(r'[A-Za-z0-9_-]{1,32}', value)
+               for key, value in pairs):
+            return None
+        query = urlencode(pairs)
+        return 'https://' + _HOST + parsed.path + ('?' + query if query else '')
+    except (ValueError, TypeError):
+        return None
+
+
+def _safe_response_headers(headers: dict) -> tuple[dict, bool]:
+    """Keep only low-risk representation/date headers; never retain credentials."""
+    safe = {}
+    sensitive = False
+    for raw_key, raw_value in headers.items():
+        key = str(raw_key).strip().lower()
+        value = str(raw_value).strip()
+        if key in {'set-cookie', 'authorization', 'proxy-authorization', 'cookie', 'www-authenticate'}:
+            sensitive = True
+            continue
+        if key == 'content-length' or key == 'age':
+            if re.fullmatch(r'\d{1,12}', value):
+                safe[key] = int(value)
+        elif key in {'date', 'last-modified', 'expires', 'retry-after'}:
+            from email.utils import parsedate_to_datetime
+            if key == 'retry-after' and re.fullmatch(r'\d{1,8}', value):
+                safe[key] = int(value)
+                continue
+            try:
+                dt = parsedate_to_datetime(value)
+                if dt.tzinfo is not None:
+                    safe[key] = dt.astimezone(timezone.utc).isoformat()
+            except (TypeError, ValueError, OverflowError):
+                continue
+        elif key in {'content-type', 'content-encoding', 'content-language', 'etag'}:
+            if re.fullmatch(r'[A-Za-z0-9/;=._+ -]{1,100}', value):
+                safe[key] = value
+        elif key in {'cache-control', 'vary'}:
+            if re.fullmatch(r'[A-Za-z0-9=,;._* -]{1,160}', value):
+                safe[key] = value
+    return safe, sensitive
+
+
+def _sanitize_listing_replay(html: str, target_date: str) -> tuple[str, dict]:
+    """Retain parser-relevant listing rows while excluding scripts/forms/secrets."""
+    soup = BeautifulSoup(html[:2_000_000], 'html.parser')
+    output = BeautifulSoup('<table><tbody></tbody></table>', 'html.parser')
+    tbody = output.tbody
+    omissions = set()
+    rows = [row for row in soup.find_all('tr')
+            if row.has_attr('data-dt') or 'js-tournament' in (row.get('class') or [])]
+    if len(rows) > 3000:
+        omissions.add('listing_row_limit')
+        rows = rows[:3000]
+    nodes_seen = 0
+    def clone(node, parent):
+        nonlocal nodes_seen
+        nodes_seen += 1
+        if nodes_seen > 30000:
+            omissions.add('listing_node_limit')
+            return
+        if isinstance(node, NavigableString):
+            text = ' '.join(str(node).split())
+            if not text:
+                return
+            if len(text) > 160 or _SECRET.search(text) or re.search(r'[A-Za-z0-9]{24,}', text):
+                omissions.add('listing_text_omitted')
+                return
+            parent.append(text)
+            return
+        if not getattr(node, 'name', None):
+            return
+        if node.name not in {'tr', 'td', 'th', 'a', 'span', 'div', 'b', 'strong', 'i', 'em'}:
+            omissions.add('listing_element_omitted')
+            return
+        tag = output.new_tag(node.name)
+        for key, raw in node.attrs.items():
+            value = ' '.join(raw) if isinstance(raw, list) else str(raw or '').strip()
+            if key == 'data-dt' and node.name == 'tr' and re.fullmatch(r'\d{1,2},\d{1,2},\d{4},\d{1,2},\d{1,2}', value):
+                tag[key] = value
+            elif key in {'data-status', 'data-state', 'data-live', 'aria-label', 'title'}:
+                if len(value) <= 80 and not _SECRET.search(value) and not re.search(r'[A-Za-z0-9]{24,}', value):
+                    tag[key] = value
+                else:
+                    omissions.add('listing_status_attribute_omitted')
+            elif key == 'href':
+                public = _url(value, '')
+                if public:
+                    tag[key] = public
+                else:
+                    omissions.add('listing_link_omitted')
+            elif key == 'data-odd' and re.fullmatch(r'\d{1,2}(?:\.\d{1,3})?', value):
+                tag[key] = value
+            elif key in {'data-pos', 'data-bookie'} and re.fullmatch(r'[A-Za-z0-9_-]{1,12}', value):
+                tag[key] = value
+            elif key == 'data-bookmaker-name' and _value(value):
+                tag[key] = value
+            elif key == 'class':
+                keep = [part for part in value.split() if part in {'js-tournament', 'table-main__tt'}
+                        or re.fullmatch(r'(?:live|scheduled|postponed|cancelled|canceled|retired|walkover|finished|fin)(?:[-_][a-z0-9]+){0,2}', part, re.I)]
+                if keep:
+                    tag['class'] = keep
+            elif key in {'hidden', 'style', 'aria-hidden'}:
+                # Parser needs only the signal's presence, not arbitrary CSS.
+                tag[key] = ''
+        parent.append(tag)
+        for child in node.children:
+            clone(child, tag)
+    for row in rows:
+        clone(row, tbody)
+    replay = str(output)
+    if len(replay.encode('utf-8')) > 1_000_000:
+        return '', {'omissions': sorted(omissions | {'listing_output_size_limit'}),
+                    'row_count': len(rows), 'material_sufficiency': 'insufficient'}
+    sufficiency = 'parser_replay_retained' if not omissions else 'partial_parser_replay'
+    return replay, {'omissions': sorted(omissions), 'row_count': len(rows),
+                    'material_sufficiency': sufficiency,
+                    'input_truncated': len(html) > 2_000_000}
+
+
+def _listing_coverage_signals(html: str, target_date: str) -> dict:
+    """Record visible page/pagination cues without treating them as completeness."""
+    from racketfactory.sources.betexplorer import _listing_status_state, _is_match_link
+    soup = BeautifulSoup(html[:2_000_000], 'html.parser')
+    rows = soup.find_all('tr', attrs={'data-dt': True})
+    states = {}
+    ids = set()
+    paths = set()
+    for row in rows:
+        state, _ = _listing_status_state(row)
+        states[state] = states.get(state, 0) + 1
+        for anchor in row.find_all('a', href=True):
+            context = _is_match_link(str(anchor.get('href') or ''))
+            if context:
+                path = urlsplit(str(anchor.get('href') or '')).path
+                paths.add(path)
+                ids.add(path.rstrip('/').split('/')[-1])
+    controls = []
+    candidates = soup.select('a[rel], nav a, [class*="pagination"] a, [data-page], [aria-current]')
+    for node in candidates[:50]:
+        label = ' '.join(node.get_text(' ', strip=True).split())[:40]
+        if _SECRET.search(label) or re.search(r'[A-Za-z0-9]{24,}', label):
+            label = ''
+        href = _safe_capture_url(urljoin('https://' + _HOST, str(node.get('href') or '')),
+                                 stage='listing', target_date=target_date)
+        controls.append({'label': label, 'path': href,
+                         'rel': str(node.get('rel') or '')[:32],
+                         'aria_current': str(node.get('aria-current') or '')[:16],
+                         'disabled_signal': any(k in node.attrs for k in ('disabled', 'aria-disabled'))})
+    text = soup.get_text(' ', strip=True)
+    count_claims = [list(map(int, m.groups())) for m in re.finditer(r'\b(\d{1,5})\s*[-–]\s*(\d{1,5})\s+(?:of|/|from)\s+(\d{1,6})\b', text, re.I)][:10]
+    page_position_claims = [list(map(int, m.groups())) for m in
+                            re.finditer(r'\bpage\s+(\d{1,5})\s+(?:of|/)\s+(\d{1,5})\b', text, re.I)][:10]
+    completion_phrases = []
+    for marker, pattern in (('no_more_results', r'\bno\s+more\s+(?:results|matches)\b'),
+                            ('end_of_results', r'\bend\s+of\s+(?:results|matches)\b'),
+                            ('all_results_loaded', r'\ball\s+(?:results|matches)\s+loaded\b')):
+        if re.search(pattern, text, re.I):
+            completion_phrases.append(marker)
+    return {'requested_date': target_date, 'provider_timezone': 'not stated/unknown',
+            'data_dt_row_count': len(rows), 'row_status_state_counts': states,
+            'event_id_count': len(ids), 'event_ids_from_public_match_paths': sorted(ids)[:1000],
+            'match_path_count': len(paths), 'pagination_control_count': len(candidates),
+            'pagination_controls': controls, 'visible_range_count_claims': count_claims,
+            'visible_page_position_claims': page_position_claims,
+            'visible_completion_claims': completion_phrases,
+            'provider_page_count': None, 'provider_completion_marker': None,
+            'coverage_status': 'not_established',
+            'coverage_limitations': ['single rendered response only', 'pagination semantics not authenticated',
+                                     'response rows do not prove requested-day completeness',
+                                     'provider timezone/day-boundary semantics not stated']}
+
+
+class EvidenceCapture:
+    """One bounded evidence-only capture; hashes retained replay bodies, not just originals."""
+    MAX_RESPONSES = 6  # two listing URLs, one detail, one comparison with existing transport fallback
+    STAGE_LIMITS = {'listing': 4, 'detail': 1, 'comparison': 1}
+
+    def __init__(self, target_date: str):
+        path = directory()
+        if path is None:
+            raise RuntimeError('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR must be set')
+        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', target_date):
+            raise ValueError('invalid evidence target date')
+        from datetime import date as date_type
+        date_type.fromisoformat(target_date)
+        import uuid
+        path.mkdir(parents=True, exist_ok=True)
+        self.path = path
+        self.target_date = target_date
+        self.capture_id = uuid.uuid4().hex
+        self.file = path / f'betexplorer_capture_{target_date}_{self.capture_id}.json'
+        now = datetime.now(timezone.utc)
+        self.data = {'schema_version': 2, 'capture_id': self.capture_id,
+                     'purpose': 'bounded evidence only; no executable quotes',
+                     'target_date': target_date, 'target_timezone': 'Africa/Johannesburg',
+                     'target_local_offset': now.astimezone(ZoneInfo('Africa/Johannesburg')).utcoffset().total_seconds(),
+                     'provider_schedule_timezone': 'unknown unless explicitly present in retained page material',
+                     'provider_completeness': 'not_established', 'responses': [],
+                     'selected_event': None,
+                     'linkage': {'listing_response_id': None, 'listing_event_id': None,
+                                 'detail_response_id': None, 'detail_event_id': None,
+                                 'comparison_response_id': None, 'comparison_event_id': None,
+                                 'listing_event_status': 'not_established',
+                                 'detail_event_status': 'not_established',
+                                 'comparison_event_status': 'not_established',
+                                 'status': 'not_established'},
+                     'notice': 'Bodies are parser-replay material with allowlisted redactions, not original raw bytes. Digests authenticate retained bytes only; they prove neither provider completeness nor quote applicability.'}
+        self._stage_counts = {}
+        self._write()
+
+    def _write(self):
+        import tempfile
+        tmp = None
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', dir=self.path, delete=False,
+                                             encoding='utf-8') as stream:
+                tmp = Path(stream.name)
+                json.dump(self.data, stream, indent=2, sort_keys=True)
+                stream.flush()
+                import os
+                os.fsync(stream.fileno())
+            tmp.replace(self.file)
+        finally:
+            if tmp:
+                tmp.unlink(missing_ok=True)
+
+    def link_fixture(self, fixture: dict) -> dict:
+        identity = _identity(fixture)
+        if not identity:
+            self.data['linkage']['status'] = 'fixture_identity_unverified'
+            self._write()
+            return {'status': 'fixture_identity_unverified'}
+        listing = next((r for r in self.data['responses'] if r.get('stage') == 'listing'
+                        and r.get('http_status') == 200), None)
+        paths = set((listing or {}).get('coverage_signals', {}).get('match_paths', []))
+        exact_path = identity['match_url'] in paths
+        self.data['selected_event'] = identity
+        self.data['linkage'].update(listing_response_id=(listing or {}).get('response_id'),
+                                    listing_event_id=identity['event_id'] if exact_path else None,
+                                    listing_event_status='listing_path_match' if exact_path else 'listing_path_not_observed',
+                                    status='listing_path_match' if exact_path else 'listing_path_not_observed')
+        self._write()
+        return {'status': self.data['linkage']['status'], 'event_id': identity['event_id'],
+                'match_url': identity['match_url']}
+
+    def observe(self, stage: str, metadata: dict):
+        if stage not in self.STAGE_LIMITS:
+            return
+        count = self._stage_counts.get(stage, 0)
+        if count >= self.STAGE_LIMITS[stage] or len(self.data['responses']) >= self.MAX_RESPONSES:
+            self.data.setdefault('capture_limits', []).append({'stage': stage, 'reason': 'response_observation_limit'})
+            self._write()
+            return
+        self._stage_counts[stage] = count + 1
+        event = self.data.get('selected_event') or {}
+        requested = _safe_capture_url(str(metadata.get('requested_url') or ''), stage=stage,
+                                      target_date=self.target_date, event_id=str(event.get('event_id') or ''))
+        final = _safe_capture_url(str(metadata.get('final_url') or ''), stage=stage,
+                                  target_date=self.target_date, event_id=str(event.get('event_id') or ''))
+        headers, sensitive_headers = _safe_response_headers(metadata.get('headers') or {})
+        body_bytes = bytes(metadata.get('body_bytes') or b'')
+        body_text = str(metadata.get('body_text') or '')
+        import hashlib
+        record = {'response_id': f'{stage}-{count + 1}', 'stage': stage,
+                  'requested_url': requested, 'requested_url_redacted': requested is None,
+                  'final_url': final, 'final_url_redacted': bool(metadata.get('final_url')) and final is None,
+                  'request_started_at': metadata.get('request_started_at'),
+                  'response_received_at': metadata.get('response_received_at'),
+                  'http_status': metadata.get('http_status'), 'safe_response_headers': headers,
+                  'sensitive_response_headers_omitted': sensitive_headers,
+                  'transport': metadata.get('transport') if metadata.get('transport') in {'requests', 'curl_cffi', 'playwright'} else 'unknown',
+                  'response_body_bytes': len(body_bytes),
+                  'response_body_sha256': hashlib.sha256(body_bytes).hexdigest() if body_bytes else None,
+                  'parser_replay_body': None, 'retained_body_sha256': None,
+                  'retained_body_bytes': 0, 'body_retention_status': 'not_retained',
+                  'body_omissions': []}
+        if metadata.get('http_status') == 200 and body_text and len(body_bytes) <= 2_000_000:
+            if stage == 'listing':
+                replay, facts = _sanitize_listing_replay(body_text, self.target_date)
+                record['coverage_signals'] = _listing_coverage_signals(body_text, self.target_date)
+                record['coverage_signals']['match_paths'] = sorted({
+                    urlsplit(str(a.get('href') or '')).path
+                    for tr in BeautifulSoup(body_text[:2_000_000], 'html.parser').find_all('tr', attrs={'data-dt': True})
+                    for a in tr.find_all('a', href=True) if _is_public_match_path(str(a.get('href') or ''))})[:1000]
+                record['body_omissions'] = facts['omissions']
+                if facts['material_sufficiency'] != 'insufficient':
+                    record['parser_replay_body'] = replay
+                    record['body_retention_status'] = facts['material_sufficiency']
+                record['retained_listing_row_count'] = facts['row_count']
+            elif self.data.get('selected_event'):
+                fixture = self.data['selected_event']
+                if stage == 'comparison':
+                    try:
+                        decoded = json.loads(body_text)
+                        comparison_html = decoded.get('odds', '') if isinstance(decoded, dict) else ''
+                    except (TypeError, ValueError):
+                        comparison_html = ''
+                    if isinstance(comparison_html, str):
+                        result = capture_replay(comparison_html, 'comparison', fixture,
+                            observed_at=str(metadata.get('response_received_at') or ''),
+                            response_body=body_text, request_url=str(metadata.get('requested_url') or ''))
+                        replay_file = self.path / ('betexplorer_replay_' + fixture['event_id'] + '.json')
+                        replay = json.loads(replay_file.read_text()).get('comparison', {}).get('replay_html', '') if replay_file.exists() else ''
+                        if replay and result['file_written']:
+                            record['parser_replay_body'] = json.dumps({'odds': replay}, separators=(',', ':'))
+                            record['body_retention_status'] = result['material_sufficiency']
+                            record['body_omissions'] = json.loads(replay_file.read_text()).get('comparison', {}).get('omission_categories', [])
+                else:
+                    result = capture_replay(body_text, 'detail', fixture,
+                        observed_at=str(metadata.get('response_received_at') or ''),
+                        request_url=str(metadata.get('requested_url') or ''))
+                    replay_file = self.path / ('betexplorer_replay_' + fixture['event_id'] + '.json')
+                    replay_data = json.loads(replay_file.read_text()) if replay_file.exists() else {}
+                    replay = replay_data.get('detail', {}).get('replay_html', '')
+                    if replay and result['file_written']:
+                        record['parser_replay_body'] = replay
+                        record['body_retention_status'] = result['material_sufficiency']
+                        record['body_omissions'] = replay_data.get('detail', {}).get('omission_categories', [])
+                    record['schedule_evidence'] = replay_data.get('detail', {}).get('schedule_evidence',
+                        {'status': 'not_verified', 'reason': 'no safe candidate extracted'})
+            if record['parser_replay_body'] is not None:
+                retained = record['parser_replay_body'].encode('utf-8')
+                record['retained_body_sha256'] = hashlib.sha256(retained).hexdigest()
+                record['retained_body_bytes'] = len(retained)
+        if stage == 'listing':
+            self.data['linkage']['listing_response_id'] = record['response_id']
+        elif stage == 'detail':
+            self.data['linkage']['detail_response_id'] = record['response_id']
+        elif stage == 'comparison':
+            self.data['linkage']['comparison_response_id'] = record['response_id']
+        self.data['responses'].append(record)
+        if self.data.get('selected_event') and stage in {'detail', 'comparison'}:
+            links = self.data['linkage']
+            listing_linked = links.get('listing_event_status') == 'listing_path_match'
+            linked = bool(requested and listing_linked)
+            field = 'detail' if stage == 'detail' else 'comparison'
+            links[f'{field}_event_id'] = self.data['selected_event']['event_id'] if linked else None
+            links[f'{field}_event_status'] = ('linked_to_listing_event' if linked else
+                'request_url_unverified' if not requested else 'listing_event_link_unverified')
+            if not linked:
+                links['status'] = links[f'{field}_event_status']
+        self._write()
+
+
+def _is_public_match_path(raw: str) -> bool:
+    try:
+        path = urlsplit(urljoin('https://' + _HOST, raw)).path
+        from racketfactory.sources.betexplorer import _is_match_link
+        return _is_match_link(path) is not None and '?' not in raw and '#' not in raw
+    except Exception:
+        return False
 
 
 def capture_replay(html: str, kind: str, fixture: dict, *, observed_at: str,
@@ -342,12 +728,14 @@ class BrowserObservation:
     MAX_REQUESTS = 2
     MAX_BODY_BYTES = 512_000
 
-    def __init__(self, fixture: dict):
+    def __init__(self, fixture: dict, evidence_capture=None):
         identity = _identity(fixture)
         if not identity:
             raise ValueError('fixture identity is not established')
         self.fixture = fixture
         self.identity = identity
+        self.evidence_capture = evidence_capture
+        self._request_started = {}
         self.document_url = 'https://' + _HOST + identity['match_url']
         self.allowed = 0
         self.document_seen = False
@@ -399,6 +787,7 @@ class BrowserObservation:
         if self.allowed >= self.MAX_REQUESTS:
             return self._block(route, 'budget')
         self.seen.add(raw_url)
+        self._request_started[raw_url] = datetime.now(timezone.utc).isoformat()
         self.allowed += 1
         self.pending = True
         self.result['requests_allowed'] = self.allowed
@@ -466,6 +855,13 @@ class BrowserObservation:
                 self.result['restriction'] = 'challenge'
                 return
             now = datetime.now(timezone.utc).isoformat()
+            if self.evidence_capture is not None:
+                self.evidence_capture.observe('detail' if kind == 'document' else 'comparison', {
+                    'requested_url': request.url, 'final_url': response.url,
+                    'request_started_at': self._request_started.get(request.url),
+                    'response_received_at': now, 'http_status': response.status,
+                    'headers': dict(response.headers), 'body_bytes': body,
+                    'body_text': text, 'transport': 'playwright'})
             if kind == 'document':
                 result = capture_replay(text, 'detail', self.fixture, observed_at=now, request_url=request.url)
                 self.result['detail_file_written'] = result['file_written']
@@ -492,9 +888,9 @@ class BrowserObservation:
 
 
 
-def observe_in_browser(fixture: dict) -> dict:
+def observe_in_browser(fixture: dict, *, evidence_capture=None) -> dict:
     """One bounded, non-interactive browser navigation, never a quote source."""
-    observer = BrowserObservation(fixture)
+    observer = BrowserObservation(fixture, evidence_capture=evidence_capture)
     from racketfactory.quota_guard import cooldown_status
     if cooldown_status('betexplorer', 'host:' + _HOST):
         observer.result['restriction'] = 'existing_cooldown'
