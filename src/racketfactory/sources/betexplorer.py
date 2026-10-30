@@ -23,7 +23,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 from urllib.parse import urlsplit
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 
 from racketfactory.fetch_cache import cached_fetch
 from racketfactory.sources import _page_odds as po
@@ -38,9 +38,6 @@ SOURCE_NAME = "BetExplorer"
 BOOK_LABEL = "BetExplorer consensus"
 DISABLE_ENV = "RACKET_FACTORY_DISABLE_BETEXPLORER"
 
-_DT_RE = re.compile(r"(\d+),(\d+),(\d+),(\d+),(\d+)")
-
-
 def _is_match_link(href: str) -> dict[str, Any] | None:
     """Match links are /tennis/<cat>/<tournament>/<slug>/<id>/ (5 segments)."""
     try:
@@ -53,6 +50,81 @@ def _is_match_link(href: str) -> dict[str, Any] | None:
     return {"tour_hint": segs[1].replace("-", " "), "tournament": segs[2].replace("-", " ")}
 
 
+def _structured_participants(anchor: Tag) -> tuple[str, str] | None:
+    """Extract only two explicit participant spans, never a whitespace boundary.
+
+    The retained evidence showed one match link containing two ordered spans.
+    The original response was not retained, so additional markup or content is
+    not assumed to be a participant. An ambiguous structure fails closed.
+    """
+    from racketfactory.betexplorer_evidence import _url
+    href = str(anchor.get('href') or '')
+    if not _url(href, '') or not _is_match_link(href):
+        return None
+    if any(key in anchor.attrs for key in ('hidden', 'style', 'aria-hidden')):
+        return None
+    children = []
+    for child in anchor.children:
+        if isinstance(child, Comment):
+            return None
+        if isinstance(child, NavigableString):
+            if str(child).strip():
+                return None
+        elif isinstance(child, Tag) and child.name == 'span':
+            children.append(child)
+        else:
+            return None
+    if len(children) != 2:
+        return None
+
+    def participant(span: Tag) -> str | None:
+        for node in [span, *span.find_all(True)]:
+            if node.name not in {'span', 'b', 'strong', 'i', 'em'}:
+                return None
+            if any(key in node.attrs for key in ('hidden', 'style', 'aria-hidden')):
+                return None
+            if any(re.search(r'(?i)(?:score|odds|status|ranking|seed|winner)', cls)
+                   for cls in node.get('class', [])):
+                return None
+        if span.find(string=lambda s: isinstance(s, Comment)):
+            return None
+        text = span.get_text(' ', strip=True)
+        if not text or len(text) > 100 or any(c.isdigit() for c in text):
+            return None
+        if any(not (c.isalpha() or c.isspace() or c in ".'’-/") for c in text):
+            return None
+        teams = [s.strip() for s in text.split('/')]
+        if len(teams) not in (1, 2) or any(not s for s in teams):
+            return None
+        for player in teams:
+            words = player.split()
+            # Evidence supports surname plus an initial. Do not guess full-name
+            # boundaries or treat score/status text as a participant.
+            if not 2 <= len(words) <= 6:
+                return None
+            initial = words[-1]
+            if len(initial) != 2 or initial[1] != '.' or not initial[0].isupper():
+                return None
+            if any(not any(c.isalpha() for c in word) or '.' in word for word in words[:-1]):
+                return None
+            if any(word.casefold() in {'winner', 'finished', 'retired', 'walkover', 'cancelled', 'live', 'set'}
+                   for word in words[:-1]):
+                return None
+        return text
+
+    home, away = (participant(span) for span in children)
+    if (not home or not away or home.casefold() == away.casefold()
+            or len(home.split('/')) != len(away.split('/'))):
+        return None
+    # Neither team may contain repeated/overlapping participants. Existing
+    # identity checks remain authoritative for later cross-source matching.
+    from racketfactory.settlement import players_match
+    members = [part.strip() for team in (home, away) for part in team.split('/')]
+    if any(players_match(a, b)[0] for i, a in enumerate(members) for b in members[i + 1:]):
+        return None
+    return home, away
+
+
 def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None, include_unpriced: bool = False) -> list[dict[str, Any]]:
     """Edge-style primary parse: js-tournament headers + data-dt rows."""
     if not html:
@@ -61,7 +133,7 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
     tournament = tour_hint = ""
-    n_dt = n_finished = n_no_odds = n_bad = 0
+    n_dt = n_finished = n_no_odds = n_bad = n_schedule_unverified = 0
     for tr in soup.find_all("tr"):
         classes = tr.get("class") or []
         if "js-tournament" in classes:
@@ -74,13 +146,19 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
         if not dt_raw:
             continue
         n_dt += 1
+        # The listing date is request context, not evidence of the fixture's
+        # betting-day date. The provider's data-dt ordering/timezone and status
+        # semantics are not established; even a matching component is not proof.
+        n_schedule_unverified += 1
         # Collect all match-link anchors in this row
         candidates: list[tuple] = []
+        match_anchors: list[Tag] = []
         for a in tr.find_all("a", href=True):
             href = str(a.get("href") or "")
             ctx = _is_match_link(href)
             if ctx is None:
                 continue
+            match_anchors.append(a)
             txt = a.get_text(" ", strip=True)
             if not txt or len(txt) < 2:
                 parent_td = a.find_parent("td")
@@ -94,8 +172,24 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
         chosen_ctx = None
         chosen_href = ""
 
-        # 1) Try single anchor that contains both players (dash or fused)
-        for a, txt, ctx, href in candidates:
+        # When participant-like spans are present, never flatten an
+        # ambiguous structure and hand it to the old fused-name heuristic.
+        structured = [(a, txt, ctx, href) for a, txt, ctx, href in candidates
+                      if a.find('span')]
+        structure_ambiguous = False
+        if structured:
+            if len(candidates) != 1 or len(match_anchors) != 1:
+                structure_ambiguous = True
+            else:
+                a, txt, ctx, href = candidates[0]
+                pair = _structured_participants(a)
+                if pair is None:
+                    structure_ambiguous = True
+                else:
+                    chosen, (chosen_home, chosen_away), chosen_ctx, chosen_href = a, pair, ctx, href
+
+        # 1) Legacy single-anchor parsing for rows without direct spans only.
+        for a, txt, ctx, href in ([] if structured else candidates):
             h, aw = po.split_match_names(txt)
             if h and aw:
                 chosen = a
@@ -115,7 +209,7 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
         # 2) Fallback: two separate anchors, each a single player / doubles team
         # Handles <a>Borisiouk M.</a> vs <a>Kim D. J.</a> or <a>Collins K.</a> vs <a>Yashina E.</a>
         # 2026-09-17: extended to full names without initials (e.g. Alcaraz Carlos) and loose check
-        if chosen is None and len(candidates) >= 2:
+        if chosen is None and not structure_ambiguous and len(candidates) >= 2:
             def _looks_like_player_or_team(t: str) -> bool:
                 tt = t.strip()
                 if not tt or len(tt) < 2:
@@ -209,13 +303,16 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
         if key in seen:
             continue
         seen.add(key)
-        ko = ""
-        m = _DT_RE.search(str(dt_raw))
-        if m:
-            ko = f"{int(m.group(4)):02d}:{int(m.group(5)):02d}"
+        raw_dt = str(dt_raw)
+        # Record only bounded numeric components for investigation. They are
+        # not an authoritative timestamp, timezone, or verified fixture date.
+        components = [int(x) for x in raw_dt.split(',')] if re.fullmatch(r'\d{1,4}(?:,\d{1,4}){4}', raw_dt) else None
         rows.append({
-            "match_date": page_date,
-            "match_time": ko,
+            "match_date": "",
+            "match_time": "",
+            "listing_date": page_date,
+            "listing_data_dt_components": components,
+            "listing_schedule_status": "unverified",
             "player_home": chosen_home,
             "player_away": chosen_away,
             "odds_home": decimals[0],
@@ -226,7 +323,8 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
         })
     if metrics is not None:
         metrics.update({"data_dt_rows": n_dt, "parsed_priced_rows": sum(r.get("odds_home") is not None for r in rows), "discovered_rows": len(rows), "finished_rows": n_finished,
-                        "no_odds_rows": n_no_odds, "unrecognized_rows": n_bad})
+                        "no_odds_rows": n_no_odds, "unrecognized_rows": n_bad,
+                        "unverified_schedule_rows": n_schedule_unverified})
     logger.info("%s results parse %s: data-dt rows=%d parsed=%d finished=%d no_odds=%d bad=%d",
                 SOURCE_NAME, page_date, n_dt, len(rows), n_finished, n_no_odds, n_bad)
     return rows
@@ -238,6 +336,9 @@ def parse_tennis_page(html: str, page_date: str, *, require_odds: bool = True) -
         html, source_label=SOURCE_NAME, is_match_link=_is_match_link,
         page_date=page_date, require_odds=require_odds,
     )
+    for row in rows:
+        row.update(listing_date=page_date, listing_schedule_status="unverified",
+                   match_date="", match_time="", _collection_partial=True)
     return _finalize(rows)
 
 
@@ -372,10 +473,13 @@ def _fetch_live(target: str, *, with_status: bool = False, metrics: dict | None 
     if metrics is not None:
         metrics.update(parse_metrics)
     if rows:
+        if parse_metrics.get("unverified_schedule_rows") and not with_status:
+            raise PageFetchError("parser", "BetExplorer listing schedule is unverified")
         for row in rows:
             row["observed_at"] = observed_at
         logger.info("%s: dated results shape hit for %s (%d rows)", SOURCE_NAME, target, len(rows))
-        partial = bool(parse_metrics.get("unrecognized_rows") or (not with_status and parse_metrics.get("no_odds_rows")))
+        partial = bool(parse_metrics.get("unrecognized_rows") or parse_metrics.get("unverified_schedule_rows")
+                       or (not with_status and parse_metrics.get("no_odds_rows")))
         for row in rows:
             row["_collection_partial"] = partial
         return done(_finalize(rows), "partial" if partial else "complete")
@@ -383,10 +487,12 @@ def _fetch_live(target: str, *, with_status: bool = False, metrics: dict | None 
     # An unrecognized dated row remains unresolved even when no other rows
     # parsed. Neither a generic fallback nor an empty-board marker can prove
     # that this row is non-actionable or make the dated listing complete.
-    if parse_metrics.get("unrecognized_rows"):
+    if parse_metrics.get("unrecognized_rows") or parse_metrics.get("unverified_schedule_rows"):
         if with_status:
             return done([], "partial")
-        raise PageFetchError("parser", "BetExplorer dated listing contains unrecognized rows")
+        if parse_metrics.get("unrecognized_rows"):
+            raise PageFetchError("parser", "BetExplorer dated listing contains unrecognized rows")
+        raise PageFetchError("parser", "BetExplorer listing schedule is unverified")
 
     # 2) For any date, if results page missed, try to collect links without odds
     #    and price via match pages (new fallback for JS-rendered listings)
@@ -422,12 +528,21 @@ def _fetch_live(target: str, *, with_status: bool = False, metrics: dict | None 
             raise PageFetchError("parser", "BetExplorer listing has no recognised fixtures or empty-board marker")
         return done([], "complete")
 
-    if with_status:
-        # Guarded rebuild uses this listing as discovery, never an indiscriminate
-        # match-page crawl. Detail fetches are selected from the prediction pool.
-        for row in link_rows:
-            row["observed_at"] = observed_at
-        return done(_finalize(link_rows), "complete")
+    # The generic fallback has no validated provider date/time evidence either.
+    # Preserve discovery as partial without assigning the requested day; never
+    # crawl detail pages as executable prices from an unverified schedule.
+    generic_schedule_status = "unverified"
+    if generic_schedule_status != "verified":
+        if with_status:
+            for row in link_rows:
+                row["observed_at"] = observed_at
+                row["listing_date"] = target
+                row["listing_schedule_status"] = generic_schedule_status
+                row["match_date"] = ""
+                row["match_time"] = ""
+                row["_collection_partial"] = True
+            return done(_finalize(link_rows), "partial")
+        raise PageFetchError("parser", "BetExplorer listing schedule is unverified")
 
     # 3) Price each link via its match page (bounded)
     priced: list[dict[str, Any]] = []
@@ -483,7 +598,11 @@ def fetch_betexplorer_rows(target_date: str) -> list[dict[str, Any]]:
     except Exception:
         return []
     rows = cached_fetch(f"betexplorer_v6_{target}", lambda: _fetch_live(target))
-    return [dict(r) for r in rows] if rows else []
+    # Older cache entries predate schedule validation; do not let a cache hit
+    # bypass the same fail-closed rule applied to live listing rows.
+    if rows:
+        raise PageFetchError("parser", "BetExplorer listing schedule is unverified")
+    return []
 
 
 def _comparison_endpoint_candidates(html: str, event_id: str, *, metrics: dict | None = None) -> list[dict]:

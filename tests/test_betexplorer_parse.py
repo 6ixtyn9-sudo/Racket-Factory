@@ -6,6 +6,8 @@ The fixture mirrors the structure observed on betexplorer.com/tennis/ on
 1/2 consensus decimals in the same row.
 """
 
+import pytest
+
 from racketfactory.sources import betexplorer as be
 
 FIXTURE = """
@@ -38,8 +40,10 @@ def test_parses_priced_rows_with_context():
     assert first["player_away"] == "Torner Sensano N."
     assert first["odds_home"] == 1.20
     assert first["odds_away"] == 4.25
-    assert first["match_time"] == "09:15"
-    assert first["match_date"] == "2026-09-13"
+    # Generic listing times have no verified provider timezone/date semantics.
+    assert first["match_time"] == first["match_date"] == ""
+    assert first["listing_date"] == "2026-09-13"
+    assert first["listing_schedule_status"] == "unverified"
     assert first["tournament"] == "valencia"
     assert first["source"] == "BetExplorer"
     assert first["bookmaker"] == "BetExplorer consensus"
@@ -78,7 +82,10 @@ def test_results_parse_uses_data_dt_rows():
     row = rows[0]
     assert (row["player_home"], row["player_away"]) == ("Rouvroy M.", "Johnson S.")
     assert (row["odds_home"], row["odds_away"]) == (3.61, 1.26)
-    assert row["match_time"] == "09:30"
+    assert row["match_date"] == row["match_time"] == ""
+    assert row["listing_date"] == "2026-09-13"
+    assert row["listing_data_dt_components"] == [13, 9, 2026, 9, 30]
+    assert row["listing_schedule_status"] == "unverified"
     assert row["tournament"] == "caldas da rainha"
 
 
@@ -92,11 +99,9 @@ def test_fetch_uses_dated_url_for_any_date(monkeypatch):
         return RESULTS_FIXTURE
 
     monkeypatch.setattr(be, "fetch_page_html", fake_fetch)
-    rows = be.fetch_betexplorer_rows("2026-09-14")
+    with pytest.raises(be.PageFetchError, match="schedule is unverified"):
+        be.fetch_betexplorer_rows("2026-09-14")
     assert seen == ["https://www.betexplorer.com/tennis/results/?year=2026&month=09&day=14"]
-    assert len(rows) == 1
-    assert rows[0]["source"] == "BetExplorer"
-    assert rows[0]["match_date"] == "2026-09-14"
 
 
 def test_disable_env_short_circuits(monkeypatch):
@@ -110,7 +115,11 @@ def test_original_observation_is_preserved_by_cache(tmp_path, monkeypatch):
     from racketfactory.fetch_cache import cached_fetch
     calls = []
     monkeypatch.setattr(be, "fetch_page_html", lambda *a, **k: calls.append(1) or RESULTS_FIXTURE)
-    first = cached_fetch("betexplorer-observation", lambda: be._fetch_live("2026-09-13"),
+    def capture_partial():
+        rows, status = be._fetch_live("2026-09-13", with_status=True)
+        assert status == "partial" and all(row['_collection_partial'] for row in rows)
+        return rows
+    first = cached_fetch("betexplorer-observation", capture_partial,
                          fetch_day="2026-09-13", cache_dir=tmp_path, ttl_minutes=10)
     second = cached_fetch("betexplorer-observation", lambda: (_ for _ in ()).throw(AssertionError("cache miss")),
                           fetch_day="2026-09-13", cache_dir=tmp_path, ttl_minutes=10)
@@ -137,7 +146,8 @@ def test_guarded_results_shape_discovers_unpriced_fixtures(monkeypatch):
     monkeypatch.setattr(be, "fetch_page_html", lambda *a, **k: html)
     metrics = {}
     rows, status = be._fetch_live("2026-09-13", with_status=True, metrics=metrics)
-    assert len(rows) == 2 and status == "complete"
+    assert len(rows) == 2 and status == "partial"
     assert rows[1]["odds_home"] is None
+    assert all(row['match_date'] == row['match_time'] == '' for row in rows)
     assert metrics == {"data_dt_rows": 3, "parsed_priced_rows": 1, "discovered_rows": 2, "finished_rows": 1,
-                       "no_odds_rows": 1, "unrecognized_rows": 0}
+                       "no_odds_rows": 1, "unrecognized_rows": 0, "unverified_schedule_rows": 3}
