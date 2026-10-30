@@ -29,6 +29,13 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
                      "excluded_started_fixtures": 0, "relevant_upcoming_fixtures": 0,
                      "unknown_or_conflicting_kickoff_fixtures": 0, "unexamined_fixtures": 0,
                      "unresolved_fixtures": 0, "fresh_settlement_compatible_fixtures": 0}
+    # A zero prediction count here means none were evaluated, not an empty card.
+    if listing_status != "complete":
+        detail_counts["matching_skipped_reason"] = "listing_not_complete"
+        detail_counts["listing_status"] = listing_status
+        detail_counts["input_predictions"] = len(predictions)
+        detail_counts["target_date_input_predictions"] = sum(
+            str(p.get("match_date") or "")[:10] == target_date for p in predictions)
     if listing_status == "complete" and not be_rows:
         detail_counts["predictions"] = sum(str(p.get("match_date") or "")[:10] == target_date for p in predictions)
         detail_counts["unmatched_or_ambiguous"] = detail_counts["predictions"]

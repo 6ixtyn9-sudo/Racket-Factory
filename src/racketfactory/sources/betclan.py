@@ -77,27 +77,51 @@ class BetClanPredictor:
         self.base_url = "https://www.betclan.com"
         self._request_stats = None
         self._request_urls = set()
+        self._odds_subpage_cache = {}
+        self._odds_restricted = False
 
     def _get(self, url: str, category: str, *, timeout: int):
         started = time.monotonic()
         stats = self._request_stats
+        by_category = stats["by_category"][category] if stats is not None else None
+        status_key = None
+        transport_failed = False
         if stats is not None:
             stats[category + "_requests"] += 1
+            by_category["requests"] += 1
             if url in self._request_urls:
                 stats["repeated_url_requests"] += 1
             self._request_urls.add(url)
         try:
-            response = requests.get(url, impersonate="chrome133a", timeout=timeout)
-            if stats is not None and response.status_code != 200:
-                stats["http_failures"] += 1
+            # Do not follow a discovered optional link to a different host or event.
+            kwargs = {"allow_redirects": False} if category == "odds_subpage" else {}
+            response = requests.get(url, impersonate="chrome133a", timeout=timeout, **kwargs)
+            if stats is not None:
+                code = str(response.status_code)
+                codes = by_category["http_statuses"]
+                code = code if code in codes or len(codes) < 16 else "other"
+                status_key = code
+                codes[code] = codes.get(code, 0) + 1
+                if response.status_code != 200:
+                    stats["http_failures"] += 1
+                    by_category["http_failures"] += 1
             return response
         except Exception:
+            transport_failed = True
             if stats is not None:
                 stats["transport_failures"] += 1
+                by_category["transport_failures"] += 1
             raise
         finally:
             if stats is not None:
-                stats["request_seconds"] += time.monotonic() - started
+                elapsed = time.monotonic() - started
+                stats["request_seconds"] += elapsed
+                by_category["request_seconds"] += elapsed
+                if status_key is not None:
+                    durations = by_category["http_status_seconds"]
+                    durations[status_key] = durations.get(status_key, 0.0) + elapsed
+                elif transport_failed:
+                    by_category["transport_failure_seconds"] += elapsed
 
     def _clean_text(self, value: str) -> str:
         return " ".join(str(value or "").split()).strip()
@@ -180,57 +204,67 @@ class BetClanPredictor:
         return odds_home, odds_away
 
     def _find_odds_subpage(self, prediction_soup: BeautifulSoup, prediction_url: str) -> list[str]:
+        """Only follow explicit same-host links bound to the same event slug.
+
+        Link text alone is not identity. Reject query strings and redirects:
+        no guessed parallel routes, tracking parameters or cross-event prices.
         """
-        Discover candidate per-match odds subpages from a BetClan prediction
-        page. Returns a list of URLs to try, ordered by likelihood.
-        """
-        candidates: list[str] = []
-        seen: set[str] = set()
-
-        def _add(url: str) -> None:
-            if not url:
-                return
-            if url in seen:
-                return
-            seen.add(url)
-            candidates.append(url)
-
-        # 1. Explicit odds links inside the prediction page DOM.
-        odds_link_keywords = ("odds", "1x2", "bookmaker", "market", "prices", "picks")
-        for a in prediction_soup.find_all("a", href=True):
-            href = str(a.get("href", "") or "").strip()
-            if not href or "/tennis/" not in href:
-                continue
-            lowered = href.lower()
-            if any(k in lowered for k in odds_link_keywords):
-                _add(urljoin(prediction_url, href))
-
-        # 2. Parallel URL guess: /predictionsdetails/X/ -> /oddsdetails/X/ or /odds/X/.
         parsed = urlparse(prediction_url)
-        path = parsed.path or ""
-        # Extract the trailing id slug so we can rebuild paths.
-        slug = ""
-        m = re.search(r"predictionsdetails/([^/?#]+)", path)
-        if m:
-            slug = m.group(1)
-        if slug:
-            for prefix in ("/tennis/oddsdetails/", "/tennis/odds/", "/tennis/match-odds/", "/tennis/bookmaker-odds/"):
-                _add(f"{parsed.scheme}://{parsed.netloc}{prefix}{slug}")
-        return candidates
+        match = re.fullmatch(r"/tennis/predictionsdetails/([A-Za-z0-9_-]+)/?", parsed.path)
+        if (parsed.scheme != "https" or parsed.netloc.lower() != "www.betclan.com"
+                or parsed.query or parsed.fragment or not match):
+            return []
+        slug = match.group(1)
+        result = []
+        seen = set()
+        for anchor in prediction_soup.find_all("a", href=True):
+            href = str(anchor.get("href") or "").strip()
+            try:
+                url = urljoin(prediction_url, href)
+                link = urlparse(url)
+                parts = link.path.strip("/").split("/")
+                if (link.scheme != "https" or link.netloc.lower() != "www.betclan.com"
+                        or link.query or link.fragment or len(parts) < 3 or parts[0] != "tennis"
+                        or parts[-1] != slug or any(x in {".", ".."} for x in parts)
+                        or not re.fullmatch(r"/[A-Za-z0-9_/-]+/?", link.path)
+                        or not any(k in '/'.join(parts[1:-1]).lower() for k in
+                                   ("odds", "bookmaker", "market", "prices"))):
+                    continue
+                key = link.path.rstrip('/')
+                if key not in seen:
+                    seen.add(key)
+                    # Keep the exact discovered path, including its trailing slash.
+                    result.append(f"https://www.betclan.com{link.path}")
+            except ValueError:
+                continue
+        return result
 
     def _fetch_odds_subpage(self, url: str) -> Optional[BeautifulSoup]:
-        """Fetch one candidate odds subpage. Returns None on any error or 404."""
+        """Fetch a verified optional link once per run; restriction stops this path."""
+        if self._odds_restricted:
+            if self._request_stats is not None:
+                self._request_stats["odds_subpage_restriction_skips"] += 1
+            return None
+        if url in self._odds_subpage_cache:
+            if self._request_stats is not None:
+                self._request_stats["odds_subpage_duplicate_skips"] += 1
+            return self._odds_subpage_cache[url]
+        soup = None
         try:
             resp = self._get(url, "odds_subpage", timeout=15)
-        except Exception as e:
-            logger.debug(f"BetClan odds subpage fetch error for {url}: {e}")
-            return None
-        if resp.status_code != 200:
-            return None
-        try:
-            return BeautifulSoup(resp.text, "html.parser")
+            if resp.status_code in (401, 403, 429):
+                self._odds_restricted = True
+            elif resp.status_code == 200:
+                text = resp.text
+                if any(marker in text[:6000].lower() for marker in
+                       ("cf-chl", "just a moment", "attention required", "verify you are human")):
+                    self._odds_restricted = True
+                else:
+                    soup = BeautifulSoup(text, "html.parser")
         except Exception:
-            return None
+            logger.debug("BetClan optional odds request failed")
+        self._odds_subpage_cache[url] = soup
+        return soup
 
     def _extract_context(self, soup: BeautifulSoup) -> tuple[str, str, str]:
         """Extract focused BetClan context with minimal bleed from nearby widgets."""
@@ -276,9 +310,17 @@ class BetClanPredictor:
         results = []
         started = time.monotonic()
         self._request_urls = set()
+        self._odds_subpage_cache = {}
+        self._odds_restricted = False
         self._request_stats = {"listing_requests": 0, "detail_requests": 0, "odds_subpage_requests": 0,
                                "repeated_url_requests": 0, "http_failures": 0, "transport_failures": 0,
-                               "request_seconds": 0.0}
+                               "request_seconds": 0.0,
+                               "detail_duplicate_skips": 0, "today_detail_reused": 0,
+                               "odds_subpage_duplicate_skips": 0, "odds_subpage_restriction_skips": 0,
+                               "by_category": {category: {"requests": 0, "http_failures": 0,
+                                   "transport_failures": 0, "request_seconds": 0.0, "http_statuses": {},
+                                   "http_status_seconds": {}, "transport_failure_seconds": 0.0}
+                                   for category in ("listing", "detail", "odds_subpage")}}
         today_ok = False
         today_links = 0
         today_failed = 0
@@ -287,6 +329,7 @@ class BetClanPredictor:
         today_failure_kinds = {"http": 0, "participant_markup": 0, "winner_markup": 0,
                                "winner_ambiguous": 0, "exception": 0}
         today_empty_verified = False
+        detail_cache = {}  # same observation, including failures, within this collection only
         # Fetch today and tomorrow
         for day_offset, endpoint in [(-1, "yesterdays-tennis-predictions"), (0, "todays-tennis-predictions"), (1, "tomorrows-tennis-predictions")]:
             target_date = (datetime.now(SAST).date() + timedelta(days=day_offset)).strftime("%Y-%m-%d")
@@ -311,7 +354,20 @@ class BetClanPredictor:
                 if day_offset == 0:
                     today_attempted += 1
                 try:
-                    r = self._get(match_url, "detail", timeout=20)
+                    if match_url in detail_cache:
+                        self._request_stats["detail_duplicate_skips"] += 1
+                        if day_offset == 0:
+                            self._request_stats["today_detail_reused"] += 1
+                        r, error = detail_cache[match_url]
+                    else:
+                        try:
+                            r = self._get(match_url, "detail", timeout=20)
+                            error = None
+                        except Exception as exc:
+                            r, error = None, exc
+                        detail_cache[match_url] = (r, error)
+                    if error is not None:
+                        raise error
                     if r.status_code != 200:
                         if day_offset == 0:
                             today_failed += 1
@@ -370,14 +426,12 @@ class BetClanPredictor:
                         pred_win = "player_a" if home_match else "player_b"
 
                     # Robustly extract bookmaker odds from the prediction page itself.
-                    # This is the historical behaviour; for many matches BetClan hides
-                    # the odds behind a separate /odds/ subpage, handled below.
+                    # The prediction may contain odds; an optional subpage is
+                    # considered only when the page explicitly links it.
                     odds_home, odds_away = self._extract_odds_from_soup(s)
 
-                    # REDTEAM coverage fix: if the prediction page didn't expose
-                    # decimal odds, try to follow from the prediction page to a
-                    # per-match odds subpage. Best-effort, capped at two attempts
-                    # so we don't double the latency budget for every match.
+                    # Optional odds only: no guessed routes, at most two
+                    # validated page-derived links per match.
                     if odds_home is None or odds_away is None:
                         for sub_url in self._find_odds_subpage(s, match_url)[:2]:
                             sub_soup = self._fetch_odds_subpage(sub_url)
@@ -432,10 +486,16 @@ class BetClanPredictor:
 
         self._request_stats.update({"today_listing_ok": today_ok,
                                     "today_discovered_unique": today_links,
-                                    "today_detail_attempted": today_attempted,
+                                    "today_detail_attempted": today_attempted - self._request_stats["today_detail_reused"],
+                                    "today_detail_processed": today_attempted,
                                     "today_detail_parsed": today_succeeded,
                                     "today_detail_failed": today_failed,
                                     "today_detail_failure_kinds": today_failure_kinds})
+        for category in self._request_stats["by_category"].values():
+            category["request_seconds"] = round(category["request_seconds"], 2)
+            category["transport_failure_seconds"] = round(category["transport_failure_seconds"], 2)
+            category["http_status_seconds"] = {key: round(value, 2)
+                                                for key, value in category["http_status_seconds"].items()}
         self._request_stats["request_seconds"] = round(self._request_stats["request_seconds"], 2)
         self._request_stats["elapsed_seconds"] = round(time.monotonic() - started, 2)
         self._request_stats["unique_urls"] = len(self._request_urls)

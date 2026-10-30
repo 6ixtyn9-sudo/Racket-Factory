@@ -309,3 +309,196 @@ def capture_replay(html: str, kind: str, fixture: dict, *, observed_at: str,
     file.write_text(json.dumps(data, indent=2, ensure_ascii=True), encoding='utf-8')
     return CaptureResult(file_written=True, discovery_material_retained=material_count > 0,
                          material_sufficiency=data[kind]['material_sufficiency'])
+
+
+class BrowserObservation:
+    """Intercept only requests initiated by one selected page, within its old budget.
+
+    The original probe allowed one detail and one comparison fetch after its
+    listing. The observer substitutes for those requests, not in addition to
+    them. External resources and external scripts are blocked; consequently a
+    page may not work and an empty observation is never proof of absence.
+    """
+    MAX_REQUESTS = 2
+    MAX_BODY_BYTES = 512_000
+
+    def __init__(self, fixture: dict):
+        identity = _identity(fixture)
+        if not identity:
+            raise ValueError('fixture identity is not established')
+        self.fixture = fixture
+        self.identity = identity
+        self.document_url = 'https://' + _HOST + identity['match_url']
+        self.allowed = 0
+        self.document_seen = False
+        self.pending = False
+        self.stopped = False
+        self.seen = set()
+        self._responses = {}
+        self.result = {'requests_allowed': 0, 'requests_blocked': {}, 'responses': [],
+                       'restriction': None, 'detail_file_written': False,
+                       'detail_material_retained': False, 'detail_material_sufficiency': 'not_evaluated',
+                       'comparison_file_written': False, 'comparison_material_retained': False,
+                       'identity_confirmation': 'listing_only_page_initiation_not_independent_identity',
+                       'quote_eligibility': 'not_evaluated', 'budget': self.MAX_REQUESTS,
+                       'notice': 'Only page-initiated same-host GETs; scripts and other resources blocked. No settlement or market identity established.'}
+
+    def _block(self, route, reason):
+        counts = self.result['requests_blocked']
+        counts[reason] = counts.get(reason, 0) + 1
+        route.abort()
+
+    def handle(self, route, request):
+        from racketfactory.sources._page_odds import _throttle
+        if self.stopped:
+            return self._block(route, 'stopped')
+        if self.pending:
+            return self._block(route, 'prior_request_in_flight')
+        if request.method != 'GET' or request.redirected_from is not None:
+            return self._block(route, 'method_or_redirect')
+        kind = request.resource_type
+        raw_url = request.url
+        if len(raw_url) > 2048:
+            return self._block(route, 'url_too_long')
+        if kind == 'document' and not self.document_seen and raw_url == self.document_url:
+            safe_path = self.identity['match_url']
+        elif kind in {'xhr', 'fetch'} and self.document_seen:
+            safe_path = _url(raw_url, self.identity['event_id'])
+            parsed = urlsplit(raw_url)
+            event_id = self.identity['event_id']
+            identifiers = [value for key, value in parse_qsl(parsed.query)
+                           if key in {'event', 'event_id', 'match', 'match_id'}]
+            identity_bound = event_id in parsed.path.split('/') or event_id in identifiers
+            if (not safe_path or not identity_bound or any(value != event_id for value in identifiers)
+                    or not any(x in parsed.path.lower() for x in ('odds', 'market', 'tab'))):
+                return self._block(route, 'unverified_request')
+        else:
+            return self._block(route, 'resource_not_allowed')
+        if raw_url in self.seen:
+            return self._block(route, 'duplicate')
+        if self.allowed >= self.MAX_REQUESTS:
+            return self._block(route, 'budget')
+        self.seen.add(raw_url)
+        self.allowed += 1
+        self.pending = True
+        self.result['requests_allowed'] = self.allowed
+        if kind == 'document':
+            self.document_seen = True
+        try:
+            # The browser performs the exact request it initiated; no replay,
+            # route guessing, redirects, or retries are added by the observer.
+            _throttle(_HOST)
+            route.continue_()
+        except Exception:
+            self.stopped = True
+            self._block(route, 'transport_failure')
+
+    def on_response(self, response):
+        request = response.request
+        if request.url not in self.seen:
+            return
+        kind = request.resource_type
+        safe_path = (self.identity['match_url'] if kind == 'document'
+                     else _url(request.url, self.identity['event_id']))
+        status = response.status
+        entry = {'resource': kind, 'path': safe_path, 'http_status': status, 'body_captured': False}
+        self.result['responses'].append(entry)
+        self._responses[request.url] = (response, entry)
+        if status in (401, 403, 429):
+            self.stopped = True
+            self.result['restriction'] = 'rate_limit' if status == 429 else 'access_restricted'
+            if status == 429:
+                from racketfactory.quota_guard import record_cooldown
+                try:
+                    record_cooldown('betexplorer', 'host:' + _HOST, 'rate_limit', 900)
+                except OSError:
+                    pass
+
+    def on_request_failed(self, request):
+        if request.url in self.seen:
+            self.stopped = True
+            self.pending = False
+            self.result['response_error'] = 'request_failed'
+
+    def on_request_finished(self, request):
+        pair = self._responses.get(request.url)
+        if not pair:
+            return
+        response, entry = pair
+        kind = request.resource_type
+        try:
+            if self.stopped or response.status != 200:
+                return
+            length = response.headers.get('content-length', '')
+            if not length.isdigit() or int(length) > self.MAX_BODY_BYTES:
+                self.stopped = True
+                entry['capture_failure'] = 'body_length_unknown_or_large'
+                return
+            body = response.body()
+            if len(body) > self.MAX_BODY_BYTES:
+                self.stopped = True
+                entry['capture_failure'] = 'body_too_large'
+                return
+            text = body.decode('utf-8', errors='replace')
+            if any(marker in text[:6000].lower() for marker in
+                   ('cf-chl', 'just a moment', 'attention required', 'verify you are human')):
+                self.stopped = True
+                self.result['restriction'] = 'challenge'
+                return
+            now = datetime.now(timezone.utc).isoformat()
+            if kind == 'document':
+                result = capture_replay(text, 'detail', self.fixture, observed_at=now, request_url=request.url)
+                self.result['detail_file_written'] = result['file_written']
+                self.result['detail_material_retained'] = result['discovery_material_retained']
+                self.result['detail_material_sufficiency'] = result['material_sufficiency']
+            else:
+                try:
+                    decoded = json.loads(text)
+                    html = decoded.get('odds', '') if isinstance(decoded, dict) else ''
+                except ValueError:
+                    html = text if text.lstrip().startswith('<') else ''
+                if not isinstance(html, str):
+                    html = ''
+                result = capture_replay(html, 'comparison', self.fixture, observed_at=now,
+                                        request_url=request.url, response_body=text)
+                self.result['comparison_file_written'] = result['file_written']
+                self.result['comparison_material_retained'] = result['discovery_material_retained']
+            entry['body_captured'] = result['file_written']
+        except Exception:
+            self.stopped = True
+            self.result['response_error'] = 'unavailable_or_capture_failed'
+        finally:
+            self.pending = False
+
+
+
+def observe_in_browser(fixture: dict) -> dict:
+    """One bounded, non-interactive browser navigation, never a quote source."""
+    observer = BrowserObservation(fixture)
+    from racketfactory.quota_guard import cooldown_status
+    if cooldown_status('betexplorer', 'host:' + _HOST):
+        observer.result['restriction'] = 'existing_cooldown'
+        return observer.result
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            try:
+                context = browser.new_context(service_workers='block', accept_downloads=False)
+                context.route('**/*', observer.handle)
+                context.on('response', observer.on_response)
+                context.on('requestfinished', observer.on_request_finished)
+                context.on('requestfailed', observer.on_request_failed)
+                page = context.new_page()
+                try:
+                    page.goto(observer.document_url, wait_until='domcontentloaded', timeout=15000)
+                    page.wait_for_timeout(2000)
+                except Exception:
+                    observer.result['navigation'] = 'incomplete'
+                finally:
+                    context.close()
+            finally:
+                browser.close()
+    except Exception:
+        observer.result['navigation'] = 'browser_unavailable_or_failed'
+    return observer.result

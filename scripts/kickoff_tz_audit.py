@@ -323,6 +323,8 @@ def main(argv=None) -> int:
           f"{report['remembered_samples']} carried from {report['evidence_file']}"
           + (f" (+{report['new_samples_recorded']} newly recorded)"
              if report["new_samples_recorded"] else ""))
+    if report["matched_this_run"] == 0:
+        print("  No fixtures matched this run; carried evidence is not fresh verification.")
     if report["matched_fixtures"] == 0:
         print("  NOTE: no matched evidence because no run has yet seen an odds cache "
               "alongside BetClan picks. Evidence accrues automatically — this "

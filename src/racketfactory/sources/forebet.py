@@ -1528,6 +1528,9 @@ class ForebetPredictor:
         expected_day = _expected_iso_for_day(day)
         if expected_day is None:
             raise ValueError("day must be 'yesterday', 'today', 'tomorrow' or YYYY-MM-DD")
+        if os.getenv("RACKET_FACTORY_DISABLE_FOREBET", "").strip().lower() in {"1", "true", "yes", "on"}:
+            logger.info("Forebet %s: live collection disabled", day)
+            return []
         body = self._fetch_daily_page(day)
         if not body:
             logger.warning("Forebet %s: no body fetched (relay failed%s)", day,
