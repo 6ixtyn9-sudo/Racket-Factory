@@ -66,7 +66,8 @@ def test_429_never_populates_positive_cache_or_retries_same_run(setup_targeted, 
     monkeypatch.setattr(po, '_run_order', lambda *a, **kw: calls.append('http') or (html, 200, 0))
     assert qe.targeted_comparison_rows(DAY, PREDICTIONS) == []
     assert len(calls) == 2 and status(root)['status'] == 'partial'
-    assert status(root)['counts']['matching_skipped_reason'] == 'listing_not_complete'
+    assert status(root)['counts'].get('attempted', 0) == 0
+    assert status(root)['counts'].get('listing_status') == 'partial'
 
 
 @pytest.mark.parametrize('kind', ['transport', 'parser', 'challenge'])
@@ -180,10 +181,10 @@ def test_proven_empty_synthetic_success_is_still_cached(setup_targeted, monkeypa
         return [], 'complete'
     monkeypatch.setattr(betexplorer, '_fetch_live', fetch_empty)
     assert qe.targeted_comparison_rows(DAY, []) == []
-    assert status(setup_targeted)['status'] == 'complete'
+    assert status(setup_targeted)['status'] == 'partial'  # BetClan readiness is unknown in this fixture
     assert fetch_cache.cache_path(keys()[0], DAY).exists()
     assert qe.targeted_comparison_rows(DAY, []) == []
-    assert calls == [1] and status(setup_targeted)['status'] == 'complete'
+    assert calls == [1] and status(setup_targeted)['status'] == 'partial'
 
 
 def test_unavailable_positive_cache_after_success_never_causes_recollection(setup_targeted, monkeypatch):
@@ -279,14 +280,21 @@ def test_cached_quote_without_fresh_complete_matching_proof_stays_blocked(setup_
     payload = _proven_cache_payload(observed=stale if fault == "stale" else datetime.now(timezone.utc).isoformat())
     if fault == "incomplete_readiness":
         payload[0]["counts"]["stage_statuses"]["listing_coverage"] = "not_established"
+        payload[0]["status"] = "partial"
     if fault == "changed_prediction_set":
         payload[0]["prediction_fingerprint"] = "0" * 64
     fetch_cache.write_cached_rows(positive, payload, DAY)
     monkeypatch.setattr(betexplorer, "_fetch_live", lambda *a, **k: pytest.fail("blocked cache must not recollect"))
     rows = qe.targeted_comparison_rows(DAY, PREDICTIONS)
     result = status(setup_targeted)
-    assert rows == [] and result["status"] == "partial"
-    assert result["schedule_guard_reason"] == "cached_schedule_evidence_unavailable"
+    if fault == "incomplete_readiness":
+        # Listing-wide incompleteness does not invalidate this fresh,
+        # prediction-matched fixture's own supported schedule and quote.
+        assert len(rows) == 1 and result["status"] == "partial"
+        assert result.get("schedule_guard_reason") is None
+    else:
+        assert rows == [] and result["status"] == "partial"
+        assert result["schedule_guard_reason"] == "cached_schedule_evidence_unavailable"
 
 
 def test_429_cooldown_write_failure_never_claims_active_marker_or_retries(setup_targeted, monkeypatch):

@@ -678,11 +678,14 @@ def collect_rebuild_sources(target_date: str, *, progress=None) -> dict[str, Any
     required_blockers = [name + ":" + status for name, status in required_statuses.items()
                          if status != "complete"]
     result["required_source_readiness"] = {
-        "status": "ready" if not required_blockers else "blocked",
+        "status": "ready" if not required_blockers else "partial",
         "sources": required_statuses,
         "blockers": required_blockers,
     }
-    result["status"] = "complete" if not required_blockers else "insufficient"
+    # Preserve factual collection status. Partial coverage is not promoted to
+    # complete and is not by itself a staging veto.
+    result["status"] = "partial" if required_blockers else "complete"
+    result["admission_policy_version"] = "racket-new-card-v1"
     return result
 
 
@@ -690,10 +693,20 @@ def stage_fresh_rebuild_picks(target_date: str, collection: dict, workdir: Path)
     """Use the existing live normalizer and miner against an isolated snapshot."""
     import pandas as pd
     from racketfactory.warehouse import build_live_rows
-    if collection.get("status") != "complete":
-        raise RuntimeError("required fresh collection is incomplete")
+    if (not isinstance(collection, dict) or collection.get("status") not in {"complete", "partial"}
+            or collection.get("date") != target_date):
+        raise RuntimeError("fresh collection is failed, unavailable, or for another day")
+    try:
+        observed_at = datetime.fromisoformat(str(collection.get("observed_at") or "").replace("Z", "+00:00"))
+        clock = datetime.now(observed_at.tzinfo) if observed_at.tzinfo else None
+        if clock is None or not 0 <= (clock - observed_at).total_seconds() <= 30 * 60:
+            raise ValueError("stale")
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise RuntimeError("fresh collection timestamp invalid or stale") from exc
     target_predictions = [row for row in collection.get("predictions", [])
                           if str(row.get("match_date") or "")[:10] == target_date]
+    if not target_predictions:
+        raise RuntimeError("current collection contains no target-day prediction inputs")
     from datetime import timezone
     from racketfactory.odds_compare import merge_comparison_rows
     from collections import Counter
@@ -730,8 +743,8 @@ def stage_fresh_rebuild_picks(target_date: str, collection: dict, workdir: Path)
             except (TypeError, ValueError, OverflowError):
                 failures.append("observation_missing_or_invalid")
             if str(row.get("match_date") or "")[:10] != target_date: failures.append("date_mismatch")
-            if not all(row.get(k) for k in ("player_home", "player_away", "source", "bookmaker")):
-                failures.append("fixture_source_or_bookmaker_missing")
+            if not all(row.get(k) for k in ("player_home", "player_away", "source", "event_id")):
+                failures.append("fixture_source_or_identity_missing")
             execution_problem = rebuild_quote_execution_problem(row)
             if execution_problem: failures.append("execution:" + execution_problem)
             if failures:
@@ -764,8 +777,12 @@ def stage_fresh_rebuild_picks(target_date: str, collection: dict, workdir: Path)
     counts["exported_selected_quotes"] = None
     collection["quote_diagnostics"] = counts
     print("Guarded rebuild quote stages:", json.dumps(counts, sort_keys=True))
-    if comparisons and not verified:
-        raise RuntimeError("collection has no market-identified fresh quotes")
+    if not verified:
+        raise RuntimeError("current inputs contain no usable fresh fixture quote observations")
+    counts["admission_policy"] = "racket-new-card-v1"
+    counts["settlement_terms"] = "documentary limitations retained as warnings; not inferred"
+    counts["price_interpretation"] = "indicative observations are not bookmaker offers or fills"
+    collection["admission_policy_version"] = "racket-new-card-v1"
     baseline = LOCALDATA / "warehouse.csv.gz"
     if not baseline.exists():
         raise RuntimeError("historical warehouse baseline unavailable")
@@ -825,8 +842,9 @@ def stage_fresh_rebuild_picks(target_date: str, collection: dict, workdir: Path)
                 export_rejections[problem] += 1
     counts["export_rejections"] = dict(export_rejections)
     print("Guarded rebuild quote stages:", json.dumps(counts, sort_keys=True))
-    if export_rejections:
-        raise RuntimeError("staged priced picks lost or invalidated quote provenance")
+    counts["candidate_quote_rejections"] = dict(export_rejections)
+    # Bad/unrelated candidate rows are excluded later by the same per-pick
+    # admission checks; they do not invalidate independently usable fixtures.
     return picks
 
 
@@ -924,8 +942,8 @@ def _run_guarded_empty_rebuild(target_date: str | None, update) -> None:
         update(stage="collecting_" + provider, provider_phase=phase, source_outcomes=outcomes))
     update(stage="collection_complete", source_outcomes=collection["outcomes"], collection_status=collection["status"])
     print("Guarded rebuild source outcomes:", json.dumps(collection["outcomes"], sort_keys=True))
-    if collection["status"] != "complete":
-        raise RuntimeError("required source collection incomplete; old card remains unchanged")
+    if collection["status"] not in {"complete", "partial"}:
+        raise RuntimeError("source collection failed or unavailable; old card remains unchanged")
     with tempfile.TemporaryDirectory(prefix="racket-rebuild-") as stage:
         update(stage="validating_and_staging_quotes")
         try:

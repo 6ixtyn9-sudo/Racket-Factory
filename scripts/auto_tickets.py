@@ -335,6 +335,15 @@ def quote_observation_freshness(collection: dict) -> str:
         return "malformed"
 
 
+def collection_has_fresh_observations(collection: dict, freshness: str) -> bool:
+    if freshness != "fresh":
+        return False
+    try:
+        return int(collection.get("observed_offer_count") or 0) > 0
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
 def current_quote_collection(target_date: str, run_as_of: str) -> tuple[str, dict, str]:
     """Read current-run coverage without masking an incomplete status."""
     try:
@@ -352,16 +361,26 @@ def current_quote_collection(target_date: str, run_as_of: str) -> tuple[str, dic
         return "unknown", {}, "unknown"
 
 
+def fresh_pick_inputs_available(target_date: str) -> bool:
+    """Require a current-run export; an explicit fresh empty export is valid."""
+    run_as_of = os.environ.get("RACKET_FACTORY_RUN_AS_OF", "").strip()
+    if not run_as_of:
+        return True
+    try:
+        status = json.loads((LOCALDATA / f".pick_run_status_{target_date}.json").read_text())
+        if status.get("run_as_of") != run_as_of:
+            return False
+        rows = json.loads((LOCALDATA / f"picks_{target_date}.json").read_text())
+        return isinstance(rows, list) and int(status.get("fresh_picks", -1)) == len(rows)
+    except (OSError, ValueError, TypeError, AttributeError):
+        return False
+
+
 def load_picks(target_date: str) -> list[dict]:
     run_as_of = os.environ.get("RACKET_FACTORY_RUN_AS_OF", "").strip()
     if run_as_of:
-        try:
-            status = json.loads((LOCALDATA / f".pick_run_status_{target_date}.json").read_text())
-            if status.get("run_as_of") != run_as_of or int(status.get("fresh_picks", 0)) <= 0:
-                print("No fresh official picks from this pipeline run; preserved archives are not ticket inputs")
-                return []
-        except (OSError, ValueError, TypeError, AttributeError):
-            print("Missing or invalid current-run pick status; refusing to use preserved archives")
+        if not fresh_pick_inputs_available(target_date):
+            print("Missing or invalid current-run pick export; refusing to use preserved archives")
             return []
     paths = [LOCALDATA / f"picks_{target_date}.json", LOCALDATA / "picks_today.json"]
     for p in paths:
@@ -447,6 +466,13 @@ def selected_quote_problem(pick: dict, *, require_provenance: bool = False, now:
         pick_date = pick.get("date") or pick.get("match_date")
         if quote_date and pick_date and str(quote_date)[:10] != str(pick_date)[:10]:
             return "selected quote date mismatch"
+        pick_kickoff = parse_kickoff(pick, str(pick_date or quote_date or "")[:10]) if (pick_date or quote_date) else None
+        if quote.get("commence_time") and pick_kickoff is not None:
+            if start.astimezone(TZ).replace(second=0, microsecond=0) != pick_kickoff.replace(second=0, microsecond=0):
+                return "selected quote kickoff conflicts with fixture kickoff"
+        elif quote.get("match_time") and pick.get("kickoff"):
+            if str(quote.get("match_time"))[:5] != str(pick.get("kickoff"))[:5]:
+                return "selected quote kickoff conflicts with fixture kickoff"
     try:
         observed = datetime.fromisoformat(str(quote.get("observed_at") or "").replace("Z", "+00:00"))
         if observed.tzinfo is None:
@@ -1581,18 +1607,24 @@ def capture_rebuild_preconditions(directory: Path, target_date: str) -> tuple[di
 def stage_rebuild_evaluation(picks: list[dict], state: dict, target_date: str,
                              now: datetime, collection: dict,
                              preconditions: dict | None = None) -> dict:
-    """Evaluate a rebuild in memory only; this does not publish or book slips.
+    """Evaluate a new-card proposal in memory; this does not publish or book.
 
-    The eventual collector must establish a complete fresh run independently.
-    No existing partial-source sufficiency rule is assumed here. The caller
-    remains responsible for the publication lock, state recheck and journal.
+    Complete collection or a partial snapshot with fixture-level fresh quote
+    observations may proceed. Source coverage remains factual diagnostics; the
+    caller still owns the publication lock, state recheck and journal.
     """
     import copy
     if now.tzinfo is None or now.astimezone(TZ).date().isoformat() != target_date:
         raise ValueError("rebuild requires the current configured betting day")
-    if (not isinstance(collection, dict) or collection.get("status") != "complete"
+    if (not isinstance(collection, dict) or collection.get("status") not in {"complete", "partial"}
             or collection.get("date") != target_date):
-        raise ValueError("fresh collection is failed, partial, or unknown")
+        raise ValueError("fresh collection is failed, unavailable, or for another day")
+    if collection.get("status") == "partial":
+        quote_diagnostics = collection.get("quote_diagnostics")
+        if (collection.get("admission_policy_version") != "racket-new-card-v1"
+                or not isinstance(quote_diagnostics, dict)
+                or int(quote_diagnostics.get("verified_merged_rows") or 0) < 1):
+            raise ValueError("fresh collection is partial without usable fixture-level quote observations")
     try:
         collected = datetime.fromisoformat(str(collection.get("observed_at") or "").replace("Z", "+00:00"))
         if collected.tzinfo is None or not 0 <= (now - collected).total_seconds() <= 30 * 60:
@@ -1607,6 +1639,7 @@ def stage_rebuild_evaluation(picks: list[dict], state: dict, target_date: str,
     snapshot = copy.deepcopy(state)
     rejected: dict[str, int] = {}
     playable = []
+    quote_usable = 0
     for pick in candidates:
         if not isinstance(pick, dict) or str(pick.get("ledger_kind") or "").lower() == "forecast":
             rejected["invalid or forecast pick"] = rejected.get("invalid or forecast pick", 0) + 1
@@ -1617,10 +1650,16 @@ def stage_rebuild_evaluation(picks: list[dict], state: dict, target_date: str,
         quote_problem = selected_quote_problem(pick, require_provenance=True)
         if quote_problem:
             rejected[quote_problem] = rejected.get(quote_problem, 0) + 1
-            raise ValueError("candidate quote provenance is missing or invalid: " + quote_problem)
+            continue
+        quote_usable += 1
         admitted = {}
         if is_playable(pick, rejections=rejected, admitted=admitted):
+            admitted["_admission_policy_version"] = "racket-new-card-v1"
             playable.append(admitted)
+    if candidates and quote_usable == 0:
+        problem = next((key for key in rejected if key not in {"invalid or forecast pick", "pick date mismatch"}),
+                       "selected quote provenance unavailable")
+        raise ValueError("candidate quote provenance is missing or invalid: " + problem)
     kept, skipped = kickoff_guard(playable, target_date, now)
     # Started or unknown fixtures cannot be resurrected as a rebuild pick.
     diagnostics = {"picks": len(candidates), "playable": len(playable), "builder_input": len(kept),
@@ -1663,6 +1702,7 @@ def stage_rebuild_evaluation(picks: list[dict], state: dict, target_date: str,
             "stake_per_acca_pct": round(booked_real / len(priced), 4) if priced else 0,
             "staked_pct": booked_real, "paper_staked_pct": round(sum(paper_stakes), 4),
             "accas": accas, "skipped": skipped, "diagnostics": diagnostics,
+            "admission_policy_version": "racket-new-card-v1",
             "frozen": now.astimezone(TZ).hour >= FREEZE_HOUR or now.astimezone(TZ).hour < GENERATE_HOUR_START}
     if preconditions is not None:
         result["publication_preconditions"] = copy.deepcopy(preconditions)
@@ -1920,6 +1960,7 @@ def main():
         ap.error("guarded force rebuild is unavailable; existing tickets and financial state are preserved")
     target_date = args.date or today_str()
     now = now_local()
+    picks_input_available = fresh_pick_inputs_available(target_date)
     picks = load_picks(target_date)
     admission_rejections = {}
     playable = []
@@ -1927,6 +1968,7 @@ def main():
         admitted_pick = {}
         if is_playable(pick, rejections=admission_rejections, admitted=admitted_pick,
                        require_provenance=True):
+            admitted_pick["_admission_policy_version"] = "racket-new-card-v1"
             playable.append(admitted_pick)
     kept, skipped = kickoff_guard(playable, target_date, now)
     # Paper statistics cannot make a late or unknown kickoff executable.
@@ -1962,6 +2004,10 @@ def main():
         accas_out.append({"legs": acca.get("legs", []), "odds": acca.get("odds"),
                           "type": acca.get("type", ""), "stake_pct": paper_stakes[i],
                           "paper": True})
+    for acca in accas_out:
+        for leg in acca.get("legs", []):
+            if isinstance(leg, dict):
+                leg["_admission_policy_version"] = "racket-new-card-v1"
     booked_real = round(sum(real_stakes), 4)
     # Belt and braces: the written ledger states what was actually allocated,
     # so staked_pct can never be a number the accas do not add up to. A bare
@@ -1988,6 +2034,7 @@ def main():
         "accas": accas_out,
         "skipped": skipped,
         "diagnostics": diagnostics,
+        "admission_policy_version": "racket-new-card-v1",
         "frozen": is_frozen,
     }
     LOCALDATA.mkdir(parents=True, exist_ok=True)
@@ -2011,20 +2058,36 @@ def main():
     collection = {}
     if run_as_of:
         collection_status, collection, collection_freshness = current_quote_collection(target_date, run_as_of)
-        if collection_status != "complete":
-            allow_write = False
-    if run_as_of and collection_status == "complete":
-        out["collection_observed_at"] = collection.get("oldest_offer_observed_at")
+    evaluation_status = "valid_card" if accas_out else "input_failure"
+    if not picks_input_available:
+        allow_write = False
+        evaluation_status = "input_failure"
     if allow_write and accas_out:
+        # Per-leg freshness, identity, side, kickoff and price validation is
+        # authoritative for a non-empty new card; global coverage is not.
         problem = fresh_ticket_problem(accas_out, target_date, now_local())
         if problem:
             allow_write = False
+            evaluation_status = "input_failure"
             print(f"REFUSING stale or invalid ticket publication: {problem}")
+    if not accas_out:
+        usable_observations = (collection_status == "complete" and collection_freshness == "fresh") or (
+            collection_status == "partial" and collection_has_fresh_observations(collection, collection_freshness))
+        if not picks_input_available or not usable_observations:
+            allow_write = False
+            evaluation_status = "input_failure"
+        else:
+            evaluation_status = "clean_no_bet"
+    if collection.get("oldest_offer_observed_at"):
+        out["collection_observed_at"] = collection.get("oldest_offer_observed_at")
     evaluation = {"date": target_date, "run_as_of": run_as_of,
                   "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
                   "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""),
                   "evaluated_at": now_local().isoformat(), "collection_status": collection_status,
                   "collection_observation_freshness": collection_freshness,
+                  "evaluation_status": evaluation_status,
+                  "picks_input_available": picks_input_available,
+                  "admission_policy_version": "racket-new-card-v1",
                   "diagnostics": diagnostics, "priced_tickets": len(priced), "paper_tickets": len(paper),
                   "publication": "local_write" if allow_write else "retained_previous_card"}
     (LOCALDATA / f"auto_tickets_evaluation_{target_date}.json").write_text(json.dumps(evaluation, indent=2))

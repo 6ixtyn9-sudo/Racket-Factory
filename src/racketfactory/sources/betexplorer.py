@@ -1381,8 +1381,9 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
     fixture = dict(fixture)
     evidence_fixture = dict(fixture)
     needs_schedule = fixture.get('listing_schedule_status') == 'unverified'
-    if needs_schedule and not capture_replay:
-        raise PageFetchError('parser', 'unverified listing schedule is diagnostic only')
+    # Partial listings may identify a fixture without establishing global
+    # schedule coverage. Detail verification is the bounded per-fixture path;
+    # admission still validates the returned schedule candidate independently.
     event_id = str(fixture.get("event_id") or "")
     href = str(fixture.get("match_url") or "")
     if (not re.fullmatch(r"[A-Za-z0-9]{1,32}", event_id) or not href.startswith("/tennis/")
@@ -1433,6 +1434,7 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
                 'event_id': event_id, 'match_url': href,
                 'player_home': fixture.get('player_home'), 'player_away': fixture.get('player_away'),
                 'sport': 'Tennis', 'event_status': 'https://schema.org/EventScheduled',
+                'contradictory_signals': [],
                 'commence_time': schedule[2], 'observed_at': page_at,
                 'response_sha256': hashlib.sha256(page.encode()).hexdigest(),
                 'contract_validation': 'not_authenticated',
@@ -1534,22 +1536,17 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
             error = PageFetchError("parser", "no uniquely oriented named-bookmaker quotes")
             error.stage = "bookmaker_rows"
             raise error
-        if needs_schedule:
-            # The comparison response was captured for review only. A single
-            # SportsEvent cannot establish listing coverage or rule out all
-            # conflicting schedule/status signals, so never cache or return
-            # its quotes as a result of this unverified listing.
-            error = PageFetchError('parser', 'listing schedule and coverage remain unverified')
-            error.stage = 'listing_coverage'
-            raise error
+        # listing completeness and documentary settlement are not universal
+        # per-fixture vetoes. Keep the explicit candidate schedule evidence
+        # above (including its unverified-contract provenance) for admission.
         return rows
     rows = cached_fetch("betexplorer_detail_" + event_id, fetch, fetch_day=str(fixture.get("match_date") or "")[:10], ttl_minutes=0 if refresh_evidence else 30)
     if not fetched:
         count("detail_cache_hits")
         if needs_schedule:
-            # Cached offers do not retain independently re-verifiable match
-            # page schedule evidence. Never relabel or refetch them here.
-            raise PageFetchError('parser', 'cached match schedule evidence unverified')
+            from racketfactory.execution import betexplorer_schedule_evidence_problem
+            if not rows or any(betexplorer_schedule_evidence_problem(row) for row in rows):
+                raise PageFetchError("parser", "cached match schedule evidence unverified")
     from racketfactory.warehouse import strict_quote_team_match
     if any(str(row.get("event_id") or "") != event_id or row.get("match_url") != href
            or not strict_quote_team_match(str(row.get("player_home") or ""), str(fixture.get("player_home") or ""))

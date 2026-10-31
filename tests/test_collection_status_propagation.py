@@ -98,21 +98,18 @@ def test_incomplete_evaluation_retains_card_and_fails_health(monkeypatch, tmp_pa
 
 
 @pytest.mark.parametrize('status', ['partial', 'failed', 'unknown'])
-def test_incomplete_listing_reports_skipped_matching_without_detail_requests(monkeypatch, status):
+def test_incomplete_listing_still_attempts_supported_per_fixture_detail(monkeypatch, status):
     calls = []
-    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: calls.append(a))
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: calls.append(a) or [])
     fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
-    offers, counts, _ = collect_prediction_comparisons(DAY, [fixture], [fixture], status)
-    assert not calls and not offers
-    assert counts['predictions'] == counts['unmatched_or_ambiguous'] == 1
-    assert counts['unexamined_fixtures'] == 1
-    assert counts['stage_statuses']['identity_matching'] == 'unresolved_listing'
-    assert counts['stage_statuses']['unexamined_fixtures'] == 'present'
+    offers, counts, partial = collect_prediction_comparisons(DAY, [fixture], [fixture], status)
+    assert calls and not offers and partial
+    assert counts['predictions'] == counts['matched_fixtures'] == 1
+    assert counts['unmatched_or_ambiguous'] == 0
+    assert counts['stage_statuses']['identity_matching'] == 'complete'
     assert counts['stage_statuses']['required_source_readiness'] == 'blocked'
     assert counts['prediction_set_input_rows'] == 1
-    assert counts['matching_skipped_reason'] == 'listing_not_complete'
     assert counts['listing_status'] == status
-    assert counts['input_predictions'] == counts['target_date_input_predictions'] == 1
 
 
 def test_partial_listing_diagnostic_is_persisted_without_becoming_complete(monkeypatch, tmp_path):
@@ -128,11 +125,13 @@ def test_partial_listing_diagnostic_is_persisted_without_becoming_complete(monke
     monkeypatch.setattr(oddsportal_upcoming, 'fetch_oddsportal_upcoming_rows', lambda _: [])
     fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
     monkeypatch.setattr(betexplorer, '_fetch_live', lambda *a, **kw: ([fixture], 'partial'))
-    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: pytest.fail('unexpected detail request'))
+    detail_calls = []
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: detail_calls.append(a) or [])
     assert not qe.targeted_comparison_rows(DAY, [fixture])
     result = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())
     assert result['status'] == result['betclan_status'] == 'partial'
     assert result['oldest_offer_observed_at'] is None
-    assert result['counts']['predictions'] == result['counts']['unmatched_or_ambiguous'] == 1
-    assert result['counts']['unexamined_fixtures'] == 1
-    assert result['counts']['matching_skipped_reason'] == 'listing_not_complete'
+    assert len(detail_calls) == 1
+    assert result['counts']['predictions'] == result['counts']['matched_fixtures'] == 1
+    assert result['counts']['unmatched_or_ambiguous'] == 0
+    assert result['counts']['stage_statuses']['required_source_readiness'] == 'blocked'

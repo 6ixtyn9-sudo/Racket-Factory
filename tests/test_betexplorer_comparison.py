@@ -41,7 +41,7 @@ def test_comparison_reversed_columns_hidden_dedupe_bad_and_unknown_rules():
     assert metrics["average_prices"] == [[1.45, 2.4]]
     assert rows[0]["provider_price_updated_at"] == ["101", "100"]
     assert rows[0]["observed_at"] == OBS and len(rows[0]["response_sha256"]) == 64
-    assert rebuild_quote_execution_problem(rows[0]) == "bookmaker settlement rules evidence missing"
+    assert rebuild_quote_execution_problem(rows[0]) == "BetExplorer schedule evidence missing or unsupported"
 
 
 def test_bad_columns_and_doubles_do_not_assume_order():
@@ -117,7 +117,7 @@ def test_prediction_pool_targets_unpriced_deduplicates_and_optional_failure(monk
     monkeypatch.delenv(oddsportal_upcoming.DISABLE_ENV, raising=False)
     result = daily.collect_rebuild_sources(DAY)
     assert calls == ["a1B2"]
-    assert result['status'] == 'insufficient' and result['outcomes']['oddsportal']['status'] == 'failed'
+    assert result['status'] == 'partial' and result['outcomes']['oddsportal']['status'] == 'failed'
     assert result['outcomes']['betexplorer']['detail_counts']['offers'] == 2
     assert result['raw_quotes']['betexplorer'][0]['settlement_rules'] is None
 
@@ -220,8 +220,8 @@ def test_same_endpoint_conflicting_rejected_before_market_period_filter():
     assert len(be._comparison_endpoint_candidates(PAGE + PAGE.replace('Match Winner', 'h2h').replace('data-period="match"', 'data-period="full match"'), 'a1B2')) == 1
 
 
-def test_synthetic_complete_source_plumbing_still_blocks_unknown_settlement(monkeypatch, tmp_path):
-    """Mocked complete listing is plumbing only, not proof of a live schedule."""
+def test_synthetic_complete_source_plumbing_keeps_schedule_block_distinct_from_documents(monkeypatch, tmp_path):
+    """Synthetic completion without schedule proof stays blocked; settlement terms remain absent."""
     from racketfactory.sources import betclan, predixsport, oddsportal_upcoming
     from racketfactory import quote_enrichment
     from racketfactory.kickoff import SAST
@@ -251,12 +251,16 @@ def test_synthetic_complete_source_plumbing_still_blocks_unknown_settlement(monk
     assert counts['matched_fixtures'] == counts['attempted'] == 1
     assert len(calls) == 2  # one match page and its discovered comparison
     assert len(collection['raw_quotes']['betexplorer']) == 2
-    assert all(rebuild_quote_execution_problem(row) == 'bookmaker settlement rules evidence missing'
+    # The page is synthetically complete but supplies no schedule observation;
+    # missing schedule stays blocked independently of documentary terms.
+    assert all(rebuild_quote_execution_problem(row) == 'BetExplorer schedule evidence missing or unsupported'
+               for row in collection['raw_quotes']['betexplorer'])
+    assert all(row.get('settlement_rules') is None
                for row in collection['raw_quotes']['betexplorer'])
     assert collection['outcomes']['betexplorer']['status'] == 'partial'
-    assert collection['status'] == 'insufficient'
+    assert collection['status'] == 'partial'
     card = tmp_path / 'card.json'
     card.write_text('{"previous": true}')
-    with pytest.raises(RuntimeError, match='required fresh collection is incomplete'):
+    with pytest.raises(RuntimeError, match='no usable fresh fixture quote observations'):
         daily.stage_fresh_rebuild_picks(DAY, collection, tmp_path / 'stage')
     assert card.read_text() == '{"previous": true}'

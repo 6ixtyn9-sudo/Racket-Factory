@@ -89,16 +89,18 @@ def test_schedule_candidate_records_canonical_rejection_reasons():
     assert reasons == ["schedule_listing_components_conflict_with_request_date"]
 
 
-def test_existing_detail_request_validates_schedule_before_comparison(monkeypatch):
+def test_existing_detail_request_accepts_fixture_candidate_without_claiming_global_coverage(monkeypatch):
     calls = []
     def document(url, referer=None):
         calls.append((url, referer))
         return ((json.dumps({'odds': HTML}) if referer else page(event()) + PAGE), now())
     monkeypatch.setattr(be, '_fetch_comparison_document', document)
     counts = {}
-    with pytest.raises(be.PageFetchError, match='listing schedule and coverage remain unverified'):
-        be.fetch_fixture_comparison(FIXTURE, refresh_evidence=True, capture_replay=True, stage_counts=counts)
+    rows = be.fetch_fixture_comparison(FIXTURE, refresh_evidence=True, capture_replay=True, stage_counts=counts)
     assert len(calls) == 2 and counts['schedule_candidate_from_match_page'] == 1
+    assert rows and rows[0]['schedule_evidence']['status'] == 'candidate_unverified_contract'
+    assert rows[0]['match_date'] == '2035-01-02' and rows[0]['match_time'] == '01:30'
+    assert rows[0]['schedule_evidence']['contract_validation'] == 'not_authenticated'
     assert FIXTURE['match_date'] == ''  # input is not mutated
 
 
@@ -138,10 +140,9 @@ def test_comparison_replay_uses_original_listing_identity(tmp_path, monkeypatch)
     monkeypatch.setattr(be, '_fetch_comparison_document', lambda url, referer=None:
                         (json.dumps({'odds': HTML}) if referer else page(event()) + PAGE, now()))
     counts = {}
-    with pytest.raises(be.PageFetchError, match='listing schedule and coverage remain unverified'):
-        be.fetch_fixture_comparison(FIXTURE, refresh_evidence=True, capture_replay=True, stage_counts=counts)
+    rows = be.fetch_fixture_comparison(FIXTURE, refresh_evidence=True, capture_replay=True, stage_counts=counts)
     data = json.loads((tmp_path / 'betexplorer_replay_a1B2.json').read_text())
-    assert data['detail']['schedule_evidence']['status'] == 'candidate_offset_sportsevent'
+    assert rows and data['detail']['schedule_evidence']['status'] == 'candidate_offset_sportsevent'
     assert counts['replay_comparison_file_written'] == 1 and 'comparison' in data
 
 

@@ -373,14 +373,21 @@ def settlement_evidence_problem(quote: Mapping[str, Any]) -> str:
 
 
 def betexplorer_schedule_evidence_problem(quote: Mapping[str, Any], *, now=None) -> str:
-    """Require schedule evidence bound to a quote; parser candidates are not proof."""
+    """Check fixture-bound schedule observations without claiming contract proof.
+
+    Forward admission accepts the current provider-verified form or the
+    explicitly labelled detail-page candidate when its identity, timing,
+    freshness and status checks pass. The candidate remains unverified as a
+    provider-wide schedule contract.
+    """
     from datetime import datetime, timezone
     import re
     from racketfactory.kickoff import SAST
 
     evidence = quote.get("schedule_evidence")
-    if not isinstance(evidence, Mapping) or evidence.get("status") != "provider_verified":
-        return "BetExplorer schedule evidence is candidate-only or missing"
+    if not isinstance(evidence, Mapping) or evidence.get("status") not in {
+            "provider_verified", "candidate_unverified_contract"}:
+        return "BetExplorer schedule evidence missing or unsupported"
     if evidence.get("test_only") is True:
         return "synthetic BetExplorer schedule evidence is not provider proof"
     if (evidence.get("provider") != "BetExplorer" or evidence.get("sport") != "Tennis"
@@ -388,8 +395,8 @@ def betexplorer_schedule_evidence_problem(quote: Mapping[str, Any], *, now=None)
         return "BetExplorer schedule evidence event state mismatch"
     if evidence.get("event_id") != quote.get("event_id") or evidence.get("match_url") != quote.get("match_url"):
         return "BetExplorer schedule evidence event identity mismatch"
-    for key in ("player_home", "player_away"):
-        if str(evidence.get(key) or "").strip() != str(quote.get(key) or "").strip():
+    for key, fallback in (("player_home", "provider_home"), ("player_away", "provider_away")):
+        if str(evidence.get(key) or "").strip() != str(quote.get(key) or quote.get(fallback) or "").strip():
             return "BetExplorer schedule evidence participant mismatch"
     if evidence.get("contradictory_signals") != []:
         return "BetExplorer schedule evidence has conflicting or unexamined status signals"
@@ -420,20 +427,43 @@ def betexplorer_schedule_evidence_problem(quote: Mapping[str, Any], *, now=None)
     return ""
 
 def rebuild_quote_execution_problem(quote: Mapping[str, Any]) -> str:
-    """Require a concrete bookmaker and bound, scoped settlement evidence.
+    """Validate a fresh observed price for forward-only new-card admission.
 
-    A consensus or best-across-books statistic is not an executable
-    bookmaker quote. Operator grading policy and synthetic rule fixtures are
-    not evidence of the bookmaker's terms.
+    Named-bookmaker observations and supported indicative listing/consensus
+    prices are admitted as *observations*, not asserted bookmaker fills. Missing
+    documentary settlement terms remain a warning at the collection layer;
+    they are not inferred here. Historical grading does not call this policy.
     """
-    if quote.get("price_type") != "bookmaker":
-        return "price is not a verified single-bookmaker quote"
+    from math import isfinite
+    source = str(quote.get("source") or "").strip().casefold()
+    if source not in {"betexplorer", "oddsportal", "theoddsapi", "bzzoiro"}:
+        return "unsupported quote source"
+    market = str(quote.get("market") or "").strip().casefold()
+    period = str(quote.get("period") or "").strip().casefold()
+    if market not in {"h2h", "1x2", "match_winner", "match winner"}:
+        return "quote market missing or incompatible"
+    if period not in {"match", "full", "full_match", "full match", "0"}:
+        return "quote period missing or incompatible"
+    if quote.get("line") is not None and str(quote.get("line")).strip().lower() not in {"", "none", "nan"}:
+        return "quote line incompatible"
+    if quote.get("odds_home") is not None or quote.get("odds_away") is not None:
+        try:
+            pair = (float(quote.get("odds_home")), float(quote.get("odds_away")))
+        except (TypeError, ValueError, OverflowError):
+            return "invalid observed quote pair"
+        if not all(isfinite(value) and value > 1 for value in pair):
+            return "invalid observed quote pair"
+    price_type = str(quote.get("price_type") or "").strip().casefold()
     bookmaker = str(quote.get("bookmaker") or "").strip()
-    if not bookmaker or any(word in bookmaker.lower() for word in ("consensus", "best odds", "average")):
-        return "concrete bookmaker missing"
-    settlement_problem = settlement_evidence_problem(quote)
-    if settlement_problem:
-        return settlement_problem
-    if str(quote.get("source") or "").strip().casefold() == "betexplorer":
-        return betexplorer_schedule_evidence_problem(quote)
+    generic_book_labels = ("consensus", "best odds", "average", "best price", "oddsportal", "betexplorer")
+    named_bookmaker = (price_type in {"", "bookmaker"} and bool(bookmaker)
+                       and not any(word in bookmaker.casefold() for word in generic_book_labels))
+    indicative = (source in {"betexplorer", "oddsportal"}
+                  and price_type in {"", "consensus", "indicative", "best_across_books", "best across books"})
+    if not (named_bookmaker or indicative):
+        return "quote is neither a named bookmaker offer nor a supported indicative observation"
+    if source == "betexplorer":
+        schedule_problem = betexplorer_schedule_evidence_problem(quote)
+        if schedule_problem:
+            return schedule_problem
     return ""
