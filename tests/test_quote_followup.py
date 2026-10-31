@@ -13,6 +13,14 @@ from scripts.validate_ticket_publication import check_card
 DAY = '2026-10-29'
 
 
+def _fixture(home, away, event_id, **extra):
+    """Synthetic identity-shaped BetExplorer row; not a provider capture."""
+    event = str(extra.get('tournament') or 'event').lower().replace(' ', '-')
+    return {'match_date': DAY, 'listing_date': DAY, 'listing_schedule_status': 'unverified',
+            'player_home': home, 'player_away': away, 'event_id': event_id,
+            'match_url': f'/tennis/atp/{event}/match-{event_id}/{event_id}/', **extra}
+
+
 def test_log_derived_doubles_members_are_not_flattened_or_proved_by_bare_surname():
     assert warehouse.surname_tokens('Galarneau A. / Hach Verdugo H.') == ('galarneau', 'hach verdugo')
     assert warehouse.surname_tokens('Galarneau / Verdugo') == ('galarneau', 'verdugo')
@@ -38,8 +46,8 @@ def test_later_candidate_matched_and_unmatched_never_borrows_first_price():
 
 
 def test_shared_targeted_collection_partial_and_limit(monkeypatch):
-    fixtures = [{'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'},
-                {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'def'}]
+    fixtures = [_fixture('Alice Adams', 'Beth Brown', 'abc'),
+                _fixture('Carla Clark', 'Diana Davies', 'def')]
     calls = []
     monkeypatch.setattr(betexplorer, 'MAX_COMPARISON_FIXTURES', 1)
     monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda f, **kwargs: calls.append(f['event_id']) or [])
@@ -104,7 +112,7 @@ def test_normal_targeted_detail_budget_and_changed_fixture_set_fail_closed(monke
             cache[key] = fn()
         return cache[key]
     monkeypatch.setattr(fetch_cache, 'cached_fetch', once)
-    fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
+    fixture = _fixture('Alice Adams', 'Beth Brown', 'abc')
     calls = []
     monkeypatch.setattr(betexplorer, '_fetch_live', lambda *a, **kw: (calls.append('listing') or [fixture], 'partial'))
     from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
@@ -182,10 +190,10 @@ def test_detail_budget_prioritizes_upcoming_and_never_fetches_known_started(monk
     now = datetime(2026, 10, 29, 10, 0, tzinfo=SAST)
     monkeypatch.setattr(qe, '_collection_now', lambda: now)
     fixtures = [
-        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'future', 'match_time': '11:00'},
-        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'started', 'match_time': '09:00'},
-        {'match_date': DAY, 'player_home': 'Erin Evans', 'player_away': 'Fiona Ford', 'event_id': 'unknown', 'match_time': '00:00'},
-        {'match_date': DAY, 'player_home': 'Gina Green', 'player_away': 'Helen Hall', 'event_id': 'conflict', 'match_time': '09:00'},
+        _fixture('Alice Adams', 'Beth Brown', 'future', match_time='11:00'),
+        _fixture('Carla Clark', 'Diana Davies', 'started', match_time='09:00'),
+        _fixture('Erin Evans', 'Fiona Ford', 'unknown', match_time='00:00'),
+        _fixture('Gina Green', 'Helen Hall', 'conflict', match_time='09:00'),
     ]
     predictions = fixtures + [dict(fixtures[3], match_time='12:00')]
     calls = []
@@ -205,8 +213,8 @@ def test_detail_skips_match_that_starts_while_earlier_requests_run(monkeypatch):
     times = iter([start, start, start + timedelta(minutes=40)])
     monkeypatch.setattr(qe, '_collection_now', lambda: next(times))
     fixtures = [
-        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'first', 'match_time': '10:30'},
-        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'later', 'match_time': '10:35'},
+        _fixture('Alice Adams', 'Beth Brown', 'first', match_time='10:30'),
+        _fixture('Carla Clark', 'Diana Davies', 'later', match_time='10:35'),
     ]
     # The second fixture passes its kickoff while the first fetch runs.
     calls = []
@@ -221,8 +229,8 @@ def test_coverage_excludes_started_only_and_still_requires_all_relevant(monkeypa
     from racketfactory.kickoff import SAST
     monkeypatch.setattr(qe, '_collection_now', lambda: datetime(2026, 10, 29, 10, 0, tzinfo=SAST))
     fixtures = [
-        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'future', 'match_time': '11:00'},
-        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'started', 'match_time': '09:00'},
+        _fixture('Alice Adams', 'Beth Brown', 'future', match_time='11:00'),
+        _fixture('Carla Clark', 'Diana Davies', 'started', match_time='09:00'),
     ]
     from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
                                            attach_synthetic_schedule_evidence,
@@ -243,6 +251,13 @@ def test_coverage_excludes_started_only_and_still_requires_all_relevant(monkeypa
     monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: [])
     _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures, fixtures, 'complete')
     assert partial and counts['unresolved_fixtures'] == 1
+    _, started_counts, started_partial = qe.collect_prediction_comparisons(
+        DAY, [fixtures[1]], [fixtures[1]], 'complete',
+    )
+    assert not started_partial
+    assert started_counts['stage_statuses']['detail_discovery'] == 'not_required'
+    assert started_counts['stage_statuses']['schedule_verification'] == 'not_required'
+    assert started_counts['stage_statuses']['quote_resolution'] == 'not_required'
 
 
 def test_unknown_kickoff_is_unresolved_even_with_a_compatible_quote(monkeypatch):
@@ -252,7 +267,7 @@ def test_unknown_kickoff_is_unresolved_even_with_a_compatible_quote(monkeypatch)
                                            attach_synthetic_schedule_evidence,
                                            attach_synthetic_settlement_evidence)
     allow_synthetic_evidence_in_pipeline(monkeypatch)
-    fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'future', 'match_time': '00:00'}
+    fixture = _fixture('Alice Adams', 'Beth Brown', 'future', match_time='00:00')
     row = dict(fixture, odds_home=1.5, odds_away=2.5, market='match_winner', period='match',
                observed_at=datetime.now(timezone.utc).isoformat(), price_type='bookmaker', bookmaker='Synthetic Book',
                source='BetExplorer', settlement_rules={'retirement':'advancer', 'walkover':'void', 'cancelled':'void'})
@@ -270,10 +285,10 @@ def test_coverage_counts_unmatched_predictions_and_budget_exhaustion(monkeypatch
     monkeypatch.setattr(qe, '_collection_now', lambda: datetime(2026, 10, 29, 10, 0, tzinfo=SAST))
     monkeypatch.setattr(betexplorer, 'MAX_COMPARISON_FIXTURES', 1)
     fixtures = [
-        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'a', 'match_time': '11:00'},
-        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'b', 'match_time': '12:00'},
+        _fixture('Alice Adams', 'Beth Brown', 'a', match_time='11:00'),
+        _fixture('Carla Clark', 'Diana Davies', 'b', match_time='12:00'),
     ]
-    extra = {'match_date': DAY, 'player_home': 'Erin Evans', 'player_away': 'Fiona Ford', 'match_time': '13:00'}
+    extra = _fixture('Erin Evans', 'Fiona Ford', 'extra', match_time='13:00')
     monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: [])
     _, counts, partial = qe.collect_prediction_comparisons(DAY, fixtures + [dict(fixtures[0]), extra], fixtures, 'complete')
     assert partial and counts['predictions'] == 4 and counts['matched_fixtures'] == 2
@@ -289,8 +304,8 @@ def test_started_during_previous_fetch_is_excluded_from_verified_denominator(mon
     times = iter([start, start, start + timedelta(minutes=40)])
     monkeypatch.setattr(qe, '_collection_now', lambda: next(times))
     fixtures = [
-        {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'first', 'match_time': '10:30'},
-        {'match_date': DAY, 'player_home': 'Carla Clark', 'player_away': 'Diana Davies', 'event_id': 'later', 'match_time': '10:35'},
+        _fixture('Alice Adams', 'Beth Brown', 'first', match_time='10:30'),
+        _fixture('Carla Clark', 'Diana Davies', 'later', match_time='10:35'),
     ]
     from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
                                            attach_synthetic_schedule_evidence,
@@ -328,7 +343,7 @@ def test_legacy_cached_offer_is_quarantined_even_if_labeled_verified(monkeypatch
     def no_recollection(*args, **kwargs):
         raise AssertionError('unexpected recollection')
     monkeypatch.setattr(betexplorer, '_fetch_live', no_recollection)
-    fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
+    fixture = _fixture('Alice Adams', 'Beth Brown', 'abc')
     assert qe.targeted_comparison_rows(DAY, [fixture]) == []
     status = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())
     assert status['status'] == 'partial'

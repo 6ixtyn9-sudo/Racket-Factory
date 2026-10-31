@@ -64,9 +64,13 @@ def test_429_never_populates_positive_cache_or_retries_same_run(setup_targeted, 
     html = ('<table><tr data-dt="30,10,2026,11,0"><td><a href="/tennis/atp/test/a-b/abc/">'
             '<span>Adams A.</span><span>Brown B.</span></a></td></tr></table>')
     monkeypatch.setattr(po, '_run_order', lambda *a, **kw: calls.append('http') or (html, 200, 0))
+    detail_calls = []
+    monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison',
+                        lambda fixture, **kwargs: detail_calls.append(fixture['event_id']) or [])
     assert qe.targeted_comparison_rows(DAY, PREDICTIONS) == []
-    assert len(calls) == 2 and status(root)['status'] == 'partial'
-    assert status(root)['counts'].get('attempted', 0) == 0
+    assert len(calls) == 2 and detail_calls == ['abc'] and status(root)['status'] == 'partial'
+    assert status(root)['counts'].get('attempted', 0) == 1
+    assert status(root)['counts']['stage_statuses']['quote_resolution'] == 'failed'
     assert status(root)['counts'].get('listing_status') == 'partial'
 
 

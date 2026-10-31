@@ -224,3 +224,25 @@ def test_known_oddsportal_route_cooldown_is_bounded(monkeypatch):
     Clock.now_value = real_datetime(2026, 10, 29, 22, 16, 20, tzinfo=timezone.utc)
     op._fetch_live("/tennis/", "2026-10-29", extra_paths=["/tennis/next/"])
     assert len(calls) == 3
+
+
+def test_synthetic_oddsportal_indicative_schedule_is_not_provider_proof():
+    from datetime import datetime, timedelta, timezone
+    from tests._synthetic_evidence import attach_synthetic_oddsportal_schedule_evidence
+    from racketfactory.execution import oddsportal_schedule_evidence_problem, rebuild_quote_execution_problem
+    from racketfactory.kickoff import SAST
+
+    now = datetime.now(timezone.utc)
+    start = now + timedelta(hours=2)
+    quote = {
+        "source": "OddsPortal", "bookmaker": "OddsPortal best odds", "price_type": "best_across_books",
+        "market": "h2h", "period": "match", "odds_home": 1.7, "odds_away": 2.3,
+        "observed_at": now.isoformat(), "event_id": "synthetic-event",
+        "match_url": "/tennis/h2h/a-b/synthetic-event/", "player_home": "Alice Adams",
+        "player_away": "Beth Brown", "match_date": start.astimezone(SAST).date().isoformat(),
+        "commence_time": start.isoformat(),
+    }
+    attach_synthetic_oddsportal_schedule_evidence(quote)
+    assert oddsportal_schedule_evidence_problem(quote) == "synthetic OddsPortal schedule evidence is not provider proof"
+    assert rebuild_quote_execution_problem(quote) == "synthetic OddsPortal schedule evidence is not provider proof"
+    assert rebuild_quote_execution_problem({key: value for key, value in quote.items() if key != "schedule_evidence"})

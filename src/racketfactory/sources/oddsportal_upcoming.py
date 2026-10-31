@@ -7,18 +7,23 @@ tomorrow — for match links, then prices each unfinished match from its
 detail page. The listings themselves carry no odds (every upcoming row
 renders "- -" cells, verified 2026-09-13 from two independent fetches),
 while match pages render the full per-bookmaker Home/Away table
-server-side — so the listing is link discovery only.
+server-side — the listing date/time is discovery context, not fixture schedule
+proof. A price is date-matchable only when the match page supplies one
+participant- and URL-bound, scheduled, offset-bearing SportsEvent JSON-LD.
 
 Best-across-books prices skew optimistic versus any single book, so the
-merger (odds_compare) treats them as the cross-check leg and prices from the
-BetExplorer consensus leg when both agree. Disable with
+merger (odds_compare) treats them as indicative observations, never named-book
+offers or confirmed fills. Disable with
 RACKET_FACTORY_DISABLE_ODDSPORTAL_UPCOMING=1.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
+import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urljoin, urlsplit
@@ -438,14 +443,120 @@ def parse_match_page_odds(html: str) -> tuple[float | None, float | None]:
 
 
 def parse_tennis_page(html: str, page_date: str) -> list[dict[str, Any]]:
-    """Listing stage: unfinished match links with names; odds filled later."""
+    """Listing stage: names and listing context, never a fixture date proof."""
     if _is_challenge_page(html):
         logger.warning("OddsPortal served a challenge page; no upcoming rows.")
         return []
-    return parse_listing_page(
+    rows = parse_listing_page(
         html, source_label=SOURCE_NAME, is_match_link=_is_match_link,
         page_date=page_date, require_odds=False,
     )
+    for row in rows:
+        row["listing_date"] = page_date
+        row["listing_time"] = str(row.get("match_time") or "")
+        row["match_date"] = ""
+        row["match_time"] = ""
+        row["listing_schedule_status"] = "unverified"
+    return rows
+
+
+def _match_page_schedule(html: str, row: dict[str, Any], target_date: str,
+                         observed_at: str) -> dict[str, Any] | None:
+    """Read one explicit, scheduled JSON-LD SportsEvent from the match page.
+
+    Listing-page dates/times are kept as discovery context only. A dated price
+    row is emitted only when the match page itself supplies one unique,
+    offset-bearing, future tennis event bound to the same public path and both
+    participants. This parser does not infer from the listing date.
+    """
+    from racketfactory.kickoff import SAST
+    from racketfactory.warehouse import strict_quote_team_match
+
+    try:
+        observed = datetime.fromisoformat(str(observed_at).replace("Z", "+00:00"))
+        if observed.tzinfo is None or observed.utcoffset() is None:
+            return None
+        clock = datetime.now(timezone.utc)
+        if not 0 <= (clock - observed.astimezone(timezone.utc)).total_seconds() <= 30 * 60:
+            return None
+        soup = BeautifulSoup(html[:2_000_000], "html.parser")
+        conflict_tokens = {"live", "inplay", "finished", "complete", "completed", "final", "retired",
+                           "walkover", "cancelled", "canceled", "postponed", "abandoned", "started", "suspended"}
+        for node in soup.select("[data-status], [data-state], [data-live], [aria-label], [title], [class*=status], .live, .finished, .inplay")[:500]:
+            values = [str(node.get(key) or "") for key in ("data-status", "data-state", "data-live", "aria-label", "title")]
+            values.extend(str(value) for value in (node.get("class") or []))
+            if node.name not in {"script", "style"} and node.name in {"time", "span", "div", "strong", "p"}:
+                values.append(node.get_text(" ", strip=True))
+            normalized = re.sub(r"[^a-z0-9]+", " ", " ".join(values).casefold()).split()
+            if set(normalized) & conflict_tokens:
+                return None
+            for key in ("data-status", "data-state"):
+                raw_status = str(node.get(key) or "").strip().casefold()
+                if raw_status and not any(token in raw_status for token in ("scheduled", "upcoming", "prematch", "pre-match")):
+                    return None
+            raw_live = str(node.get("data-live") or "").strip().casefold()
+            if raw_live and raw_live not in {"0", "false", "no", "off", "scheduled"}:
+                return None
+        scripts = soup.find_all("script", attrs={"type": "application/ld+json"}, limit=21)
+        if len(scripts) > 20 or len(html) > 2_000_000:
+            return None
+        events = []
+        def visit(value):
+            if isinstance(value, dict):
+                event_type = value.get("@type")
+                if event_type == "SportsEvent" or (isinstance(event_type, list) and "SportsEvent" in event_type):
+                    events.append(value)
+                for child in value.values():
+                    visit(child)
+            elif isinstance(value, list):
+                for child in value:
+                    visit(child)
+        for script in scripts:
+            try:
+                visit(json.loads(script.string or ""))
+            except (TypeError, ValueError):
+                return None
+        if len(events) != 1:
+            return None
+        event = events[0]
+        url = str(event.get("url") or "")
+        expected_path = urlsplit(str(row.get("match_url") or "")).path.rstrip("/")
+        event_path = urlsplit(url).path.rstrip("/")
+        if (event.get("sport") != "Tennis" or event_path != expected_path
+                or event.get("eventStatus") not in {"EventScheduled", "https://schema.org/EventScheduled"}):
+            return None
+        home, away = event.get("homeTeam"), event.get("awayTeam")
+        if not isinstance(home, dict) or not isinstance(away, dict):
+            return None
+        source_home, source_away = str(row.get("player_home") or ""), str(row.get("player_away") or "")
+        event_home, event_away = str(home.get("name") or ""), str(away.get("name") or "")
+        if (not strict_quote_team_match(source_home, event_home)
+                or not strict_quote_team_match(source_away, event_away)):
+            return None
+        raw_start = str(event.get("startDate") or "")
+        if raw_start.endswith("-00:00"):
+            return None
+        start = datetime.fromisoformat(raw_start.replace("Z", "+00:00"))
+        if (start.tzinfo is None or start.utcoffset() is None
+                or abs(start.utcoffset().total_seconds()) > 14 * 3600
+                or start.astimezone(timezone.utc) <= clock):
+            return None
+        local = start.astimezone(SAST)
+        if local.date().isoformat() != target_date:
+            return None
+        evidence = {
+            "status": "candidate_unverified_contract", "provider": SOURCE_NAME, "sport": "Tennis",
+            "event_status": "EventScheduled", "event_id": str(row.get("event_id") or ""),
+            "match_url": str(row.get("match_url") or ""),
+            "player_home": source_home, "player_away": source_away,
+            "commence_time": start.isoformat(), "observed_at": observed.isoformat(),
+            "response_sha256": hashlib.sha256(html.encode("utf-8", errors="replace")).hexdigest(),
+            "contradictory_signals": [],
+        }
+        return {"match_date": local.date().isoformat(), "match_time": local.strftime("%H:%M"),
+                "commence_time": start.isoformat(), "schedule_evidence": evidence}
+    except (TypeError, ValueError, OverflowError):
+        return None
 
 
 def _page_for_target(target: str) -> tuple[str, str] | None:
@@ -534,9 +645,26 @@ def _fetch_live(path: str, page_date: str, *, extra_paths: list[str] | None = No
         link["odds_away"] = best[1]
         link["bookmaker"] = BOOK_LABEL
         link["source"] = SOURCE_NAME
+        link["market"] = "h2h"
+        link["period"] = "match"
+        link["price_type"] = "best_across_books"
         link["observed_at"] = observed_at
-        match_url = str(link.pop("match_url", "") or "")
-        link["event_id"] = match_url.rstrip("/").rsplit("/", 1)[-1] if match_url else ""
+        link["retrieved_at"] = observed_at
+        link["listing_date"] = str(link.get("listing_date") or page_date)
+        link["listing_time"] = str(link.get("listing_time") or "")
+        match_url = str(link.get("match_url") or "")
+        event_path = urlsplit(match_url).path if match_url else ""
+        link["event_id"] = event_path.rstrip("/").rsplit("/", 1)[-1] if event_path else ""
+        schedule = _match_page_schedule(mhtml, link, page_date, observed_at)
+        if schedule:
+            link.update(schedule)
+            link["listing_schedule_status"] = "detail_candidate"
+        else:
+            # Keep the price observation, but without a fixture date the strict
+            # warehouse matcher cannot attach it to a prediction.
+            link["match_date"] = ""
+            link["match_time"] = ""
+            link["listing_schedule_status"] = "unverified"
         rows.append(link)
     partial = partial or bool(n_failed or len(all_links) > MAX_MATCH_PAGES)
     for row in rows:

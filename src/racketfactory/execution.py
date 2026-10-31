@@ -426,6 +426,68 @@ def betexplorer_schedule_evidence_problem(quote: Mapping[str, Any], *, now=None)
         return "BetExplorer schedule evidence timestamps invalid"
     return ""
 
+def oddsportal_schedule_evidence_problem(quote: Mapping[str, Any], *, now=None) -> str:
+    """Validate an explicit OddsPortal match-page schedule candidate.
+
+    The match-page JSON-LD can establish a dated event candidate for this
+    quote, but it does not establish an OddsPortal-wide schedule contract.
+    Listing-page dates alone never satisfy this check.
+    """
+    from datetime import datetime, timezone
+    import re
+    from urllib.parse import urlsplit
+    from racketfactory.kickoff import SAST
+
+    evidence = quote.get("schedule_evidence")
+    if not isinstance(evidence, Mapping) or evidence.get("status") != "candidate_unverified_contract":
+        return "OddsPortal match-page schedule evidence missing or unsupported"
+    if evidence.get("test_only") is True:
+        return "synthetic OddsPortal schedule evidence is not provider proof"
+    if (evidence.get("provider") != "OddsPortal" or evidence.get("sport") != "Tennis"
+            or evidence.get("event_status") != "EventScheduled"):
+        return "OddsPortal schedule evidence event state mismatch"
+    if (evidence.get("event_id") != quote.get("event_id")
+            or evidence.get("match_url") != quote.get("match_url")):
+        return "OddsPortal schedule evidence event identity mismatch"
+    path = urlsplit(str(quote.get("match_url") or ""))
+    path_id = path.path.rstrip("/").rsplit("/", 1)[-1]
+    if path.scheme or path.netloc or not path.path.startswith("/tennis/") or path_id != str(quote.get("event_id") or ""):
+        return "OddsPortal public match path and event ID mismatch"
+    for key, fallback in (("player_home", "provider_home"), ("player_away", "provider_away")):
+        if str(evidence.get(key) or "").strip() != str(quote.get(key) or quote.get(fallback) or "").strip():
+            return "OddsPortal schedule evidence participant mismatch"
+    if evidence.get("contradictory_signals") != []:
+        return "OddsPortal schedule evidence has conflicting or unexamined status signals"
+    if not re.fullmatch(r"[0-9a-f]{64}", str(evidence.get("response_sha256") or "")):
+        return "OddsPortal schedule evidence response digest missing"
+    try:
+        observed = datetime.fromisoformat(str(evidence.get("observed_at") or "").replace("Z", "+00:00"))
+        quote_observed = datetime.fromisoformat(str(quote.get("observed_at") or "").replace("Z", "+00:00"))
+        start = datetime.fromisoformat(str(evidence.get("commence_time") or "").replace("Z", "+00:00"))
+        quote_start = datetime.fromisoformat(str(quote.get("commence_time") or "").replace("Z", "+00:00"))
+        if any(value.tzinfo is None or value.utcoffset() is None for value in (observed, quote_observed, start, quote_start)):
+            return "OddsPortal schedule evidence timezone unknown"
+        if start.astimezone(timezone.utc) != quote_start.astimezone(timezone.utc):
+            return "OddsPortal schedule evidence kickoff does not match quote"
+        clock = now or datetime.now(timezone.utc)
+        if clock.tzinfo is None:
+            return "OddsPortal schedule evidence validation clock is naive"
+        if not 0 <= (clock.astimezone(timezone.utc) - observed.astimezone(timezone.utc)).total_seconds() <= 30 * 60:
+            return "OddsPortal schedule evidence stale or future"
+        if observed.astimezone(timezone.utc) != quote_observed.astimezone(timezone.utc):
+            return "OddsPortal schedule and quote observations are not the same retrieval"
+        if start.astimezone(timezone.utc) <= clock.astimezone(timezone.utc):
+            return "OddsPortal event has started"
+        local_start = start.astimezone(SAST)
+        if local_start.date().isoformat() != str(quote.get("match_date") or "")[:10]:
+            return "OddsPortal schedule evidence date mismatch"
+        if local_start.strftime("%H:%M") != str(quote.get("match_time") or "")[:5]:
+            return "OddsPortal schedule evidence time mismatch"
+    except (TypeError, ValueError, OverflowError):
+        return "OddsPortal schedule evidence timestamps invalid"
+    return ""
+
+
 def rebuild_quote_execution_problem(quote: Mapping[str, Any]) -> str:
     """Validate a fresh observed price for forward-only new-card admission.
 
@@ -464,6 +526,10 @@ def rebuild_quote_execution_problem(quote: Mapping[str, Any]) -> str:
         return "quote is neither a named bookmaker offer nor a supported indicative observation"
     if source == "betexplorer":
         schedule_problem = betexplorer_schedule_evidence_problem(quote)
+        if schedule_problem:
+            return schedule_problem
+    elif source == "oddsportal":
+        schedule_problem = oddsportal_schedule_evidence_problem(quote)
         if schedule_problem:
             return schedule_problem
     return ""
