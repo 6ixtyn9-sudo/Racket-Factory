@@ -216,12 +216,15 @@ def _listing_status_state(tr: Tag) -> tuple[str, list[str]]:
     return 'unmarked', sorted(signals)[:12]
 
 
-def _finished_score_link_row(tr: Tag, *, rejection_reasons: list[str] | None = None) -> bool:
-    """Recognize the retained terminal row shape without interpreting outcome.
+def _finished_score_link_row(tr: Tag, *, rejection_reasons: list[str] | None = None,
+                             require_score_format: bool = True) -> bool:
+    """Recognize a narrow explicit-terminal row; never extract a score.
 
-    The participant anchor contains two explicit spans; a separate same-event
-    anchor carries the match score. The optional third cell must be empty or a
-    bounded, parenthesized sequence of one to three numeric set scores. These
+    The participant anchor contains two explicit ordered spans; a separate
+    same-event anchor occupies the score cell. Strict mode additionally
+    validates the score and optional set-score cell. Status-only mode skips
+    those score-format checks so an explicit FIN row is not misclassified as
+    actionable merely because score text is omitted or unfamiliar. Both modes
     are exclusion cues only—not schedule or settlement evidence.
     """
     from racketfactory.betexplorer_evidence import _url
@@ -329,6 +332,10 @@ def _finished_score_link_row(tr: Tag, *, rejection_reasons: list[str] | None = N
         return reject('terminal_score_markup_unsupported')
     if score_anchor.find(string=lambda value: isinstance(value, Comment)):
         return reject('terminal_score_comment')
+    if not require_score_format:
+        # The score value and third-cell markup are deliberately not read.
+        # A status-only terminal exclusion cannot create or validate a score.
+        return True
     score_label = score_anchor.get_text(' ', strip=True)
     complete_score = re.fullmatch(r'(?:0:2|2:0|1:2|2:1)', score_label)
     interrupted_score = re.fullmatch(r'(?:0:0|1:0|0:1)\s+(?:RET\.?|INT\.?)',
@@ -385,6 +392,7 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
     tournament = tour_hint = ""
     n_dt = n_finished = n_no_odds = n_bad = n_schedule_unverified = 0
     n_live = n_postponed = n_duplicate = n_recognized = n_conflicting_status = 0
+    n_terminal_score_unverified = 0
     for tr in soup.find_all("tr"):
         classes = tr.get("class") or []
         if "js-tournament" in classes:
@@ -413,14 +421,20 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
             except (OSError, ValueError, TypeError):
                 logger.warning("Could not retain unrecognized BetExplorer row evidence")
             continue
-        # Check the retained FIN + participant-link + same-event score-link
-        # shape before treating the score anchor as a second participant. The
-        # helper validates its optional set-score cell and records exclusion
-        # only; terminal rows never enter the actionable quote path.
+        # Check explicit terminal status and linked participant structure
+        # before treating the score anchor as a second participant. If the
+        # score format is missing/unknown, exclude the FIN row but record that
+        # score evidence was not validated; never parse or infer its value.
         if status_state == 'terminal':
             terminal_reasons: list[str] = []
             if _finished_score_link_row(tr, rejection_reasons=terminal_reasons):
                 n_finished += 1
+                continue
+            status_only_reasons: list[str] = []
+            if _finished_score_link_row(tr, rejection_reasons=status_only_reasons,
+                                        require_score_format=False):
+                n_finished += 1
+                n_terminal_score_unverified += 1
                 continue
 
         # Collect all match-link anchors in this row
@@ -648,6 +662,7 @@ def parse_results_page(html: str, page_date: str, *, metrics: dict | None = None
                         "duplicate_rows": n_duplicate, "recognized_actionable_rows": n_recognized,
                         "no_odds_rows": n_no_odds, "unrecognized_rows": n_bad,
                         "conflicting_status_rows": n_conflicting_status,
+                        "terminal_score_unverified_rows": n_terminal_score_unverified,
                         "row_accounting_total": accounting_total,
                         "row_accounting_complete": accounting_total == n_dt,
                         "listing_recognition_status": "complete" if accounting_total == n_dt and n_bad == 0 else "partial",
