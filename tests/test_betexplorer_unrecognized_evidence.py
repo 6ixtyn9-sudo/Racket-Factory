@@ -116,13 +116,14 @@ def test_structural_capture_is_bounded_and_reports_omissions(monkeypatch, tmp_pa
     assert sample['classification'] == 'unresolved'
 
 
-def test_row_sample_count_is_bounded(monkeypatch, tmp_path):
+def test_unrecognized_row_capture_retains_many_samples_with_a_bounded_limit(monkeypatch, tmp_path):
     monkeypatch.setenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', str(tmp_path))
     row = BeautifulSoup(f'<tr data-dt="30,10,2026,13,05"><td><a href="{MATCH_PATH}">Alice</a></td></tr>',
                         'html.parser').find('tr')
-    for _ in range(10):
+    for _ in range(diagnostics.MAX_UNRECOGNIZED_ROW_SAMPLES + 10):
         diagnostics.capture_unrecognized_listing_row(row, '2026-10-30')
-    assert len(json.loads((tmp_path / 'betexplorer_unrecognized_rows.json').read_text())) == 5
+    retained = json.loads((tmp_path / 'betexplorer_unrecognized_rows.json').read_text())
+    assert len(retained) == diagnostics.MAX_UNRECOGNIZED_ROW_SAMPLES == 50
 
 
 @pytest.mark.parametrize('fallback_rows', [[], [{'match_url': MATCH_PATH, 'player_home': 'A', 'player_away': 'B'}]],

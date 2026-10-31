@@ -289,12 +289,18 @@ def _listing_row_evidence(row) -> dict:
             'interpretation': 'Unverified row evidence; participant identity, status and schedule not established.'}
 
 
+MAX_UNRECOGNIZED_ROW_SAMPLES = 50
+
+
 def capture_unrecognized_listing_row(row, target_date: str, *, rejection_reasons: list[str] | None = None) -> None:
     """Retain bounded public row evidence without classifying unknown markup.
 
     Only name-like visible text in a validated match-link cell, exact status
     labels, numeric date components, a restricted tag tree and public paths
     are retained. Other attributes, scripts, forms and arbitrary text are not.
+    At most ``MAX_UNRECOGNIZED_ROW_SAMPLES`` rows are retained per capture so a
+    listing with several dozen unresolved rows remains reviewable without
+    copying full response markup.
     """
     import hashlib
     from racketfactory.betexplorer_evidence import _url
@@ -309,7 +315,7 @@ def capture_unrecognized_listing_row(row, target_date: str, *, rejection_reasons
             data = []
     except (OSError, ValueError):
         data = []
-    if len(data) >= 5:
+    if len(data) >= MAX_UNRECOGNIZED_ROW_SAMPLES:
         return
     raw = str(row)
     links = []
