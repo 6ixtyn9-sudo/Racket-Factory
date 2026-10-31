@@ -112,6 +112,23 @@ def test_missing_schedule_stops_before_comparison_without_extra_request(monkeypa
     assert len(calls) == 1
 
 
+def test_match_schedule_failure_retains_only_reason_codes_not_page_text(tmp_path, monkeypatch):
+    monkeypatch.setenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', str(tmp_path))
+    body = PAGE + '<div>PRIVATE_PAGE_TEXT_MUST_NOT_BE_RETAINED</div>'
+    monkeypatch.setattr(be, '_fetch_comparison_document', lambda *a, **kw: (body, now()))
+    with pytest.raises(be.PageFetchError, match='schedule or fixture identity unverified'):
+        be.fetch_fixture_comparison(FIXTURE, refresh_evidence=True)
+
+    failures_path = tmp_path / 'betexplorer_detail_failures.json'
+    failures = json.loads(failures_path.read_text())
+    assert len(failures) == 1
+    assert failures[0]['stage'] == 'match_schedule'
+    assert failures[0]['kind'] == 'parser'
+    assert failures[0]['http_status'] == 200
+    assert failures[0]['reason_codes'] == ['schedule_sportsevent_count_unresolved']
+    assert 'PRIVATE_PAGE_TEXT_MUST_NOT_BE_RETAINED' not in failures_path.read_text()
+
+
 def test_old_cache_cannot_launder_unverified_schedule(monkeypatch):
     monkeypatch.setattr(be, 'cached_fetch', lambda *a, **kw: [{'event_id': 'a1B2'}])
     monkeypatch.setattr(be, '_fetch_comparison_document', lambda *a, **kw: pytest.fail('unexpected fetch'))

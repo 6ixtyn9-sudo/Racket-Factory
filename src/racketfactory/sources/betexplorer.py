@@ -1421,9 +1421,18 @@ def fetch_fixture_comparison(fixture: dict, *, refresh_evidence: bool = False, s
             if capture_result["material_sufficiency"] == "insufficient":
                 count("replay_detail_insufficient")
         if needs_schedule:
-            schedule = _detail_scheduled_start(page, fixture, observed_at=page_at)
+            schedule_reasons = []
+            schedule = _detail_scheduled_start(page, fixture, observed_at=page_at,
+                                               rejection_reasons=schedule_reasons)
             if schedule is None:
                 count('schedule_unverified')
+                from racketfactory.rebuild_diagnostics import capture_betexplorer_failure
+                import hashlib
+                capture_betexplorer_failure(
+                    event_id, 'match_schedule', 'parser', status=200, observed_at=page_at,
+                    response_sha256=hashlib.sha256(page.encode()).hexdigest(),
+                    reason_codes=schedule_reasons,
+                )
                 error = PageFetchError('parser', 'match page schedule or fixture identity unverified')
                 error.stage = 'match_schedule'
                 raise error

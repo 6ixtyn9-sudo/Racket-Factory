@@ -155,7 +155,7 @@ def capture_comparison_offers(event_id: str, offers: list[dict], metrics: dict) 
     file.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
-def capture_betexplorer_failure(event_id: str, stage: str, kind: str, *, status: int | None = None, observed_at: str = "", response_sha256: str = "") -> None:
+def capture_betexplorer_failure(event_id: str, stage: str, kind: str, *, status: int | None = None, observed_at: str = "", response_sha256: str = "", reason_codes: list[str] | tuple[str, ...] = ()) -> None:
     """Record bounded failure categories without response bodies or URLs."""
     path = directory()
     if path is None or not re.fullmatch(r"[A-Za-z0-9]{1,32}", event_id):
@@ -168,11 +168,16 @@ def capture_betexplorer_failure(event_id: str, stage: str, kind: str, *, status:
     except (OSError, ValueError):
         items = []
     if len(items) < 2:
-        items.append({"event_id": event_id, "stage": stage if stage in {"detail", "comparison"} else "detail",
+        safe_reasons = []
+        for code in reason_codes[:12]:
+            if isinstance(code, str) and re.fullmatch(r"schedule_[a-z0-9_]{1,79}", code) and code not in safe_reasons:
+                safe_reasons.append(code)
+        items.append({"event_id": event_id, "stage": stage if stage in {"detail", "comparison", "match_schedule"} else "detail",
                       "kind": kind if kind in {"transport", "http", "auth", "challenge", "rate_limit", "parser"} else "unexpected",
                       "recorded_at": datetime.now(timezone.utc).isoformat(), "retrieved_at": observed_at,
                       "http_status": status if isinstance(status, int) else None,
-                      "response_sha256": response_sha256 if re.fullmatch(r"[0-9a-f]{64}", response_sha256) else ""})
+                      "response_sha256": response_sha256 if re.fullmatch(r"[0-9a-f]{64}", response_sha256) else "",
+                      "reason_codes": safe_reasons})
         file.write_text(json.dumps(items, indent=2), encoding="utf-8")
 
 
