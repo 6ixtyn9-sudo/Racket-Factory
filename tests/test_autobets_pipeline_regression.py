@@ -366,8 +366,9 @@ def test_rebuild_staging_is_pure_and_requires_complete_fresh_evidence(tmp_path, 
     assert (picks, state) == originals and not list(tmp_path.iterdir())
     bad = copy.deepcopy(picks)
     bad[0]["selected_quote"]["observed_at"] = None
-    with pytest.raises(ValueError, match="candidate quote provenance is missing or invalid"):
-        tickets.stage_rebuild_evaluation(bad, state, day, now, evidence)
+    one_fixture_survives = tickets.stage_rebuild_evaluation(bad, state, day, now, evidence)
+    assert one_fixture_survives["status"] == "NO BET"
+    assert one_fixture_survives["diagnostics"]["admission_rejections"]["selected quote timestamp invalid"] == 1
     assert not list(tmp_path.iterdir())
     for outcome in ("failed", "partial", "unknown"):
         with pytest.raises(ValueError, match="fresh collection"):
@@ -481,10 +482,11 @@ def test_guarded_cli_missing_card_with_clean_state_reaches_collection_without_pl
     def collect(target, **kwargs):
         calls.append((target, os.getenv("RACKET_FACTORY_REBUILD_SERIALIZED"),
                       os.getenv("GITHUB_RUN_ID"), os.getenv("GITHUB_RUN_ATTEMPT")))
-        return {"status": "partial", "date": target, "observed_at": now.isoformat(), "outcomes": {}}
+        return {"status": "partial", "date": target, "observed_at": datetime.now(now.tzinfo).isoformat(), "outcomes": {},
+                "predictions": []}
     monkeypatch.setattr(daily, "collect_rebuild_sources", collect)
     monkeypatch.setattr(sys, "argv", ["daily.py", "--date", day, "--guarded-rebuild"])
-    with pytest.raises(SystemExit, match="required source collection incomplete"):
+    with pytest.raises(SystemExit, match="current collection contains no target-day prediction inputs"):
         daily.main()
     assert calls == [(day, "1", "81001", "1")]
     assert preconditions["destination_existed"] is False
@@ -658,13 +660,15 @@ def test_first_creation_no_bet_is_truthful_and_keeps_financial_bytes_unchanged(t
 
 
 @pytest.mark.parametrize("fault", ["missing", "stale"])
-def test_invalid_quote_provenance_blocks_publication_not_a_no_bet_card(tmp_path, monkeypatch, fault):
-    import pytest
+def test_documentary_terms_are_optional_but_stale_candidate_does_not_veto_other_fixture(tmp_path, monkeypatch, fault):
     from scripts import daily
     day, now, state_path, state_raw, _, _, rows = _missing_card_rebuild_case(tmp_path, monkeypatch, picks=True)
     if fault == "missing":
+        # Documentary settlement terms are not a universal new-card veto.
         rows[0]["selected_quote"].pop("settlement_evidence", None)
     else:
+        # One stale fixture is excluded; the independently fresh fixture can
+        # still be evaluated and results in a clean no-bet (one leg only).
         rows[0]["selected_quote"]["observed_at"] = (now - timedelta(minutes=31)).isoformat()
     monkeypatch.setattr(daily, "LOCALDATA", tmp_path)
     monkeypatch.setattr(daily, "_now_local", lambda: now)
@@ -675,11 +679,14 @@ def test_invalid_quote_provenance_blocks_publication_not_a_no_bet_card(tmp_path,
     monkeypatch.setattr(daily, "collect_rebuild_sources", lambda *a, **k: collection)
     monkeypatch.setattr(daily, "stage_fresh_rebuild_picks", lambda *a, **k: rows)
     monkeypatch.setattr(sys, "argv", ["daily.py", "--date", day, "--guarded-rebuild"])
-    with pytest.raises(SystemExit, match="candidate quote provenance is missing or invalid"):
-        daily.main()
-    assert not (tmp_path / f"auto_tickets_{day}.json").exists()
-    assert not list((tmp_path / ".auto_tickets_rebuild").glob("archive_*.json"))
-    assert state_path.read_bytes() == state_raw
+    daily.main()
+    card = json.loads((tmp_path / f"auto_tickets_{day}.json").read_text())
+    assert card["admission_policy_version"] == "racket-new-card-v1"
+    if fault == "missing":
+        assert card["status"] == "CURRENT" and len(card["accas"]) == 1
+    else:
+        assert card["status"] == "NO BET" and card["accas"] == []
+    assert state_raw != state_path.read_bytes() if fault == "missing" else state_raw == state_path.read_bytes()
 
 
 def test_existing_destination_change_during_staging_refuses_without_overwrite(tmp_path, monkeypatch):
@@ -821,8 +828,8 @@ def test_guarded_runner_empty_card_success_and_failures_are_isolated(tmp_path, m
     old = {"date": day, "frozen": True, "accas": [], "staked_pct": 0, "paper_staked_pct": 0}
     card.write_text(json.dumps(old))
     before_card = card.read_bytes()
-    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d, **kwargs: dict(collection, status="insufficient"))
-    with pytest.raises(SystemExit, match="required source collection incomplete"):
+    monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d, **kwargs: dict(collection, status="failed"))
+    with pytest.raises(SystemExit, match="source collection failed or unavailable"):
         daily.main()
     assert card.read_bytes() == before_card and json.loads(state_path.read_bytes()) == json.loads(before_state)
 
@@ -906,7 +913,8 @@ def test_staged_miner_uses_only_supplied_fresh_sources(tmp_path, monkeypatch):
         kwargs["env"] = env
         return real_run(*args, **kwargs)
     monkeypatch.setattr(daily.subprocess, "run", run)
-    picks = daily.stage_fresh_rebuild_picks(day, {"status": "complete", "date": day, "predictions": preds,
+    picks = daily.stage_fresh_rebuild_picks(day, {"status": "complete", "date": day,
+        "observed_at": datetime.now(timezone.utc).isoformat(), "predictions": preds,
         "raw_quotes": {"betexplorer": quotes, "oddsportal": []}}, tmp_path / "staging")
     assert len(picks) == 1
     assert picks[0]["selected_quote"]["observed_at"] == obs
@@ -938,7 +946,8 @@ def test_guarded_staging_does_not_let_unproven_primary_hide_valid_optional(tmp_p
                                            attach_synthetic_settlement_evidence)
     allow_synthetic_evidence_in_pipeline(monkeypatch)
     common = {"match_date": day, "player_home": "Alice Adams", "player_away": "Beth Brown",
-              "odds_home": 1.5, "odds_away": 2.5, "observed_at": observed, "bookmaker": "book"}
+              "odds_home": 1.5, "odds_away": 2.5, "observed_at": observed, "bookmaker": "book",
+              "event_id": "optional-event"}
     unproven = dict(common, source="BetExplorer")
     valid = dict(common, source="OddsPortal", market="h2h", period="match", price_type="bookmaker", settlement_rules={"retirement": "advancer", "walkover": "void", "cancelled": "void"})
     attach_synthetic_settlement_evidence(valid)
@@ -954,7 +963,9 @@ def test_guarded_staging_does_not_let_unproven_primary_hide_valid_optional(tmp_p
         ( __import__("pathlib").Path(out) / f"picks_{day}.json").write_text("[]")
         return SimpleNamespace(returncode=0)
     monkeypatch.setattr(daily.subprocess, "run", miner)
-    result = daily.stage_fresh_rebuild_picks(day, {"status": "complete", "predictions": [],
+    result = daily.stage_fresh_rebuild_picks(day, {"status": "complete", "date": day,
+        "observed_at": observed, "predictions": [{"match_date": day, "match_time": "23:00",
+        "player_home": "Alice Adams", "player_away": "Beth Brown"}],
         "raw_quotes": {"betexplorer": [unproven], "oddsportal": [valid]}}, tmp_path / "stage")
     assert result == [] and len(used) == 1 and used[0]["source"] == "OddsPortal"
 
@@ -987,7 +998,7 @@ def test_guarded_runner_committed_retry_is_a_noop(tmp_path, monkeypatch):
         daily.run_guarded_empty_rebuild(day)
 
 
-def test_offline_required_source_to_two_leg_ticket_doctor_and_blocked_states(tmp_path, monkeypatch):
+def test_offline_partial_collection_to_saved_card_via_normal_ticket_entrypoint(tmp_path, monkeypatch):
     """Synthetic end-to-end plumbing; it does not authenticate BetExplorer or bookmaker terms."""
     import os
     import pytest
@@ -1008,6 +1019,8 @@ def test_offline_required_source_to_two_leg_ticket_doctor_and_blocked_states(tmp
     monkeypatch.setattr(tickets, "_ML_AVAILABLE", False)
     monkeypatch.setattr(daily, "LOCALDATA", tmp_path / "localdata")
     daily.LOCALDATA.mkdir()
+    monkeypatch.setattr(tickets, "LOCALDATA", daily.LOCALDATA)
+    monkeypatch.setattr(tickets, "STATE_FILE", daily.LOCALDATA / "auto_tickets_state.json")
     monkeypatch.setattr(doctor, "LOCALDATA", tmp_path / "localdata")
     monkeypatch.setenv("RACKET_FACTORY_RUN_AS_OF", observation)
     monkeypatch.delenv(betexplorer.DISABLE_ENV, raising=False)
@@ -1055,7 +1068,7 @@ def test_offline_required_source_to_two_leg_ticket_doctor_and_blocked_states(tmp
             metrics.update({"data_dt_rows": 2, "row_accounting_total": 2, "row_accounting_complete": True,
                             "listing_recognition_status": "complete", "listing_coverage_status": "complete",
                             "schedule_verification_status": "verified", "actionable_schedule_unverified_rows": 0})
-        return listing, "complete"
+        return listing, "partial"
     monkeypatch.setattr(betexplorer, "_fetch_live", fetch_listing)
     monkeypatch.setattr(betexplorer, "fetch_fixture_comparison",
                         lambda fixture, **kwargs: [quote_by_event[fixture["event_id"]]])
@@ -1063,14 +1076,15 @@ def test_offline_required_source_to_two_leg_ticket_doctor_and_blocked_states(tmp
     # Each actual provider row is synthetic, tagged test_only, and accepted only
     # at the mocked authentication boundary; all existing pipeline functions run.
     collection = daily.collect_rebuild_sources(day)
-    assert collection["status"] == "complete"
+    assert collection["status"] == "partial"
     assert collection["required_source_readiness"] == {
-        "status": "ready", "sources": {"betclan": "complete", "betexplorer": "complete"}, "blockers": []}
+        "status": "partial", "sources": {"betclan": "complete", "betexplorer": "partial"},
+        "blockers": ["betexplorer:partial"]}
     assert collection["prediction_set"]["status"] == "captured_snapshot"
     assert collection["prediction_set"]["unique_fixture_keys"] == 2
     assert len(collection["prediction_set"]["sha256"]) == 64
     assert collection["outcomes"]["betexplorer"]["parser_counts"]["row_accounting_complete"] is True
-    assert collection["outcomes"]["betexplorer"]["detail_counts"]["stage_statuses"]["required_source_readiness"] == "ready"
+    assert collection["outcomes"]["betexplorer"]["detail_counts"]["stage_statuses"]["required_source_readiness"] == "blocked"
     assert len(collection["raw_quotes"]["betexplorer"]) == 2
     assert all(row["settlement_evidence"]["test_only"] and row["schedule_evidence"]["test_only"]
                for row in collection["raw_quotes"]["betexplorer"])
@@ -1098,65 +1112,77 @@ def test_offline_required_source_to_two_leg_ticket_doctor_and_blocked_states(tmp
     assert all(float(pick["odds"]) >= 1.30 for pick in picks)
     state = {"bank": 100.0, "paper_bank": 100.0, "open_slips": [], "history": []}
     original = json.dumps((picks, state), sort_keys=True)
-    evaluation = tickets.stage_rebuild_evaluation(
-        picks, state, day, now,
-        {"status": "complete", "date": day, "observed_at": collection["observed_at"]})
+    evaluation = tickets.stage_rebuild_evaluation(picks, state, day, now, collection)
     assert evaluation["status"] == "PROPOSED" and len(evaluation["accas"]) == 1
     assert len(evaluation["accas"][0]["legs"]) == 2
     assert json.dumps((picks, state), sort_keys=True) == original  # no card/state mutation
 
-    no_bet = tickets.stage_rebuild_evaluation(
-        [], state, day, now,
-        {"status": "complete", "date": day, "observed_at": collection["observed_at"]})
+    no_bet = tickets.stage_rebuild_evaluation([], state, day, now, collection)
     assert no_bet["status"] == "NO BET" and no_bet["accas"] == []
     unproven = json.loads(json.dumps(picks))
     unproven[0]["selected_quote"].pop("settlement_evidence", None)
-    with pytest.raises(ValueError, match="candidate quote provenance is missing or invalid"):
-        tickets.stage_rebuild_evaluation(
-            [unproven[0]], state, day, now,
-            {"status": "complete", "date": day, "observed_at": collection["observed_at"]})
-    with pytest.raises(ValueError, match="fresh collection"):
+    documentary_warning_only = tickets.stage_rebuild_evaluation(
+        [unproven[0]], state, day, now, collection)
+    assert documentary_warning_only["status"] == "NO BET"
+    with pytest.raises(ValueError, match="collection is failed"):
         tickets.stage_rebuild_evaluation(picks, state, day, now,
-            {"status": "partial", "date": day, "observed_at": collection["observed_at"]})
+            dict(collection, status="failed"))
 
-    # Doctor consumes only a temporary current-run evaluation record.
+    # Exercise the ordinary auto_tickets.main publication path from picks
+    # produced by the real partial-collection normalizer/miner above.
+    (daily.LOCALDATA / f"picks_{day}.json").write_text(json.dumps(picks))
+    (daily.LOCALDATA / f".pick_run_status_{day}.json").write_text(json.dumps({
+        "run_as_of": observation, "fresh_picks": len(picks)}))
+    (daily.LOCALDATA / f"quote_collection_{day}.json").write_text(json.dumps({
+        "run_as_of": observation, "status": "partial",
+        "oldest_offer_observed_at": observation, "observed_offer_count": 2,
+        "admission_policy_version": "racket-new-card-v1"}))
+    state_path = daily.LOCALDATA / "auto_tickets_state.json"
+    state_path.write_text(json.dumps(state))
+    monkeypatch.setattr(sys, "argv", ["auto_tickets.py", "--date", day])
+    tickets.main()
     ticket_file = daily.LOCALDATA / f"auto_tickets_{day}.json"
-    ticket_file.write_text(json.dumps({"date": day, "generated_at": now.isoformat(),
-                                      "diagnostics": evaluation["diagnostics"], "accas": evaluation["accas"]}))
+    saved = json.loads(ticket_file.read_text())
+    assert saved["admission_policy_version"] == "racket-new-card-v1"
+    assert len(saved["accas"]) == 1 and len(saved["accas"][0]["legs"]) == 2
+    assert all(leg["_admission_policy_version"] == "racket-new-card-v1"
+               for leg in saved["accas"][0]["legs"])
     evaluation_file = daily.LOCALDATA / f"auto_tickets_evaluation_{day}.json"
-    evaluation_file.write_text(json.dumps({"date": day, "run_as_of": observation,
-                                           "evaluated_at": now.isoformat(), "collection_status": "complete",
-                                           "publication": "staged_only", "diagnostics": evaluation["diagnostics"]}))
+    written_evaluation = json.loads(evaluation_file.read_text())
+    assert written_evaluation["collection_status"] == "partial"
+    assert written_evaluation["evaluation_status"] == "valid_card"
     doctor_checks = doctor.run_health_checks(as_of=day)
-    assert doctor_checks["tickets:current_evaluation"]["status"] == "OK"
-    # Unproven/incomplete evaluation cannot be presented as Doctor-ready.
+    assert doctor_checks["tickets:current_evaluation"]["status"] == "WARN"
+    # A partial collection is still called partial by Doctor, while failure is
+    # distinguishable from this valid new-card evaluation.
     evaluation_file.write_text(json.dumps({"date": day, "run_as_of": observation,
                                            "evaluated_at": now.isoformat(), "collection_status": "partial",
+                                           "evaluation_status": "input_failure",
                                            "publication": "retained_previous_card", "diagnostics": {}}))
     doctor_checks = doctor.run_health_checks(as_of=day)
     assert doctor_checks["tickets:current_evaluation"]["status"] == "CRITICAL"
 
-    # Distinct incomplete/unproven required-source states remain blocked.
+    # Global coverage remains partial in diagnostics; fixture eligibility is assessed separately.
     class PartialClan(Clan):
         last_collection_status = "partial"
     monkeypatch.setattr(betclan, "BetClanPredictor", PartialClan)
     partial_betclan = daily.collect_rebuild_sources(day)
-    assert partial_betclan["status"] == "insufficient"
-    assert partial_betclan["required_source_readiness"]["status"] == "blocked"
+    assert partial_betclan["status"] == "partial"
+    assert partial_betclan["required_source_readiness"]["status"] == "partial"
     assert partial_betclan["required_source_readiness"]["sources"]["betclan"] == "partial"
 
     monkeypatch.setattr(betclan, "BetClanPredictor", Clan)
     monkeypatch.setattr(betexplorer, "_fetch_live", lambda *a, **kw: (listing, "partial"))
     skipped_listing = daily.collect_rebuild_sources(day)
-    assert skipped_listing["status"] == "insufficient"
-    assert skipped_listing["outcomes"]["betexplorer"]["detail_counts"]["attempted"] == 0
-    assert skipped_listing["outcomes"]["betexplorer"]["detail_counts"]["unexamined_fixtures"] == 2
+    assert skipped_listing["status"] == "partial"
+    assert skipped_listing["outcomes"]["betexplorer"]["detail_counts"]["attempted"] == 2
+    assert skipped_listing["outcomes"]["betexplorer"]["detail_counts"]["unexamined_fixtures"] == 0
 
     monkeypatch.setattr(betexplorer, "_fetch_live", fetch_listing)
     quote_by_event = {key: dict(value) for key, value in quote_by_event.items()}
     for quote in quote_by_event.values():
         quote.pop("settlement_evidence", None)
     unproven_quotes = daily.collect_rebuild_sources(day)
-    assert unproven_quotes["status"] == "insufficient"
-    assert unproven_quotes["required_source_readiness"]["status"] == "blocked"
-    assert unproven_quotes["outcomes"]["betexplorer"]["detail_counts"]["stage_statuses"]["quote_resolution"] == "partial"
+    assert unproven_quotes["status"] == "partial"
+    assert unproven_quotes["required_source_readiness"]["status"] == "partial"
+    assert unproven_quotes["outcomes"]["betexplorer"]["detail_counts"]["stage_statuses"]["quote_resolution"] == "complete"

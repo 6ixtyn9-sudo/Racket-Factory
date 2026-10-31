@@ -56,14 +56,15 @@ local = Path(os.environ["RF_GUARDED_LOCALDATA"])
 day = os.environ["RF_GUARDED_DATE"]
 from racketfactory.sources.betclan import BetClanPredictor
 from racketfactory.sources.predixsport import PredixSportPredictor
-from racketfactory.sources import betexplorer
+from racketfactory.sources import betexplorer, oddsportal_upcoming
 from racketfactory import quote_enrichment
 
 def _betclan(self):
     _append("RF_GUARDED_PROVIDER_LOG", "betclan")
     self.last_collection_status = "partial" if scenario == "incomplete_betclan" else "complete"
     rows = []
-    if scenario == "untrusted_quote":
+    if scenario in {"no_bet", "race_card", "race_state", "incomplete_betclan",
+                    "incomplete_betexplorer", "untrusted_quote"}:
         rows = [{"match_date": day, "match_time": "23:50", "player_home": "Alice Adams",
                  "player_away": "Beth Brown", "prob_home": 0.75, "prob_away": 0.25,
                  "tournament": "Synthetic fixture only", "surface": "Hard"}]
@@ -97,9 +98,29 @@ def _betexplorer(target, *, with_status=False, metrics=None):
     return (rows, status) if with_status else rows
 
 betexplorer._fetch_live = _betexplorer
-# Empty-source cases use no quotes. One separate case supplies a deliberately
-# unauthenticated fixture quote to assert the real term/schedule validators
-# reject it; no test-only validator bypass or manufactured terms are installed.
+
+def _oddsportal_page(target):
+    if scenario == "untrusted_quote":
+        return None
+    return ("/synthetic-tennis/", datetime.now(timezone.utc).isoformat())
+
+def _oddsportal_rows(path, target, **kwargs):
+    if scenario not in {"no_bet", "race_card", "race_state", "incomplete_betclan", "incomplete_betexplorer"}:
+        return []
+    observed = datetime.now(timezone.utc).isoformat()
+    return [{"event_id": "synthetic-event-oddsportal", "match_date": target,
+             "match_time": "23:50", "commence_time": target + "T23:50:00+02:00",
+             "player_home": "Alice Adams", "player_away": "Beth Brown",
+             "odds_home": 1.55, "odds_away": 2.60, "source": "OddsPortal",
+             "bookmaker": "OddsPortal consensus", "price_type": "consensus",
+             "market": "h2h", "period": "match", "line": None,
+             "observed_at": observed, "test_fixture": True}]
+
+oddsportal_upcoming._page_for_target = _oddsportal_page
+oddsportal_upcoming._fetch_live = _oddsportal_rows
+
+# Test-only quotes are explicit in-memory fixtures. A separate malformed
+# BetExplorer quote checks that missing per-fixture schedule evidence still blocks.
 def _comparisons(*args, **kwargs):
     if scenario != "untrusted_quote":
         return [], {"test_fixture": True}, False
@@ -184,7 +205,7 @@ def _make_case(tmp_path, template, *, scenario="no_bet", run_id="8700001",
         "RACKET_FACTORY_REBUILD_SERIALIZED": "1",
         "RACKET_FACTORY_DISABLE_FOREBET": "1",
         "RACKET_FACTORY_DISABLE_BETEXPLORER": "",
-        "RACKET_FACTORY_DISABLE_ODDSPORTAL_UPCOMING": "1",
+        "RACKET_FACTORY_DISABLE_ODDSPORTAL_UPCOMING": "",
         "RACKET_FACTORY_QUOTA_DIR": str(tmp_path / "quota"),
         "RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR": str(diagnostics),
         "GITHUB_RUN_ID": run_id,
@@ -228,7 +249,7 @@ def test_guarded_cli_subprocess_rejects_quote_without_applicable_terms(tmp_path,
     _, local, diagnostics, _, network_log, _, result = _make_case(
         tmp_path, guarded_cli_template, scenario="untrusted_quote")
     assert result.returncode != 0
-    assert "collection has no market-identified fresh quotes" in result.stderr
+    assert "no usable fresh fixture quote observations" in result.stderr
     assert not (local / f"auto_tickets_{TARGET_DATE}.json").exists()
     status = json.loads((diagnostics / "rebuild_status.json").read_text())
     rejection_reasons = status["quote_stages"]["sources"]["betexplorer"]["rejection_reasons"]
@@ -269,15 +290,16 @@ def test_guarded_cli_subprocess_protects_existing_nonempty_card(tmp_path, guarde
     ("incomplete_betclan", "betclan"),
     ("incomplete_betexplorer", "betexplorer"),
 ])
-def test_guarded_cli_subprocess_refuses_incomplete_required_source(
+def test_guarded_cli_subprocess_accepts_valid_fixture_quote_under_partial_source_coverage(
         tmp_path, guarded_cli_template, scenario, source):
     _, local, diagnostics, _, network_log, _, result = _make_case(
         tmp_path, guarded_cli_template, scenario=scenario)
-    assert result.returncode != 0
-    assert "required source collection incomplete" in result.stderr
-    assert not (local / f"auto_tickets_{TARGET_DATE}.json").exists()
+    assert result.returncode == 0, result.stderr
+    card = json.loads((local / f"auto_tickets_{TARGET_DATE}.json").read_text())
+    assert card["status"] == "NO BET" and card["accas"] == []
     status = json.loads((diagnostics / "rebuild_status.json").read_text())
     assert status["source_outcomes"][source]["status"] == "partial"
+    assert status["collection_status"] == "partial"
     assert not network_log.exists()
 
 

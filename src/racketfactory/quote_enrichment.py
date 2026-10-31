@@ -64,36 +64,25 @@ def collect_prediction_comparisons(target_date: str, predictions: list[dict], be
             detail_counts["stage_statuses"]["listing_schedule_verification"] = schedule
     # A zero prediction count here means none were evaluated, not an empty card.
     if listing_status != "complete":
+        partial = True
         detail_counts["stage_statuses"]["listing_recognition"] = (
             detail_counts["stage_statuses"]["listing_recognition"] if listing_metrics else listing_status)
+        # Coverage remains factually partial; it is a diagnostic, not a reason
+        # to skip independent identity matches on rows actually observed.
         detail_counts["readiness_blockers"].append("listing_not_complete")
-        detail_counts["matching_skipped_reason"] = "listing_not_complete"
         detail_counts["listing_status"] = listing_status
-        detail_counts["input_predictions"] = len(predictions)
-        detail_counts["target_date_input_predictions"] = sum(
-            str(p.get("match_date") or "")[:10] == target_date for p in predictions)
-        detail_counts["predictions"] = detail_counts["target_date_input_predictions"]
-        detail_counts["unmatched_or_ambiguous"] = detail_counts["predictions"]
-        detail_counts["stage_statuses"]["identity_matching"] = (
-            "not_attempted" if not detail_counts["predictions"] else "unresolved_listing")
-        detail_counts["unexamined_fixtures"] = detail_counts["predictions"]
-        detail_counts["stage_statuses"]["unexamined_fixtures"] = (
-            "none" if not detail_counts["predictions"] else "present")
-    if listing_status == "complete" and not be_rows:
+    if not be_rows:
         detail_counts["predictions"] = sum(str(p.get("match_date") or "")[:10] == target_date for p in predictions)
         detail_counts["unmatched_or_ambiguous"] = detail_counts["predictions"]
-        detail_counts["stage_statuses"]["identity_matching"] = "complete" if not detail_counts["predictions"] else "partial"
+        detail_counts["stage_statuses"]["identity_matching"] = "not_attempted" if not detail_counts["predictions"] else "partial"
         detail_counts["stage_statuses"]["schedule_verification"] = "not_required_for_excluded_rows" if not detail_counts["predictions"] else "unresolved"
-        detail_counts["stage_statuses"]["listing_schedule_verification"] = (
-            detail_counts["stage_statuses"]["listing_schedule_verification"]
-            if listing_metrics else "unknown")
         detail_counts["stage_statuses"]["detail_discovery"] = "not_required" if not detail_counts["predictions"] else "not_attempted"
         detail_counts["stage_statuses"]["quote_availability"] = "not_required" if not detail_counts["predictions"] else "not_attempted"
         detail_counts["stage_statuses"]["quote_resolution"] = "not_required" if not detail_counts["predictions"] else "not_attempted"
         partial = bool(detail_counts["predictions"])
         if detail_counts["predictions"]:
             detail_counts["readiness_blockers"].append("predictions_unmatched_to_listing")
-    if listing_status == "complete" and be_rows:
+    if be_rows:
         if detail_counts["stage_statuses"]["listing_recognition"] == "unknown":
             detail_counts["stage_statuses"]["listing_recognition"] = "complete"
         import pandas as pd
@@ -449,23 +438,9 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
     # independently revalidated, still-fresh quote evidence and exactly the
     # same prediction set. Never stamp a cached observation as new.
     def cached_snapshot_is_proven() -> bool:
-        if (not isinstance(result, dict) or result.get('status') != 'complete'
+        if (not isinstance(result, dict) or result.get('status') not in {'complete', 'partial'}
                 or result.get('prediction_fingerprint') != fingerprint
                 or not isinstance(result.get('offers'), list) or not result.get('offers')):
-            return False
-        counts = result.get('counts')
-        stages = counts.get('stage_statuses') if isinstance(counts, dict) else None
-        if (not isinstance(stages, dict) or stages.get('required_source_readiness') != 'ready'
-                or stages.get('listing_recognition') != 'complete'
-                or stages.get('listing_row_accounting') != 'complete'
-                or stages.get('listing_coverage') != 'complete'
-                or stages.get('listing_schedule_verification') != 'verified'
-                or stages.get('identity_matching') != 'complete'
-                or stages.get('schedule_verification') != 'complete'
-                or stages.get('detail_discovery') != 'complete'
-                or stages.get('quote_resolution') != 'complete'
-                or stages.get('unexamined_fixtures') != 'none'
-                or counts.get('readiness_blockers')):
             return False
         for offer in result['offers']:
             if not isinstance(offer, dict) or rebuild_quote_execution_problem(offer):
@@ -485,13 +460,11 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
 
     cached_without_proof = (not collected_live and bool(result.get('offers') or result.get('listing_rows'))
                             and not cached_snapshot_is_proven())
-    incomplete_with_offers = result.get('status') != 'complete' and bool(result.get('offers'))
-    if cached_without_proof or incomplete_with_offers:
+    if cached_without_proof:
         if result.get('status') not in {'failed', 'disabled'}:
             result['status'] = 'partial'
         result['listing_schedule_status'] = 'unverified'
-        result['schedule_guard_reason'] = ('cached_schedule_evidence_unavailable' if cached_without_proof
-                                           else 'incomplete_collection')
+        result['schedule_guard_reason'] = 'cached_schedule_evidence_unavailable'
         result['offers'] = []
     result['prediction_set_status'] = ('changed' if result.get('prediction_fingerprint') != fingerprint
                                        else 'captured' if collected_live else 'unchanged')
@@ -521,6 +494,10 @@ def targeted_comparison_rows(target_date: str, predictions: list[dict]) -> list[
     result['evaluated_at'] = now.isoformat()
     # Persist bounded stage counts, not page bodies, credentials or full offers.
     status = {k: v for k, v in result.items() if k != 'offers'}
+    status['observed_offer_count'] = len(result.get('offers', []))
+    status['listing_row_count'] = int(result.get('listing_rows') or 0)
+    status['admission_policy_version'] = 'racket-new-card-v1'
+    status['indicative_observations_are_not_bookmaker_offers_or_fills'] = True
     try:
         (Path(__file__).resolve().parents[2] / "localdata" / f'quote_collection_{target_date}.json').write_text(json.dumps(status, indent=2, sort_keys=True))
     except (OSError, TypeError) as exc:

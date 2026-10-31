@@ -106,7 +106,7 @@ def test_normal_targeted_detail_budget_and_changed_fixture_set_fail_closed(monke
     monkeypatch.setattr(fetch_cache, 'cached_fetch', once)
     fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
     calls = []
-    monkeypatch.setattr(betexplorer, '_fetch_live', lambda *a, **kw: (calls.append('listing') or [fixture], 'complete'))
+    monkeypatch.setattr(betexplorer, '_fetch_live', lambda *a, **kw: (calls.append('listing') or [fixture], 'partial'))
     from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
                                            attach_synthetic_schedule_evidence,
                                            attach_synthetic_settlement_evidence)
@@ -122,14 +122,12 @@ def test_normal_targeted_detail_budget_and_changed_fixture_set_fail_closed(monke
     # The test-only authentication boundary is explicitly opened to exercise
     # first-pass in-memory plumbing; this does not prove a provider schedule.
     assert qe.targeted_comparison_rows(DAY, [fixture])
-    # Reused cache has no independently verifiable schedule evidence; block
-    # it without repeating provider collection or relabeling observations.
-    assert not qe.targeted_comparison_rows(DAY, [fixture])
+    # Reused partial collection may retain independently fresh, fixture-bound
+    # quote evidence; this does not upgrade its factual global status.
+    assert qe.targeted_comparison_rows(DAY, [fixture])
     assert calls == ['listing']
     status = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())
     assert status['status'] == 'partial'
-    assert status['listing_schedule_status'] == 'unverified'
-    assert status['schedule_guard_reason'] == 'cached_schedule_evidence_unavailable'
     other = dict(fixture, player_home='Carol Clark')
     qe.targeted_comparison_rows(DAY, [other])
     status = json.loads((tmp_path / 'localdata' / f'quote_collection_{DAY}.json').read_text())
@@ -160,7 +158,7 @@ def test_doctor_distinguishes_current_failed_evaluation_from_saved_card(monkeypa
         'collection_status': 'partial', 'publication': 'retained_previous_card',
         'diagnostics': {'playable': 0, 'builder_input': 0}}))
     checks = doctor.run_health_checks(as_of=DAY)
-    assert checks['tickets:current_evaluation']['status'] == 'CRITICAL'
+    assert checks['tickets:current_evaluation']['status'] == 'WARN'
     assert 'current run' in checks['tickets:current_evaluation']['detail']
     assert 'saved ticket snapshot generated' in checks['tickets:stages']['detail']
 

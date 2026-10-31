@@ -67,7 +67,7 @@ def test_ambiguous_span_structure_stays_unrecognized(content):
 
 
 @pytest.mark.parametrize('dt', ['30,10,2026,11,0', '31,10,2026,11,0', 'bad-date', '30,10,2026,25,0'])
-def test_unverified_or_conflicting_date_blocks_detail_and_legacy_prices(monkeypatch, dt):
+def test_unverified_or_conflicting_date_uses_bounded_fixture_matching_without_legacy_prices(monkeypatch, dt):
     html = listing('<span>van Wyk K.</span><span>Marmousez L.</span>', dt=dt)
     monkeypatch.setattr(be, 'fetch_page_html', lambda *a, **kw: html)
     metrics = {}
@@ -78,7 +78,10 @@ def test_unverified_or_conflicting_date_blocks_detail_and_legacy_prices(monkeypa
     monkeypatch.setattr(be, 'fetch_fixture_comparison', lambda *a, **kw: calls.append(a))
     prediction = {'match_date': '2026-10-31', 'player_home': 'van Wyk K.', 'player_away': 'Marmousez L.'}
     offers, counts, _ = quote_enrichment.collect_prediction_comparisons('2026-10-31', [prediction], rows, status)
-    assert not offers and not calls and counts['matching_skipped_reason'] == 'listing_not_complete'
+    # Conflicting/unknown listing dates cannot be rebound to the prediction;
+    # bounded detail matching is reserved for uniquely dated fixtures.
+    assert not offers and calls == []
+    assert counts.get('attempted', 0) == 0
     with pytest.raises(be.PageFetchError, match='schedule is unverified'):
         be._fetch_live('2026-10-31')
 
@@ -241,13 +244,13 @@ def test_reduced_capture_replay_reaches_partial_collection_and_blocks_staging(mo
     before = card.read_bytes()
     result = daily.collect_rebuild_sources('2026-10-30')
     assert calls == ['listing']
-    assert result['status'] == 'insufficient'
+    assert result['status'] == 'partial'
     assert result['outcomes']['betclan']['status'] == 'complete'
     assert result['outcomes']['betexplorer']['status'] == 'partial'
     counts = result['outcomes']['betexplorer']['detail_counts']
-    assert counts['matching_skipped_reason'] == 'listing_not_complete' and counts['attempted'] == 0
+    assert counts.get('attempted', 0) == 0  # no target-date identity was established
     assert len(result['raw_quotes']['betexplorer']) == 1
     assert result['raw_quotes']['betexplorer'][0]['match_date'] == ''
-    with pytest.raises(RuntimeError, match='required fresh collection is incomplete'):
+    with pytest.raises(RuntimeError, match='no usable fresh fixture quote observations'):
         daily.stage_fresh_rebuild_picks('2026-10-30', result, tmp_path / 'stage')
     assert card.read_bytes() == before

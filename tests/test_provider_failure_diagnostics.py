@@ -160,17 +160,17 @@ def test_guarded_collection_required_and_optional_outcomes(monkeypatch):
     monkeypatch.setattr(betexplorer, "fetch_fixture_comparison", lambda f, **kwargs: [quote])
     monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False, metrics=None: ([quote], "complete"))
     collection = daily.collect_rebuild_sources("2026-10-29")
-    # A mocked listing plus policy-shaped rules is not authenticated schedule
-    # or bookmaker evidence, so required-source readiness stays blocked.
-    assert collection["status"] == "insufficient"
-    assert collection["required_source_readiness"]["status"] == "blocked"
+    # Partial coverage remains diagnostic; the synthetic row lacks its own
+    # fixture-bound schedule evidence, so it is not admitted as a quote.
+    assert collection["status"] == "partial"
+    assert collection["required_source_readiness"]["status"] == "partial"
     assert collection["required_source_readiness"]["sources"]["betexplorer"] == "partial"
     assert collection["outcomes"]["predixsport"]["status"] == "failed"
     assert collection["outcomes"]["oddsportal"]["status"] == "disabled"
     assert collection["outcomes"]["theoddsapi"]["status"] == "not_attempted"
     assert collection["outcomes"]["bzzoiro"]["status"] == "not_attempted"
     monkeypatch.setattr(betexplorer, "_fetch_live", lambda d, with_status=False, metrics=None: ([quote], "partial"))
-    assert daily.collect_rebuild_sources("2026-10-29")["status"] == "insufficient"
+    assert daily.collect_rebuild_sources("2026-10-29")["status"] == "partial"
 
 
 def test_betclan_required_status_detects_partial_match_pages(monkeypatch):

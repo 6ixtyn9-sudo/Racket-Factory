@@ -74,6 +74,19 @@ def test_post_window_lock_still_holds():
 NOW = datetime(2026, 9, 26, 8, 5, tzinfo=SAST)
 
 
+def _write_synthetic_current_empty_run(tmp_path, monkeypatch, day):
+    """Fresh temporary run metadata lets these tests isolate ledger replay."""
+    run_as_of = NOW.isoformat()
+    monkeypatch.setenv("RACKET_FACTORY_RUN_AS_OF", run_as_of)
+    (tmp_path / f".pick_run_status_{day}.json").write_text(json.dumps({
+        "run_as_of": run_as_of, "fresh_picks": 0,
+    }))
+    (tmp_path / f"quote_collection_{day}.json").write_text(json.dumps({
+        "run_as_of": run_as_of, "status": "complete",
+        "oldest_offer_observed_at": NOW.isoformat(), "observed_offer_count": 1,
+    }))
+
+
 def _pick(name, kickoff):
     return {"match": f"{name} vs Opponent", "selected_player": name,
             "kickoff": kickoff, "odds": 1.5, "odds_source": "BetExplorer"}
@@ -218,6 +231,7 @@ def test_reconstruction_cannot_reimport_a_paper_acca_as_real(tmp_path, monkeypat
     }
     (tmp_path / "auto_tickets_2026-09-20.json").write_text(json.dumps(ledger))
     (tmp_path / "picks_2026-09-26.json").write_text("[]")
+    _write_synthetic_current_empty_run(tmp_path, monkeypatch, "2026-09-26")
     monkeypatch.setattr(at, "now_local", lambda: NOW)
 
     monkeypatch.setattr(sys, "argv", ["auto_tickets.py", "--date", "2026-09-26"])
@@ -252,6 +266,7 @@ def test_reconstruction_zeroes_a_real_stake_on_a_non_executable_acca(tmp_path, m
         "staked_pct": 25.0, "stake_per_acca_pct": 25.0,
     }))
     (tmp_path / "picks_2026-09-26.json").write_text("[]")
+    _write_synthetic_current_empty_run(tmp_path, monkeypatch, "2026-09-26")
     monkeypatch.setattr(at, "now_local", lambda: NOW)
     monkeypatch.setattr(sys, "argv", ["auto_tickets.py", "--date", "2026-09-26"])
     at.main()

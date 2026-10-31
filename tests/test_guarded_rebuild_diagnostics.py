@@ -53,8 +53,10 @@ def test_unusable_quotes_record_each_reason_without_verified_no_bet(tmp_path):
     row = {"match_date": day, "player_home": "Alice", "player_away": "Beth", "source": "BetExplorer",
            "bookmaker": "BetExplorer consensus", "odds_home": 1.5, "odds_away": 2.5,
            "observed_at": datetime.now(timezone.utc).isoformat()}
-    collection = {"status": "complete", "predictions": [], "raw_quotes": {"betexplorer": [row], "oddsportal": []}}
-    with pytest.raises(RuntimeError, match="no market-identified fresh quotes"):
+    collection = {"status": "complete", "date": day, "observed_at": datetime.now(timezone.utc).isoformat(),
+                  "predictions": [{"match_date": day, "player_home": "Alice", "player_away": "Beth"}],
+                  "raw_quotes": {"betexplorer": [row], "oddsportal": []}}
+    with pytest.raises(RuntimeError, match="no usable fresh fixture quote observations"):
         daily.stage_fresh_rebuild_picks(day, collection, tmp_path / "stage")
     result = collection["quote_diagnostics"]
     assert result["sources"]["betexplorer"]["fixture_rows"] == 1
@@ -62,7 +64,7 @@ def test_unusable_quotes_record_each_reason_without_verified_no_bet(tmp_path):
     assert result["sources"]["betexplorer"]["eligible_rows"] == 0
     reasons = result["sources"]["betexplorer"]["rejection_reasons"]
     assert reasons["market_missing"] == reasons["period_missing"] == 1
-    assert reasons["execution:price is not a verified single-bookmaker quote"] == 1
+    assert reasons["execution:quote market missing or incompatible"] == 1
     assert result["warehouse_matched_rows"] is None
 
 
@@ -85,12 +87,13 @@ def test_rebuild_status_failed_overrides_healthy_historical_snapshot(tmp_path, m
 
 def test_rebuild_quote_execution_rejects_consensus_and_mismatched_rules():
     from racketfactory.execution import rebuild_quote_execution_problem
-    q = {"bookmaker": "example", "price_type": "bookmaker", "settlement_rules":
-         {"retirement": "advancer", "walkover": "void", "cancelled": "void"}}
-    assert rebuild_quote_execution_problem(q) == "bookmaker settlement rules evidence missing"
+    q = {"source": "TheOddsAPI", "bookmaker": "example", "price_type": "bookmaker",
+         "market": "h2h", "period": "match",
+         "settlement_rules": {"retirement": "advancer", "walkover": "void", "cancelled": "void"}}
+    assert rebuild_quote_execution_problem(q) == ""  # missing authenticated terms are documentary warnings
     assert rebuild_quote_execution_problem(dict(q, bookmaker="BetExplorer consensus"))
-    assert rebuild_quote_execution_problem(dict(q, settlement_rules={"retirement": "void", "walkover": "void", "cancelled": "void"}))
-    assert rebuild_quote_execution_problem(dict(q, settlement_rules=None))
+    assert rebuild_quote_execution_problem(dict(q, settlement_rules={"retirement": "void", "walkover": "void", "cancelled": "void"})) == ""
+    assert rebuild_quote_execution_problem(dict(q, settlement_rules=None)) == ""
 
 
 def test_synthetic_rule_and_schedule_fixtures_never_become_production_proof():
@@ -111,12 +114,13 @@ def test_synthetic_rule_and_schedule_fixtures_never_become_production_proof():
     attach_synthetic_schedule_evidence(quote)
     assert settlement_evidence_problem(quote) == "synthetic settlement evidence is not provider proof"
     assert betexplorer_schedule_evidence_problem(quote) == "synthetic BetExplorer schedule evidence is not provider proof"
-    assert "synthetic settlement evidence" in rebuild_quote_execution_problem(quote)
-    # Candidate JSON-LD, incomplete contradictory-signal accounting, stale
-    # timestamps, and started events are independently non-authorizing.
+    assert rebuild_quote_execution_problem(quote) == "synthetic BetExplorer schedule evidence is not provider proof"
+    # A supported candidate may satisfy the fixture-level gate without
+    # authenticating a provider-wide schedule contract.
     schedule = dict(quote["schedule_evidence"], test_only=False,
                     status="candidate_unverified_contract")
-    assert "candidate-only" in betexplorer_schedule_evidence_problem(dict(quote, schedule_evidence=schedule))
+    assert betexplorer_schedule_evidence_problem(dict(quote, schedule_evidence=schedule)) == ""
+    # Incomplete contradictory-signal accounting remains a hard block.
     schedule.update(status="provider_verified", contradictory_signals=None)
     assert "conflicting or unexamined" in betexplorer_schedule_evidence_problem(dict(quote, schedule_evidence=schedule))
 
@@ -151,7 +155,9 @@ def test_optional_failure_does_not_hide_verified_primary_quotes(tmp_path, monkey
         (Path(cmd[cmd.index("--output-dir") + 1]) / f"picks_{day}.json").write_text("[]")
         return SimpleNamespace(returncode=0)
     monkeypatch.setattr(daily.subprocess, "run", miner)
-    collection = {"status": "complete", "predictions": [], "outcomes": {"oddsportal": {"status": "failed"}},
+    collection = {"status": "complete", "date": day, "observed_at": datetime.now(timezone.utc).isoformat(),
+                  "predictions": [{"match_date": day, "player_home": "Alice", "player_away": "Beth"}],
+                  "outcomes": {"oddsportal": {"status": "failed"}},
                   "raw_quotes": {"betexplorer": [row], "oddsportal": []}}
     assert daily.stage_fresh_rebuild_picks(day, collection, tmp_path / "stage") == []
     assert captured and captured[0]["market"] == "h2h"
@@ -164,12 +170,14 @@ def test_incompatible_market_period_and_settlement_are_counted(tmp_path):
             "bookmaker": "book", "odds_home": 1.5, "odds_away": 2.5,
             "observed_at": datetime.now(timezone.utc).isoformat(), "market": "set_winner", "period": "set1",
             "price_type": "bookmaker", "settlement_rules": {"retirement": "void", "walkover": "void", "cancelled": "void"}}
-    collection = {"status": "complete", "predictions": [], "raw_quotes": {"betexplorer": [base], "oddsportal": []}}
+    collection = {"status": "complete", "date": day, "observed_at": datetime.now(timezone.utc).isoformat(),
+                  "predictions": [{"match_date": day, "player_home": "Alice", "player_away": "Beth"}],
+                  "raw_quotes": {"betexplorer": [base], "oddsportal": []}}
     with pytest.raises(RuntimeError):
         daily.stage_fresh_rebuild_picks(day, collection, tmp_path / "stage")
     reasons = collection["quote_diagnostics"]["sources"]["betexplorer"]["rejection_reasons"]
     assert reasons["market_incompatible"] == reasons["period_incompatible"] == 1
-    assert reasons["execution:bookmaker settlement rules evidence missing"] == 1
+    assert reasons["execution:quote market missing or incompatible"] == 1
 
 
 def test_failed_rebuild_writes_run_status_and_leaves_card_unchanged(tmp_path, monkeypatch):
@@ -190,8 +198,9 @@ def test_failed_rebuild_writes_run_status_and_leaves_card_unchanged(tmp_path, mo
            "observed_at": datetime.now(timezone.utc).isoformat()}
     monkeypatch.setattr(daily, "collect_rebuild_sources", lambda d, **kwargs: {"status": "complete", "date": d,
         "observed_at": datetime.now(timezone.utc).isoformat(), "outcomes": {"betexplorer": {"status": "complete", "rows": 1}},
-        "predictions": [], "raw_quotes": {"betexplorer": [row], "oddsportal": []}})
-    with pytest.raises(RuntimeError, match="no market-identified"):
+        "predictions": [{"match_date": d, "player_home": "Alice", "player_away": "Beth"}],
+        "raw_quotes": {"betexplorer": [row], "oddsportal": []}})
+    with pytest.raises(RuntimeError, match="no usable fresh fixture quote observations"):
         daily.run_guarded_empty_rebuild(day)
     status = json.loads((tmp_path / "diag/rebuild_status.json").read_text())
     assert status["status"] == "failed" and status["stage"] == "validating_and_staging_quotes"

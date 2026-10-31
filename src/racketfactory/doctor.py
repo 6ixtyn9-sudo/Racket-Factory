@@ -330,13 +330,21 @@ def run_health_checks(*, expect_warehouse: bool = False,
                            current.get("github_run_attempt") == attempt))
         diag = current.get("diagnostics") or {}
         coverage = current.get("collection_status", "unknown")
-        evaluation_status = ("OK" if coverage == "complete" else "CRITICAL") if is_current else "WARN"
-        add("tickets:current_evaluation", evaluation_status,
+        outcome = current.get("evaluation_status")
+        if not is_current:
+            evaluation_check_status = "WARN"
+        elif outcome == "input_failure":
+            evaluation_check_status = "CRITICAL"
+        elif outcome in {"valid_card", "clean_no_bet"}:
+            evaluation_check_status = "OK" if coverage == "complete" else "WARN"
+        else:
+            evaluation_check_status = "WARN"
+        add("tickets:current_evaluation", evaluation_check_status,
             f"{'current run' if is_current else 'saved evaluation, not verified as current'} "
             f"evaluated {current.get('evaluated_at')}; run started {current.get('run_as_of')}; "
-            f"quote collection {coverage}; playable {diag.get('playable', '?')}, "
-            f"builder inputs {diag.get('builder_input', '?')}; {current.get('publication')}; "
-            "evaluation is not proof of Git publication or placement")
+            f"quote collection {coverage}; evaluation {outcome or 'unknown'}; "
+            f"playable {diag.get('playable', '?')}, builder inputs {diag.get('builder_input', '?')}; "
+            f"{current.get('publication')}; evaluation is not proof of Git publication or placement")
     except (OSError, ValueError, TypeError, AttributeError):
         add("tickets:current_evaluation", "WARN", "current-run evaluation unavailable; saved ticket health is not current quote coverage")
 
