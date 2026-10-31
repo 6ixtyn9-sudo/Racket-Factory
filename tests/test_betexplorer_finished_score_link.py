@@ -23,7 +23,7 @@ def listing(*, path=PATH, score_path=PATH, status='FIN', home='Vacherot V.',
     home_text = home if winner_away else f'<strong>{home}</strong>'
     away_text = f'<strong>{away}</strong>' if winner_away else away
     return f'''<table><tr data-dt="{dt}" {row_attr}>
-      <td class="table-main__tt" {name_attr}><span>{status}{status_extra}</span>
+      <td class="table-main__tt" {name_attr}><span class="{status}">{status}{status_extra}</span>
         <a href="{path}"><span>{home_text}</span><span>{away_text}</span></a></td>
       <td><a href="{score_path}" {score_attr}><strong>{score}</strong></a></td>
       <td colspan="2">{extra}</td></tr></table>'''
@@ -42,6 +42,7 @@ def test_reduced_retained_fin_and_same_event_score_are_terminal_only(home, away,
     assert rows == []
     assert metrics['data_dt_rows'] == metrics['finished_rows'] == 1
     assert metrics['unrecognized_rows'] == 0
+    assert metrics['terminal_score_unverified_rows'] == 0
     # A FIN-shaped row is not a schedule, an odds offer or complete coverage.
     assert metrics['unverified_schedule_rows'] == 1
     assert metrics['parsed_priced_rows'] == 0
@@ -55,17 +56,12 @@ def test_reduced_retained_fin_and_same_event_score_are_terminal_only(home, away,
     {'score_path': OTHER},
     {'score_path': 'https://other.invalid' + PATH},
     {'path': PATH + '?event=zui4APmJ', 'score_path': PATH + '?event=zui4APmJ'},
-    {'score': ''},
-    {'score': '2:2'},
-    {'score': '1:0'},
-    {'score': '2.10'},
     {'score': '2:1 LIVE'},
     {'score_attr': 'aria-hidden="true"'},
     {'name_attr': 'style="display:none"'},
     {'row_attr': 'data-status="live"'},
     {'row_attr': 'class="match-live"'},
     {'extra': 'Postponed'},
-    {'extra': '<span></span>'},
     {'away': 'Vacherot V.'},
     {'home': 'Vacherot V. / Jodar R.'},
     {'home': 'Player 123'},
@@ -79,6 +75,29 @@ def test_ambiguous_or_conflicting_shape_remains_unrecognized(kwargs):
     assert metrics['finished_rows'] == 0
     assert metrics['unrecognized_rows'] == 1
     assert metrics['unverified_schedule_rows'] == 1
+
+
+@pytest.mark.parametrize(('score', 'winner_away'), [
+    ('', False), ('2:2', False), ('2.10', True), ('not retained', True),
+])
+def test_explicit_fin_precedes_unknown_score_without_inventing_score(score, winner_away):
+    html = listing(score=score, winner_away=winner_away)
+    row = BeautifulSoup(html, 'html.parser').find('tr')
+    participant = row.find('td', class_='table-main__tt').find('a', href=True)
+    assert be._listing_status_state(row)[0] == 'terminal'
+    assert be._structured_participants([participant]) == ('Vacherot V.', 'Jodar R.')
+    assert not be._finished_score_link_row(row)  # strict score validation still rejects unknown text
+    assert be._finished_score_link_row(row, require_score_format=False)
+
+    metrics = {}
+    rows = be.parse_results_page(html, '2026-10-30', metrics=metrics, include_unpriced=True)
+    assert rows == []  # terminal exclusion emits no odds, score, or candidate
+    assert metrics['finished_rows'] == 1
+    assert metrics['terminal_score_unverified_rows'] == 1
+    assert metrics['unrecognized_rows'] == 0
+    assert metrics['parsed_priced_rows'] == 0
+    assert metrics['row_accounting_complete'] is True
+    assert metrics['listing_coverage_status'] == 'not_established'
 
 
 def test_hyphenated_initial_is_one_participant_token_and_terminal_row_is_excluded():
@@ -145,6 +164,30 @@ def test_terminal_shape_never_makes_listing_complete_or_starts_comparison(monkey
     assert offers == [] and counts['attempted'] == 0
     assert counts['unmatched_or_ambiguous'] == 1
     assert counts['attempted'] == 0
+
+
+def test_unknown_score_terminal_only_board_stays_partial_and_skips_quotes(monkeypatch):
+    monkeypatch.setattr(be, 'fetch_page_html', lambda *args, **kwargs: listing(score=''))
+    metrics = {}
+    rows, status = be._fetch_live('2026-10-30', with_status=True, metrics=metrics)
+    assert rows == [] and status == 'partial'
+    assert metrics['finished_rows'] == 1
+    assert metrics['terminal_score_unverified_rows'] == 1
+    assert metrics['row_accounting_complete'] is True
+    assert metrics['listing_recognition_status'] == 'complete'
+    assert metrics['listing_coverage_status'] == 'not_established'
+    assert metrics['schedule_verification_status'] == 'not_required_for_excluded_rows'
+    with pytest.raises(be.PageFetchError, match='requested-day listing coverage'):
+        be._fetch_live('2026-10-30')
+
+    monkeypatch.setattr(be, 'fetch_fixture_comparison',
+                        lambda *args, **kwargs: pytest.fail('unexpected detail request'))
+    offers, counts, partial = quote_enrichment.collect_prediction_comparisons(
+        '2026-10-30', [{'match_date': '2026-10-30'}], rows, status, listing_metrics=metrics)
+    assert offers == [] and partial is True
+    assert counts['attempted'] == counts['comparison_attempts'] == 0
+    assert counts['stage_statuses']['listing_coverage'] == 'not_established'
+    assert counts['stage_statuses']['required_source_readiness'] == 'blocked'
 
 
 def test_fin_row_does_not_mask_another_unrecognized_row(monkeypatch):
@@ -227,29 +270,31 @@ def test_authentic_excerpt_stays_partial_and_cannot_create_actionable_rows():
     assert unknown['data-live'] in match_ids  # value resemblance does not decode its semantics
 
 
-def test_terminal_parser_rejects_mismatched_or_ambiguous_score_markup():
+def test_terminal_parser_ignores_score_format_but_rejects_identity_or_status_conflicts():
     cases = [
-        listing(score_path=OTHER),
-        listing(extra='(7:6, malformed)'),
-        listing(extra='(7:6, 15:6)'),
-        listing(extra='<span>(7:6, 2:6)</span>'),
-        listing(extra='(7:6, 2:6)<!-- unexplained -->'),
-        listing(extra='<a href="/tennis/atp-singles/basel/extra-match/AbCd1234/">extra</a>'),
-        listing(status_extra='<span>LIVE</span>'),
-        listing(row_attr='data-status="POSTPONED"'),
-        listing(name_attr='style="display:none"'),
-        listing(score_attr='aria-hidden="true"'),
-        listing(score='1:0', extra=''),
-        listing(score='2:2', extra=''),
+        (listing(score_path=OTHER), 0, 1),
+        (listing(extra='(7:6, malformed)'), 1, 0),
+        (listing(extra='(7:6, 15:6)'), 1, 0),
+        (listing(extra='<span>(7:6, 2:6)</span>'), 1, 0),
+        (listing(extra='(7:6, 2:6)<!-- unexplained -->'), 0, 1),
+        (listing(extra='<a href="/tennis/atp-singles/basel/extra-match/AbCd1234/">extra</a>'), 0, 1),
+        (listing(status_extra='<span>LIVE</span>'), 0, 1),
+        (listing(row_attr='data-status="POSTPONED"'), 0, 1),
+        (listing(name_attr='style="display:none"'), 0, 1),
+        (listing(score_attr='aria-hidden="true"'), 0, 1),
+        (listing(score='1:0', extra=''), 1, 0),
+        (listing(score='2:2', extra=''), 1, 0),
     ]
     extra_participant = listing().replace(
         '</span></a></td>', '</span><span>Extra C.</span></a></td>', 1)
-    cases.append(extra_participant)
-    for html in cases:
+    cases.append((extra_participant, 0, 1))
+    for html, finished, unrecognized in cases:
         metrics = {}
         assert be.parse_results_page(html, AUTHENTIC_DAY, metrics=metrics, include_unpriced=True) == []
         assert metrics['actionable_schedule_unverified_rows'] == 0
         assert metrics['discovered_rows'] == 0
+        assert metrics['finished_rows'] == finished
+        assert metrics['unrecognized_rows'] == unrecognized
         assert metrics['row_accounting_complete'] is True
 
 
