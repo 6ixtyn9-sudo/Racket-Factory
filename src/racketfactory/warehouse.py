@@ -612,9 +612,15 @@ def _orient_live_source_row(row: pd.Series, base_home: str, base_away: str) -> d
 
     prob_home_num = pd.to_numeric(prob_home, errors="coerce")
     prob_away_num = pd.to_numeric(prob_away, errors="coerce")
-    odds_home_num, odds_away_num = align_odds_to_probabilities(
-        prob_home_num, prob_away_num, odds_home, odds_away
-    )
+    if row.get("odds_market_evidence") == "betclan_named_home_away_odds":
+        # The source page bound prices to its explicit home/away participant
+        # labels. Do not let a probability heuristic silently swap that pair.
+        odds_home_num = coerce_decimal_odds(odds_home)
+        odds_away_num = coerce_decimal_odds(odds_away)
+    else:
+        odds_home_num, odds_away_num = align_odds_to_probabilities(
+            prob_home_num, prob_away_num, odds_home, odds_away
+        )
 
     return {
         "match_date": row.get("match_date"),
@@ -629,6 +635,18 @@ def _orient_live_source_row(row: pd.Series, base_home: str, base_away: str) -> d
         "context_used": row.get("context_used", ""),
         "_series": row.get("_series", ""),
         "source": row.get("source", ""),
+        "odds_observed_at": row.get("odds_observed_at"),
+        "odds_response_sha256": row.get("odds_response_sha256"),
+        "odds_source_url": row.get("odds_source_url"),
+        "odds_event_url": row.get("odds_event_url"),
+        "odds_evidence_kind": row.get("odds_evidence_kind"),
+        "odds_market_evidence": row.get("odds_market_evidence"),
+        "odds_kickoff_evidence": row.get("odds_kickoff_evidence"),
+        "source_player_home": home,
+        "source_player_away": away,
+        "source_odds_home": row.get("odds_home"),
+        "source_odds_away": row.get("odds_away"),
+        "source_reversed": bool(swapped),
         "predicted_winner": predicted_winner,
         "prob_home": prob_home_num,
         "prob_away": prob_away_num,
@@ -712,6 +730,61 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
                     continue
             odds_rows = single_side
 
+        # Keep one BetClan source observation intact when its page contains an
+        # explicitly named home/away price pair. Never assemble a staked pair
+        # from broad page-text guesses, separate rows, or opposite-side maxima.
+        scrape_candidates = []
+        for rr in odds_rows:
+            source_name = str(rr.get("source") or "").strip()
+            evidence_kind = str(rr.get("odds_evidence_kind") or "")
+            if (source_name != "BetClan"
+                    or evidence_kind not in {"betclan_match_detail", "betclan_odds_subpage"}
+                    or rr.get("odds_market_evidence") != "betclan_named_home_away_odds"
+                    or rr.get("odds_kickoff_evidence") != "betclan_event_timestamp"
+                    or not re.fullmatch(r"[0-9a-f]{64}", str(rr.get("odds_response_sha256") or ""))
+                    or not rr.get("odds_source_url") or not rr.get("odds_event_url")
+                    or str(rr.get("match_date") or "")[:10] == ""
+                    or not str(rr.get("match_time") or "").strip()):
+                continue
+            try:
+                observed = datetime.fromisoformat(str(rr.get("odds_observed_at") or "").replace("Z", "+00:00"))
+                if observed.tzinfo is None or observed.utcoffset() is None:
+                    continue
+            except (TypeError, ValueError, OverflowError):
+                continue
+            oh, oa = coerce_decimal_odds(rr.get("odds_home")), coerce_decimal_odds(rr.get("odds_away"))
+            if not valid_two_way_decimal_pair(oh, oa):
+                continue
+            scrape_candidates.append((observed.timestamp(), rr, oh, oa))
+
+        scraped_quote_meta = None
+        if scrape_candidates:
+            _, candidate, candidate_home, candidate_away = max(scrape_candidates, key=lambda item: item[0])
+            odds_home, odds_away = candidate_home, candidate_away
+            scraped_quote_meta = {
+                "source": "ScrapedPickOdds",
+                "origin_source": str(candidate.get("source") or ""),
+                "source_url": str(candidate.get("odds_source_url") or ""),
+                "event_url": str(candidate.get("odds_event_url") or ""),
+                "evidence_kind": str(candidate.get("odds_evidence_kind") or ""),
+                "market_evidence": str(candidate.get("odds_market_evidence") or ""),
+                "kickoff_evidence": str(candidate.get("odds_kickoff_evidence") or ""),
+                "response_sha256": str(candidate.get("odds_response_sha256") or ""),
+                "observed_at": str(candidate.get("odds_observed_at") or ""),
+                "market": "source_pick_odds", "period": "match", "line": None,
+                "price_type": "scraped_pick_odds",
+                "fixture_date": str(candidate.get("match_date") or "")[:10],
+                "match_time": str(candidate.get("match_time") or "")[:5],
+                "player_home": base_home, "player_away": base_away,
+                "odds_home": candidate_home, "odds_away": candidate_away,
+                "source_player_home": str(candidate.get("source_player_home") or ""),
+                "source_player_away": str(candidate.get("source_player_away") or ""),
+                "source_odds_home": coerce_decimal_odds(candidate.get("source_odds_home")),
+                "source_odds_away": coerce_decimal_odds(candidate.get("source_odds_away")),
+                "source_reversed": bool(candidate.get("source_reversed", False)),
+                "reversed": False,
+            }
+
         def _max_numeric(key: str, source_rows: list[dict]) -> object:
             vals = [pd.to_numeric(rr.get(key), errors="coerce") for rr in source_rows]
             vals = [float(v) for v in vals if v is not None and not pd.isna(v)] # type: ignore
@@ -721,8 +794,9 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
         # two-way pair passed sanity checks.  This prevents one poisoned scrape
         # (e.g. @9.50 parsed from page text) from inflating EV for everyone.
         # If only single-side available, we still take max of that side, other remains NA
-        odds_home = _max_numeric("odds_home", odds_rows)
-        odds_away = _max_numeric("odds_away", odds_rows)
+        if not scraped_quote_meta:
+            odds_home = _max_numeric("odds_home", odds_rows)
+            odds_away = _max_numeric("odds_away", odds_rows)
 
         rows.append({
             "match_date": oriented[0].get("match_date"),
@@ -742,6 +816,7 @@ def collapse_live_card(card: pd.DataFrame) -> pd.DataFrame:
             "prob_away": _max_numeric("prob_away", oriented),
             "odds_home": odds_home,
             "odds_away": odds_away,
+            "_scraped_quote_meta": json.dumps(scraped_quote_meta, sort_keys=True) if scraped_quote_meta else "",
         })
     return pd.DataFrame(rows)
 
@@ -1551,15 +1626,14 @@ def fetch_the_odds_api_rows(target_date: str) -> list[dict]:
 def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str, *,
                                     supplied_odds: list[dict] | None = None,
                                     supplied_comparisons: list[dict] | None = None) -> pd.DataFrame:
-    """Attach live pricing, preferring The Odds API with guarded scrape fallback.
+    """Attach live pricing, preferring The Odds API and comparison sources.
 
-    Scraped BetClan/Forebet prices are preserved in debug columns. If no API
-    match exists for a row, the cross-checked comparison leg (BetExplorer x
-    OddsPortal upcoming) is tried next for the tours the API does not cover,
-    and only then the scraped pair — every leg under the same side-alignment
-    and two-way decimal-pair sanity guards used for API prices.
-    Rows promoted from scrapes are explicitly tagged ``ScrapedFallback`` so
-    downstream EV code can distinguish them from market prices.
+    A source-scraped pick price can enter the priced track only when its source
+    adapter retained the exact page digest, source URL, retrieval time, fixture
+    identity and side-labelled odds. It remains explicitly labelled
+    ``ScrapedPickOdds`` (not a named-bookmaker quote or confirmed fill).
+    Legacy scraped values without that evidence remain ``ScrapedFallback`` and
+    paper-only.
     """
     if card.empty:
         return card
@@ -1641,6 +1715,7 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str, *,
             compare_matched += 1
 
     fallback_matched = 0
+    scraped_pick_matched = 0
     fallback_invalid = 0
     for idx, row in out.iterrows():
         if str(row.get("odds_source", "") or ""):
@@ -1675,19 +1750,42 @@ def enrich_live_card_with_api_odds(card: pd.DataFrame, target_date: str, *,
 
         out.at[idx, "odds_home"] = scraped_home
         out.at[idx, "odds_away"] = scraped_away
-        out.at[idx, "odds_source"] = "ScrapedFallback"
-        out.at[idx, "odds_bookmaker"] = "Validated scrape"
-        fallback_matched += 1
+        raw_meta = row.get("_scraped_quote_meta")
+        try:
+            scraped_meta = json.loads(raw_meta) if isinstance(raw_meta, str) and raw_meta.strip() else {}
+        except (TypeError, ValueError):
+            scraped_meta = {}
+        def same_scraped_price(left, right):
+            return coerce_decimal_odds(left) == coerce_decimal_odds(right)
+        has_bound_scrape = (
+            isinstance(scraped_meta, dict)
+            and scraped_meta.get("source") == "ScrapedPickOdds"
+            and scraped_meta.get("price_type") == "scraped_pick_odds"
+            and scraped_meta.get("market") == "source_pick_odds"
+            and valid_two_way_decimal_pair(scraped_home, scraped_away)
+            and same_scraped_price(scraped_meta.get("odds_home"), scraped_home)
+            and same_scraped_price(scraped_meta.get("odds_away"), scraped_away)
+        )
+        if has_bound_scrape:
+            out.at[idx, "odds_source"] = "ScrapedPickOdds"
+            out.at[idx, "odds_bookmaker"] = ""
+            out.at[idx, "_quote_meta"] = json.dumps(scraped_meta, sort_keys=True)
+            scraped_pick_matched += 1
+        else:
+            out.at[idx, "odds_source"] = "ScrapedFallback"
+            out.at[idx, "odds_bookmaker"] = "Validated scrape"
+            fallback_matched += 1
 
     if fallback_invalid:
         logger.info("Scraped fallback dropped %d rows due to invalid odds (no valid side)", fallback_invalid)
 
     logger.info(
-        "Matched live odds for %d/%d rows: %d The Odds API, %d comparison, %d ScrapedFallback",
-        api_matched + compare_matched + fallback_matched,
+        "Matched live odds for %d/%d rows: %d The Odds API, %d comparison, %d ScrapedPickOdds, %d paper-only ScrapedFallback",
+        api_matched + compare_matched + scraped_pick_matched + fallback_matched,
         len(out),
         api_matched,
         compare_matched,
+        scraped_pick_matched,
         fallback_matched,
     )
     return out

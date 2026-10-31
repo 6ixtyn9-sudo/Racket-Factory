@@ -1,3 +1,6 @@
+import json
+from datetime import datetime, timezone
+
 import pandas as pd
 
 from scripts import mine_edges
@@ -213,6 +216,50 @@ def test_build_upcoming_fallback_card_prices_single_side_forebet_row(monkeypatch
     assert card.loc[0, "_odds_source"] == "ScrapedFallback"
     assert pd.isna(card.loc[0, "odds_a"])
     assert card.loc[0, "odds_b"] == 1.78
+
+
+def test_build_upcoming_fallback_card_promotes_bound_scrape_with_quote_provenance(monkeypatch):
+    observed = datetime.now(timezone.utc).isoformat()
+    digest = "d" * 64
+
+    class EmptyPredictor:
+        def fetch_daily(self):
+            return []
+        def fetch_daily_predictions(self, day):
+            return []
+
+    class BetClanRows:
+        def fetch_daily(self):
+            return [{
+                "match_date": "2026-10-31", "match_time": "13:30", "match_type": "Singles",
+                "player_home": "Ugo Humbert", "player_away": "Zizou Bergs",
+                "tournament": "Wimbledon", "surface": "Grass", "predicted_winner": "1",
+                "prob_home": 78, "prob_away": 22, "odds_home": 1.55, "odds_away": 2.45,
+                "odds_observed_at": observed, "odds_response_sha256": digest,
+                "odds_source_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+                "odds_event_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+                "odds_evidence_kind": "betclan_match_detail",
+                "odds_market_evidence": "betclan_named_home_away_odds",
+                "odds_kickoff_evidence": "betclan_event_timestamp",
+            }]
+
+    monkeypatch.setattr(mine_edges, "PredixSportPredictor", EmptyPredictor)
+    monkeypatch.setattr(mine_edges, "BetClanPredictor", BetClanRows)
+    monkeypatch.setattr(mine_edges, "ForebetPredictor", EmptyPredictor)
+    monkeypatch.setattr(mine_edges, "cached_fetch", lambda key, fetcher, **kwargs: fetcher())
+    monkeypatch.setattr(mine_edges, "fetch_the_odds_api_rows", lambda target_date: [])
+    monkeypatch.setattr(mine_edges, "fetch_comparison_rows", lambda target_date: [])
+
+    card = mine_edges.build_upcoming_fallback_card("2026-10-31")
+
+    assert len(card) == 1
+    assert card.loc[0, "_odds_source"] == "ScrapedPickOdds"
+    assert bool(card.loc[0, "_is_live"]) is True
+    meta = json.loads(card.loc[0, "_quote_meta"])
+    assert meta["source"] == "ScrapedPickOdds"
+    assert meta["response_sha256"] == digest
+    assert meta["odds_home"] == 1.55 and meta["odds_away"] == 2.45
+    assert not meta.get("bookmaker")
 
 
 def test_forecast_api_reversed_and_ambiguous_matches(monkeypatch):

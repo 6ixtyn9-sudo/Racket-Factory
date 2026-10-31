@@ -8,11 +8,12 @@ import re
 import time
 import json
 import os
+import hashlib
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from typing import Any, Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from curl_cffi import requests
 
 from racketfactory.entities import normalize_player
@@ -78,6 +79,7 @@ class BetClanPredictor:
         self._request_stats = None
         self._request_urls = set()
         self._odds_subpage_cache = {}
+        self._odds_subpage_meta = {}
         self._odds_restricted = False
 
     def _get(self, url: str, category: str, *, timeout: int):
@@ -203,6 +205,63 @@ class BetClanPredictor:
 
         return odds_home, odds_away
 
+    @staticmethod
+    def _extract_bound_match_odds(
+        soup: BeautifulSoup, home_name: str, away_name: str,
+    ) -> tuple[Optional[float], Optional[float]]:
+        """Return only a unique pair explicitly bound to both named sides.
+
+        Best-effort numeric guesses remain available to the paper track through
+        ``_extract_odds_from_soup``. This stricter path requires one odds/price
+        container to contain both event participants and exactly two decimal
+        prices, in side order, so a nearby widget or unrelated market cannot be
+        promoted as a source-pick quote.
+        """
+        from math import isfinite
+
+        def folded(value: object) -> str:
+            return re.sub(r"\s+", " ", normalize_player(value).casefold()).strip()
+
+        home_key, away_key = folded(home_name), folded(away_name)
+        if not home_key or not away_key or home_key == away_key:
+            return None, None
+        candidates: set[tuple[float, float]] = set()
+        # The marker itself must identify the match-winner market, not merely
+        # an arbitrary odds widget (set/game totals are never source-pick odds).
+        selector = re.compile(r"(?:match[-_ ]?(?:odds?|winner)|h2h|moneyline|1x2)", re.I)
+        price_re = re.compile(r"(?<![0-9])([1-9]\.\d{1,3})(?![0-9])")
+        for tag in soup.find_all(True):
+            marker = " ".join(str(value) for value in (tag.get("class") or [])) + " " + str(tag.get("id") or "")
+            if not selector.search(marker):
+                continue
+            text = tag.get_text(" ", strip=True)
+            if not text or len(text) > 600:
+                continue
+            normalized = folded(text)
+            home_at, away_at = normalized.find(home_key), normalized.find(away_key)
+            if home_at < 0 or away_at < 0 or home_at == away_at:
+                continue
+            prices = list(price_re.finditer(text))
+            if len(prices) != 2:
+                continue
+            # Names and prices must interleave as two labelled outcome slots.
+            first, second = prices
+            if home_at < first.start() < away_at < second.start():
+                home_price, away_price = float(first.group(1)), float(second.group(1))
+            elif away_at < first.start() < home_at < second.start():
+                away_price, home_price = float(first.group(1)), float(second.group(1))
+            else:
+                continue
+            if not all(isfinite(value) and 1.0 < value <= 51.0 for value in (home_price, away_price)):
+                continue
+            implied = 1.0 / home_price + 1.0 / away_price
+            if not 0.90 <= implied <= 1.35:
+                continue
+            candidates.add((home_price, away_price))
+        if len(candidates) != 1:
+            return None, None
+        return next(iter(candidates))
+
     def _find_odds_subpage(self, prediction_soup: BeautifulSoup, prediction_url: str) -> list[str]:
         """Only follow explicit same-host links bound to the same event slug.
 
@@ -260,7 +319,15 @@ class BetClanPredictor:
                        ("cf-chl", "just a moment", "attention required", "verify you are human")):
                     self._odds_restricted = True
                 else:
+                    observed_at = datetime.now(timezone.utc).isoformat()
+                    response_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
                     soup = BeautifulSoup(text, "html.parser")
+                    self._odds_subpage_meta[url] = {
+                        "observed_at": observed_at,
+                        "response_sha256": response_sha256,
+                        "source_url": url,
+                        "evidence_kind": "betclan_odds_subpage",
+                    }
         except Exception:
             logger.debug("BetClan optional odds request failed")
         self._odds_subpage_cache[url] = soup
@@ -311,6 +378,7 @@ class BetClanPredictor:
         started = time.monotonic()
         self._request_urls = set()
         self._odds_subpage_cache = {}
+        self._odds_subpage_meta = {}
         self._odds_restricted = False
         self._request_stats = {"listing_requests": 0, "detail_requests": 0, "odds_subpage_requests": 0,
                                "repeated_url_requests": 0, "http_failures": 0, "transport_failures": 0,
@@ -329,7 +397,8 @@ class BetClanPredictor:
         today_failure_kinds = {"http": 0, "participant_markup": 0, "winner_markup": 0,
                                "winner_ambiguous": 0, "exception": 0}
         today_empty_verified = False
-        detail_cache = {}  # same observation, including failures, within this collection only
+        detail_cache = {}  # same response, including failures, within this collection only
+        detail_capture_meta = {}  # receipt time and digest are bound to each fetched response
         # Fetch today and tomorrow
         for day_offset, endpoint in [(-1, "yesterdays-tennis-predictions"), (0, "todays-tennis-predictions"), (1, "tomorrows-tennis-predictions")]:
             target_date = (datetime.now(SAST).date() + timedelta(days=day_offset)).strftime("%Y-%m-%d")
@@ -366,6 +435,11 @@ class BetClanPredictor:
                         except Exception as exc:
                             r, error = None, exc
                         detail_cache[match_url] = (r, error)
+                        if error is None and r is not None and r.status_code == 200:
+                            detail_capture_meta[match_url] = {
+                                "observed_at": datetime.now(timezone.utc).isoformat(),
+                                "response_sha256": hashlib.sha256((r.text or "").encode("utf-8")).hexdigest(),
+                            }
                     if error is not None:
                         raise error
                     if r.status_code != 200:
@@ -373,6 +447,9 @@ class BetClanPredictor:
                             today_failed += 1
                             today_failure_kinds["http"] += 1
                         continue
+                    detail_meta = detail_capture_meta.get(match_url) or {}
+                    detail_observed_at = detail_meta.get("observed_at")
+                    detail_response_sha256 = detail_meta.get("response_sha256")
                     s = BeautifulSoup(r.text, 'html.parser')
 
                     home_div = s.find('div', class_='teamtophome')
@@ -429,17 +506,40 @@ class BetClanPredictor:
                     # The prediction may contain odds; an optional subpage is
                     # considered only when the page explicitly links it.
                     odds_home, odds_away = self._extract_odds_from_soup(s)
+                    odds_market_evidence = None
+                    bound_home, bound_away = self._extract_bound_match_odds(s, p1, p2)
+                    if bound_home is not None and bound_away is not None:
+                        odds_home, odds_away = bound_home, bound_away
+                        odds_market_evidence = "betclan_named_home_away_odds"
+                    odds_observed_at = detail_observed_at
+                    odds_response_sha256 = detail_response_sha256
+                    odds_source_url = match_url
+                    odds_event_url = match_url
+                    odds_evidence_kind = "betclan_match_detail"
 
                     # Optional odds only: no guessed routes, at most two
-                    # validated page-derived links per match.
+                    # validated page-derived links per match. Preserve the
+                    # existing request policy: do not expand requests when the
+                    # detail page already returned a numeric pair.
                     if odds_home is None or odds_away is None:
                         for sub_url in self._find_odds_subpage(s, match_url)[:2]:
                             sub_soup = self._fetch_odds_subpage(sub_url)
                             if sub_soup is None:
                                 continue
                             sub_home, sub_away = self._extract_odds_from_soup(sub_soup)
-                            if sub_home is not None and sub_away is not None:
+                            bound_home, bound_away = self._extract_bound_match_odds(sub_soup, p1, p2)
+                            if bound_home is not None and bound_away is not None:
+                                odds_home, odds_away = bound_home, bound_away
+                                odds_market_evidence = "betclan_named_home_away_odds"
+                            elif sub_home is not None and sub_away is not None:
                                 odds_home, odds_away = sub_home, sub_away
+                            if odds_home is not None and odds_away is not None:
+                                sub_meta = self._odds_subpage_meta.get(sub_url) or {}
+                                if sub_meta:
+                                    odds_observed_at = sub_meta.get("observed_at", odds_observed_at)
+                                    odds_response_sha256 = sub_meta.get("response_sha256", odds_response_sha256)
+                                    odds_source_url = sub_meta.get("source_url", sub_url)
+                                    odds_evidence_kind = sub_meta.get("evidence_kind", "betclan_odds_subpage")
                                 break
 
                     page_text = s.get_text(" ", strip=True)
@@ -450,7 +550,14 @@ class BetClanPredictor:
                     if surface_m:
                         surface = surface_m.group(1).strip()
 
+                    kickoff_match = re.search(
+                        r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)",
+                        r.text or "",
+                    )
+                    kickoff_stamp = (parse_source_timestamp(kickoff_match.group(1), default_tz=BETCLAN_TZ)
+                                     if kickoff_match else None)
                     match_date, match_time = extract_kickoff_sast(r.text, target_date)
+                    kickoff_evidence = "betclan_event_timestamp" if kickoff_stamp is not None else None
 
                     if not any(
                         str(existing.get("match_date", "")) == match_date
@@ -467,6 +574,13 @@ class BetClanPredictor:
                             "prob_away": prob2,
                             "odds_home": odds_home,
                             "odds_away": odds_away,
+                            "odds_observed_at": odds_observed_at if odds_home is not None or odds_away is not None else None,
+                            "odds_response_sha256": odds_response_sha256 if odds_home is not None or odds_away is not None else None,
+                            "odds_source_url": odds_source_url if odds_home is not None or odds_away is not None else None,
+                            "odds_event_url": odds_event_url if odds_home is not None or odds_away is not None else None,
+                            "odds_evidence_kind": odds_evidence_kind if odds_home is not None or odds_away is not None else None,
+                            "odds_market_evidence": odds_market_evidence if odds_market_evidence and odds_home is not None and odds_away is not None else None,
+                            "odds_kickoff_evidence": kickoff_evidence if odds_market_evidence else None,
                             "predicted_winner": pred_win,
                             "predicted_winner_name": winner_name,
                             "tournament": tournament,
