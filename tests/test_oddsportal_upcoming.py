@@ -112,5 +112,100 @@ def test_fetch_live_prices_unfinished_skips_live(monkeypatch, caplog):
     assert (row["odds_home"], row["odds_away"]) == (1.70, 2.30)
     assert row["bookmaker"] == op.BOOK_LABEL
     assert row["source"] == op.SOURCE_NAME
+    assert row["price_type"] == "best_across_books"
+    assert row["market"] == "h2h" and row["period"] == "match"
+    assert row["match_date"] == row["match_time"] == ""
+    assert row["listing_date"] == "2026-09-13"
+    assert row["event_id"] == "zverev-alexander-dGbUhw9m"
     assert "OddsPortal match Zverev A. - Shelton B.: " in caplog.text
     assert "betslip=" in caplog.text
+
+
+def test_synthetic_match_page_schedule_enables_real_indicative_price_producer_route(monkeypatch):
+    """Synthetic reduced page only: exercises parser, warehouse, provenance, side map."""
+    import json
+    import pandas as pd
+    from racketfactory import warehouse
+    from racketfactory.execution import rebuild_quote_execution_problem
+    from scripts.mine_edges import (classify_bucket, market_basis_for_pick,
+                                    should_write_pick_outputs, valid_leg_price,
+                                    warehouse_selected_quote)
+    from scripts.auto_tickets import selected_quote_problem
+
+    target = "2026-12-01"
+    match_path = "/tennis/h2h/shelton-ben-QNuG0Gzb/zverev-alexander-dGbUhw9m/"
+    event = {
+        "@context": "https://schema.org", "@type": "SportsEvent", "sport": "Tennis",
+        "url": op.BASE_URL + match_path, "eventStatus": "https://schema.org/EventScheduled",
+        "startDate": "2026-12-01T13:00:00Z",
+        "homeTeam": {"@type": "SportsTeam", "name": "Zverev A."},
+        "awayTeam": {"@type": "SportsTeam", "name": "Shelton B."},
+    }
+    page = MATCH_PAGE.replace(
+        "</body>",
+        '<script type="application/ld+json">' + json.dumps(event) + "</script></body>",
+    )
+
+    def fake_fetch(url, source_label, **kwargs):
+        if url == op.BASE_URL + op.TODAY_PATH:
+            return LISTING
+        if url == op.BASE_URL + match_path:
+            return page
+        raise AssertionError(f"unexpected fetch {url}")
+
+    monkeypatch.setattr(op, "fetch_page_html", fake_fetch)
+    rows = op._fetch_live(op.TODAY_PATH, target)
+    assert len(rows) == 1
+    quote = rows[0]
+    assert quote["match_date"] == target and quote["match_time"] == "15:00"
+    assert quote["price_type"] == "best_across_books"
+    assert quote["schedule_evidence"]["provider"] == "OddsPortal"
+    # This synthetic page exercises code paths only; it is not a retained
+    # provider capture and does not establish current live-site support.
+    assert rebuild_quote_execution_problem(quote) == ""
+
+    prediction = {
+        "match_date": target, "match_time": "15:00", "player_home": "Zverev A.",
+        "player_away": "Shelton B.", "prob_home": 60, "prob_away": 40,
+        "predicted_winner": "1", "tournament": "ATP Shanghai", "tour_slug": "atp",
+        "surface": "Hard", "source": "SyntheticForecast",
+    }
+    built = warehouse.build_live_rows(
+        supplied_predictions=[prediction], target_date=target, supplied_odds=[],
+        supplied_comparisons=rows,
+    )
+    assert len(built) == 1
+    result = built.iloc[0]
+    assert result["_odds_source"] == "OddsPortal"
+    assert result["odds_a"] == 1.70 and result["odds_b"] == 2.30
+    selected = warehouse_selected_quote(
+        result, {"selected_side": "player_a", "selected_player": "Zverev A."},
+        result["odds_a"], "OddsPortal", result["bookmaker"],
+    )
+    assert selected["provider_side"] == "1"
+    assert selected["price_type"] == "best_across_books"
+    assert selected["schedule_evidence"]["event_id"] == quote["event_id"]
+    pick = {
+        "odds": selected["odds"], "selected_player": "Zverev A.", "selected_side": "player_a",
+        "odds_source": "OddsPortal", "odds_bookmaker": op.BOOK_LABEL,
+        "date": target, "kickoff": "15:00", "selected_quote": selected,
+    }
+    assert selected_quote_problem(pick, require_provenance=True) == ""
+    assert valid_leg_price(pick["odds"])  # existing 1.30 minimum-odds gate remains active
+    assert market_basis_for_pick("OddsPortal", pick["odds"]) == ("api", False)
+    assert classify_bucket({"Verdict": "WATCHLIST"}) == "WATCHLIST"
+    assert should_write_pick_outputs([], [{"match": "existing protected pick"}]) is False
+
+    reversed_card = pd.DataFrame([{
+        "match_date": target, "match_time": "15:00", "player_home": "Shelton B.",
+        "player_away": "Zverev A.", "prob_home": 40, "prob_away": 60,
+    }])
+    reversed_row = warehouse.enrich_live_card_with_api_odds(
+        reversed_card, target, supplied_odds=[], supplied_comparisons=rows,
+    ).iloc[0]
+    reversed_selected = warehouse_selected_quote(
+        reversed_row, {"selected_side": "player_a", "selected_player": "Shelton B."},
+        reversed_row["odds_home"], "OddsPortal", reversed_row["odds_bookmaker"],
+    )
+    assert reversed_selected["provider_side"] == "2"
+    assert reversed_row["odds_home"] == 2.30

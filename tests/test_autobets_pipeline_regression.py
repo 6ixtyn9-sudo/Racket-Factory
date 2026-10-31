@@ -943,14 +943,14 @@ def test_guarded_staging_does_not_let_unproven_primary_hide_valid_optional(tmp_p
     pd.DataFrame([{"match_date": "2025-01-01", "winner": "Alice", "_is_live": False},
                   {"match_date": day, "winner": "Stale result", "_is_live": False}]).to_csv(local / "warehouse.csv.gz", index=False)
     from tests._synthetic_evidence import (allow_synthetic_evidence_in_pipeline,
-                                           attach_synthetic_settlement_evidence)
+                                           attach_synthetic_oddsportal_schedule_evidence)
     allow_synthetic_evidence_in_pipeline(monkeypatch)
     common = {"match_date": day, "player_home": "Alice Adams", "player_away": "Beth Brown",
-              "odds_home": 1.5, "odds_away": 2.5, "observed_at": observed, "bookmaker": "book",
-              "event_id": "optional-event"}
+              "odds_home": 1.5, "odds_away": 2.5, "observed_at": observed, "bookmaker": "OddsPortal best odds",
+              "event_id": "optionalevent", "match_url": "/tennis/h2h/alice-beth/optionalevent/"}
     unproven = dict(common, source="BetExplorer")
-    valid = dict(common, source="OddsPortal", market="h2h", period="match", price_type="bookmaker", settlement_rules={"retirement": "advancer", "walkover": "void", "cancelled": "void"})
-    attach_synthetic_settlement_evidence(valid)
+    valid = dict(common, source="OddsPortal", market="h2h", period="match", price_type="best_across_books", settlement_rules={"retirement": "advancer", "walkover": "void", "cancelled": "void"})
+    attach_synthetic_oddsportal_schedule_evidence(valid)
     used = []
     def build(**kwargs):
         used.extend(kwargs["supplied_comparisons"])
@@ -1027,8 +1027,8 @@ def test_offline_partial_collection_to_saved_card_via_normal_ticket_entrypoint(t
     monkeypatch.setenv(oddsportal_upcoming.DISABLE_ENV, "1")
 
     identities = [
-        ("Alice Adams", "Beth Brown", "fixture-1", "ATP Shanghai"),
-        ("Clara Clark", "Diana Davies", "fixture-2", "WTA Beijing"),
+        ("Alice Adams", "Beth Brown", "fixture1", "ATP Shanghai"),
+        ("Clara Clark", "Diana Davies", "fixture2", "WTA Beijing"),
     ]
     predictions = [{"match_date": day, "match_time": "23:30", "player_home": home,
                     "player_away": away, "tournament": event, "surface": "Hard",

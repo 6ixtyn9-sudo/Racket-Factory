@@ -78,10 +78,13 @@ def test_unverified_or_conflicting_date_uses_bounded_fixture_matching_without_le
     monkeypatch.setattr(be, 'fetch_fixture_comparison', lambda *a, **kw: calls.append(a))
     prediction = {'match_date': '2026-10-31', 'player_home': 'van Wyk K.', 'player_away': 'Marmousez L.'}
     offers, counts, _ = quote_enrichment.collect_prediction_comparisons('2026-10-31', [prediction], rows, status)
-    # Conflicting/unknown listing dates cannot be rebound to the prediction;
-    # bounded detail matching is reserved for uniquely dated fixtures.
-    assert not offers and calls == []
-    assert counts.get('attempted', 0) == 0
+    # The parser's blank fixture date no longer blocks bounded detail
+    # discovery. Synthetic call capture proves only that the guarded path is
+    # reachable; the deliberately non-matching data-dt remains unverified.
+    assert not offers and len(calls) == 1
+    assert counts['attempted'] == 1
+    assert counts['stage_statuses']['schedule_verification'] == 'failed'
+    assert counts['stage_statuses']['detail_discovery'] == 'failed'
     with pytest.raises(be.PageFetchError, match='schedule is unverified'):
         be._fetch_live('2026-10-31')
 

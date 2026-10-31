@@ -1,22 +1,22 @@
 """Cross-checked comparison odds: BetExplorer x OddsPortal upcoming.
 
-Both legs cover the tours The Odds API misses (Challenger/ITF/WTA-125K), but
-they quote differently: BetExplorer's listing tracks the bookmaker consensus
-while OddsPortal's lists the best price across books (optimistic by
-construction). The merger matches the two legs by name and emits one row per
+Both legs cover tours the main Odds API may miss (Challenger/ITF/WTA-125K),
+but their price semantics differ: the BetExplorer detail path emits named
+bookmaker offers, while OddsPortal emits a best-across-books indicative pair.
+The merger matches the legs by full fixture context and emits one row per
 match:
 
-* both legs + agree (each side within AGREE_TOLERANCE) -> price from the
-  BetExplorer consensus pair (the realistic, conservative leg),
-  ``odds_cross_checked = "agree"``.
-* both legs + disagree -> still the BetExplorer pair (never the optimistic
-  leg, never a mixed pair), flagged ``"disagree"`` for downstream audit.
-* one leg only -> that leg's pair, flagged ``"single"``.
+* both legs + agree (each side within AGREE_TOLERANCE) -> retain the
+  BetExplorer observation and flag ``odds_cross_checked = "agree"``.
+* both legs + disagree -> still retain the BetExplorer observation (never the
+  optimistic leg or a mixed pair), flagged ``"disagree"`` for audit.
+* one leg only -> retain that leg's original pair and metadata, flagged
+  ``"single"``.
 
-``source`` on the emitted row is the leg the price came from
-("BetExplorer"/"OddsPortal"); the other leg's pair rides along in
-``odds_alt_*`` for transparency. Rows keep the TheOddsAPI row shape so the
-existing enrich/match/EV machinery consumes them unchanged.
+``source`` and ``price_type`` remain those of the leg that supplied the price;
+the other leg's pair rides along in ``odds_alt_*`` for transparency. An
+OddsPortal indicative pair is never relabelled as a named bookmaker offer or
+confirmed fill.
 """
 
 from __future__ import annotations
@@ -231,7 +231,9 @@ def merge_comparison_rows(
         if not op_home or not op_away or op_h is None:
             continue
         row = dict(op)
-        row["source"] = "OddsPortal"
+        # Preserve the actual producer label for optional legs passed through
+        # this merger; the normal OddsPortal adapter already labels its rows.
+        row["source"] = str(op.get("source") or "OddsPortal")
         row["odds_cross_checked"] = "single"
         merged.append(row)
         single_op += 1

@@ -101,7 +101,9 @@ def test_incomplete_evaluation_retains_card_and_fails_health(monkeypatch, tmp_pa
 def test_incomplete_listing_still_attempts_supported_per_fixture_detail(monkeypatch, status):
     calls = []
     monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: calls.append(a) or [])
-    fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
+    fixture = {'match_date': DAY, 'listing_date': DAY, 'listing_schedule_status': 'unverified',
+               'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc',
+               'match_url': '/tennis/atp/event/alice-beth/abc/'}
     offers, counts, partial = collect_prediction_comparisons(DAY, [fixture], [fixture], status)
     assert calls and not offers and partial
     assert counts['predictions'] == counts['matched_fixtures'] == 1
@@ -123,7 +125,9 @@ def test_partial_listing_diagnostic_is_persisted_without_becoming_complete(monke
     monkeypatch.delenv('RACKET_FACTORY_REBUILD_DIAGNOSTICS_DIR', raising=False)
     monkeypatch.setattr(betclan, 'current_run_status', lambda _: 'partial')
     monkeypatch.setattr(oddsportal_upcoming, 'fetch_oddsportal_upcoming_rows', lambda _: [])
-    fixture = {'match_date': DAY, 'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc'}
+    fixture = {'match_date': DAY, 'listing_date': DAY, 'listing_schedule_status': 'unverified',
+               'player_home': 'Alice Adams', 'player_away': 'Beth Brown', 'event_id': 'abc',
+               'match_url': '/tennis/atp/event/alice-beth/abc/'}
     monkeypatch.setattr(betexplorer, '_fetch_live', lambda *a, **kw: ([fixture], 'partial'))
     detail_calls = []
     monkeypatch.setattr(betexplorer, 'fetch_fixture_comparison', lambda *a, **kw: detail_calls.append(a) or [])

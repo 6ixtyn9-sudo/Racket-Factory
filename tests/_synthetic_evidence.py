@@ -57,6 +57,21 @@ def attach_synthetic_schedule_evidence(quote: dict, *, observed_at: str | None =
     return quote
 
 
+def attach_synthetic_oddsportal_schedule_evidence(quote: dict) -> dict:
+    """Attach test-only OddsPortal match-page schedule plumbing, not provider proof."""
+    observed = str(quote.get("observed_at") or "2035-01-01T12:00:00+00:00")
+    quote["schedule_evidence"] = {
+        "status": "candidate_unverified_contract", "provider": "OddsPortal", "sport": "Tennis",
+        "event_status": "EventScheduled", "event_id": quote.get("event_id"),
+        "match_url": quote.get("match_url"), "player_home": quote.get("player_home"),
+        "player_away": quote.get("player_away"), "commence_time": quote.get("commence_time"),
+        "observed_at": observed,
+        "response_sha256": hashlib.sha256(b"synthetic OddsPortal schedule; not provider evidence").hexdigest(),
+        "contradictory_signals": [], "test_only": True,
+    }
+    return quote
+
+
 def allow_synthetic_evidence_in_pipeline(monkeypatch) -> None:
     """Open only the evidence-authentication boundary in an offline plumbing test.
 
@@ -68,6 +83,7 @@ def allow_synthetic_evidence_in_pipeline(monkeypatch) -> None:
 
     settlement = execution.settlement_evidence_problem
     schedule = execution.betexplorer_schedule_evidence_problem
+    oddsportal_schedule = execution.oddsportal_schedule_evidence_problem
 
     def synthetic_settlement(quote, *args, **kwargs):
         evidence = quote.get("settlement_evidence")
@@ -81,5 +97,12 @@ def allow_synthetic_evidence_in_pipeline(monkeypatch) -> None:
             return ""
         return schedule(quote, *args, **kwargs)
 
+    def synthetic_oddsportal_schedule(quote, *args, **kwargs):
+        evidence = quote.get("schedule_evidence")
+        if isinstance(evidence, dict) and evidence.get("test_only") is True:
+            return ""
+        return oddsportal_schedule(quote, *args, **kwargs)
+
     monkeypatch.setattr(execution, "settlement_evidence_problem", synthetic_settlement)
     monkeypatch.setattr(execution, "betexplorer_schedule_evidence_problem", synthetic_schedule)
+    monkeypatch.setattr(execution, "oddsportal_schedule_evidence_problem", synthetic_oddsportal_schedule)

@@ -111,8 +111,8 @@ def _oddsportal_rows(path, target, **kwargs):
     return [{"event_id": "synthetic-event-oddsportal", "match_date": target,
              "match_time": "23:50", "commence_time": target + "T23:50:00+02:00",
              "player_home": "Alice Adams", "player_away": "Beth Brown",
-             "odds_home": 1.55, "odds_away": 2.60, "source": "OddsPortal",
-             "bookmaker": "OddsPortal consensus", "price_type": "consensus",
+             "odds_home": 1.55, "odds_away": 2.60, "source": "TheOddsAPI",
+             "bookmaker": "Synthetic API fixture", "price_type": "bookmaker",
              "market": "h2h", "period": "match", "line": None,
              "observed_at": observed, "test_fixture": True}]
 

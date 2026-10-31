@@ -35,7 +35,10 @@ def test_listing_stage_emits_unpriced_link_rows():
     assert row["player_away"] == "Shelton B."
     assert row["odds_home"] is None
     assert row["odds_away"] is None
-    assert row["match_time"] == "14:00"
+    assert row["match_date"] == row["match_time"] == ""
+    assert row["listing_date"] == "2026-09-13"
+    assert row["listing_time"] == "14:00"
+    assert row["listing_schedule_status"] == "unverified"
     assert row["match_url"].endswith("/zverev-alexander-dGbUhw9m/")
     assert "bookmaker" not in row  # set once the match page prices the row
 
