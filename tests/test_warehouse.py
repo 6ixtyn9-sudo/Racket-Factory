@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime, timezone
+import json
 
 import pandas as pd
 
@@ -114,6 +115,91 @@ def test_collapse_live_card_reorients_reversed_source_before_aggregating_odds():
     assert collapsed.loc[0, "player_away"] == "Pablo Carreno Busta"
     assert collapsed.loc[0, "odds_home"] == 3.80
     assert collapsed.loc[0, "odds_away"] == 1.30
+
+def test_collapse_keeps_scraped_quote_bound_to_one_source_row():
+    from racketfactory.warehouse import collapse_live_card
+
+    observed = datetime.now(timezone.utc).isoformat()
+    digest = "a" * 64
+    base = {
+        "match_date": "2026-10-31", "match_time": "13:00", "tour": "ATP",
+        "match_type": "Singles", "player_home": "Alex Example", "player_away": "Ben Sample",
+        "tournament": "Test Open", "predicted_winner": "1", "prob_home": 60, "prob_away": 40,
+    }
+    card = pd.DataFrame([
+        {**base, "source": "BetClan", "odds_home": 1.80, "odds_away": 2.10,
+         "odds_observed_at": observed, "odds_response_sha256": digest,
+         "odds_source_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+         "odds_event_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+         "odds_evidence_kind": "betclan_match_detail", "odds_market_evidence": "betclan_named_home_away_odds",
+         "odds_kickoff_evidence": "betclan_event_timestamp"},
+        {**base, "source": "BetClan", "odds_home": 1.92, "odds_away": 2.05},
+    ])
+
+    collapsed = collapse_live_card(card)
+    meta = json.loads(collapsed.loc[0, "_scraped_quote_meta"])
+    assert (collapsed.loc[0, "odds_home"], collapsed.loc[0, "odds_away"]) == (1.80, 2.10)
+    assert meta["response_sha256"] == digest
+    assert meta["origin_source"] == "BetClan"
+    assert meta["odds_home"] == 1.8 and meta["odds_away"] == 2.1
+
+
+def test_enrich_live_card_promotes_only_bound_scraped_pick_odds(monkeypatch):
+    from racketfactory import warehouse
+
+    monkeypatch.setattr(warehouse, "fetch_the_odds_api_rows", lambda target_date: [])
+    monkeypatch.setattr(warehouse, "fetch_comparison_rows", lambda target_date: [])
+    meta = {
+        "source": "ScrapedPickOdds", "origin_source": "BetClan",
+        "source_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+        "event_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+        "evidence_kind": "betclan_match_detail", "market_evidence": "betclan_named_home_away_odds",
+        "kickoff_evidence": "betclan_event_timestamp",
+        "response_sha256": "b" * 64,
+        "observed_at": datetime.now(timezone.utc).isoformat(), "market": "source_pick_odds",
+        "period": "match", "line": None, "price_type": "scraped_pick_odds",
+        "fixture_date": "2026-10-31", "match_time": "13:00",
+        "player_home": "Alex Example", "player_away": "Ben Sample",
+        "odds_home": 1.80, "odds_away": 2.10, "reversed": False,
+    }
+    card = pd.DataFrame([{
+        "match_date": "2026-10-31", "match_time": "13:00", "player_home": "Alex Example",
+        "player_away": "Ben Sample", "prob_home": 60, "prob_away": 40,
+        "odds_home": 1.80, "odds_away": 2.10,
+        "_scraped_quote_meta": json.dumps(meta),
+    }])
+
+    enriched = warehouse.enrich_live_card_with_api_odds(
+        card, "2026-10-31", supplied_odds=[], supplied_comparisons=[])
+    assert enriched.loc[0, "odds_source"] == "ScrapedPickOdds"
+    assert enriched.loc[0, "odds_bookmaker"] == ""
+    assert json.loads(enriched.loc[0, "_quote_meta"])["response_sha256"] == "b" * 64
+
+
+def test_betclan_best_effort_odds_without_market_identity_stay_paper_only(monkeypatch):
+    from racketfactory import warehouse
+    from racketfactory.warehouse import collapse_live_card
+
+    monkeypatch.setattr(warehouse, "fetch_the_odds_api_rows", lambda target_date: [])
+    monkeypatch.setattr(warehouse, "fetch_comparison_rows", lambda target_date: [])
+    card = pd.DataFrame([{
+        "match_date": "2026-10-31", "match_time": "13:00", "tour": "ATP",
+        "match_type": "Singles", "player_home": "Alex Example", "player_away": "Ben Sample",
+        "source": "BetClan", "prob_home": 60, "prob_away": 40,
+        "odds_home": 1.80, "odds_away": 2.10,
+        "odds_observed_at": datetime.now(timezone.utc).isoformat(),
+        "odds_response_sha256": "e" * 64,
+        "odds_source_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-1",
+        "odds_event_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-1",
+        "odds_evidence_kind": "betclan_match_detail",
+    }])
+    collapsed = collapse_live_card(card)
+    assert collapsed.loc[0, "_scraped_quote_meta"] == ""
+    enriched = warehouse.enrich_live_card_with_api_odds(
+        collapsed, "2026-10-31", supplied_odds=[], supplied_comparisons=[])
+    assert enriched.loc[0, "odds_source"] == "ScrapedFallback"
+    assert enriched.loc[0, "odds_bookmaker"] == "Validated scrape"
+
 
 def test_enrich_live_card_uses_validated_scraped_fallback_when_api_missing(monkeypatch):
     from racketfactory import warehouse

@@ -658,6 +658,10 @@ def _pick_market_labels(pick: dict[str, Any]) -> tuple[str, bool]:
         return "none", True
     if source in {"TheOddsAPI", "OddsPortal", "Bzzoiro", "BetExplorer"}:
         return "api", False
+    if source == "ScrapedPickOdds":
+        # Only a pick carrying the explicitly validated market-basis stamp can
+        # be treated as priced; a legacy source label alone is paper-only.
+        return "scraped_fallback", True
     if source == "ScrapedFallback":
         return "scraped_fallback", True
     return "none", True

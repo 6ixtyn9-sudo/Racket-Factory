@@ -429,7 +429,12 @@ def selected_quote_problem(pick: dict, *, require_provenance: bool = False, now:
         return "selected quote source changed"
     if str(quote.get("bookmaker") or "").strip() != str(pick.get("odds_bookmaker") or "").strip():
         return "selected quote bookmaker changed"
-    if str(quote.get("market") or "").lower() not in {"h2h", "1x2", "match_winner", "match winner"}:
+    quote_source = str(quote.get("source") or "").strip()
+    market = str(quote.get("market") or "").lower()
+    if quote_source == "ScrapedPickOdds":
+        if market != "source_pick_odds":
+            return "selected quote market mismatch"
+    elif market not in {"h2h", "1x2", "match_winner", "match winner"}:
         return "selected quote market mismatch"
     if str(quote.get("period") or "").lower() not in {"match", "full match", "full_match", "full", "0"}:
         return "selected quote period mismatch"
@@ -438,11 +443,13 @@ def selected_quote_problem(pick: dict, *, require_provenance: bool = False, now:
         return "selected quote line mismatch"
     if require_provenance:
         from racketfactory.execution import rebuild_quote_execution_problem
-        execution_problem = rebuild_quote_execution_problem(quote)
+        execution_problem = rebuild_quote_execution_problem(quote, now=now, pick=pick)
         if execution_problem:
             return execution_problem
-        if not str(quote.get("source") or "").strip() or not str(quote.get("bookmaker") or "").strip():
-            return "selected quote source or bookmaker missing"
+        if not str(quote.get("source") or "").strip():
+            return "selected quote source missing"
+        if quote_source != "ScrapedPickOdds" and not str(quote.get("bookmaker") or "").strip():
+            return "selected quote bookmaker missing"
         home, away = quote.get("provider_home"), quote.get("provider_away")
         provider_side = str(quote.get("provider_side") or "")
         if not home or not away or provider_side not in {"1", "2"}:
@@ -467,6 +474,13 @@ def selected_quote_problem(pick: dict, *, require_provenance: bool = False, now:
         if quote_date and pick_date and str(quote_date)[:10] != str(pick_date)[:10]:
             return "selected quote date mismatch"
         pick_kickoff = parse_kickoff(pick, str(pick_date or quote_date or "")[:10]) if (pick_date or quote_date) else None
+        if quote_source == "ScrapedPickOdds":
+            if not pick_date or not quote_date:
+                return "selected quote fixture identity missing"
+            if pick_kickoff is None or not quote.get("match_time"):
+                return "selected quote kickoff cannot be validated"
+            if str(quote.get("match_time"))[:5] != pick_kickoff.strftime("%H:%M"):
+                return "selected quote kickoff conflicts with fixture kickoff"
         if quote.get("commence_time") and pick_kickoff is not None:
             if start.astimezone(TZ).replace(second=0, microsecond=0) != pick_kickoff.replace(second=0, microsecond=0):
                 return "selected quote kickoff conflicts with fixture kickoff"

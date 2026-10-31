@@ -38,11 +38,11 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Mapping
 
-# Market prices only: anything else (scraped fallback, ML estimates, blanks)
-# is paper-track, never staked. Mirrors market_basis_for_pick's api set.
-# BetExplorer legs quote the bookmaker consensus (indicative, not the ticket
-# price at any single book) — staked because EV gating runs on the same leg.
-TRUSTED_MARKET_SOURCES = frozenset({"theoddsapi", "oddsportal", "bzzoiro", "betexplorer"})
+# Only the trusted price categories below can move the real bank. Legacy
+# ScrapedFallback, ML estimates and blanks remain paper-only; ScrapedPickOdds
+# is a separate source-published category gated by strict provenance checks.
+# BetExplorer legs are indicative consensus, not a confirmed single-book fill.
+TRUSTED_MARKET_SOURCES = frozenset({"theoddsapi", "oddsportal", "bzzoiro", "betexplorer", "scrapedpickodds"})
 
 # Stamped onto every leg the builder emits, so the grader can cross-check.
 STAMP_SAFE = "_execution_safe"
@@ -73,8 +73,18 @@ def leg_market_odds(leg: Mapping[str, Any]) -> float | None:
         return None
     if leg.get("_is_paper"):
         return None
-    if _clean(leg.get("odds_source")).lower() not in TRUSTED_MARKET_SOURCES:
+    source = _clean(leg.get("odds_source")).lower()
+    if source not in TRUSTED_MARKET_SOURCES:
         return None
+    if source == "scrapedpickodds":
+        quote = leg.get("selected_quote")
+        if not isinstance(quote, Mapping):
+            return None
+        try:
+            if rebuild_quote_execution_problem(quote, pick=leg):
+                return None
+        except Exception:
+            return None
     try:
         odds = float(leg.get("odds"))
     except (TypeError, ValueError):
@@ -488,7 +498,130 @@ def oddsportal_schedule_evidence_problem(quote: Mapping[str, Any], *, now=None) 
     return ""
 
 
-def rebuild_quote_execution_problem(quote: Mapping[str, Any]) -> str:
+def scraped_pick_odds_execution_problem(quote: Mapping[str, Any], *, now=None) -> str:
+    """Fail-closed checks for provenance-bearing source-pick odds.
+
+    These are source-published prices, not bookmaker offers or confirmed fills.
+    Admission is limited to a recent BetClan match-page observation whose
+    odds container binds exactly two prices to the page's named home/away
+    participants. Best-effort global/table guesses remain paper-only.
+    """
+    from datetime import datetime, timezone
+    from urllib.parse import urlsplit
+    import re
+
+    if str(quote.get("price_type") or "").strip().casefold() != "scraped_pick_odds":
+        return "scraped quote price type missing or incompatible"
+    if str(quote.get("market") or "").strip().casefold() != "source_pick_odds":
+        return "scraped quote market missing or incompatible"
+    if str(quote.get("period") or "").strip().casefold() not in {"match", "full", "full_match", "full match", "0"}:
+        return "scraped quote period missing or incompatible"
+    if str(quote.get("bookmaker") or "").strip():
+        return "scraped pick odds cannot claim a bookmaker"
+
+    origin = str(quote.get("origin_source") or "").strip()
+    kind = str(quote.get("evidence_kind") or "").strip()
+    if origin != "BetClan" or kind not in {"betclan_match_detail", "betclan_odds_subpage"}:
+        return "scraped quote source evidence unsupported"
+    if quote.get("market_evidence") != "betclan_named_home_away_odds":
+        return "scraped quote market evidence missing or incompatible"
+    if quote.get("kickoff_evidence") != "betclan_event_timestamp":
+        return "scraped quote kickoff evidence missing or incompatible"
+    if not re.fullmatch(r"[0-9a-f]{64}", str(quote.get("response_sha256") or "")):
+        return "scraped quote response digest missing or invalid"
+
+    def checked_url(value):
+        try:
+            parsed = urlsplit(str(value or ""))
+            return (parsed.scheme == "https" and parsed.hostname == "www.betclan.com" and parsed.port in (None, 443)
+                    and not parsed.username and not parsed.password and not parsed.query
+                    and not parsed.fragment and bool(parsed.path))
+        except (TypeError, ValueError):
+            return False
+
+    source_url = str(quote.get("source_url") or "")
+    event_url = str(quote.get("event_url") or "")
+    if not checked_url(source_url) or not checked_url(event_url):
+        return "scraped quote source URL invalid"
+    source_path, event_path = urlsplit(source_url).path, urlsplit(event_url).path
+    event_match = re.fullmatch(r"/tennis/predictionsdetails/([A-Za-z0-9_-]+)/?", event_path)
+    if not event_match:
+        return "scraped quote event URL mismatch"
+    event_slug = event_match.group(1)
+    if kind == "betclan_match_detail":
+        if source_path.rstrip("/") != event_path.rstrip("/"):
+            return "scraped quote event URL mismatch"
+    else:
+        source_parts = source_path.strip("/").split("/")
+        if (len(source_parts) < 3 or source_parts[-1] != event_slug
+                or not any(token in "/".join(source_parts[1:-1]).casefold()
+                           for token in ("odds", "bookmaker", "market", "prices"))):
+            return "scraped quote event URL mismatch"
+
+    fixture_date = str(quote.get("fixture_date") or "")[:10]
+    match_time = str(quote.get("match_time") or "")[:5]
+    try:
+        from datetime import date
+        date.fromisoformat(fixture_date)
+    except (TypeError, ValueError):
+        return "scraped quote fixture date missing or invalid"
+    if not re.fullmatch(r"\d{2}:\d{2}", match_time):
+        return "scraped quote kickoff missing or invalid"
+
+    home, away = str(quote.get("provider_home") or "").strip(), str(quote.get("provider_away") or "").strip()
+    if not home or not away or home.casefold() == away.casefold():
+        return "scraped quote provider orientation missing"
+    if quote.get("reversed") is True:
+        return "scraped quote provider orientation changed"
+
+    try:
+        from racketfactory.warehouse import strict_quote_team_match
+        source_home = str(quote.get("source_player_home") or "").strip()
+        source_away = str(quote.get("source_player_away") or "").strip()
+        source_reversed = quote.get("source_reversed")
+        if type(source_reversed) is not bool or not source_home or not source_away:
+            return "scraped quote source orientation missing"
+        expected_source_home, expected_source_away = (away, home) if source_reversed else (home, away)
+        if (not strict_quote_team_match(source_home, expected_source_home)
+                or not strict_quote_team_match(source_away, expected_source_away)):
+            return "scraped quote source orientation mismatch"
+    except (ImportError, TypeError, ValueError):
+        return "scraped quote source orientation invalid"
+
+    try:
+        from math import isfinite
+        home_odds, away_odds = float(quote.get("odds_home")), float(quote.get("odds_away"))
+        source_home_odds = float(quote.get("source_odds_home"))
+        source_away_odds = float(quote.get("source_odds_away"))
+        selected = float(quote.get("odds"))
+        if not all(isfinite(value) and 1.0 < value <= 51.0 for value in (home_odds, away_odds, selected, source_home_odds, source_away_odds)):
+            return "invalid observed quote pair"
+        expected_source_prices = (away_odds, home_odds) if source_reversed else (home_odds, away_odds)
+        if (source_home_odds, source_away_odds) != expected_source_prices:
+            return "scraped quote source prices do not match oriented prices"
+        side = str(quote.get("provider_side") or "")
+        expected = home_odds if side == "1" else away_odds if side == "2" else None
+        if expected is None or selected != expected:
+            return "scraped quote selected side price mismatch"
+        from racketfactory.warehouse import valid_two_way_decimal_pair
+        if not valid_two_way_decimal_pair(home_odds, away_odds):
+            return "invalid observed quote pair"
+    except (TypeError, ValueError, OverflowError):
+        return "invalid observed quote pair"
+
+    try:
+        observed = datetime.fromisoformat(str(quote.get("observed_at") or "").replace("Z", "+00:00"))
+        if observed.tzinfo is None or observed.utcoffset() is None:
+            return "scraped quote timestamp missing timezone"
+        age = ((now or datetime.now(timezone.utc)) - observed.astimezone(timezone.utc)).total_seconds()
+        if not 0 <= age <= 30 * 60:
+            return "scraped quote stale or future"
+    except (TypeError, ValueError, OverflowError):
+        return "scraped quote timestamp invalid"
+    return ""
+
+
+def rebuild_quote_execution_problem(quote: Mapping[str, Any], *, now=None, pick: Mapping[str, Any] | None = None) -> str:
     """Validate a fresh observed price for forward-only new-card admission.
 
     Named-bookmaker observations and supported indicative listing/consensus
@@ -498,6 +631,38 @@ def rebuild_quote_execution_problem(quote: Mapping[str, Any]) -> str:
     """
     from math import isfinite
     source = str(quote.get("source") or "").strip().casefold()
+    if source == "scrapedpickodds":
+        problem = scraped_pick_odds_execution_problem(quote, now=now)
+        if problem:
+            return problem
+        if pick is None:
+            return "scraped quote pick context missing"
+        if pick.get("odds") is not None:
+            try:
+                if float(quote.get("odds")) != float(pick.get("odds")):
+                    return "scraped quote price changed"
+            except (TypeError, ValueError, OverflowError):
+                return "invalid selected quote price"
+        selected = str(pick.get("selected_player") or "").strip()
+        side = str(pick.get("selected_side") or "")
+        expected_side = "1" if side in {"player_a", "1"} else "2" if side in {"player_b", "2"} else ""
+        if not selected or quote.get("selection") != selected or expected_side != quote.get("provider_side"):
+            return "scraped quote selected side does not match pick"
+        try:
+            from racketfactory.warehouse import strict_quote_team_match
+            home, away = str(quote.get("provider_home") or ""), str(quote.get("provider_away") or "")
+            expected, opponent = (home, away) if expected_side == "1" else (away, home)
+            if not strict_quote_team_match(selected, expected) or strict_quote_team_match(selected, opponent):
+                return "scraped quote selected side does not match pick"
+        except (ImportError, TypeError, ValueError):
+            return "scraped quote selected side cannot be validated"
+        pick_date = str(pick.get("date") or pick.get("match_date") or "")[:10]
+        if not pick_date or pick_date != str(quote.get("fixture_date") or "")[:10]:
+            return "scraped quote fixture date does not match pick"
+        pick_time = str(pick.get("kickoff") or pick.get("match_time") or "")[:5]
+        if not pick_time or pick_time != str(quote.get("match_time") or "")[:5]:
+            return "scraped quote kickoff does not match pick"
+        return ""
     if source not in {"betexplorer", "oddsportal", "theoddsapi", "bzzoiro"}:
         return "unsupported quote source"
     market = str(quote.get("market") or "").strip().casefold()

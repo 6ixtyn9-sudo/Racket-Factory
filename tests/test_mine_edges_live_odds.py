@@ -1,3 +1,6 @@
+import json
+from datetime import datetime, timedelta, timezone
+
 import pandas as pd
 
 from scripts.mine_edges import selected_odds_is_usable
@@ -26,6 +29,20 @@ def test_selected_odds_still_rejects_unlabelled_live_scrape_noise():
     assert reason == "missing usable live odds"
 
 
+def test_selected_odds_accepts_provenance_labeled_scraped_pick_pair():
+    odds, reason = selected_odds_is_usable(
+        _live_row(source="ScrapedPickOdds", odds_a=1.80, odds_b=2.05), "player_a", 0.57)
+    assert odds == 1.80
+    assert reason is None
+
+
+def test_selected_odds_requires_a_complete_pair_for_staked_scrape_source():
+    odds, reason = selected_odds_is_usable(
+        _live_row(source="ScrapedPickOdds", odds_a=1.80, odds_b=None), "player_a", 0.57)
+    assert odds is None
+    assert reason == "incomplete/invalid ScrapedPickOdds live odds pair"
+
+
 def test_selected_odds_revalidates_scraped_fallback_pair():
     odds, reason = selected_odds_is_usable(_live_row(odds_a=9.50, odds_b=9.70), "player_a", 0.57)
 
@@ -51,8 +68,35 @@ def test_market_basis_labels():
     assert market_basis_for_pick("OddsPortal", 2.10) == ("api", False)
     assert market_basis_for_pick("Bzzoiro", 2.10) == ("api", False)
     assert market_basis_for_pick("ScrapedFallback", 1.80) == ("scraped_fallback", True)
+    assert market_basis_for_pick("ScrapedPickOdds", 1.80) == ("scraped_fallback", True)
     assert market_basis_for_pick("", None) == ("none", True)
     assert market_basis_for_pick("TheOddsAPI", None) == ("none", True)
+
+    now = datetime.now(timezone.utc)
+    quote = {
+        "odds": 1.80, "source": "ScrapedPickOdds", "bookmaker": "",
+        "market": "source_pick_odds", "period": "match", "line": None,
+        "price_type": "scraped_pick_odds", "origin_source": "BetClan",
+        "evidence_kind": "betclan_match_detail", "market_evidence": "betclan_named_home_away_odds",
+        "kickoff_evidence": "betclan_event_timestamp",
+        "source_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+        "event_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+        "response_sha256": "f" * 64, "observed_at": (now - timedelta(minutes=2)).isoformat(),
+        "fixture_date": "2026-10-31", "match_time": "13:00",
+        "provider_home": "Alex Example", "provider_away": "Ben Sample", "provider_side": "1",
+        "selection": "Alex Example", "odds_home": 1.80, "odds_away": 2.10, "reversed": False,
+        "source_player_home": "Alex Example", "source_player_away": "Ben Sample",
+        "source_odds_home": 1.80, "source_odds_away": 2.10, "source_reversed": False,
+    }
+    pick = {"selected_side": "1", "selected_player": "Alex Example", "date": "2026-10-31", "kickoff": "13:00"}
+    assert market_basis_for_pick(
+        "ScrapedPickOdds", 1.80, quote=quote, pick=pick, now=now) == ("scraped_pick_odds", False)
+    stale_quote = dict(quote, observed_at=(now - timedelta(minutes=31)).isoformat())
+    assert market_basis_for_pick(
+        "ScrapedPickOdds", 1.80, quote=stale_quote, pick=pick, now=now) == ("scraped_fallback", True)
+    wrong_side = dict(quote, provider_side="2", odds=2.10, selection="Alex Example")
+    assert market_basis_for_pick(
+        "ScrapedPickOdds", 2.10, quote=wrong_side, pick=pick, now=now) == ("scraped_fallback", True)
 
 
 def test_selection_basis_tracked():
@@ -107,6 +151,34 @@ def test_selected_odds_rejects_incoherent_scraped_pair_with_both_sides():
 
     assert odds is None
     assert reason == "incomplete/invalid ScrapedFallback live odds pair"
+
+
+def test_warehouse_quote_export_preserves_scrape_provenance_without_bookmaker_label():
+    from scripts.mine_edges import warehouse_selected_quote
+
+    meta = {
+        "source": "ScrapedPickOdds", "origin_source": "BetClan",
+        "source_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+        "event_url": "https://www.betclan.com/tennis/predictionsdetails/fixture-123",
+        "evidence_kind": "betclan_match_detail", "market_evidence": "betclan_named_home_away_odds",
+        "kickoff_evidence": "betclan_event_timestamp",
+        "response_sha256": "c" * 64,
+        "observed_at": "2026-10-31T12:00:00+00:00", "market": "source_pick_odds",
+        "period": "match", "price_type": "scraped_pick_odds", "fixture_date": "2026-10-31",
+        "match_time": "13:00", "player_home": "Alex Example", "player_away": "Ben Sample",
+        "odds_home": 1.80, "odds_away": 2.10, "reversed": False,
+        "source_player_home": "Alex Example", "source_player_away": "Ben Sample",
+        "source_odds_home": 1.80, "source_odds_away": 2.10, "source_reversed": False,
+    }
+    quote = warehouse_selected_quote(
+        pd.Series({"_quote_meta": json.dumps(meta)}),
+        {"selected_side": "player_a", "selected_player": "Alex Example"},
+        1.80, "ScrapedPickOdds", "")
+    assert quote["source"] == "ScrapedPickOdds"
+    assert quote["bookmaker"] == ""
+    assert quote["provider_side"] == "1"
+    assert quote["source_odds_home"] == 1.80
+    assert quote["response_sha256"] == "c" * 64
 
 
 def test_selected_odds_keeps_api_strict_pair():
